@@ -1,21 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { Document } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import { ZodError } from 'zod';
-import User from '../models/User';
-import { signupSchema, loginSchema } from '../schemas/auth.schema';
+import User from '../models/userModel';
+import { signupSchema, loginSchema } from '../schemas/authSchema';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';
-
-// Define interface for JWT payload
-interface JwtPayload {
-  id: string;
-  iat: number;
-}
-
-export interface RequestWithUser extends Request {
-  user?: Document; // Or use a more specific type if you have a User interface
-}
+import { UserPayload } from '../types/index';
 
 // Helper function to sign JWT token
 const signToken = (id: string): string => {
@@ -25,12 +15,6 @@ const signToken = (id: string): string => {
       : '90d',
   });
 };
-
-// Send JWT token as a cookie
-interface UserPayload {
-  _id: string;
-  password?: string;
-}
 
 const createSendToken = (
   user: UserPayload,
@@ -84,7 +68,7 @@ export const signup = catchAsync(
         email: validatedData.email,
         password: validatedData.password,
         passwordConfirm: validatedData.passwordConfirm,
-        passwordChangedAt: new Date(),
+        // passwordChangedAt: new Date(),
       });
 
       // Send JWT token
@@ -153,56 +137,6 @@ export const login = catchAsync(
       // Pass other errors to error handler
       next(error);
     }
-  }
-);
-
-// Protect routes middleware
-export const protect = catchAsync(
-  async (req: RequestWithUser, res: Response, next: NextFunction) => {
-    // Get token from authorization header or cookies
-    let token: string | undefined;
-
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith('Bearer')
-    ) {
-      token = req.headers.authorization.split(' ')[1];
-    } else if (req.cookies.jwt) {
-      token = req.cookies.jwt;
-    }
-
-    // Check if token exists
-    if (!token) {
-      return next(
-        new AppError('You are not logged in. Please log in to get access', 401)
-      );
-    }
-
-    // Verify token
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as JwtPayload;
-
-    // Check if user still exists
-    const currentUser = await User.findById(decoded.id);
-    if (!currentUser) {
-      return next(
-        new AppError('The user belonging to this token no longer exists', 401)
-      );
-    }
-
-    // Check if user changed password after the token was issued
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      return next(
-        new AppError('User recently changed password! Please log in again', 401)
-      );
-    }
-
-    // Grant access to protected route and add user to request object
-    req.user = currentUser;
-    res.locals.user = currentUser;
-    next();
   }
 );
 

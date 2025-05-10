@@ -1,8 +1,7 @@
 // src/controllers/dashboard.controller.ts
 import { Response } from 'express';
 import { catchAsync } from '../utils/catchAsync';
-
-import { RequestWithUser } from '../controllers/auth.controller';
+import { RequestWithUser } from '../types/index';
 
 export const getDashboard = catchAsync(
   async (req: RequestWithUser, res: Response) => {

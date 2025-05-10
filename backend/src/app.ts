@@ -3,8 +3,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 
-import authRoutes from './routes/auth.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+import authRoutes from './routes/authRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
 import { globalErrorHandler } from './utils/errorHandler';
 import { AppError } from './utils/appError';
 

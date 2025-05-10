@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { AppError } from './appError';
 
 // Handle development errors with full details

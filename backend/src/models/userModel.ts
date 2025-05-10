@@ -53,6 +53,7 @@ const userSchema = new Schema<IUser>(
     passwordChangedAt: {
       type: Date,
       default: Date.now,
+      select: false,
     },
     passwordResetToken: String,
     passwordResetExpires: Date,
@@ -64,8 +65,6 @@ const userSchema = new Schema<IUser>(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
   }
 );
 
