@@ -3,7 +3,8 @@
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
+
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -25,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import { registerUser } from '@/redux/slice/userSlice';
 
 const passwordSchema = z
   .string()
@@ -73,7 +75,7 @@ export default function SignupForm({
   });
 
   const onSubmit = async (formData: SignupFormValues) => {
-    await dispatch(registerUser(formData)).then(() => {
+    await dispatch(registerUser(formData) as any).then(() => {
       router.push('/auth/verify');
     });
   };

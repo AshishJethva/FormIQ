@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request } from 'express';
 import { Document } from 'mongoose';
 
 export interface JwtPayload {
@@ -13,4 +13,6 @@ export interface RequestWithUser extends Request {
 export interface UserPayload {
   _id: string;
   password?: string;
+  otpCode?: string;
+  otpExpires?: Date;
 }

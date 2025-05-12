@@ -10,6 +10,9 @@ export interface IUser extends Document {
   passwordChangedAt: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
+  isVerified: boolean;
+  otpCode?: string;
+  otpExpires?: Date;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +58,18 @@ const userSchema = new Schema<IUser>(
       default: Date.now,
       select: false,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otpCode: {
+      type: String,
+      select: false,
+    },
+    otpExpires: {
+      type: Date,
+      select: false,
+    },
     passwordResetToken: String,
     passwordResetExpires: Date,
     active: {
@@ -71,7 +86,8 @@ const userSchema = new Schema<IUser>(
 // Hash the password before saving
 userSchema.pre('save', async function (this: IUser, next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   this.passwordConfirm = undefined;
   next();
 });

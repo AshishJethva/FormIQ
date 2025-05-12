@@ -22,6 +22,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import type { LoginRequest } from '@/types/auth/actions';
+import { useDispatch, useSelector } from 'react-redux';
+import type { StoreDispatch, RootState } from '@/redux/store';
+import { logInUser } from '@/redux/slice/userSlice';
+import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -30,13 +35,14 @@ const loginSchema = z.object({
     .min(8, { message: 'Password must be at least 8 characters long' }),
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-
 export default function LoginForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  const form = useForm<LoginFormValues>({
+  const dispatch = useDispatch<StoreDispatch>();
+  const router = useRouter();
+
+  const form = useForm<LoginRequest>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
@@ -44,16 +50,21 @@ export default function LoginForm({
     },
   });
 
-  const onSubmit = (values: LoginFormValues) => {
-    console.log('Form submitted:', values);
-    // handle login logic
+  const onSubmit = async (formData: LoginRequest) => {
+    try {
+      await dispatch(logInUser(formData));
+    } catch (error) {
+      console.error('Login failed:', error);
+    } finally {
+      form.reset();
+    }
   };
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className='text-2xl'>FormApp - Login</CardTitle>
+          <CardTitle className='text-2xl'>FormIQ - Login</CardTitle>
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>

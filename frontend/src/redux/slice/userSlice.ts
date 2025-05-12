@@ -2,7 +2,7 @@
 
 import { User } from '@/types/redux';
 import type { LoginRequest } from '@/types/auth/actions';
-import type { RootState, StoreDispatch } from '@/redux/store';
+import type { StoreDispatch } from '@/redux/store';
 
 import { createSlice } from '@reduxjs/toolkit';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import { setCookie, deleteCookie } from 'cookies-next';
 
 import { validateToken as ValidateToken } from '@/lib/auth/actions';
 import { login, register, verifyOtp, logout } from '@/lib/auth/actions';
+import { setAuthLoading } from '@/redux/slice/appSlice';
 
 const initialState: User = {
   token: null,
@@ -26,22 +27,11 @@ const userSlice = createSlice({
     toggleUser: (state, action) => {
       state.user = action.payload;
     },
-    login(state, action) {
-      state.user = action.payload;
-    },
-    logout(state) {
-      state.user = null;
-    },
   },
 });
 
-const { toggleToken, toggleUser, login, logout } = userSlice.actions;
+const { toggleToken, toggleUser } = userSlice.actions;
 
-//
-/**
- * Validates the token and updates it if necessary.
- * @param {string} token - The token to validate.
- */
 const validateToken = (token: string) => async (dispatch: StoreDispatch) => {
   try {
     const new_token = await ValidateToken(token);
@@ -51,23 +41,20 @@ const validateToken = (token: string) => async (dispatch: StoreDispatch) => {
     }
 
     dispatch(toggleToken(new_token));
-  } catch (error: any) {
+  } catch (error) {
     return error;
   }
 };
 
-/**
- * Logs in the user with the provided form data.
- * @param {LoginRequest} formData - The login request data.
- */
 const logInUser =
-  (formData: LoginRequest) => async (dispatch: StoreDispatch) => {
+  (formData: LoginRequest) =>
+  async (dispatch: StoreDispatch): Promise<boolean> => {
     dispatch(setAuthLoading(true));
     try {
       const userObj = await login(formData);
 
       if (!userObj) {
-        return;
+        return false;
       }
 
       setCookie('token', userObj.token, {
@@ -80,103 +67,100 @@ const logInUser =
 
       localStorage.setItem('token', userObj.token);
 
-      if (typeof userObj !== 'boolean') {
+      if (userObj.token) {
+        toast.error(userObj.message);
         dispatch(toggleToken(userObj.token));
-        dispatch(toggleUser(userObj.user));
+        dispatch(toggleUser(userObj.data.user));
+        return true;
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Error logging in');
 
-      return error;
+      return false;
     } finally {
       dispatch(setAuthLoading(false));
     }
+    return false;
   };
 
-/**
- * Logs out the current user.
- */
-const logoutUser =
-  () => async (dispatch: StoreDispatch, getState: () => RootState) => {
-    const token: string | null = localStorage.getItem('token');
+const logoutUser = () => async (dispatch: StoreDispatch) => {
+  const token: string | null = localStorage.getItem('token');
 
-    localStorage.removeItem('token');
-    deleteCookie('token');
+  localStorage.removeItem('token');
+  deleteCookie('token');
 
-    dispatch(toggleToken(null));
-    dispatch(toggleUser(null));
-    dispatch(setUserType(null));
-    dispatch(setAuthLoading(false));
+  dispatch(toggleToken(null));
+  dispatch(toggleUser(null));
+  dispatch(setAuthLoading(false));
 
-    token && (await logout(token));
-  };
+  if (token) {
+    await logout(token);
+  }
+};
 
-/**
- * Registers a new user with the provided form data.
- * @param {any} formData - The registration request data.
- */
-const registerUser =
-  (formData: any) =>
-  async (dispatch: StoreDispatch): Promise<LoginRequest | any> => {
-    try {
-      const userObj = await register(formData);
-
-      if (!userObj) {
-        return;
-      }
-
-      setCookie('opt_verification_pending', true, {
-        maxAge: 60 * 60 * 24 * 7,
-        secure: true,
-        httpOnly: false,
-        sameSite: 'strict',
-        path: '/',
-      });
-
-      localStorage.setItem('user_id', userObj.id);
-    } catch (error: any) {
-      toast.error('Error registering');
-
-      return error;
-    }
-  };
-
-/**
- * Verifies the OTP and updates the user state.
- * @param {string} otp - The OTP to verify.
- */
-const verifyOTP = (otp: string) => async (dispatch: StoreDispatch) => {
+const registerUser = formData => async (): Promise<LoginRequest | unknown> => {
   try {
-    const user_id = localStorage.getItem('user_id') as string;
-    const response = await verifyOtp(user_id, otp);
+    const userObj = await register(formData);
 
-    if (response) {
-      const userObj = response;
-
-      if (typeof userObj !== 'boolean') {
-        setCookie('token', userObj.token, {
-          maxAge: 60 * 60 * 24 * 7,
-          secure: true,
-          httpOnly: false,
-          sameSite: 'strict',
-        });
-        deleteCookie('otp_verification_pending');
-        localStorage.removeItem('user_id');
-        localStorage.setItem('token', userObj.token);
-
-        dispatch(toggleToken(userObj.token));
-        dispatch(toggleUser(userObj.user));
-        dispatch(setUserType(userObj.user.groups[0]));
-      }
-
+    if (!userObj) {
       return;
     }
-  } catch (error: any) {
-    toast.error('Error verifying OTP');
+
+    setCookie('opt_verification_pending', true, {
+      maxAge: 60 * 60 * 24 * 7,
+      secure: true,
+      httpOnly: false,
+      sameSite: 'strict',
+      path: '/',
+    });
+
+    localStorage.setItem('user_id', userObj.user_id);
+  } catch (error) {
+    toast.error('Error registering');
 
     return error;
   }
 };
+
+const verifyOTP =
+  (otp: string) => async (dispatch: StoreDispatch, getState) => {
+    try {
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        toast.error('User ID not found');
+        return;
+      }
+
+      const response = await verifyOtp(userId, otp);
+
+      console.log('Response from verify OTP:', response);
+
+      if (response) {
+        const userObj = response as any;
+
+        if (userObj?.token) {
+          setCookie('token', userObj.token, {
+            maxAge: 60 * 60 * 24 * 7,
+            secure: true,
+            httpOnly: false,
+            sameSite: 'strict',
+          });
+          deleteCookie('otp_verification_pending');
+          localStorage.removeItem('user_id');
+          localStorage.setItem('token', userObj.token);
+
+          dispatch(toggleToken(userObj.token));
+          dispatch(toggleUser(userObj.user));
+        }
+
+        return;
+      }
+    } catch (error) {
+      toast.error('Error verifying OTP');
+
+      return error;
+    }
+  };
 
 export {
   logInUser,

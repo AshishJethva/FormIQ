@@ -6,6 +6,7 @@ import { signupSchema, loginSchema } from '../schemas/authSchema';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';
 import { UserPayload } from '../types/index';
+import { sendOTPEmail } from '../utils/email';
 
 // Helper function to sign JWT token
 const signToken = (id: string): string => {
@@ -32,7 +33,7 @@ const createSendToken = (
           60 *
           1000
     ),
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite:
       process.env.NODE_ENV === 'production'
@@ -41,10 +42,12 @@ const createSendToken = (
   };
 
   // Set the cookie
-  res.cookie('jwt', token, cookieOptions);
+  res.cookie('token', token, cookieOptions);
 
   // Remove password from output
   user.password = undefined;
+  user.otpCode = undefined;
+  user.otpExpires = undefined;
 
   res.status(statusCode).json({
     status: 'success',
@@ -54,6 +57,126 @@ const createSendToken = (
     },
   });
 };
+
+// Verify OTP code
+export const verifyOTP = catchAsync(async (req: Request, res: Response) => {
+  const { otp, user_id } = req.body;
+
+  // Validate request body
+  if (!otp || !user_id) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Please provide OTP code and user ID',
+    });
+  }
+
+  // Find user by ID and explicitly include OTP fields
+  const user = await User.findById(user_id).select('+otpCode +otpExpires');
+
+  // Check if user exists
+  if (!user) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'No user found with that ID',
+    });
+  }
+
+  // Check if user already verified
+  if (user.isVerified) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'This user is already verified',
+    });
+  }
+
+  // Check if OTP exists and still valid
+  if (!user.otpCode || !user.otpExpires) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'OTP is invalid or has expired',
+    });
+  }
+
+  // Check if OTP is expired
+  if (user.otpExpires < new Date()) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'OTP has expired',
+    });
+  }
+
+  // Verify OTP
+  if (String(user.otpCode) !== String(otp)) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Invalid OTP',
+    });
+  }
+
+  // Update user to verified
+  user.isVerified = true;
+  user.otpCode = undefined;
+  user.otpExpires = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  // Send success response with token
+  createSendToken(user.toObject() as UserPayload, 200, res);
+});
+
+// Generate OTP for user
+export const sendOTP = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Find user by email
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'No user found with that email',
+    });
+  }
+
+  // Check if already verified
+  if (user.isVerified) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'User is already verified',
+    });
+  }
+
+  // Generate 6-digit OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Save OTP to user
+  user.otpCode = otpCode;
+  user.otpExpires = otpExpires;
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    // Send the OTP via email
+    await sendOTPEmail(user, otpCode);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification code sent to your email',
+      // For development, still include OTP in response
+      ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
+      user_id: user._id,
+    });
+  } catch {
+    // If error sending OTP, reset user's OTP fields
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'Error sending verification email. Please try again later.',
+    });
+  }
+});
 
 // Signup handler
 export const signup = catchAsync(
@@ -68,12 +191,44 @@ export const signup = catchAsync(
         email: validatedData.email,
         password: validatedData.password,
         passwordConfirm: validatedData.passwordConfirm,
-        // passwordChangedAt: new Date(),
+        isVerified: false, // User needs to verify with OTP
       });
 
-      // Send JWT token
-      createSendToken(newUser.toObject() as UserPayload, 201, res);
+      // Generate 6-digit OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Save OTP to user
+      newUser.otpCode = otpCode;
+      newUser.otpExpires = otpExpires;
+      await newUser.save({ validateBeforeSave: false });
+
+      try {
+        // Send OTP via email
+        await sendOTPEmail(newUser, otpCode);
+
+        // Return response
+        res.status(201).json({
+          status: 'success',
+          message:
+            'Account created! Please check your email for verification code.',
+          // Only include OTP in development for testing
+          ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
+          user_id: newUser._id,
+        });
+      } catch (error) {
+        // If email fails, still create the account but notify the user
+        console.error('Error sending email:', error);
+
+        res.status(201).json({
+          status: 'partial_success',
+          message:
+            'Account created but we could not send a verification email. Please request a new code.',
+          user_id: newUser._id,
+        });
+      }
     } catch (error) {
+      console.error('Signup error:', error);
       // Handle Zod validation errors
       if (error instanceof ZodError) {
         return res.status(400).json({
@@ -95,6 +250,12 @@ export const signup = catchAsync(
           message: 'Email already in use',
         });
       }
+
+      console.error('Registration error:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Something went wrong during registration',
+      });
 
       // Pass other errors to error handler
       next(error);
@@ -122,6 +283,40 @@ export const login = catchAsync(
         return next(new AppError('Incorrect email or password', 401));
       }
 
+      // Check if user is verified
+      if (!user.isVerified) {
+        // Generate new OTP for user
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        user.otpCode = otpCode;
+        user.otpExpires = otpExpires;
+        await user.save({ validateBeforeSave: false });
+
+        try {
+          // Send OTP via email
+          await sendOTPEmail(user, otpCode);
+
+          return res.status(401).json({
+            status: 'fail',
+            message:
+              'Account not verified. A verification code has been sent to your email.',
+            // Only include OTP in development
+            ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
+            user_id: user._id,
+            requiresVerification: true,
+          });
+        } catch {
+          return res.status(500).json({
+            status: 'error',
+            message:
+              'Error sending verification email. Please try again later.',
+            user_id: user._id,
+            requiresVerification: true,
+          });
+        }
+      }
+
       // Send JWT token
       createSendToken(user.toObject() as UserPayload, 200, res);
     } catch (error) {
@@ -142,10 +337,13 @@ export const login = catchAsync(
 
 // Logout handler
 export const logout = (req: Request, res: Response) => {
-  res.cookie('jwt', 'loggedout', {
+  res.cookie('token', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
   });
 
-  res.status(200).json({ status: 'success' });
+  res
+    .status(200)
+    .json({ status: 'success', message: 'Logged out successfully' });
 };
