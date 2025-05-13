@@ -1,7 +1,6 @@
 'use client';
 
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from '@/lib/utils';
 import {
@@ -26,20 +25,16 @@ import type { LoginRequest } from '@/types/auth/actions';
 import { useDispatch, useSelector } from 'react-redux';
 import type { StoreDispatch, RootState } from '@/redux/store';
 import { logInUser } from '@/redux/slice/userSlice';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address' }),
-  password: z
-    .string()
-    .min(8, { message: 'Password must be at least 8 characters long' }),
-});
+import { loginSchema } from '@/dependencies/zod';
 
 export default function LoginForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const dispatch = useDispatch<StoreDispatch>();
+  const isLoading = useSelector((state: RootState) => state.app.auth.isLoading);
   const router = useRouter();
 
   const form = useForm<LoginRequest>({
@@ -48,13 +43,21 @@ export default function LoginForm({
       email: '',
       password: '',
     },
+    mode: 'onChange',
   });
 
   const onSubmit = async (formData: LoginRequest) => {
     try {
-      await dispatch(logInUser(formData));
+      const result = await dispatch(logInUser(formData));
+
+      if (result.success) {
+        router.push('/dashboard');
+      } else if (result.requiresVerification) {
+        // Add this explicit redirect
+        router.push('/auth/verify');
+      }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Login error:', error);
     } finally {
       form.reset();
     }
@@ -120,9 +123,17 @@ export default function LoginForm({
                 )}
               />
 
-              <Button type='submit' className='w-full'>
-                Login
+              <Button className='w-full' disabled={isLoading} type='submit'>
+                {isLoading ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Logging in...
+                  </>
+                ) : (
+                  'Login'
+                )}
               </Button>
+
               {/* <Button type='button' variant='outline' className='w-full'>
                 Login with Google
               </Button> */}

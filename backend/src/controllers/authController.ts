@@ -58,6 +58,145 @@ const createSendToken = (
   });
 };
 
+// Login handler
+export const login = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Validate input data using Zod
+      const { email, password } = loginSchema.parse(req.body);
+
+      // Check if email and password exist
+      if (!email || !password) {
+        return next(new AppError('Please provide email and password', 400));
+      }
+
+      // Find user by email and explicitly select the password
+      const user = await User.findOne({ email }).select('+password');
+
+      // Check if user exists & password is correct
+      if (!user || !(await user.comparePassword(password))) {
+        return next(new AppError('Incorrect email or password', 401));
+      }
+
+      // Check if user is verified
+      if (!user.isVerified) {
+        // Generate new OTP for user
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        user.otpCode = otpCode;
+        user.otpExpires = otpExpires;
+        await user.save({ validateBeforeSave: false });
+
+        try {
+          // Send OTP via email
+          await sendOTPEmail(user, otpCode);
+
+          return res.status(401).json({
+            status: 'fail',
+            message:
+              'Account not verified. A verification code has been sent to your email.',
+            // Only include OTP in development
+            ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
+            user_id: user._id,
+            requiresVerification: true,
+          });
+        } catch {
+          return res.status(500).json({
+            status: 'error',
+            message:
+              'Error sending verification email. Please try again later.',
+            user_id: user._id,
+            requiresVerification: true,
+          });
+        }
+      }
+
+      // Send JWT token
+      createSendToken(user.toObject() as UserPayload, 200, res);
+    } catch (error) {
+      // Handle Zod validation errors
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid input data',
+          errors: error.errors,
+        });
+      }
+
+      // Pass other errors to error handler
+      next(error);
+    }
+  }
+);
+
+// Signup handler
+export const signup = catchAsync(async (req: Request, res: Response) => {
+  try {
+    // 1. Validate input using Zod
+    const validatedData = signupSchema.parse(req.body);
+
+    // 2. Check if user already exists
+    const existingUser = await User.findOne({ email: validatedData.email });
+    if (existingUser) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email already in use. Please use a different email.',
+      });
+    }
+
+    // 3. Create new user
+    const newUser = await User.create({
+      name: validatedData.name,
+      email: validatedData.email,
+      password: validatedData.password,
+      passwordConfirm: validatedData.passwordConfirm,
+      isVerified: false,
+    });
+
+    // 4. Generate and set OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    newUser.otpCode = otpCode;
+    newUser.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // expires in 10 minutes
+    await newUser.save({ validateBeforeSave: false });
+
+    // 5. Send OTP via email
+    try {
+      await sendOTPEmail(newUser, otpCode);
+
+      return res.status(201).json({
+        status: 'success',
+        message: 'Account created! Please check your email for the OTP.',
+        ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
+        user_id: newUser._id,
+      });
+    } catch (emailError) {
+      console.error('Email send error:', emailError);
+      return res.status(201).json({
+        status: 'partial_success',
+        message:
+          'Account created, but we failed to send the verification email. Please request a new OTP.',
+        user_id: newUser._id,
+      });
+    }
+  } catch (error) {
+    console.error('Signup error:', error);
+
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed. Please check your input.',
+        errors: error.errors,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'An unexpected error occurred during registration.',
+    });
+  }
+});
+
 // Verify OTP code
 export const verifyOTP = catchAsync(async (req: Request, res: Response) => {
   const { otp, user_id } = req.body;
@@ -177,163 +316,6 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
     });
   }
 });
-
-// Signup handler
-export const signup = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // Validate input data using Zod
-      const validatedData = signupSchema.parse(req.body);
-
-      // Create a new user
-      const newUser = await User.create({
-        name: validatedData.name,
-        email: validatedData.email,
-        password: validatedData.password,
-        passwordConfirm: validatedData.passwordConfirm,
-        isVerified: false, // User needs to verify with OTP
-      });
-
-      // Generate 6-digit OTP
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-      // Save OTP to user
-      newUser.otpCode = otpCode;
-      newUser.otpExpires = otpExpires;
-      await newUser.save({ validateBeforeSave: false });
-
-      try {
-        // Send OTP via email
-        await sendOTPEmail(newUser, otpCode);
-
-        // Return response
-        res.status(201).json({
-          status: 'success',
-          message:
-            'Account created! Please check your email for verification code.',
-          // Only include OTP in development for testing
-          ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
-          user_id: newUser._id,
-        });
-      } catch (error) {
-        // If email fails, still create the account but notify the user
-        console.error('Error sending email:', error);
-
-        res.status(201).json({
-          status: 'partial_success',
-          message:
-            'Account created but we could not send a verification email. Please request a new code.',
-          user_id: newUser._id,
-        });
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      // Handle Zod validation errors
-      if (error instanceof ZodError) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Invalid input data',
-          errors: error.errors,
-        });
-      }
-
-      // Handle duplicate email error
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        error.code === 11000
-      ) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Email already in use',
-        });
-      }
-
-      console.error('Registration error:', error);
-      res.status(500).json({
-        status: 'error',
-        message: 'Something went wrong during registration',
-      });
-
-      // Pass other errors to error handler
-      next(error);
-    }
-  }
-);
-
-// Login handler
-export const login = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // Validate input data using Zod
-      const { email, password } = loginSchema.parse(req.body);
-
-      // Check if email and password exist
-      if (!email || !password) {
-        return next(new AppError('Please provide email and password', 400));
-      }
-
-      // Find user by email and explicitly select the password
-      const user = await User.findOne({ email }).select('+password');
-
-      // Check if user exists & password is correct
-      if (!user || !(await user.comparePassword(password))) {
-        return next(new AppError('Incorrect email or password', 401));
-      }
-
-      // Check if user is verified
-      if (!user.isVerified) {
-        // Generate new OTP for user
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-        user.otpCode = otpCode;
-        user.otpExpires = otpExpires;
-        await user.save({ validateBeforeSave: false });
-
-        try {
-          // Send OTP via email
-          await sendOTPEmail(user, otpCode);
-
-          return res.status(401).json({
-            status: 'fail',
-            message:
-              'Account not verified. A verification code has been sent to your email.',
-            // Only include OTP in development
-            ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
-            user_id: user._id,
-            requiresVerification: true,
-          });
-        } catch {
-          return res.status(500).json({
-            status: 'error',
-            message:
-              'Error sending verification email. Please try again later.',
-            user_id: user._id,
-            requiresVerification: true,
-          });
-        }
-      }
-
-      // Send JWT token
-      createSendToken(user.toObject() as UserPayload, 200, res);
-    } catch (error) {
-      // Handle Zod validation errors
-      if (error instanceof ZodError) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Invalid input data',
-          errors: error.errors,
-        });
-      }
-
-      // Pass other errors to error handler
-      next(error);
-    }
-  }
-);
 
 // Logout handler
 export const logout = (req: Request, res: Response) => {

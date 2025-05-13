@@ -20,8 +20,8 @@ export const register = async (
     );
 
     return response.data;
-  } catch (error) {
-    return error;
+  } catch (error: any) {
+    return { error: error.response?.data?.message || 'Registration failed' };
   }
 };
 
@@ -38,11 +38,33 @@ export const login = async (
       return response.data;
     }
 
-    return { message: 'Invalid credentials' };
-  } catch (error) {
-    return {
-      message: (error as any).response.data.detail,
-    };
+    return { error: 'Invalid credentials' };
+  } catch (error: any) {
+    // Check if this is a verification required error
+    if (
+      error.response?.status === 401 &&
+      error.response?.data?.requiresVerification
+    ) {
+      return {
+        requiresVerification: true,
+        user_id: error.response.data.user_id,
+        error: error.response.data.message,
+      };
+    }
+
+    // Check for the specific "user not found" error
+    if (
+      error.response?.status === 404 ||
+      error.response?.data?.message === 'User not found with this email'
+    ) {
+      return {
+        notRegistered: true,
+        error: 'This email is not registered. Please sign up first.',
+      };
+    }
+
+    // Handle other errors
+    return { error: error.response?.data?.message || 'Login failed' };
   }
 };
 
@@ -63,7 +85,7 @@ export const verifyOtp = async (
     }
 
     return false;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -79,7 +101,7 @@ export const validateToken = async (token: string): Promise<string | any> => {
     }
 
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -89,7 +111,7 @@ export const logout = async (token: string): Promise<void> => {
     await axios.post(`${apiConfig.url}/auth/logout/`, {
       token: token,
     });
-  } catch (error) {
+  } catch {
     return;
   }
 };

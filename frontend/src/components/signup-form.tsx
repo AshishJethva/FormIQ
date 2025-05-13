@@ -1,10 +1,10 @@
 'use client';
 
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useDispatch } from 'react-redux';
-
+import type { StoreDispatch, RootState } from '@/redux/store';
+import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -27,44 +27,18 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { registerUser } from '@/redux/slice/userSlice';
-
-const passwordSchema = z
-  .string()
-  .min(8, 'Password must be at least 8 characters')
-  .max(100, 'Password must be less than 100 characters')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(
-    /[^a-zA-Z0-9]/,
-    'Password must contain at least one special character'
-  );
-
-const signupSchema = z
-  .object({
-    name: z
-      .string()
-      .min(2, 'Name must be at least 2 characters')
-      .max(50, 'Name must be less than 50 characters'),
-    email: z.string().email('Invalid email address'),
-    password: passwordSchema,
-    passwordConfirm: z.string(),
-  })
-  .refine(data => data.password === data.passwordConfirm, {
-    message: "Passwords don't match",
-    path: ['passwordConfirm'], // This shows the error on passwordConfirm field
-  });
-
-type SignupFormValues = z.infer<typeof signupSchema>;
+import { RegistrationRequest } from '@/types/auth/actions';
+import { signupSchema } from '@/dependencies/zod';
 
 export default function SignupForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<StoreDispatch>();
   const router = useRouter();
+  const isLoading = useSelector((state: RootState) => state.app.auth.isLoading);
 
-  const form = useForm<SignupFormValues>({
+  const form = useForm<RegistrationRequest>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       name: '',
@@ -74,10 +48,16 @@ export default function SignupForm({
     },
   });
 
-  const onSubmit = async (formData: SignupFormValues) => {
-    await dispatch(registerUser(formData) as any).then(() => {
-      router.push('/auth/verify');
-    });
+  const onSubmit = async (formData: RegistrationRequest) => {
+    try {
+      const result = await dispatch(registerUser(formData));
+
+      if (!result || !('error' in result) || !result.error) {
+        router.push('/auth/verify');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+    }
   };
 
   return (
@@ -175,7 +155,7 @@ export default function SignupForm({
                 )}
               />
 
-              {/* <Button className='w-full' disabled={isLoading} type='submit'>
+              <Button className='w-full' disabled={isLoading} type='submit'>
                 {isLoading ? (
                   <>
                     <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -184,13 +164,6 @@ export default function SignupForm({
                 ) : (
                   'SignUp'
                 )}
-              </Button> */}
-
-              <Button className='w-full' type='submit'>
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Creating account...
-                </>
               </Button>
 
               {/* <Button type='button' variant='outline' className='w-full'>

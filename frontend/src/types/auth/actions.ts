@@ -10,8 +10,8 @@ export interface LoginResponse {
 }
 
 export interface RegistrationRequest {
-  email: string;
   name: string;
+  email: string;
   password: string;
   passwordConfirm: string;
 }

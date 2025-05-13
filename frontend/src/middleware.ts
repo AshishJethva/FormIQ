@@ -4,8 +4,6 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const { pathname } = request.nextUrl;
 
-  console.log('middleware running');
-
   const otp_verification_pending = request.cookies.get(
     'otp_verification_pending'
   )?.value;

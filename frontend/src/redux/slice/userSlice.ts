@@ -1,7 +1,7 @@
 'use client';
 
 import { User } from '@/types/redux';
-import type { LoginRequest } from '@/types/auth/actions';
+import type { LoginRequest, RegistrationRequest } from '@/types/auth/actions';
 import type { StoreDispatch } from '@/redux/store';
 
 import { createSlice } from '@reduxjs/toolkit';
@@ -48,13 +48,51 @@ const validateToken = (token: string) => async (dispatch: StoreDispatch) => {
 
 const logInUser =
   (formData: LoginRequest) =>
-  async (dispatch: StoreDispatch): Promise<boolean> => {
+  async (
+    dispatch: StoreDispatch
+  ): Promise<{
+    success: boolean;
+    requiresVerification?: boolean;
+    notRegistered?: boolean;
+    error?: string;
+  }> => {
     dispatch(setAuthLoading(true));
     try {
       const userObj = await login(formData);
 
-      if (!userObj) {
-        return false;
+      // Check if user needs verification
+      if (userObj.requiresVerification) {
+        toast.info('Your account needs verification');
+
+        // Store user ID for verification
+        localStorage.setItem('user_id', userObj.user_id);
+
+        // Set cookie for middleware to redirect
+        setCookie('otp_verification_pending', true, {
+          maxAge: 60 * 60 * 24 * 7,
+          secure: true,
+          httpOnly: false,
+          sameSite: 'strict',
+          path: '/',
+        });
+
+        dispatch(setAuthLoading(false));
+        return { success: false, requiresVerification: true };
+      }
+
+      // Add the check for unregistered email here
+      if (userObj.notRegistered) {
+        toast.error(
+          userObj.error || 'Email not registered. Please sign up first.'
+        );
+        dispatch(setAuthLoading(false));
+        return { success: false, error: userObj.error, notRegistered: true };
+      }
+
+      if (userObj.error) {
+        toast.error(userObj.error);
+        dispatch(setAuthLoading(false));
+        return { success: false, error: userObj.error };
       }
 
       setCookie('token', userObj.token, {
@@ -67,20 +105,21 @@ const logInUser =
 
       localStorage.setItem('token', userObj.token);
 
-      if (userObj.token) {
-        toast.error(userObj.message);
+      if (typeof userObj !== 'boolean') {
         dispatch(toggleToken(userObj.token));
         dispatch(toggleUser(userObj.data.user));
-        return true;
+        toast.success('Logged in successfully.');
+        dispatch(setAuthLoading(false));
+        return { success: true };
       }
-    } catch (error) {
-      toast.error('Error logging in');
 
-      return false;
-    } finally {
       dispatch(setAuthLoading(false));
+      return { success: false };
+    } catch (error: any) {
+      toast.error(error.message || 'Login failed.');
+      dispatch(setAuthLoading(false));
+      return { success: false, error: error.message || 'Login failed' };
     }
-    return false;
   };
 
 const logoutUser = () => async (dispatch: StoreDispatch) => {
@@ -98,69 +137,88 @@ const logoutUser = () => async (dispatch: StoreDispatch) => {
   }
 };
 
-const registerUser = formData => async (): Promise<LoginRequest | unknown> => {
-  try {
-    const userObj = await register(formData);
-
-    if (!userObj) {
-      return;
-    }
-
-    setCookie('opt_verification_pending', true, {
-      maxAge: 60 * 60 * 24 * 7,
-      secure: true,
-      httpOnly: false,
-      sameSite: 'strict',
-      path: '/',
-    });
-
-    localStorage.setItem('user_id', userObj.user_id);
-  } catch (error) {
-    toast.error('Error registering');
-
-    return error;
-  }
-};
-
-const verifyOTP =
-  (otp: string) => async (dispatch: StoreDispatch, getState) => {
+const registerUser =
+  (formData: RegistrationRequest) =>
+  async (dispatch: StoreDispatch): Promise<{ error?: string }> => {
+    dispatch(setAuthLoading(true));
     try {
-      const userId = localStorage.getItem('user_id');
-      if (!userId) {
-        toast.error('User ID not found');
-        return;
+      const userObj = await register(formData);
+
+      if (userObj.error) {
+        toast.error(userObj.error);
+        // Set loading state to false before returning error
+        dispatch(setAuthLoading(false));
+        return { error: userObj.error };
       }
 
-      const response = await verifyOtp(userId, otp);
+      setCookie('otp_verification_pending', true, {
+        maxAge: 60 * 60 * 24 * 7,
+        secure: true,
+        httpOnly: false,
+        sameSite: 'strict',
+        path: '/',
+      });
 
-      console.log('Response from verify OTP:', response);
+      localStorage.setItem('user_id', userObj.user_id);
 
-      if (response) {
-        const userObj = response as any;
+      // Set loading state to false before returning success
+      dispatch(setAuthLoading(false));
+      return {};
+    } catch (error: any) {
+      toast.error(error.message || 'Registration failed');
 
-        if (userObj?.token) {
-          setCookie('token', userObj.token, {
-            maxAge: 60 * 60 * 24 * 7,
-            secure: true,
-            httpOnly: false,
-            sameSite: 'strict',
-          });
-          deleteCookie('otp_verification_pending');
-          localStorage.removeItem('user_id');
-          localStorage.setItem('token', userObj.token);
-
-          dispatch(toggleToken(userObj.token));
-          dispatch(toggleUser(userObj.user));
-        }
-
-        return;
-      }
-    } catch (error) {
-      toast.error('Error verifying OTP');
-
-      return error;
+      // Set loading state to false before returning error
+      dispatch(setAuthLoading(false));
+      return { error: error.message || 'Registration failed' };
     }
   };
+
+const verifyOTP = (otp: string) => async (dispatch: StoreDispatch) => {
+  try {
+    dispatch(setAuthLoading(true));
+
+    const userId = localStorage.getItem('user_id') as string;
+    if (!userId) {
+      toast.error('User ID not found');
+      dispatch(setAuthLoading(false));
+      return { success: false, error: 'User ID not found' };
+    }
+
+    const response = await verifyOtp(userId, otp);
+
+    if (response && typeof response !== 'boolean') {
+      const userObj = response;
+
+      setCookie('token', userObj.token, {
+        maxAge: 60 * 60 * 24 * 7,
+        secure: true,
+        httpOnly: false,
+        sameSite: 'strict',
+      });
+      deleteCookie('otp_verification_pending');
+      localStorage.removeItem('user_id');
+      localStorage.setItem('token', userObj.token);
+
+      dispatch(toggleToken(userObj.token));
+      dispatch(toggleUser(userObj.user));
+
+      toast.success('Account verified successfully');
+      dispatch(setAuthLoading(false));
+      return { success: true };
+    } else {
+      // Handle invalid OTP case
+      toast.error('Invalid OTP. Please try again.');
+      dispatch(setAuthLoading(false));
+      return { success: false, error: 'Invalid OTP' };
+    }
+  } catch (error: any) {
+    // Capture specific error message if available
+    const errorMessage = error.response?.data?.message || 'Error verifying OTP';
+    toast.error(errorMessage);
+    dispatch(setAuthLoading(false));
+    return { success: false, error: errorMessage };
+  }
+};
 
 export {
   logInUser,

@@ -1,30 +1,30 @@
 'use client';
 
-import '@/styles/globals.css';
-import { useEffect } from 'react';
-
+import type { RootState } from '@/redux/store';
+import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 
-export default function RootLayout({
+export default function AuthLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { token } = useSelector((state: RootState) => state.user);
+  const [isMounted, setIsMounted] = React.useState(false);
   const router = useRouter();
+  const user = useSelector((state: RootState) => state.user);
 
   useEffect(() => {
-    if (token) {
-      router.push('/dashboard');
-    } else {
-      router.push('/auth/login');
-    }
-  }, [token]);
+    setIsMounted(true);
+  }, []);
 
-  return (
-    <html lang='en'>
-      <body>{children}</body>
-    </html>
-  );
+  useEffect(() => {
+    if (user.token) {
+      router.replace('/dashboard');
+    }
+  }, [router, user.token]);
+
+  if (!isMounted) return null;
+
+  return <>{children}</>;
 }
