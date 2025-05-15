@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/popover';
 import Logo from '@/../public/Logo.png';
 import ProfileDropdown from './ProfileDropdown';
+import Link from 'next/link';
 
 const Navbar = () => {
   const [openMenu, setOpenMenu] = useState<'templates' | 'support' | null>(
@@ -55,16 +56,19 @@ const Navbar = () => {
       <div className='flex items-center justify-between h-10'>
         {/* Left section - Logo and workspace */}
         <div className='flex items-center space-x-6'>
-          <div className='flex items-center'>
+          <Link href='/dashboard' className='flex items-center cursor-pointer'>
             <Image src={Logo} alt='Logo' height={54} />
             <span className='font-bold text-2xl mr-2'>FormIQ</span>
-          </div>
+          </Link>
 
-          <div className='flex items-center cursor-pointer hover:text-gray-200'>
+          <Link
+            href='/dashboard'
+            className='flex items-center cursor-pointer hover:text-gray-200'
+          >
             <span className='text-md text-[#FFFFFF] hover:text-[#ff6100] transition-colors duration-150'>
               My Workspace
             </span>
-          </div>
+          </Link>
         </div>
 
         {/* Right section - Navigation items */}

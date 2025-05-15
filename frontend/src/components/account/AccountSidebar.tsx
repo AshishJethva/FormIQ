@@ -1,21 +1,11 @@
-// src/components/account/AccountSidebar.tsx
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  User,
-  Settings,
-  ShieldCheck,
-  Users,
-  CreditCard,
-  Link2,
-  Database,
-  History,
-  Code,
-  BarChart2,
-} from 'lucide-react';
+
+// Import only the icons we actually use
+import { UserIcon, SettingsIcon, ArrowUpCircle, ClockIcon } from 'lucide-react';
 
 interface SidebarItem {
   icon: React.ReactNode;
@@ -29,81 +19,77 @@ const AccountSidebar = () => {
 
   const sidebarItems: SidebarItem[] = [
     {
-      icon: <User className='h-5 w-5 text-gray-600' />,
+      icon: <UserIcon className='h-5 w-5' />,
       label: 'Account',
       href: '/myaccount',
     },
     {
-      icon: <Settings className='h-5 w-5 text-gray-600' />,
+      icon: <SettingsIcon className='h-5 w-5' />,
       label: 'Settings',
       href: '/myaccount/settings',
     },
     {
-      icon: <ShieldCheck className='h-5 w-5 text-gray-600' />,
-      label: 'Security',
-      href: '/myaccount/security',
-    },
-    {
-      icon: <Users className='h-5 w-5 text-gray-600' />,
-      label: 'Users',
-      href: '/myaccount/users',
-    },
-    {
-      icon: <CreditCard className='h-5 w-5 text-gray-600' />,
+      icon: <ArrowUpCircle className='h-5 w-5' />,
       label: 'Upgrade',
       href: '/myaccount/upgrade',
     },
     {
-      icon: <Link2 className='h-5 w-5 text-gray-600' />,
-      label: 'Connections',
-      href: '/myaccount/connections',
-      badge: 'NEW',
-    },
-    {
-      icon: <Database className='h-5 w-5 text-gray-600' />,
-      label: 'Data',
-      href: '/myaccount/data',
-    },
-    {
-      icon: <History className='h-5 w-5 text-gray-600' />,
+      icon: <ClockIcon className='h-5 w-5' />,
       label: 'History',
       href: '/myaccount/history',
-    },
-    {
-      icon: <Code className='h-5 w-5 text-gray-600' />,
-      label: 'API',
-      href: '/myaccount/api',
-    },
-    {
-      icon: <BarChart2 className='h-5 w-5 text-gray-600' />,
-      label: 'Usage',
-      href: '/myaccount/usage',
     },
   ];
 
   return (
-    <div className='w-64 bg-[#EFF1F7]'>
-      {sidebarItems.map((item, index) => (
-        <Link key={index} href={item.href}>
-          <div
-            className={`flex items-center px-6 py-3 cursor-pointer ${
-              pathname === item.href
-                ? 'bg-white'
-                : 'hover:bg-gray-200 hover:bg-opacity-50'
-            }`}
-          >
-            {item.icon}
-            <span className='ml-3 text-sm font-medium text-gray-700'>
-              {item.label}
-            </span>
-            {item.badge && (
-              <span className='ml-auto bg-green-500 text-white text-xs px-2 py-0.5 rounded'>
-                {item.badge}
-              </span>
-            )}
-          </div>
-        </Link>
-      ))}
+    <div className='w-64 bg-[#EFF1F7] min-h-screen border-r border-[#D8DEF3]'>
+      <div className='pt-6 pb-2 px-4'>
+        <h2 className='text-lg font-semibold text-[#364168] px-2'>
+          My Account
+        </h2>
+      </div>
+      <div className='mt-2'>
+        {sidebarItems.map((item, index) => {
+          const isActive = pathname === item.href;
+
+          return (
+            <Link key={index} href={item.href}>
+              <div
+                className={`
+                  flex items-center px-6 py-3.5 cursor-pointer mb-1 mx-2 rounded-md
+                  transition-all duration-200 ease-in-out
+                  ${
+                    isActive
+                      ? 'bg-white shadow-sm'
+                      : 'hover:bg-[#dfe3f0] hover:bg-opacity-50'
+                  }
+                `}
+              >
+                <div
+                  className={`
+                  ${isActive ? 'text-[#4f5cd1]' : 'text-gray-600'} 
+                  transition-colors
+                `}
+                >
+                  {item.icon}
+                </div>
+                <span
+                  className={`
+                  ml-3 font-medium 
+                  ${isActive ? 'text-[#364168]' : 'text-gray-700'}
+                `}
+                >
+                  {item.label}
+                </span>
+                {item.badge && (
+                  <span className='ml-auto bg-[#4f5cd1] text-white text-xs px-2 py-0.5 rounded font-medium'>
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 };
