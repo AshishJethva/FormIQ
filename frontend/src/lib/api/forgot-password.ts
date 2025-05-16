@@ -2,7 +2,7 @@ import type { StoreDispatch } from '@/redux/store';
 
 import axios from 'axios';
 import { toast } from 'sonner';
-import { setAuthLoading } from '@/redux/slice/appSlice';
+import { setAuthLoading } from '@/redux/features/appSlice';
 import { apiConfig } from '@/config/api';
 
 const sendResetEmail =

@@ -3,7 +3,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { LogOut, Settings, User } from 'lucide-react';
-import { useRouter } from 'next/navigation'; // Add this import
+import { useRouter } from 'next/navigation';
+import { useDispatch } from 'react-redux';
+import { logoutUser } from '@/redux/features/userSlice';
+import { toast } from 'sonner';
+import type { StoreDispatch } from '@/redux/store';
 
 interface ProfileDropdownProps {
   userName: string;
@@ -14,15 +18,17 @@ interface ProfileDropdownProps {
 }
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
-  userName = 'Ashish Coder',
+  userName = 'User',
   userImage = null,
   planType = 'STARTER',
-  formsUsed = 2,
+  formsUsed = 0,
   formsTotal = 5,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter(); // Add this line
+  const router = useRouter();
+  const dispatch = useDispatch<StoreDispatch>();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,31 +47,43 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
     };
   }, []);
 
-  // Add this navigation handler
   const handleNavigateToProfile = () => {
     router.push('/myaccount');
     setIsOpen(false);
   };
 
   const handleSettingsClick = () => {
-    router.push('/myaccount/settings'); // Update to use router
+    router.push('/myaccount/settings');
     setIsOpen(false);
   };
 
-  const handleLogoutClick = () => {
-    // Handle logout logic here
-    console.log('Logout user');
-    // After logout maybe redirect to login
-    // router.push('/login');
-    setIsOpen(false);
+  const handleLogoutClick = async () => {
+    try {
+      setIsLoggingOut(true);
+      // Dispatch logout action from Redux
+      await dispatch(logoutUser());
+
+      // Show logout success message
+      toast.success('Logged out successfully');
+
+      // Redirect to login page
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('There was a problem logging out');
+    } finally {
+      setIsLoggingOut(false);
+      setIsOpen(false);
+    }
   };
 
   return (
     <div className='relative' ref={dropdownRef}>
-      {/* Profile Icon Button - Updated to handle null userImage */}
+      {/* Profile Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className='rounded-full border-2 border-[#ff6200] focus:outline-none focus:ring-offset-2 focus:ring-offset-[#102035] h-10 w-10 flex items-center justify-center'
+        aria-label='Open profile menu'
       >
         {userImage ? (
           <Image
@@ -83,9 +101,9 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className='absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg overflow-hidden z-50 animate-in fade-in-20 slide-in-from-top-5 duration-100'>
-          {/* User Info Section - Updated to be clickable */}
-          <div className='p-4 border-b border-gray-100  hover:bg-gray-50 transition-colors'>
+        <div className='absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg overflow-hidden z-50'>
+          {/* User Info Section */}
+          <div className='p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors'>
             <div
               className='flex items-center mb-4 cursor-pointer'
               onClick={handleNavigateToProfile}
@@ -139,8 +157,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
           </div>
 
           {/* Upgrade Banner */}
-          <div className='bg-navy-900 text-white py-3 text-center'>
-            <button className='w-5/6 bg-blue-700 hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors'>
+          <div className=' text-white py-3 text-center'>
+            <button
+              onClick={() => router.push('/myaccount/upgrade')}
+              className='w-5/6 bg-blue-700 hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors'
+            >
               Upgrade Your Plan
             </button>
           </div>
@@ -156,11 +177,15 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             </div>
 
             <div
-              className='flex items-center px-4 py-2.5 hover:bg-gray-100 rounded-md cursor-pointer transition-colors'
+              className={`flex items-center px-4 py-2.5 hover:bg-gray-100 rounded-md cursor-pointer transition-colors ${
+                isLoggingOut ? 'opacity-70 pointer-events-none' : ''
+              }`}
               onClick={handleLogoutClick}
             >
               <LogOut className='h-5 w-5 text-gray-600 mr-3' />
-              <span className='text-gray-800'>Logout</span>
+              <span className='text-gray-800'>
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
+              </span>
             </div>
           </div>
         </div>

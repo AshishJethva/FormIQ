@@ -1,7 +1,7 @@
 'use client';
 
 import type { StoreDispatch, RootState } from '@/redux/store';
-import type { EmailRequest } from '@/dependencies/yup';
+import type { EmailRequest } from '@/dependencies/zod';
 
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -11,7 +11,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import { emailSchema } from '@/dependencies/yup';
+import { emailSchema } from '@/dependencies/zod';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

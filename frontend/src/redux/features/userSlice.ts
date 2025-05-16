@@ -10,7 +10,7 @@ import { setCookie, deleteCookie } from 'cookies-next';
 
 import { validateToken as ValidateToken } from '@/lib/auth/actions';
 import { login, register, verifyOtp, logout } from '@/lib/auth/actions';
-import { setAuthLoading } from '@/redux/slice/appSlice';
+import { setAuthLoading } from '@/redux/features/appSlice';
 
 const initialState: User = {
   token: null,
@@ -122,18 +122,31 @@ const logInUser =
     }
   };
 
+// Relevant part from userSlice.ts
 const logoutUser = () => async (dispatch: StoreDispatch) => {
   const token: string | null = localStorage.getItem('token');
 
-  localStorage.removeItem('token');
-  deleteCookie('token');
+  try {
+    // First, attempt to call the logout API
+    if (token) {
+      await logout(token);
+    }
+  } catch (error) {
+    console.error('Logout API error:', error);
+    // Continue with local logout regardless of API errors
+  } finally {
+    // Always perform local logout actions even if API call fails
+    localStorage.removeItem('token');
+    deleteCookie('token');
 
-  dispatch(toggleToken(null));
-  dispatch(toggleUser(null));
-  dispatch(setAuthLoading(false));
+    // Clear any other auth-related items from localStorage
+    localStorage.removeItem('user_id');
+    deleteCookie('otp_verification_pending');
 
-  if (token) {
-    await logout(token);
+    // Clear user state in Redux
+    dispatch(toggleToken(null));
+    dispatch(toggleUser(null));
+    dispatch(setAuthLoading(false));
   }
 };
 

@@ -1,6 +1,6 @@
 'use client';
-
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -21,7 +21,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 
-// Import shadcn components
+// Import UI components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -40,28 +40,32 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// Import Redux actions and selectors
+import {
+  createLabel,
+  updateLabel,
+  deleteLabel,
+  selectLabels,
+  Label,
+} from '@/redux/features/formsSlice';
+
 // Import utility for class name merging
 import { cn } from '@/lib/utils';
 
-// Label type definition
-interface CustomLabel {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: number;
-}
-
 // Interface for sidebar props
 interface SidebarProps {
-  onSectionChange?: (section: string, data?: any) => void;
+  onSectionChange?: (section: string, data?: Label | undefined) => void;
+  activeTab?: string;
 }
 
 const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
+  const dispatch = useDispatch();
+  const labels = useSelector(selectLabels);
+
   const [activeTab, setActiveTab] = useState('All');
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [selectedColor, setSelectedColor] = useState('#3B82F6'); // Default blue
-  const [labels, setLabels] = useState<CustomLabel[]>([]);
   const [editLabelId, setEditLabelId] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,25 +86,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     '#14B8A6', // Teal
   ];
 
-  // Load labels from localStorage on component mount
-  useEffect(() => {
-    const savedLabels = localStorage.getItem('dashboard_labels');
-    if (savedLabels) {
-      try {
-        setLabels(JSON.parse(savedLabels));
-      } catch (e) {
-        console.error('Error parsing saved labels', e);
-      }
-    }
-  }, []);
-
-  // Save labels to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('dashboard_labels', JSON.stringify(labels));
-  }, [labels]);
-
   // Close create actions dropdown when clicking outside
-  useEffect(() => {
+  React.useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (
         showCreateActions &&
@@ -114,13 +101,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [showCreateActions]);
 
-  // Generate a random ID for new labels
-  const generateId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
-  };
-
   // Handle tab change and pass to parent if callback exists
-  const handleTabChange = (tab: string, data?: any) => {
+  const handleTabChange = (tab: string, data?: Label | undefined) => {
     setActiveTab(tab);
     if (onSectionChange) {
       onSectionChange(tab, data);
@@ -156,29 +138,26 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     // Simulate API call with timeout
     setTimeout(() => {
       if (editLabelId) {
-        // Update existing label
-        const updatedLabels = labels.map(label =>
-          label.id === editLabelId
-            ? { ...label, name: newLabelName, color: selectedColor }
-            : label
+        // Update existing label using Redux
+        dispatch(
+          updateLabel({
+            id: editLabelId,
+            name: newLabelName,
+            color: selectedColor,
+          })
         );
-
-        setLabels(updatedLabels);
 
         toast.success(`Label updated`, {
           description: `"${newLabelName}" has been updated successfully`,
         });
       } else {
-        // Create new label
-        const newLabel: CustomLabel = {
-          id: generateId(),
-          name: newLabelName,
-          color: selectedColor,
-          createdAt: Date.now(),
-        };
-
-        const newLabels = [...labels, newLabel];
-        setLabels(newLabels);
+        // Create new label using Redux
+        dispatch(
+          createLabel({
+            name: newLabelName,
+            color: selectedColor,
+          })
+        );
 
         toast.success(`Label created`, {
           description: `"${newLabelName}" has been created successfully`,
@@ -196,7 +175,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
 
   // Handle delete label
   const handleDeleteLabel = (id: string, name: string) => {
-    setLabels(prev => prev.filter(label => label.id !== id));
+    dispatch(deleteLabel(id));
 
     // If we're currently viewing this label, switch to All
     if (activeTab === `label-${id}`) {
@@ -209,7 +188,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   };
 
   // Handle edit label
-  const handleEditLabel = (label: CustomLabel) => {
+  const handleEditLabel = (label: Label) => {
     setNewLabelName(label.name);
     setSelectedColor(label.color);
     setEditLabelId(label.id);

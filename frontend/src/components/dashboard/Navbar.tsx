@@ -11,13 +11,48 @@ import {
 import Logo from '@/../public/Logo.png';
 import ProfileDropdown from './ProfileDropdown';
 import Link from 'next/link';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
+import { usePathname } from 'next/navigation';
 
-const Navbar = () => {
+interface User {
+  name?: string;
+  profileImage?: string | null;
+  subscription?: {
+    plan?: string;
+  };
+  formsUsed?: number;
+  formsTotal?: number;
+}
+
+interface UserState {
+  user: User | null;
+  token: string | null;
+}
+
+export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<'templates' | 'support' | null>(
     null
   );
-  const [activePage, setActivePage] = useState('dashboard');
+  const pathname = usePathname();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get active page from pathname
+  const getActivePage = (path: string) => {
+    if (path.includes('/templates')) return 'templates';
+    if (path.includes('/support')) return 'support';
+    if (path.includes('/pricing')) return 'pricing';
+    return 'dashboard';
+  };
+
+  const { user } = useSelector((state: RootState) => state.user as UserState);
+
+  const [activePage, setActivePage] = useState(getActivePage(pathname || ''));
+
+  // Update active page when pathname changes
+  useEffect(() => {
+    setActivePage(getActivePage(pathname || ''));
+  }, [pathname]);
 
   const handleMouseEnter = (menuName: 'templates' | 'support') => {
     if (timeoutRef.current) {
@@ -27,19 +62,11 @@ const Navbar = () => {
     setOpenMenu(menuName);
   };
 
+  // Add a small delay before closing to allow moving cursor to content
   const handleMouseLeave = () => {
     timeoutRef.current = setTimeout(() => {
       setOpenMenu(null);
-    }, 100);
-  };
-
-  // Mock user data - in a real app, this would come from auth context or API
-  const userData = {
-    userName: 'Ashish Coder',
-    userImage: null, // Default image path, replace with actual image
-    planType: 'STARTER',
-    formsUsed: 2,
-    formsTotal: 5,
+    }, 150); // Slightly longer delay
   };
 
   // Clean up timeout on unmount
@@ -57,7 +84,7 @@ const Navbar = () => {
         {/* Left section - Logo and workspace */}
         <div className='flex items-center space-x-6'>
           <Link href='/dashboard' className='flex items-center cursor-pointer'>
-            <Image src={Logo} alt='Logo' height={54} />
+            <Image src={Logo} alt='Logo' height={54} priority />
             <span className='font-bold text-2xl mr-2'>FormIQ</span>
           </Link>
 
@@ -76,7 +103,7 @@ const Navbar = () => {
           {/* Templates dropdown */}
           <Popover
             open={openMenu === 'templates'}
-            onOpenChange={() => setOpenMenu(null)}
+            onOpenChange={open => !open && setOpenMenu(null)}
           >
             <PopoverTrigger asChild>
               <div
@@ -111,32 +138,34 @@ const Navbar = () => {
                   TEMPLATES
                 </h3>
                 <div className='grid grid-cols-1 gap-4'>
-                  <div className='flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer'>
-                    <div className='bg-orange-500 rounded-full p-2 mr-3'>
-                      <svg
-                        className='h-5 w-5 text-white'
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      >
-                        <rect
-                          x='3'
-                          y='3'
-                          width='18'
-                          height='18'
-                          rx='2'
-                          ry='2'
-                        ></rect>
-                        <line x1='3' y1='9' x2='21' y2='9'></line>
-                        <line x1='9' y1='21' x2='9' y2='9'></line>
-                      </svg>
+                  <Link href='/templates/form' className='block'>
+                    <div className='flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer'>
+                      <div className='bg-orange-500 rounded-full p-2 mr-3'>
+                        <svg
+                          className='h-5 w-5 text-white'
+                          xmlns='http://www.w3.org/2000/svg'
+                          viewBox='0 0 24 24'
+                          fill='none'
+                          stroke='currentColor'
+                          strokeWidth='2'
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                        >
+                          <rect
+                            x='3'
+                            y='3'
+                            width='18'
+                            height='18'
+                            rx='2'
+                            ry='2'
+                          ></rect>
+                          <line x1='3' y1='9' x2='21' y2='9'></line>
+                          <line x1='9' y1='21' x2='9' y2='9'></line>
+                        </svg>
+                      </div>
+                      <span className='text-sm'>Form Templates</span>
                     </div>
-                    <span className='text-sm'>Form Templates</span>
-                  </div>
+                  </Link>
                 </div>
               </div>
             </PopoverContent>
@@ -145,7 +174,7 @@ const Navbar = () => {
           {/* Support dropdown */}
           <Popover
             open={openMenu === 'support'}
-            onOpenChange={() => setOpenMenu(null)}
+            onOpenChange={open => !open && setOpenMenu(null)}
           >
             <PopoverTrigger asChild>
               <div
@@ -182,15 +211,28 @@ const Navbar = () => {
                   </h3>
                   <ul className='space-y-2'>
                     <li className='hover:text-blue-600 cursor-pointer'>
-                      Contact Support
+                      <Link href='/support/contact' className='block w-full'>
+                        Contact Support
+                      </Link>
                     </li>
                     <li className='hover:text-blue-600 cursor-pointer'>
-                      My Support Requests
+                      <Link href='/support/requests' className='block w-full'>
+                        My Support Requests
+                      </Link>
                     </li>
                     <li className='hover:text-blue-600 cursor-pointer'>
-                      Help Center
+                      <Link
+                        href='/support/help-center'
+                        className='block w-full'
+                      >
+                        Help Center
+                      </Link>
                     </li>
-                    <li className='hover:text-blue-600 cursor-pointer'>FAQ</li>
+                    <li className='hover:text-blue-600 cursor-pointer'>
+                      <Link href='/support/faq' className='block w-full'>
+                        FAQ
+                      </Link>
+                    </li>
                   </ul>
                 </div>
                 <div>
@@ -199,17 +241,29 @@ const Navbar = () => {
                   </h3>
                   <ul className='space-y-2'>
                     <li className='hover:text-blue-600 cursor-pointer'>
-                      User Guide
+                      <Link href='/learn/user-guide' className='block w-full'>
+                        User Guide
+                      </Link>
                     </li>
                     <li className='hover:text-blue-600 cursor-pointer'>
-                      FormIQ Books
-                    </li>
-                    <li className='hover:text-blue-600 cursor-pointer'>Blog</li>
-                    <li className='hover:text-blue-600 cursor-pointer'>
-                      Videos
+                      <Link href='/learn/books' className='block w-full'>
+                        FormIQ Books
+                      </Link>
                     </li>
                     <li className='hover:text-blue-600 cursor-pointer'>
-                      FormIQ Academy
+                      <Link href='/learn/blog' className='block w-full'>
+                        Blog
+                      </Link>
+                    </li>
+                    <li className='hover:text-blue-600 cursor-pointer'>
+                      <Link href='/learn/videos' className='block w-full'>
+                        Videos
+                      </Link>
+                    </li>
+                    <li className='hover:text-blue-600 cursor-pointer'>
+                      <Link href='/learn/academy' className='block w-full'>
+                        FormIQ Academy
+                      </Link>
                     </li>
                   </ul>
                 </div>
@@ -218,31 +272,30 @@ const Navbar = () => {
           </Popover>
 
           {/* Pricing link */}
-          <div
-            className={`cursor-pointer relative ${
-              activePage === 'pricing'
-                ? 'after:absolute after:bottom-[-10px] after:left-0 after:right-0 after:h-0.5 after:bg-[#ff6100]'
-                : ''
-            }`}
-            onClick={() => setActivePage('pricing')}
-          >
-            <span className='text-sm text-[#FFFFFF] hover:text-[#ff6100] transition-colors duration-150'>
-              Pricing
-            </span>
-          </div>
+          <Link href='/pricing'>
+            <div
+              className={`cursor-pointer relative ${
+                activePage === 'pricing'
+                  ? 'after:absolute after:bottom-[-10px] after:left-0 after:right-0 after:h-0.5 after:bg-[#ff6100]'
+                  : ''
+              }`}
+            >
+              <span className='text-sm text-[#FFFFFF] hover:text-[#ff6100] transition-colors duration-150'>
+                Pricing
+              </span>
+            </div>
+          </Link>
 
           {/* Profile Dropdown */}
           <ProfileDropdown
-            userName={userData.userName}
-            userImage={userData.userImage}
-            planType={userData.planType}
-            formsUsed={userData.formsUsed}
-            formsTotal={userData.formsTotal}
+            userName={user?.name || 'User'}
+            userImage={user?.profileImage || null}
+            planType={user?.subscription?.plan || 'STARTER'}
+            formsUsed={user?.formsUsed || 0}
+            formsTotal={user?.formsTotal || 5}
           />
         </div>
       </div>
     </header>
   );
-};
-
-export default Navbar;
+}
