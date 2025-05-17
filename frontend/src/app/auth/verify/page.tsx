@@ -16,7 +16,7 @@ import { RootState } from '@/redux/store';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { verifyOTP } from '@/redux/features/userSlice';
+import { verifyOTP } from '@/redux/slices/auth/userSlice';
 import { Loader2 } from 'lucide-react';
 
 const OTPVerification: React.FC = () => {

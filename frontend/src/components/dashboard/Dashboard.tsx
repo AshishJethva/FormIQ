@@ -1,7 +1,8 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-
+import CreateFormModal from '@/components/modals/CreateFormModal';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FilterBar, Navbar, FormsList, Sidebar } from '@/components/dashboard';
 import type { SortOption } from '@/components/dashboard/FilterBar';
 import {
@@ -15,7 +16,11 @@ import {
 } from 'lucide-react';
 
 // Import Redux actions and selectors
-import { selectForms, createForm, Label } from '@/redux/features/formsSlice';
+import {
+  selectForms,
+  createForm,
+  Label,
+} from '@/redux/slices/dashboard/formsSlice';
 
 // Import UI components
 import { Button } from '@/components/ui/button';
@@ -31,7 +36,24 @@ interface CustomLabel {
 
 // Dashboard page component
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const dispatch = useDispatch();
+
+  // Check if the create modal should be shown
+  const showCreateModal = searchParams.get('modal') === 'create';
+
+  // If Escape key is pressed, close the modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCreateModal) {
+        router.push('/dashboard');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCreateModal, router]);
 
   // Get forms and labels from Redux store
   const forms = useSelector(selectForms);
@@ -218,7 +240,6 @@ export default function DashboardPage() {
 
     // Special header for Trash section
     const isTrash = activeSection === 'Trash';
-
     return (
       <>
         <div className='bg-white border-b border-gray-200 px-6 py-4'>
@@ -312,6 +333,8 @@ export default function DashboardPage() {
           {renderContent()}
         </div>
       </div>
+
+      {showCreateModal && <CreateFormModal />}
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
 
 // Import UI components
 import { Button } from '@/components/ui/button';
+
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -47,10 +48,11 @@ import {
   deleteLabel,
   selectLabels,
   Label,
-} from '@/redux/features/formsSlice';
+} from '@/redux/slices/dashboard/formsSlice';
 
 // Import utility for class name merging
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 // Interface for sidebar props
 interface SidebarProps {
@@ -61,6 +63,7 @@ interface SidebarProps {
 const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   const dispatch = useDispatch();
   const labels = useSelector(selectLabels);
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState('All');
   const [showLabelModal, setShowLabelModal] = useState(false);
@@ -70,7 +73,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   const [showLabels, setShowLabels] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatingLabel, setIsCreatingLabel] = useState(false);
-  const [showCreateActions, setShowCreateActions] = useState(false);
+  // const [showCreateActions, setShowCreateActions] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,19 +90,20 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   ];
 
   // Close create actions dropdown when clicking outside
-  React.useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (
-        showCreateActions &&
-        !(e.target as Element).closest('#create-button')
-      ) {
-        setShowCreateActions(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [showCreateActions]);
+  // React.useEffect(() => {
+  //   const handleOutsideClick = (e: MouseEvent) => {
+  //     if (
+  //       showCreateActions &&
+  //       !(e.target as Element).closest('#create-button')
+  //     ) {
+  //       setShowCreateActions(false);
+  //     }
+  //   };
+
+  //   document.addEventListener('mousedown', handleOutsideClick);
+  //   return () => document.removeEventListener('mousedown', handleOutsideClick);
+  // }, [showCreateActions]);
 
   // Handle tab change and pass to parent if callback exists
   const handleTabChange = (tab: string, data?: Label | undefined) => {
@@ -107,6 +111,11 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     if (onSectionChange) {
       onSectionChange(tab, data);
     }
+  };
+
+  const handleCreateClick = () => {
+    // Redirect to the dashboard with the create modal open
+    router.push('/dashboard?modal=create');
   };
 
   // Handle create/edit label form submission
@@ -214,13 +223,14 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         <div className='relative'>
           <Button
             className='w-full bg-[#ff6100] hover:bg-[#E65700] text-white shadow-sm hover:shadow-md transition-all duration-200'
-            onClick={() => setShowCreateActions(!showCreateActions)}
+            onClick={handleCreateClick}
           >
-            <Plus className='mr-2 h-4 w-4' /> CREATE
+            <Plus className=' h-3 w-3 ' />
+            <span className='font-semibold'>CREATE</span>
           </Button>
 
           {/* Create Actions Dropdown */}
-          {showCreateActions && (
+          {/* {showCreateActions && (
             <div className='absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10'>
               <div className='py-1'>
                 <button
@@ -236,7 +246,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                 </button>
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </div>
 

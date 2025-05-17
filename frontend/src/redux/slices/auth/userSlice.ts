@@ -10,7 +10,7 @@ import { setCookie, deleteCookie } from 'cookies-next';
 
 import { validateToken as ValidateToken } from '@/lib/auth/actions';
 import { login, register, verifyOtp, logout } from '@/lib/auth/actions';
-import { setAuthLoading } from '@/redux/features/appSlice';
+import { setAuthLoading } from '@/redux/slices/appSlice';
 
 const initialState: User = {
   token: null,

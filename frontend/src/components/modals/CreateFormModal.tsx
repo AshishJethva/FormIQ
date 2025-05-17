@@ -1,201 +1,136 @@
-// components/CreateFormModal.tsx
 'use client';
 
+import React from 'react';
+import { X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { X, ArrowLeft, Plus } from 'lucide-react';
 import { generateUniqueId } from '@/lib/utils';
 
 export default function CreateFormModal() {
   const router = useRouter();
 
-  const handleStartFromScratch = () => {
-    const uniqueId = generateUniqueId();
-    router.push(`/build/${uniqueId}`);
-  };
-
-  const handleUseTemplate = () => {
-    router.push('/templates');
-  };
-
+  // Handle back/close actions
   const handleClose = () => {
-    router.back();
+    router.push('/dashboard');
+  };
+
+  const handleStartFromScratch = () => {
+    const formId = generateUniqueId(); // Generate a 15-digit unique ID
+    router.push(`/build/${formId}`);
+  };
+
+  // Navigate to templates page
+  const handleUseTemplate = () => {
+    router.push('/templates/form');
   };
 
   return (
-    <div className='fixed inset-0 bg-gray-50 z-50 overflow-y-auto'>
-      <div className='min-h-screen px-4 py-8'>
-        {/* Header with navigation buttons */}
-        <div className='max-w-6xl mx-auto mb-10 flex justify-between'>
+    <div className='fixed inset-0 bg-[#F3F3FE] overflow-auto'>
+      <div className='min-h-screen flex flex-col'>
+        {/* Header with back and close buttons */}
+        <div className='p-4 flex items-center'>
           <button
-            className='flex items-center gap-2 text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white rounded-full px-4 py-2 text-sm font-medium shadow-sm'
             onClick={handleClose}
+            className='flex items-center  cursor-pointer text-black font-medium hover:text-gray-900 transition-colors ml-6 mt-6 px-2.5 py-2 rounded-full bg-[#DADEF3] shadow-sm'
           >
-            <ArrowLeft className='h-4 w-4' />
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='20'
+              height='20'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              className='mr-2'
+            >
+              <path d='M19 12H5M12 19l-7-7 7-7' />
+            </svg>
             Back
           </button>
 
+          <div className='flex-grow'></div>
+
           <button
-            className='text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white rounded-full p-2 shadow-sm'
             onClick={handleClose}
+            className='p-2 mr-6 mt-6 rounded-full bg-[#6C73A8] transition-colors cursor-pointer'
+            aria-label='Close'
           >
-            <X className='h-5 w-5' />
+            <X size={24} className='text-white' />
           </button>
         </div>
 
         {/* Main content */}
-        <div className='max-w-4xl mx-auto'>
-          <div className='text-center mb-12'>
-            <h1 className='text-3xl font-bold text-gray-900 mb-4'>
+        <div className='flex-grow flex flex-col items-center justify-center px-4 pb-55 pt-6'>
+          <div className='text-center mb-11'>
+            <h1 className='text-3xl font-semibold text-[#102035] mb-4'>
               Create a Form
             </h1>
-            <p className='text-gray-600 max-w-2xl mx-auto'>
+            <p className='text-gray-700 max-w-2xl mx-auto text-lg'>
               Start collecting data with powerful forms that use conditional
-              logic, accept payments, generate reports, and automate workflows.
+              logic, <br />
+              accept payments, generate reports, and automate workflows.
             </p>
           </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-            {/* Start from scratch */}
-            <div
-              className='bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer'
-              onClick={handleStartFromScratch}
-            >
-              <div className='bg-indigo-100 p-10 flex items-center justify-center h-48'>
-                <Plus className='h-16 w-16 text-indigo-500' />
-              </div>
-              <div className='p-6 text-center'>
-                <h2 className='text-lg font-medium text-gray-900 mb-2'>
-                  Start from scratch
-                </h2>
-                <p className='text-gray-600 text-sm'>
-                  A blank slate is all you need
-                </p>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-lg'>
+            {/* Start from scratch card */}
+            <div onClick={handleStartFromScratch}>
+              <div className='bg-white rounded-lg shadow-md hover:shadow-xl hover:border-blue-500 transition-shadow border border-gray-200 overflow-hidden flex flex-col h-full cursor-pointer'>
+                <div className='bg-[#E6EAFF] p-12 flex items-center justify-center'>
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='48'
+                    height='48'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='#4F6AF5'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <path d='M12 5v14M5 12h14' />
+                  </svg>
+                </div>
+                <div className='p-5 flex flex-col flex-grow'>
+                  <h2 className='text-xl font-semibold text-center text-[#102035] mb-2'>
+                    Start from scratch
+                  </h2>
+                  <p className='text-sm text-gray-700 text-center'>
+                    A blank slate is all you need
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Use template */}
-            <div
-              className='bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer'
-              onClick={handleUseTemplate}
-            >
-              <div className='bg-orange-500 p-10 flex items-center justify-center h-48'>
-                <div className='w-3/4 bg-white rounded-lg p-4 shadow'>
-                  <div className='w-full h-4 bg-gray-200 rounded mb-3'></div>
-                  <div className='w-3/4 h-4 bg-gray-200 rounded mb-3'></div>
-                  <div className='w-full h-4 bg-gray-200 rounded mb-3'></div>
-                  <div className='w-2/3 h-4 bg-gray-200 rounded'></div>
+            {/* Use template card */}
+            <div onClick={handleUseTemplate}>
+              <div className='bg-white rounded-lg shadow-md hover:shadow-xl hover:border-blue-500 transition-shadow border border-gray-200 overflow-hidden flex flex-col h-full cursor-pointer'>
+                <div className='bg-[#FFEBDD] p-12 flex items-center justify-center'>
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='48'
+                    height='48'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='#FF6100'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
+                    <line x1='3' y1='9' x2='21' y2='9' />
+                    <line x1='9' y1='21' x2='9' y2='9' />
+                  </svg>
                 </div>
-              </div>
-              <div className='p-6 text-center'>
-                <h2 className='text-lg font-medium text-gray-900 mb-2'>
-                  Use template
-                </h2>
-                <p className='text-gray-600 text-sm'>
-                  Choose from 10,000+ premade forms
-                </p>
-              </div>
-            </div>
-
-            {/* Smart PDF Form */}
-            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer'>
-              <div className='bg-blue-600 p-10 flex items-center justify-center h-48'>
-                <div className='relative'>
-                  <div className='absolute -right-4 -top-4 bg-red-600 text-white text-xs font-bold py-1 px-2 rounded'>
-                    PDF
-                  </div>
-                  <div className='w-28 h-36 bg-white rounded-lg shadow-lg flex items-center justify-center'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      className='h-12 w-12 text-blue-500'
-                    >
-                      <path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' />
-                      <polyline points='14 2 14 8 20 8' />
-                    </svg>
-                  </div>
+                <div className='p-5 flex flex-col flex-grow'>
+                  <h2 className='text-xl font-semibold text-center text-[#102035] mb-2'>
+                    Use template
+                  </h2>
+                  <p className='text-sm text-gray-700 text-center'>
+                    Choose from premade forms
+                  </p>
                 </div>
-              </div>
-              <div className='p-6 text-center'>
-                <h2 className='text-lg font-medium text-gray-900 mb-2'>
-                  Smart PDF Form
-                </h2>
-                <p className='text-gray-600 text-sm'>
-                  Convert your PDF form to an online form
-                </p>
-              </div>
-            </div>
-
-            {/* E-sign forms */}
-            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer'>
-              <div className='bg-green-500 p-10 flex items-center justify-center h-48'>
-                <div className='w-3/4 bg-white rounded-lg p-4 shadow'>
-                  <div className='w-full h-4 bg-gray-200 rounded mb-6'></div>
-                  <div className='w-full h-4 bg-gray-200 rounded mb-6'></div>
-                  <div className='w-3/4 h-12 bg-blue-100 rounded flex items-center justify-center'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      className='h-8 w-8 text-blue-500'
-                    >
-                      <path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' />
-                      <polyline points='14 2 14 8 20 8' />
-                      <path d='M8 13h2' />
-                      <path d='M8 17h2' />
-                      <path d='M14 3v7h7' />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <div className='p-6 text-center'>
-                <h2 className='text-lg font-medium text-gray-900 mb-2'>
-                  E-sign forms
-                </h2>
-                <p className='text-gray-600 text-sm'>
-                  Collect e-signatures with your forms
-                </p>
-              </div>
-            </div>
-
-            {/* Import form */}
-            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer'>
-              <div className='bg-blue-400 p-10 flex items-center justify-center h-48'>
-                <div className='w-3/4 bg-white rounded-lg p-4 shadow'>
-                  <div className='w-full h-4 bg-gray-200 rounded mb-3'></div>
-                  <div className='w-3/4 h-4 bg-gray-200 rounded mb-3'></div>
-                  <div className='w-full h-4 bg-gray-200 rounded mb-3'></div>
-                  <div className='flex justify-center mt-2'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      className='h-8 w-8 text-blue-500'
-                    >
-                      <path d='M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5 5-5-5M12 12.8V2.5' />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <div className='p-6 text-center'>
-                <h2 className='text-lg font-medium text-gray-900 mb-2'>
-                  Import form
-                </h2>
-                <p className='text-gray-600 text-sm'>
-                  Convert an existing form in seconds
-                </p>
               </div>
             </div>
           </div>

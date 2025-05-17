@@ -36,6 +36,7 @@ export default function Navbar() {
   );
   const pathname = usePathname();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { user } = useSelector((state: RootState) => state.user as UserState);
 
   // Get active page from pathname
   const getActivePage = (path: string) => {
@@ -44,9 +45,6 @@ export default function Navbar() {
     if (path.includes('/pricing')) return 'pricing';
     return 'dashboard';
   };
-
-  const { user } = useSelector((state: RootState) => state.user as UserState);
-
   const [activePage, setActivePage] = useState(getActivePage(pathname || ''));
 
   // Update active page when pathname changes

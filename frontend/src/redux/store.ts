@@ -1,6 +1,7 @@
-import userReducer from './features/userSlice';
-import appReducer from '@/redux/features/appSlice';
-import formReducer from '@/redux/features/formsSlice';
+import userReducer from './slices/auth/userSlice';
+import appReducer from '@/redux/slices/appSlice';
+import formReducer from '@/redux/slices/dashboard/formsSlice';
+import formBuilderReducer from './slices/formBuilderSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
@@ -32,6 +33,7 @@ const rootReducer = combineReducers({
   forms: persistReducer(formsPersistConfig, formReducer),
   app: appReducer,
   user: persistReducer(userPersistConfig, userReducer),
+  formBuilder: formBuilderReducer,
 });
 
 // Create the store

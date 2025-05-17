@@ -7,7 +7,7 @@ import Link from 'next/link';
 import type { LoginRequest } from '@/types/auth/actions';
 import { useDispatch, useSelector } from 'react-redux';
 import type { StoreDispatch, RootState } from '@/redux/store';
-import { logInUser } from '@/redux/features/userSlice';
+import { logInUser } from '@/redux/slices/auth/userSlice';
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { loginSchema } from '@/dependencies/zod';

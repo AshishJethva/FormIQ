@@ -40,7 +40,7 @@ import {
   bulkAddLabelToForms,
   bulkRemoveLabelFromForms,
   selectLabels,
-} from '@/redux/features/formsSlice';
+} from '@/redux/slices/dashboard/formsSlice';
 
 // Dialog for label selection
 import {

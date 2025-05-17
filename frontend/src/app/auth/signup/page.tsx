@@ -7,7 +7,7 @@ import Link from 'next/link';
 import type { RegistrationRequest } from '@/types/auth/actions';
 import { useDispatch, useSelector } from 'react-redux';
 import type { StoreDispatch, RootState } from '@/redux/store';
-import { registerUser } from '@/redux/features/userSlice';
+import { registerUser } from '@/redux/slices/auth/userSlice';
 import { Loader2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { signupSchema } from '@/dependencies/zod';

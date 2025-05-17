@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { logoutUser } from '@/redux/features/userSlice';
+import { logoutUser } from '@/redux/slices/auth/userSlice';
 import { toast } from 'sonner';
 import type { StoreDispatch } from '@/redux/store';
 
