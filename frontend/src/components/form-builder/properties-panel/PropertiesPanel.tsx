@@ -6,12 +6,12 @@ import { RootState } from '@/redux/store';
 import {
   updateField,
   removeField,
-  clearSelectedField,
   duplicateField,
+  togglePropertiesPanel,
+  updateFormSettings,
 } from '@/redux/slices/formBuilderSlice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
 import {
   X,
   Trash,
@@ -21,74 +21,77 @@ import {
   ChevronDown,
   Eye,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type TabType = 'GENERAL' | 'OPTIONS' | 'ADVANCED';
 type LabelAlignmentType = 'LEFT' | 'RIGHT' | 'TOP';
 
-interface TabButtonProps {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}
-
-interface OptionButtonProps {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}
-
-interface ActionButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  variant?: 'default' | 'destructive';
-  onClick?: () => void;
-}
-
 export default function PropertiesPanel() {
   const dispatch = useDispatch();
   const form = useSelector((state: RootState) => state.formBuilder.form);
   const [activeTab, setActiveTab] = useState<TabType>('GENERAL');
-  const [showPanel, setShowPanel] = useState<boolean>(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Initialize state from selected field when it changes
   const field = form?.selectedFieldId
     ? form.fields.find(f => f.id === form.selectedFieldId)
     : null;
+
   const [labelAlignment, setLabelAlignment] = useState<LabelAlignmentType>(
     (field?.labelAlignment as LabelAlignmentType) || 'TOP'
   );
   const [isRequired, setIsRequired] = useState(field?.required || false);
-  const [helpText, setHelpText] = useState(
-    field?.helpText || 'example@example.'
-  );
+  const [helpText, setHelpText] = useState(field?.helpText || '');
+  const [useAsDefault, setUseAsDefault] = useState(false);
 
   // Update local state when selected field changes
   useEffect(() => {
     if (field) {
       setLabelAlignment((field.labelAlignment as LabelAlignmentType) || 'TOP');
       setIsRequired(field.required || false);
-      setHelpText(field.helpText || 'example@example.');
-      setShowPanel(true);
-    } else {
-      setShowPanel(false);
+      setHelpText(field.helpText || '');
     }
   }, [field]);
 
-  if (!form || !field) return null;
+  // Console log to debug
+  useEffect(() => {
+    console.log(
+      'PropertiesPanel render - selected field:',
+      form?.selectedFieldId
+    );
+    console.log('PropertiesPanel open:', form?.propertiesPanelOpen);
+  }, [form?.selectedFieldId, form?.propertiesPanelOpen]);
+
+  // Prevent panel from closing when clicking inside it
+  useEffect(() => {
+    const handleClickInside = (e: MouseEvent) => {
+      if (panelRef.current && panelRef.current.contains(e.target as Node)) {
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickInside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickInside, true);
+    };
+  }, []);
+
+  if (!form || !field || !form.propertiesPanelOpen) return null;
 
   const handleClosePanel = () => {
-    dispatch(clearSelectedField());
-    setShowPanel(false);
+    dispatch(togglePropertiesPanel(false));
   };
 
-  const handleRequiredToggle = (required: boolean) => {
-    setIsRequired(required);
+  const handleTabClick = (tab: TabType) => {
+    setActiveTab(tab);
+  };
+
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(
       updateField({
         id: field.id,
-        updates: { required },
+        updates: { label: e.target.value },
       })
     );
   };
@@ -103,7 +106,19 @@ export default function PropertiesPanel() {
     );
   };
 
-  const handleHelpTextChange = (text: string) => {
+  const handleRequiredToggle = () => {
+    const newValue = !isRequired;
+    setIsRequired(newValue);
+    dispatch(
+      updateField({
+        id: field.id,
+        updates: { required: newValue },
+      })
+    );
+  };
+
+  const handleHelpTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
     setHelpText(text);
     dispatch(
       updateField({
@@ -113,9 +128,16 @@ export default function PropertiesPanel() {
     );
   };
 
-  const handleDeleteField = () => {
-    dispatch(removeField(field.id));
-    setShowPanel(false);
+  const handleSetAsDefault = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setUseAsDefault(checked);
+    if (checked) {
+      dispatch(
+        updateFormSettings({
+          defaultLabelAlignment: labelAlignment,
+        })
+      );
+    }
   };
 
   const handleDuplicateField = () => {
@@ -123,8 +145,15 @@ export default function PropertiesPanel() {
   };
 
   const handleMoveField = () => {
-    // Implement field movement logic
-    // This would open a modal to select where to move the field
+    alert('Move field functionality will be available soon.');
+  };
+
+  const handlePreviewField = () => {
+    alert('Preview functionality will be available soon.');
+  };
+
+  const handleDeleteField = () => {
+    dispatch(removeField(field.id));
   };
 
   const fieldTitle =
@@ -134,328 +163,278 @@ export default function PropertiesPanel() {
       .replace(/([A-Z])/g, ' $1')
       .trim();
 
+  // Panel animation variants
   const panelVariants = {
     hidden: { x: '100%', opacity: 0 },
     visible: {
       x: 0,
       opacity: 1,
-      transition: { type: 'spring', stiffness: 300, damping: 30 },
+      transition: {
+        type: 'spring',
+        stiffness: 300,
+        damping: 30,
+        duration: 0.3,
+      },
     },
-    exit: { x: '100%', opacity: 0, transition: { duration: 0.2 } },
+    exit: {
+      x: '100%',
+      opacity: 0,
+      transition: {
+        duration: 0.2,
+        ease: 'easeInOut',
+      },
+    },
   };
 
   return (
-    <AnimatePresence>
-      {showPanel && (
-        <motion.div
-          className='w-72 h-full fixed right-0 top-0 bg-gray-800 text-white overflow-y-auto shadow-lg z-20 border-l border-gray-700'
-          initial='hidden'
-          animate='visible'
-          exit='exit'
-          variants={panelVariants}
+    <motion.div
+      ref={panelRef}
+      className='properties-panel w-[335px] h-[90%] mt-29 fixed right-0 top-0 bg-gray-800 text-white overflow-y-auto shadow-lg z-30 border-l border-gray-700'
+      initial='hidden'
+      animate='visible'
+      exit='exit'
+      variants={panelVariants}
+    >
+      {/* Header */}
+      <div className='flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900'>
+        <h3 className='font-medium flex items-center'>
+          <span className='w-5 h-5 mr-2 flex items-center justify-center bg-blue-500 rounded-md'>
+            <SettingsIcon className='w-3 h-3' />
+          </span>
+          {fieldTitle} Properties
+        </h3>
+        <button
+          onClick={handleClosePanel}
+          className='text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700'
         >
-          {/* Header */}
-          <div className='flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900'>
-            <h3 className='font-medium flex items-center'>
-              <span className='w-5 h-5 mr-2 flex items-center justify-center bg-blue-500 rounded-md'>
-                {field.type === 'email' ? (
-                  <Mail />
-                ) : field.type === 'heading' ? (
-                  <Heading />
-                ) : (
-                  <SettingsIcon className='w-3 h-3' />
-                )}
-              </span>
-              {fieldTitle} Properties
-            </h3>
-            <button
-              onClick={handleClosePanel}
-              className='text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700'
-            >
-              <X className='h-5 w-5' />
-            </button>
-          </div>
+          <X className='h-5 w-5' />
+        </button>
+      </div>
 
-          {/* Tabs */}
-          <div className='flex border-b border-gray-700 bg-gray-900/50'>
-            <TabButton
-              active={activeTab === 'GENERAL'}
-              onClick={() => setActiveTab('GENERAL')}
-            >
-              GENERAL
-            </TabButton>
-            <TabButton
-              active={activeTab === 'OPTIONS'}
-              onClick={() => setActiveTab('OPTIONS')}
-            >
-              OPTIONS
-            </TabButton>
-            <TabButton
-              active={activeTab === 'ADVANCED'}
-              onClick={() => setActiveTab('ADVANCED')}
-            >
-              ADVANCED
-            </TabButton>
-          </div>
+      {/* Tabs */}
+      <div className='flex border-b border-gray-700 bg-gray-900/50'>
+        <button
+          className={`text-sm px-4 py-2 transition-colors ${
+            activeTab === 'GENERAL'
+              ? 'bg-orange-500 text-white font-medium'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => handleTabClick('GENERAL')}
+        >
+          GENERAL
+        </button>
+        <button
+          className={`text-sm px-4 py-2 transition-colors ${
+            activeTab === 'OPTIONS'
+              ? 'bg-orange-500 text-white font-medium'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => handleTabClick('OPTIONS')}
+        >
+          OPTIONS
+        </button>
+        <button
+          className={`text-sm px-4 py-2 transition-colors ${
+            activeTab === 'ADVANCED'
+              ? 'bg-orange-500 text-white font-medium'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => handleTabClick('ADVANCED')}
+        >
+          ADVANCED
+        </button>
+      </div>
 
-          {/* Content */}
-          <div className='p-4 space-y-6'>
-            {activeTab === 'GENERAL' && (
-              <>
-                {/* Field Label */}
-                <div className='group'>
-                  <Label
-                    htmlFor='field-label'
-                    className='text-sm text-gray-300 mb-1 block group-hover:text-white transition-colors'
+      {/* Content */}
+      <div className='p-4 space-y-6'>
+        {activeTab === 'GENERAL' && (
+          <>
+            {/* Field Label */}
+            <div className='group'>
+              <Label
+                htmlFor='field-label'
+                className='text-sm text-gray-300 mb-1 block group-hover:text-white transition-colors'
+              >
+                Field Label
+              </Label>
+              <Input
+                id='field-label'
+                value={field.label}
+                onChange={handleLabelChange}
+                className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 transition-all'
+              />
+            </div>
+
+            {/* Label Alignment */}
+            {field.type !== 'heading' && (
+              <div className='group pt-2'>
+                <Label className='text-sm text-gray-300 mb-2 block group-hover:text-white transition-colors'>
+                  Label Alignment
+                </Label>
+                <div className='flex space-x-2'>
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      labelAlignment === 'LEFT'
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                    onClick={() => handleLabelAlignmentChange('LEFT')}
                   >
-                    Field Label
-                  </Label>
-                  <Input
-                    id='field-label'
-                    value={field.label}
-                    onChange={e =>
-                      dispatch(
-                        updateField({
-                          id: field.id,
-                          updates: { label: e.target.value },
-                        })
-                      )
-                    }
-                    className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 transition-all'
-                  />
+                    LEFT
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      labelAlignment === 'RIGHT'
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                    onClick={() => handleLabelAlignmentChange('RIGHT')}
+                  >
+                    RIGHT
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      labelAlignment === 'TOP'
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                    onClick={() => handleLabelAlignmentChange('TOP')}
+                  >
+                    TOP
+                  </button>
                 </div>
-
-                {/* Label Alignment */}
-                {field.type !== 'heading' && (
-                  <div className='group pt-2'>
-                    <Label className='text-sm text-gray-300 mb-2 block group-hover:text-white transition-colors'>
-                      Label Alignment
-                    </Label>
-                    <div className='flex space-x-2'>
-                      <OptionButton
-                        active={labelAlignment === 'LEFT'}
-                        onClick={() => handleLabelAlignmentChange('LEFT')}
-                      >
-                        LEFT
-                      </OptionButton>
-                      <OptionButton
-                        active={labelAlignment === 'RIGHT'}
-                        onClick={() => handleLabelAlignmentChange('RIGHT')}
-                      >
-                        RIGHT
-                      </OptionButton>
-                      <OptionButton
-                        active={labelAlignment === 'TOP'}
-                        onClick={() => handleLabelAlignmentChange('TOP')}
-                      >
-                        TOP
-                      </OptionButton>
-                    </div>
-                    <div className='mt-2 flex items-center space-x-2'>
-                      <label className='flex items-center space-x-2 cursor-pointer'>
-                        <input
-                          type='checkbox'
-                          className='h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500'
-                          checked={true}
-                        />
-                        <span className='text-sm text-gray-300'>
-                          Set as form default
-                        </span>
-                      </label>
-                    </div>
-                    <p className='text-xs text-gray-400 mt-1'>
-                      Select how the label text is aligned horizontally
-                    </p>
-                  </div>
-                )}
-
-                {/* Required Field */}
-                {field.type !== 'heading' && (
-                  <div className='group border-t border-gray-700 mt-6 pt-6'>
-                    <div className='flex justify-between items-center mb-1'>
-                      <Label
-                        htmlFor='field-required'
-                        className='text-sm text-gray-300 group-hover:text-white transition-colors'
-                      >
-                        Required
-                      </Label>
-                      <button
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
-                          isRequired ? 'bg-blue-500' : 'bg-gray-600'
-                        }`}
-                        onClick={() => handleRequiredToggle(!isRequired)}
-                      >
-                        <span
-                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            isRequired ? 'right-1' : 'left-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <p className='text-xs text-gray-400'>
-                      Prevent submission if this field is empty
-                    </p>
-                  </div>
-                )}
-
-                {/* Sublabel */}
-                {field.type === 'email' && (
-                  <div className='group pt-6 border-t border-gray-700 mt-6'>
-                    <Label
-                      htmlFor='field-sublabel'
-                      className='text-sm text-gray-300 mb-1 block group-hover:text-white transition-colors'
-                    >
-                      Sublabel
-                    </Label>
-                    <Input
-                      id='field-sublabel'
-                      value={helpText}
-                      onChange={e => handleHelpTextChange(e.target.value)}
-                      className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 transition-all'
+                <div className='mt-2 flex items-center space-x-2'>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='checkbox'
+                      className='h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500'
+                      checked={useAsDefault}
+                      onChange={handleSetAsDefault}
                     />
-                    <p className='text-xs text-gray-400 mt-1'>
-                      Add a short description below the field
-                    </p>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className=' flex flex-wrap gap-2 border-t border-gray-700 mt-6 pt-6'>
-                  <ActionButton
-                    icon={<Copy size={14} />}
-                    label='Duplicate'
-                    onClick={handleDuplicateField}
-                  />
-                  <ActionButton
-                    icon={<Move size={14} />}
-                    label='Move'
-                    onClick={handleMoveField}
-                  />
-                  <ActionButton icon={<Eye size={14} />} label='Preview' />
-                  <ActionButton
-                    icon={<Trash size={14} />}
-                    label='Delete'
-                    variant='destructive'
-                    onClick={handleDeleteField}
-                  />
+                    <span className='text-sm text-gray-300'>
+                      Set as form default
+                    </span>
+                  </label>
                 </div>
-              </>
-            )}
-
-            {activeTab === 'OPTIONS' && (
-              <div className='flex flex-col items-center justify-center h-40 text-gray-400 p-4'>
-                <SettingsIcon className='w-10 h-10 mb-4 text-gray-600' />
-                <p className='text-center'>
-                  Additional options for this field type will be available soon
+                <p className='text-xs text-gray-400 mt-1'>
+                  Select how the label text is aligned horizontally
                 </p>
               </div>
             )}
 
-            {activeTab === 'ADVANCED' && (
-              <div className='flex flex-col items-center justify-center h-40 text-gray-400 p-4'>
-                <ChevronDown className='w-10 h-10 mb-4 text-gray-600' />
-                <p className='text-center'>
-                  Advanced settings for this field type will be available soon
+            {/* Required Field */}
+            {field.type !== 'heading' && (
+              <div className='group border-t border-gray-700 mt-6 pt-6'>
+                <div className='flex justify-between items-center mb-1'>
+                  <Label
+                    htmlFor='field-required'
+                    className='text-sm text-gray-300 group-hover:text-white transition-colors'
+                  >
+                    Required
+                  </Label>
+                  <div
+                    className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                      isRequired ? 'bg-blue-500' : 'bg-gray-600'
+                    }`}
+                    onClick={handleRequiredToggle}
+                  >
+                    <div
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        isRequired ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </div>
+                </div>
+                <p className='text-xs text-gray-400'>
+                  Prevent submission if this field is empty
                 </p>
               </div>
             )}
+
+            {/* Sublabel */}
+            {field.type === 'email' && (
+              <div className='group pt-6 border-t border-gray-700 mt-6'>
+                <Label
+                  htmlFor='field-sublabel'
+                  className='text-sm text-gray-300 mb-1 block group-hover:text-white transition-colors'
+                >
+                  Sublabel
+                </Label>
+                <Input
+                  id='field-sublabel'
+                  value={helpText}
+                  onChange={handleHelpTextChange}
+                  className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 transition-all'
+                />
+                <p className='text-xs text-gray-400 mt-1'>
+                  Add a short description below the field
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className='flex flex-wrap gap-2 border-t border-gray-700 mt-6 pt-6'>
+              <button
+                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600'
+                onClick={handleDuplicateField}
+              >
+                <span className='mr-1.5'>
+                  <Copy size={14} />
+                </span>
+                Duplicate
+              </button>
+
+              <button
+                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600'
+                onClick={handleMoveField}
+              >
+                <span className='mr-1.5'>
+                  <Move size={14} />
+                </span>
+                Move
+              </button>
+
+              <button
+                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600'
+                onClick={handlePreviewField}
+              >
+                <span className='mr-1.5'>
+                  <Eye size={14} />
+                </span>
+                Preview
+              </button>
+
+              <button
+                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-red-900/40 text-red-400 hover:bg-red-900/60'
+                onClick={handleDeleteField}
+              >
+                <span className='mr-1.5'>
+                  <Trash size={14} />
+                </span>
+                Delete
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'OPTIONS' && (
+          <div className='flex flex-col items-center justify-center h-40 text-gray-400 p-4'>
+            <SettingsIcon className='w-10 h-10 mb-4 text-gray-600' />
+            <p className='text-center'>
+              Additional options for this field type will be available soon
+            </p>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
+        )}
 
-function TabButton({ active, onClick, children }: TabButtonProps) {
-  return (
-    <button
-      className={`text-sm px-4 py-2 transition-colors ${
-        active
-          ? 'bg-orange-500 text-white font-medium'
-          : 'text-gray-300 hover:bg-gray-700'
-      }`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-function OptionButton({ active, onClick, children }: OptionButtonProps) {
-  return (
-    <button
-      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-        active
-          ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-      }`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-function ActionButton({
-  icon,
-  label,
-  variant = 'default',
-  onClick,
-}: ActionButtonProps) {
-  return (
-    <button
-      className={`
-        flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors
-        ${
-          variant === 'destructive'
-            ? 'bg-red-900/40 text-red-400 hover:bg-red-900/60'
-            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-        }
-      `}
-      onClick={onClick}
-    >
-      <span className='mr-1.5'>{icon}</span>
-      {label}
-    </button>
-  );
-}
-
-// Small helper icon components
-function Mail() {
-  return (
-    <svg
-      xmlns='http://www.w3.org/2000/svg'
-      width='14'
-      height='14'
-      viewBox='0 0 24 24'
-      fill='none'
-      stroke='currentColor'
-      strokeWidth='2'
-      strokeLinecap='round'
-      strokeLinejoin='round'
-    >
-      <rect width='20' height='16' x='2' y='4' rx='2' />
-      <path d='m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7' />
-    </svg>
-  );
-}
-
-function Heading() {
-  return (
-    <svg
-      xmlns='http://www.w3.org/2000/svg'
-      width='14'
-      height='14'
-      viewBox='0 0 24 24'
-      fill='none'
-      stroke='currentColor'
-      strokeWidth='2'
-      strokeLinecap='round'
-      strokeLinejoin='round'
-    >
-      <path d='M6 12h12' />
-      <path d='M6 20h12' />
-      <path d='M6 4h12' />
-    </svg>
+        {activeTab === 'ADVANCED' && (
+          <div className='flex flex-col items-center justify-center h-40 text-gray-400 p-4'>
+            <ChevronDown className='w-10 h-10 mb-4 text-gray-600' />
+            <p className='text-center'>
+              Advanced settings for this field type will be available soon
+            </p>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }

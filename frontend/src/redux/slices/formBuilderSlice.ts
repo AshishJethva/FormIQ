@@ -1,156 +1,14 @@
-// // src/store/slices/formBuilderSlice.ts
-// import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-// import { Field, FieldType, Form } from '@/types/form';
-// import { v4 as uuidv4 } from 'uuid';
-
-// interface FormBuilderState {
-//   form: Form | null;
-//   selectedFieldId: string | null;
-//   activeTab: 'build' | 'settings' | 'publish';
-//   isDragging: boolean;
-// }
-
-// const initialState: FormBuilderState = {
-//   form: {
-//     id: uuidv4(),
-//     title: 'My Form',
-//     description: '',
-//     fields: [],
-//     settings: {
-//       submitButtonText: 'Submit',
-//       thankyouMessage: 'Thank you for your submission!',
-//       defaultLabelAlignment: 'LEFT',
-//       defaultRequiredField: false,
-//     },
-//     createdAt: new Date().toISOString(),
-//     updatedAt: new Date().toISOString(),
-//   },
-//   selectedFieldId: null,
-//   activeTab: 'build',
-//   isDragging: false,
-// };
-
-// export const formBuilderSlice = createSlice({
-//   name: 'formBuilder',
-//   initialState,
-//   reducers: {
-//     setFormTitle: (state, action: PayloadAction<string>) => {
-//       if (state.form) {
-//         state.form.title = action.payload;
-//         state.form.updatedAt = new Date().toISOString();
-//       }
-//     },
-//     addField: (
-//       state,
-//       action: PayloadAction<{ type: FieldType; order?: number }>
-//     ) => {
-//       if (!state.form) return;
-
-//       const { type } = action.payload;
-//       const newField: Field = {
-//         id: uuidv4(),
-//         type,
-//         label: getDefaultLabelForType(type),
-//         required: false,
-//       };
-
-//       state.form.fields.push(newField);
-//       state.selectedFieldId = newField.id;
-//       state.form.updatedAt = new Date().toISOString();
-//     },
-//     updateField: (
-//       state,
-//       action: PayloadAction<{ id: string; updates: Partial<Field> }>
-//     ) => {
-//       if (!state.form) return;
-
-//       const { id, updates } = action.payload;
-//       const fieldIndex = state.form.fields.findIndex(field => field.id === id);
-
-//       if (fieldIndex !== -1) {
-//         state.form.fields[fieldIndex] = {
-//           ...state.form.fields[fieldIndex],
-//           ...updates,
-//         };
-//         state.form.updatedAt = new Date().toISOString();
-//       }
-//     },
-//     removeField: (state, action: PayloadAction<string>) => {
-//       if (!state.form) return;
-
-//       state.form.fields = state.form.fields.filter(
-//         field => field.id !== action.payload
-//       );
-
-//       if (state.selectedFieldId === action.payload) {
-//         state.selectedFieldId = null;
-//       }
-
-//       state.form.updatedAt = new Date().toISOString();
-//     },
-//     selectField: (state, action: PayloadAction<string | null>) => {
-//       state.selectedFieldId = action.payload;
-//     },
-//     setActiveTab: (
-//       state,
-//       action: PayloadAction<'build' | 'settings' | 'publish'>
-//     ) => {
-//       state.activeTab = action.payload;
-//     },
-//     setIsDragging: (state, action: PayloadAction<boolean>) => {
-//       state.isDragging = action.payload;
-//     },
-//   },
-// });
-
-// // Helper function to get default label for each field type
-// function getDefaultLabelForType(type: FieldType): string {
-//   switch (type) {
-//     case FieldType.HEADING:
-//       return 'Heading';
-//     case FieldType.FULL_NAME:
-//       return 'Full Name';
-//     case FieldType.EMAIL:
-//       return 'Email';
-//     case FieldType.ADDRESS:
-//       return 'Address';
-//     case FieldType.PHONE:
-//       return 'Phone';
-//     case FieldType.DATE_PICKER:
-//       return 'Date';
-//     case FieldType.APPOINTMENT:
-//       return 'Appointment';
-//     case FieldType.SIGNATURE:
-//       return 'Signature';
-//     case FieldType.FILL_BLANK:
-//       return 'Fill in the Blank';
-//     case FieldType.PRODUCT_LIST:
-//       return 'Product List';
-//     default:
-//       return 'New Field';
-//   }
-// }
-
-// export const {
-//   setFormTitle,
-//   addField,
-//   updateField,
-//   removeField,
-//   selectField,
-//   setActiveTab,
-//   setIsDragging,
-// } = formBuilderSlice.actions;
-
-// export default formBuilderSlice.reducer;
-
 // src/redux/slices/formBuilderSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-import { Form, Field, FieldType, FormSettings } from '@/types/form';
+import { Form, Field, FieldType, FormSettings, Logo } from '@/types/form';
 
+// Define the state interface
 interface FormBuilderState {
   form: Form | null;
   isPreviewMode: boolean;
+  isSaving: boolean;
+  // lastSaved: Date | null;
 }
 
 const initialState: FormBuilderState = {
@@ -176,23 +34,52 @@ const initialState: FormBuilderState = {
     ],
     settings: {
       submitButtonText: 'Submit',
-      thankyouMessage: 'Thank you for your submission!',
+      // showProgressBar: true,
       defaultLabelAlignment: 'TOP',
+      thankyouMessage: 'Thank you for your submission!',
       defaultRequiredField: false,
     },
     selectedFieldId: null,
+    propertiesPanelOpen: false,
     lastSaved: new Date().toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     }),
   },
   isPreviewMode: false,
+  isSaving: false,
+  // lastSaved: null,
+};
+// Helper function to generate a unique field ID
+const generateFieldId = (): string => {
+  return Date.now().toString() + Math.random().toString(36).substring(2, 9);
 };
 
 const formBuilderSlice = createSlice({
   name: 'formBuilder',
   initialState,
   reducers: {
+    initializeForm: state => {
+      state.form = {
+        id: generateFieldId(),
+        title: 'Untitled Form',
+        description: '',
+        fields: [],
+        selectedFieldId: null,
+        propertiesPanelOpen: false,
+        settings: {
+          submitButtonText: 'Submit',
+          // showProgressBar: true,
+          defaultLabelAlignment: 'TOP',
+          thankyouMessage: 'Thank you for your submission!',
+          defaultRequiredField: false,
+        },
+        lastSaved: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+    },
     setFormTitle: (state, action: PayloadAction<string>) => {
       if (state.form) {
         state.form.title = action.payload;
@@ -269,6 +156,19 @@ const formBuilderSlice = createSlice({
         state.form.selectedFieldId = null;
       }
     },
+    // Add a new action to toggle properties panel
+    togglePropertiesPanel: (
+      state,
+      action: PayloadAction<boolean | undefined>
+    ) => {
+      if (state.form) {
+        if (action.payload !== undefined) {
+          state.form.propertiesPanelOpen = action.payload;
+        } else {
+          state.form.propertiesPanelOpen = !state.form.propertiesPanelOpen;
+        }
+      }
+    },
     updateFormSettings: (
       state,
       action: PayloadAction<Partial<FormSettings>>
@@ -315,8 +215,110 @@ const formBuilderSlice = createSlice({
         }
       }
     },
+    moveField: (
+      state,
+      action: PayloadAction<{ dragIndex: number; hoverIndex: number }>
+    ) => {
+      if (!state.form) return;
+
+      const { dragIndex, hoverIndex } = action.payload;
+      const draggedField = state.form.fields[dragIndex];
+
+      // Remove the dragged item
+      state.form.fields.splice(dragIndex, 1);
+      // Insert it at the new position
+      state.form.fields.splice(hoverIndex, 0, draggedField);
+    },
+    addFieldAtIndex: (
+      state,
+      action: PayloadAction<{ type: FieldType; index: number }>
+    ) => {
+      if (!state.form) return;
+
+      const { type, index } = action.payload;
+
+      // Generate unique ID
+      const id = Date.now().toString();
+
+      // Create new field
+      const newField = {
+        id,
+        type,
+        label: getDefaultLabelForType(type),
+        required: false,
+        helpText: '',
+        labelAlignment: state.form.settings?.defaultLabelAlignment || 'TOP',
+        // Add other default properties as needed
+      };
+
+      // Insert at specified index
+      state.form.fields.splice(index, 0, newField);
+
+      // Select the new field
+      state.form.selectedFieldId = id;
+    },
+    // Toggle preview mode
+    togglePreviewMode: state => {
+      state.isPreviewMode = !state.isPreviewMode;
+
+      // When entering preview mode, clear selection
+      if (state.isPreviewMode && state.form) {
+        state.form.selectedFieldId = null;
+        state.form.propertiesPanelOpen = false;
+      }
+    },
+    // Set saving state
+    setSaving: (state, action: PayloadAction<boolean>) => {
+      state.isSaving = action.payload;
+    },
+    updateLogo: (state, action: PayloadAction<Logo>) => {
+      if (state.form) {
+        state.form.logo = action.payload;
+        state.form.lastSaved = new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+    },
+    removeLogo: state => {
+      if (state.form && state.form.logo) {
+        delete state.form.logo;
+        state.form.lastSaved = new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+    },
   },
 });
+
+// Helper function to get default label for a field type
+function getDefaultLabelForType(type: FieldType): string {
+  switch (type) {
+    case FieldType.HEADING:
+      return 'Section Heading';
+    case FieldType.FULL_NAME:
+      return 'Full Name';
+    case FieldType.EMAIL:
+      return 'Email Address';
+    case FieldType.PHONE:
+      return 'Phone Number';
+    case FieldType.ADDRESS:
+      return 'Address';
+    case FieldType.DATE_PICKER:
+      return 'Select Date';
+    case FieldType.APPOINTMENT:
+      return 'Schedule Appointment';
+    case FieldType.SIGNATURE:
+      return 'Signature';
+    case FieldType.FILL_BLANK:
+      return 'Complete the Sentence';
+    case FieldType.PRODUCT_LIST:
+      return 'Products';
+    default:
+      return 'New Field';
+  }
+}
 
 // Helper function to get label based on field type
 function getLabelForType(type: FieldType): string {
@@ -347,15 +349,23 @@ function getLabelForType(type: FieldType): string {
 }
 
 export const {
+  initializeForm,
   setFormTitle,
   addField,
   updateField,
   removeField,
   selectField,
   clearSelectedField,
+  togglePropertiesPanel,
+  togglePreviewMode,
   updateFormSettings,
+  setSaving,
   setPreviewMode,
   duplicateField,
+  moveField,
+  addFieldAtIndex,
+  updateLogo,
+  removeLogo,
 } = formBuilderSlice.actions;
 
 export default formBuilderSlice.reducer;

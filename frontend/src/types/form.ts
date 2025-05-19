@@ -23,6 +23,7 @@ export interface Field {
   placeholder?: string;
   labelAlignment?: LabelAlignment;
   options?: { label: string; value: string }[];
+  propertiesPanelOpen?: boolean;
   // Add more field-specific properties as needed
 }
 
@@ -41,5 +42,19 @@ export interface Form {
   fields: Field[];
   settings: FormSettings;
   selectedFieldId: string | null;
+  propertiesPanelOpen: boolean;
   lastSaved: string;
+  logo?: Logo;
+}
+export interface DragItem {
+  id: string;
+  type: string;
+  index: number;
+  fieldType?: FieldType;
+}
+export interface Logo {
+  src: string;
+  type: 'uploaded' | 'url';
+  size?: number;
+  alignment?: 'LEFT' | 'CENTER' | 'RIGHT';
 }

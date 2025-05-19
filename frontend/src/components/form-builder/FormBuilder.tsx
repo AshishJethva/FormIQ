@@ -7,6 +7,7 @@ import { RootState } from '@/redux/store';
 import {
   setPreviewMode,
   clearSelectedField,
+  initializeForm,
 } from '@/redux/slices/formBuilderSlice';
 import FormBuilderHeader from './navigation/FormBuilderHeader';
 import MainNavigation from './navigation/MainNavigation';
@@ -14,6 +15,8 @@ import ElementsPanel from './elements-panel/ElementsPanel';
 import FormCanvas from './canvas/FormCanvas';
 import PropertiesPanel from './properties-panel/PropertiesPanel';
 import { AnimatePresence } from 'framer-motion';
+import DragProvider from '@/providers/DragProvider';
+import { Toaster } from 'sonner';
 
 export default function FormBuilderLayout() {
   const dispatch = useDispatch();
@@ -28,6 +31,11 @@ export default function FormBuilderLayout() {
   useEffect(() => {
     setIsPreviewEnabled(formState.isPreviewMode);
   }, [formState.isPreviewMode]);
+
+  // Initialize the form when the component mounts
+  useEffect(() => {
+    dispatch(initializeForm());
+  }, [dispatch]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -56,39 +64,56 @@ export default function FormBuilderLayout() {
     }
   };
 
+  // Console log to debug panel state
+  useEffect(() => {
+    console.log(
+      'FormBuilderLayout - Selected Field:',
+      formState.form?.selectedFieldId
+    );
+    console.log(
+      'FormBuilderLayout - PropertiesPanel Open:',
+      formState.form?.propertiesPanelOpen
+    );
+  }, [formState.form?.selectedFieldId, formState.form?.propertiesPanelOpen]);
+
   if (!formState.form) return null;
 
   return (
-    <div className='flex flex-col h-screen bg-gray-100 overflow-hidden'>
-      {/* Header */}
-      <FormBuilderHeader
-        title={formState.form.title || 'My Form'}
-        lastSaved={formState.form.lastSaved || '5:08 PM'}
-      />
+    <DragProvider>
+      <div className='flex flex-col h-screen bg-gray-100 overflow-hidden'>
+        {/* Header */}
+        <FormBuilderHeader
+          title={formState.form.title || 'My Form'}
+          lastSaved={formState.form.lastSaved || '5:08 PM'}
+        />
 
-      {/* Navigation */}
-      <MainNavigation
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        isPreviewEnabled={isPreviewEnabled}
-        onPreviewToggle={handlePreviewToggle}
-      />
+        {/* Navigation */}
+        <MainNavigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          isPreviewEnabled={isPreviewEnabled}
+          onPreviewToggle={handlePreviewToggle}
+        />
 
-      {/* Main Content Area */}
-      <div className='flex flex-1 relative overflow-hidden'>
-        {/* Elements Panel - Only shown on BUILD tab when not in preview mode */}
-        <AnimatePresence>
-          {activeTab === 'BUILD' && elementsVisible && !isPreviewEnabled && (
-            <ElementsPanel />
-          )}
-        </AnimatePresence>
+        {/* Main Content Area */}
+        <div className='flex flex-1 relative overflow-hidden'>
+          {/* Elements Panel - Only shown on BUILD tab when not in preview mode */}
+          <AnimatePresence>
+            {activeTab === 'BUILD' && elementsVisible && !isPreviewEnabled && (
+              <ElementsPanel />
+            )}
+          </AnimatePresence>
 
-        {/* Form Canvas */}
-        <FormCanvas />
+          {/* Form Canvas */}
+          <FormCanvas />
 
-        {/* Properties Panel - Only shown when a field is selected and not in preview mode */}
-        <PropertiesPanel />
+          {/* Properties Panel - Only shown when a field is selected and not in preview mode */}
+          {formState.form.selectedFieldId &&
+            formState.form.propertiesPanelOpen &&
+            !isPreviewEnabled && <PropertiesPanel />}
+        </div>
       </div>
-    </div>
+      <Toaster position='top-right' />
+    </DragProvider>
   );
 }
