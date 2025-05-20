@@ -1,46 +1,45 @@
 // src/redux/slices/formBuilderSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-import { Form, Field, FieldType, FormSettings, Logo } from '@/types/form';
+import {
+  Form,
+  Field,
+  FieldType,
+  FormSettings,
+  LogoState,
+  FormPage,
+} from '@/types/form';
 
-// Define the state interface
 interface FormBuilderState {
   form: Form | null;
   isPreviewMode: boolean;
   isSaving: boolean;
-  // lastSaved: Date | null;
 }
+
+const createDefaultPage = (): FormPage => {
+  return {
+    id: uuidv4(),
+    fields: [],
+  };
+};
 
 const initialState: FormBuilderState = {
   form: {
     id: uuidv4(),
     title: 'My Form',
-    fields: [
-      {
-        id: uuidv4(),
-        type: FieldType.HEADING,
-        label: 'Heading',
-        required: false,
-      },
-      {
-        id: uuidv4(),
-        type: FieldType.EMAIL,
-        label: 'Email',
-        required: true,
-        placeholder: 'example@example.com',
-        helpText: 'example@example.',
-        labelAlignment: 'TOP',
-      },
-    ],
+    pages: [createDefaultPage()],
+    logo: null,
+    selectedFieldId: null,
+    selectedPageId: null,
+    currentPageIndex: 0,
+    propertiesPanelOpen: false,
     settings: {
       submitButtonText: 'Submit',
-      // showProgressBar: true,
+      showLogo: true,
       defaultLabelAlignment: 'TOP',
       thankyouMessage: 'Thank you for your submission!',
       defaultRequiredField: false,
     },
-    selectedFieldId: null,
-    propertiesPanelOpen: false,
     lastSaved: new Date().toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
@@ -48,11 +47,6 @@ const initialState: FormBuilderState = {
   },
   isPreviewMode: false,
   isSaving: false,
-  // lastSaved: null,
-};
-// Helper function to generate a unique field ID
-const generateFieldId = (): string => {
-  return Date.now().toString() + Math.random().toString(36).substring(2, 9);
 };
 
 const formBuilderSlice = createSlice({
@@ -60,16 +54,23 @@ const formBuilderSlice = createSlice({
   initialState,
   reducers: {
     initializeForm: state => {
+      const pageId = uuidv4();
       state.form = {
-        id: generateFieldId(),
+        id: uuidv4(),
         title: 'Untitled Form',
         description: '',
-        fields: [],
+        pages: [
+          {
+            id: pageId,
+            fields: [],
+          },
+        ],
         selectedFieldId: null,
+        selectedPageId: pageId,
+        currentPageIndex: 0,
         propertiesPanelOpen: false,
         settings: {
           submitButtonText: 'Submit',
-          // showProgressBar: true,
           defaultLabelAlignment: 'TOP',
           thankyouMessage: 'Thank you for your submission!',
           defaultRequiredField: false,
@@ -89,23 +90,44 @@ const formBuilderSlice = createSlice({
         });
       }
     },
-    addField: (state, action: PayloadAction<{ type: FieldType }>) => {
-      if (state.form) {
-        const newField: Field = {
-          id: uuidv4(),
-          type: action.payload.type,
-          label: getLabelForType(action.payload.type),
-          required: state.form.settings.defaultRequiredField,
-          labelAlignment: state.form.settings.defaultLabelAlignment,
-        };
+    addField: (
+      state,
+      action: PayloadAction<{ type: FieldType; pageId?: string }>
+    ) => {
+      if (!state.form || !state.form.pages) return;
 
-        // Add default helpText for email fields
-        if (action.payload.type === FieldType.EMAIL) {
-          newField.helpText = 'example@example.';
-          newField.placeholder = 'example@example.com';
+      // Create new field with default values
+      const newField: Field = {
+        id: uuidv4(),
+        type: action.payload.type,
+        label: getLabelForType(action.payload.type),
+        required: state.form.settings?.defaultRequiredField || false,
+        labelAlignment: state.form.settings?.defaultLabelAlignment || 'TOP',
+      };
+
+      // Add default helpText for email fields
+      if (action.payload.type === FieldType.EMAIL) {
+        newField.helpText = 'example@example.com';
+        newField.placeholder = 'example@example.com';
+      }
+
+      // Determine which page to add the field to
+      const pageId = action.payload.pageId || state.form.selectedPageId;
+      if (!pageId) {
+        // If no page is selected, add to the first page
+        if (state.form.pages.length > 0) {
+          state.form.pages[0].fields.push(newField);
+          state.form.selectedFieldId = newField.id;
         }
+        return;
+      }
 
-        state.form.fields.push(newField);
+      const pageIndex = state.form.pages.findIndex(page => page.id === pageId);
+      if (pageIndex !== -1) {
+        if (!state.form.pages[pageIndex].fields) {
+          state.form.pages[pageIndex].fields = [];
+        }
+        state.form.pages[pageIndex].fields.push(newField);
         state.form.selectedFieldId = newField.id;
         state.form.lastSaved = new Date().toLocaleTimeString([], {
           hour: '2-digit',
@@ -115,16 +137,51 @@ const formBuilderSlice = createSlice({
     },
     updateField: (
       state,
-      action: PayloadAction<{ id: string; updates: Partial<Field> }>
+      action: PayloadAction<{
+        id: string;
+        updates: Partial<Field>;
+        pageId?: string;
+      }>
     ) => {
-      if (state.form) {
-        const { id, updates } = action.payload;
-        const fieldIndex = state.form.fields.findIndex(
-          field => field.id === id
-        );
+      if (!state.form || !state.form.pages) return;
+
+      const { id, updates, pageId } = action.payload;
+
+      // Try to find the page containing the field
+      const targetPageId = pageId || state.form.selectedPageId;
+      if (!targetPageId) {
+        // If no page ID is provided, search all pages
+        for (const page of state.form.pages) {
+          if (!page || !page.fields) continue;
+
+          const fieldIndex = page.fields.findIndex(field => field.id === id);
+          if (fieldIndex !== -1) {
+            page.fields[fieldIndex] = {
+              ...page.fields[fieldIndex],
+              ...updates,
+            };
+            state.form.lastSaved = new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            return;
+          }
+        }
+        return;
+      }
+
+      // If pageId is provided, find that specific page
+      const pageIndex = state.form.pages.findIndex(
+        page => page.id === targetPageId
+      );
+      if (pageIndex !== -1) {
+        const page = state.form.pages[pageIndex];
+        if (!page || !page.fields) return;
+
+        const fieldIndex = page.fields.findIndex(field => field.id === id);
         if (fieldIndex !== -1) {
-          state.form.fields[fieldIndex] = {
-            ...state.form.fields[fieldIndex],
+          page.fields[fieldIndex] = {
+            ...page.fields[fieldIndex],
             ...updates,
           };
           state.form.lastSaved = new Date().toLocaleTimeString([], {
@@ -134,16 +191,51 @@ const formBuilderSlice = createSlice({
         }
       }
     },
-    removeField: (state, action: PayloadAction<string>) => {
-      if (state.form) {
-        state.form.fields = state.form.fields.filter(
-          field => field.id !== action.payload
+    removeField: (
+      state,
+      action: PayloadAction<{ fieldId: string; pageId?: string }>
+    ) => {
+      if (!state.form || !state.form.pages) return;
+
+      const { fieldId, pageId } = action.payload;
+
+      // If pageId is provided, only look in that page
+      if (pageId) {
+        const pageIndex = state.form.pages.findIndex(
+          page => page.id === pageId
         );
-        state.form.selectedFieldId = null;
-        state.form.lastSaved = new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+        if (pageIndex !== -1) {
+          const page = state.form.pages[pageIndex];
+          if (!page || !page.fields) return;
+
+          page.fields = page.fields.filter(field => field.id !== fieldId);
+          if (state.form.selectedFieldId === fieldId) {
+            state.form.selectedFieldId = null;
+          }
+          state.form.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+        return;
+      }
+
+      // If no pageId, search all pages
+      for (const page of state.form.pages) {
+        if (!page || !page.fields) continue;
+
+        const fieldIndex = page.fields.findIndex(field => field.id === fieldId);
+        if (fieldIndex !== -1) {
+          page.fields = page.fields.filter(field => field.id !== fieldId);
+          if (state.form.selectedFieldId === fieldId) {
+            state.form.selectedFieldId = null;
+          }
+          state.form.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          return;
+        }
       }
     },
     selectField: (state, action: PayloadAction<string>) => {
@@ -156,7 +248,6 @@ const formBuilderSlice = createSlice({
         state.form.selectedFieldId = null;
       }
     },
-    // Add a new action to toggle properties panel
     togglePropertiesPanel: (
       state,
       action: PayloadAction<boolean | undefined>
@@ -173,26 +264,38 @@ const formBuilderSlice = createSlice({
       state,
       action: PayloadAction<Partial<FormSettings>>
     ) => {
-      if (state.form) {
-        state.form.settings = {
-          ...state.form.settings,
-          ...action.payload,
-        };
-        state.form.lastSaved = new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-      }
+      if (!state.form) return;
+
+      state.form.settings = {
+        ...state.form.settings,
+        ...action.payload,
+      };
+      state.form.lastSaved = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     },
     setPreviewMode: (state, action: PayloadAction<boolean>) => {
       state.isPreviewMode = action.payload;
+
+      // When entering preview mode, clear selection
+      if (state.isPreviewMode && state.form) {
+        state.form.selectedFieldId = null;
+        state.form.propertiesPanelOpen = false;
+      }
     },
     duplicateField: (state, action: PayloadAction<string>) => {
-      if (state.form) {
-        const fieldToDuplicate = state.form.fields.find(
-          field => field.id === action.payload
-        );
+      if (!state.form || !state.form.pages) return;
 
+      const fieldId = action.payload;
+
+      // Find the field in all pages
+      for (const page of state.form.pages) {
+        if (!page || !page.fields) continue;
+
+        const fieldToDuplicate = page.fields.find(
+          field => field.id === fieldId
+        );
         if (fieldToDuplicate) {
           const duplicatedField = {
             ...fieldToDuplicate,
@@ -201,63 +304,129 @@ const formBuilderSlice = createSlice({
           };
 
           // Find the index of the original field
-          const fieldIndex = state.form.fields.findIndex(
-            field => field.id === action.payload
+          const fieldIndex = page.fields.findIndex(
+            field => field.id === fieldId
           );
 
           // Insert the duplicated field right after the original
-          state.form.fields.splice(fieldIndex + 1, 0, duplicatedField);
+          page.fields.splice(fieldIndex + 1, 0, duplicatedField);
           state.form.selectedFieldId = duplicatedField.id;
           state.form.lastSaved = new Date().toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
           });
+          return;
         }
       }
     },
     moveField: (
       state,
-      action: PayloadAction<{ dragIndex: number; hoverIndex: number }>
+      action: PayloadAction<{
+        dragIndex: number;
+        hoverIndex: number;
+        pageId?: string;
+      }>
     ) => {
-      if (!state.form) return;
+      if (!state.form || !state.form.pages) return;
 
-      const { dragIndex, hoverIndex } = action.payload;
-      const draggedField = state.form.fields[dragIndex];
+      const { dragIndex, hoverIndex, pageId } = action.payload;
 
-      // Remove the dragged item
-      state.form.fields.splice(dragIndex, 1);
-      // Insert it at the new position
-      state.form.fields.splice(hoverIndex, 0, draggedField);
+      // If pageId is provided, only move within that page
+      if (pageId) {
+        const pageIndex = state.form.pages.findIndex(
+          page => page.id === pageId
+        );
+        if (pageIndex !== -1) {
+          const page = state.form.pages[pageIndex];
+          if (!page || !page.fields || !Array.isArray(page.fields)) return;
+
+          const draggedField = page.fields[dragIndex];
+          if (!draggedField) return;
+
+          // Remove the dragged item
+          page.fields.splice(dragIndex, 1);
+          // Insert it at the new position
+          page.fields.splice(hoverIndex, 0, draggedField);
+        }
+        return;
+      }
+
+      // If no pageId provided, assume we're moving within the current active page
+      if (
+        state.form.currentPageIndex !== undefined &&
+        state.form.currentPageIndex >= 0 &&
+        state.form.currentPageIndex < state.form.pages.length
+      ) {
+        const page = state.form.pages[state.form.currentPageIndex];
+        if (!page || !page.fields || !Array.isArray(page.fields)) return;
+
+        const draggedField = page.fields[dragIndex];
+        if (!draggedField) return;
+
+        // Remove the dragged item
+        page.fields.splice(dragIndex, 1);
+        // Insert it at the new position
+        page.fields.splice(hoverIndex, 0, draggedField);
+      }
     },
     addFieldAtIndex: (
       state,
-      action: PayloadAction<{ type: FieldType; index: number }>
+      action: PayloadAction<{
+        type: FieldType;
+        index: number;
+        pageId?: string;
+      }>
     ) => {
-      if (!state.form) return;
+      if (!state.form || !state.form.pages) return;
 
-      const { type, index } = action.payload;
+      const { type, index, pageId } = action.payload;
 
-      // Generate unique ID
-      const id = Date.now().toString();
+      // Determine target page
+      let targetPageIndex = state.form.currentPageIndex || 0;
 
-      // Create new field
-      const newField = {
-        id,
+      if (pageId) {
+        const foundIndex = state.form.pages.findIndex(
+          page => page.id === pageId
+        );
+        if (foundIndex !== -1) {
+          targetPageIndex = foundIndex;
+        }
+      }
+
+      if (targetPageIndex < 0 || targetPageIndex >= state.form.pages.length)
+        return;
+
+      const page = state.form.pages[targetPageIndex];
+      if (!page) return;
+
+      // Initialize fields array if it doesn't exist
+      if (!page.fields) {
+        page.fields = [];
+      }
+
+      // Generate new field
+      const newId = uuidv4();
+      const newField: Field = {
+        id: newId,
         type,
         label: getDefaultLabelForType(type),
-        required: false,
+        required: state.form.settings?.defaultRequiredField || false,
         helpText: '',
         labelAlignment: state.form.settings?.defaultLabelAlignment || 'TOP',
-        // Add other default properties as needed
       };
 
+      // Add default helpText for email fields
+      if (type === FieldType.EMAIL) {
+        newField.helpText = 'example@example.com';
+        newField.placeholder = 'example@example.com';
+      }
+
       // Insert at specified index
-      state.form.fields.splice(index, 0, newField);
+      page.fields.splice(index, 0, newField);
 
       // Select the new field
-      state.form.selectedFieldId = id;
+      state.form.selectedFieldId = newId;
     },
-    // Toggle preview mode
     togglePreviewMode: state => {
       state.isPreviewMode = !state.isPreviewMode;
 
@@ -267,13 +436,60 @@ const formBuilderSlice = createSlice({
         state.form.propertiesPanelOpen = false;
       }
     },
-    // Set saving state
     setSaving: (state, action: PayloadAction<boolean>) => {
       state.isSaving = action.payload;
     },
-    updateLogo: (state, action: PayloadAction<Logo>) => {
+    updateLogo: (state, action: PayloadAction<LogoState>) => {
       if (state.form) {
-        state.form.logo = action.payload;
+        // Ensure size value is properly handled as a number
+        const sizeValue =
+          typeof action.payload.size === 'number' ? action.payload.size : 50; // Default to 50% if not provided
+
+        // Store the logo state with properly processed size
+        state.form.logo = {
+          ...action.payload,
+          size: sizeValue,
+          alignment: action.payload.alignment || 'CENTER',
+        };
+
+        // Update last saved timestamp
+        if (state.form.lastSaved !== undefined) {
+          state.form.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+      }
+    },
+    updateLogoSize: (state, action: PayloadAction<number>) => {
+      if (state.form && state.form.logo) {
+        // Ensure size is a valid number
+        const newSize = Math.max(0, Math.min(100, action.payload));
+
+        state.form.logo = {
+          ...state.form.logo,
+          size: newSize,
+        };
+
+        // Update last saved timestamp
+        if (state.form.lastSaved !== undefined) {
+          state.form.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+      }
+    },
+    updateLogoAlignment: (
+      state,
+      action: PayloadAction<'LEFT' | 'CENTER' | 'RIGHT'>
+    ) => {
+      if (state.form && state.form.logo) {
+        state.form.logo = {
+          ...state.form.logo,
+          alignment: action.payload,
+        };
+
         state.form.lastSaved = new Date().toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
@@ -281,18 +497,97 @@ const formBuilderSlice = createSlice({
       }
     },
     removeLogo: state => {
-      if (state.form && state.form.logo) {
-        delete state.form.logo;
+      if (state.form) {
+        state.form.logo = null;
         state.form.lastSaved = new Date().toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
         });
       }
     },
+    addPage: state => {
+      if (!state.form) return;
+
+      // Initialize pages array if it doesn't exist
+      if (!state.form.pages) {
+        state.form.pages = [];
+      }
+
+      const newPageId = uuidv4();
+      state.form.pages.push({
+        id: newPageId,
+        fields: [],
+      });
+
+      // Update last saved timestamp
+      state.form.lastSaved = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      // Automatically navigate to the new page
+      state.form.currentPageIndex = state.form.pages.length - 1;
+      state.form.selectedPageId = newPageId;
+    },
+    removePage: (state, action: PayloadAction<string>) => {
+      if (!state.form || !state.form.pages) return;
+
+      const pageId = action.payload;
+      const pageIndex = state.form.pages.findIndex(page => page.id === pageId);
+
+      if (pageIndex !== -1) {
+        // Don't allow removing the last page
+        if (state.form.pages.length <= 1) {
+          return;
+        }
+
+        // Remove the page
+        state.form.pages.splice(pageIndex, 1);
+
+        // Adjust current page index if needed
+        if (
+          state.form.currentPageIndex !== undefined &&
+          state.form.currentPageIndex >= state.form.pages.length
+        ) {
+          state.form.currentPageIndex = state.form.pages.length - 1;
+        }
+
+        // Update selected page ID
+        if (
+          state.form.currentPageIndex !== undefined &&
+          state.form.pages[state.form.currentPageIndex]
+        ) {
+          state.form.selectedPageId =
+            state.form.pages[state.form.currentPageIndex].id;
+        } else {
+          state.form.selectedPageId = null;
+        }
+
+        // Update last saved timestamp
+        state.form.lastSaved = new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+    },
+    setCurrentPage: (state, action: PayloadAction<number>) => {
+      if (!state.form || !state.form.pages) return;
+
+      const index = action.payload;
+
+      // Ensure index is within bounds
+      if (index >= 0 && index <= state.form.pages.length) {
+        state.form.currentPageIndex = index;
+
+        // Update selectedPageId if not on the thank you page
+        if (index < state.form.pages.length && state.form.pages[index]) {
+          state.form.selectedPageId = state.form.pages[index].id;
+        }
+      }
+    },
   },
 });
 
-// Helper function to get default label for a field type
 function getDefaultLabelForType(type: FieldType): string {
   switch (type) {
     case FieldType.HEADING:
@@ -320,7 +615,6 @@ function getDefaultLabelForType(type: FieldType): string {
   }
 }
 
-// Helper function to get label based on field type
 function getLabelForType(type: FieldType): string {
   switch (type) {
     case FieldType.HEADING:
@@ -365,7 +659,12 @@ export const {
   moveField,
   addFieldAtIndex,
   updateLogo,
+  updateLogoSize,
+  updateLogoAlignment,
   removeLogo,
+  addPage,
+  removePage,
+  setCurrentPage,
 } = formBuilderSlice.actions;
 
 export default formBuilderSlice.reducer;

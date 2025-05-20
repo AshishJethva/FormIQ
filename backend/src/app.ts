@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import { globalErrorHandler } from './utils/errorHandler';
 import { AppError } from './utils/appError';
+import uploadRoutes from './routes/uploadRoutes';
 
 const app = express();
 
@@ -36,7 +37,8 @@ app.use(
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Handle undefined routes
+app.use('/api/upload', uploadRoutes);
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });

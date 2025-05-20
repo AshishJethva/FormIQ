@@ -23,28 +23,39 @@ export interface Field {
   placeholder?: string;
   labelAlignment?: LabelAlignment;
   options?: { label: string; value: string }[];
+  defaultValue?: string | string[] | number;
   propertiesPanelOpen?: boolean;
   // Add more field-specific properties as needed
 }
 
 export interface FormSettings {
   submitButtonText: string;
+  showLogo?: boolean;
   thankyouMessage: string;
   defaultLabelAlignment: LabelAlignment;
   defaultRequiredField: boolean;
   // Add more form settings as needed
 }
 
+export interface LogoState {
+  src: string | null;
+  type: 'uploaded' | 'url' | null;
+  alignment: 'LEFT' | 'CENTER' | 'RIGHT';
+  size: number;
+  publicId?: string;
+}
 export interface Form {
   id: string;
   title: string;
   description?: string;
-  fields: Field[];
-  settings: FormSettings;
+  pages: FormPage[];
   selectedFieldId: string | null;
+  selectedPageId: string | null;
+  currentPageIndex: number;
   propertiesPanelOpen: boolean;
-  lastSaved: string;
-  logo?: Logo;
+  logo?: LogoState | null;
+  settings?: FormSettings;
+  lastSaved?: string;
 }
 export interface DragItem {
   id: string;
@@ -52,9 +63,7 @@ export interface DragItem {
   index: number;
   fieldType?: FieldType;
 }
-export interface Logo {
-  src: string;
-  type: 'uploaded' | 'url';
-  size?: number;
-  alignment?: 'LEFT' | 'CENTER' | 'RIGHT';
+export interface FormPage {
+  id: string;
+  fields: Field[];
 }

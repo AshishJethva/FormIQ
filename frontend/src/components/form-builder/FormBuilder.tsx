@@ -16,7 +16,6 @@ import FormCanvas from './canvas/FormCanvas';
 import PropertiesPanel from './properties-panel/PropertiesPanel';
 import { AnimatePresence } from 'framer-motion';
 import DragProvider from '@/providers/DragProvider';
-import { Toaster } from 'sonner';
 
 export default function FormBuilderLayout() {
   const dispatch = useDispatch();
@@ -113,7 +112,7 @@ export default function FormBuilderLayout() {
             !isPreviewEnabled && <PropertiesPanel />}
         </div>
       </div>
-      <Toaster position='top-right' />
     </DragProvider>
   );
 }
+
