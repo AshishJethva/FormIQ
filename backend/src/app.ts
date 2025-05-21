@@ -2,12 +2,14 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+// import helmet from 'helmet';
 
-import authRoutes from './routes/authRoutes';
-import dashboardRoutes from './routes/dashboardRoutes';
+import authRoutes from './routes/auth';
+import dashboardRoutes from './routes/dashboard';
+import formRoutes from './routes/forms';
 import { globalErrorHandler } from './utils/errorHandler';
 import { AppError } from './utils/appError';
-import uploadRoutes from './routes/uploadRoutes';
+import uploadRoutes from './routes/upload';
 
 const app = express();
 
@@ -23,6 +25,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
@@ -36,6 +39,7 @@ app.use(
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/forms', formRoutes);
 
 app.use('/api/upload', uploadRoutes);
 

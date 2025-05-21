@@ -6,6 +6,7 @@ import { RootState } from '@/redux/store';
 import { motion } from 'framer-motion';
 import { setCurrentPage } from '@/redux/slices/formBuilderSlice';
 import AddNewPageButton from './AddNewPageButton';
+import ThankYouPage from './ThankYouPage';
 
 export default function FormPagination() {
   const dispatch = useDispatch();
@@ -28,7 +29,7 @@ export default function FormPagination() {
   };
 
   return (
-    <div className='flex items-center border-t border-gray-200 mt-4 pt-2'>
+    <div className='flex items-center border-t border-gray-200 my-4 pt-2 w-[768px] mx-auto'>
       <div className='flex-1 flex items-center overflow-x-auto pb-2'>
         {form.pages.map((page, index) => {
           if (!page) return null;
@@ -69,7 +70,7 @@ export default function FormPagination() {
         )}
       </div>
 
-      {!isPreviewMode && <AddNewPageButton className='ml-2' />}
+      {!isPreviewMode && !ThankYouPage && <AddNewPageButton className='ml-2' />}
     </div>
   );
 }

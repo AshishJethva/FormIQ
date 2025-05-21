@@ -27,7 +27,13 @@ export function middleware(request: NextRequest) {
   }
 
   // Handle protected paths
-  const protectedPaths = ['/dashboard', '/profile', '/settings', '/forms'];
+  const protectedPaths = [
+    '/dashboard',
+    '/profile',
+    '/settings',
+    '/forms',
+    '/build',
+  ];
   const isProtectedPath = protectedPaths.some(path =>
     pathname.startsWith(path)
   );
@@ -57,3 +63,5 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
+
+

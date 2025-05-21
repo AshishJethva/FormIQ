@@ -1,4 +1,4 @@
-// src/components/form-builder/FormBuilderLayout.tsx
+// src/components/form-builder/FormBuilder.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -115,4 +115,3 @@ export default function FormBuilderLayout() {
     </DragProvider>
   );
 }
-

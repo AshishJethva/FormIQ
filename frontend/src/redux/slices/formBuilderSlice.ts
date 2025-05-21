@@ -1,52 +1,20 @@
 // src/redux/slices/formBuilderSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  Form,
-  Field,
-  FieldType,
-  FormSettings,
-  LogoState,
-  FormPage,
-} from '@/types/form';
+import { Form, Field, FieldType, FormSettings, LogoState } from '@/types/form';
 
 interface FormBuilderState {
   form: Form | null;
   isPreviewMode: boolean;
   isSaving: boolean;
+  showGridLines: boolean;
 }
 
-const createDefaultPage = (): FormPage => {
-  return {
-    id: uuidv4(),
-    fields: [],
-  };
-};
-
 const initialState: FormBuilderState = {
-  form: {
-    id: uuidv4(),
-    title: 'My Form',
-    pages: [createDefaultPage()],
-    logo: null,
-    selectedFieldId: null,
-    selectedPageId: null,
-    currentPageIndex: 0,
-    propertiesPanelOpen: false,
-    settings: {
-      submitButtonText: 'Submit',
-      showLogo: true,
-      defaultLabelAlignment: 'TOP',
-      thankyouMessage: 'Thank you for your submission!',
-      defaultRequiredField: false,
-    },
-    lastSaved: new Date().toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-  },
+  form: null,
   isPreviewMode: false,
   isSaving: false,
+  showGridLines: false,
 };
 
 const formBuilderSlice = createSlice({
@@ -54,32 +22,34 @@ const formBuilderSlice = createSlice({
   initialState,
   reducers: {
     initializeForm: state => {
-      const pageId = uuidv4();
-      state.form = {
-        id: uuidv4(),
-        title: 'Untitled Form',
-        description: '',
-        pages: [
-          {
-            id: pageId,
-            fields: [],
+      if (!state.form) {
+        const pageId = uuidv4();
+        state.form = {
+          id: uuidv4(),
+          title: 'Untitled Form',
+          description: '',
+          pages: [
+            {
+              id: pageId,
+              fields: [],
+            },
+          ],
+          selectedFieldId: null,
+          selectedPageId: pageId,
+          currentPageIndex: 0,
+          propertiesPanelOpen: false,
+          settings: {
+            submitButtonText: 'Submit',
+            defaultLabelAlignment: 'LEFT',
+            thankyouMessage: 'Thank you for your submission!',
+            defaultRequiredField: false,
           },
-        ],
-        selectedFieldId: null,
-        selectedPageId: pageId,
-        currentPageIndex: 0,
-        propertiesPanelOpen: false,
-        settings: {
-          submitButtonText: 'Submit',
-          defaultLabelAlignment: 'TOP',
-          thankyouMessage: 'Thank you for your submission!',
-          defaultRequiredField: false,
-        },
-        lastSaved: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      };
+          lastSaved: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        };
+      }
     },
     setFormTitle: (state, action: PayloadAction<string>) => {
       if (state.form) {
@@ -102,7 +72,7 @@ const formBuilderSlice = createSlice({
         type: action.payload.type,
         label: getLabelForType(action.payload.type),
         required: state.form.settings?.defaultRequiredField || false,
-        labelAlignment: state.form.settings?.defaultLabelAlignment || 'TOP',
+        labelAlignment: state.form.settings?.defaultLabelAlignment || 'LEFT',
       };
 
       // Add default helpText for email fields
@@ -530,44 +500,25 @@ const formBuilderSlice = createSlice({
       state.form.selectedPageId = newPageId;
     },
     removePage: (state, action: PayloadAction<string>) => {
-      if (!state.form || !state.form.pages) return;
+      if (!state.form) return;
 
       const pageId = action.payload;
       const pageIndex = state.form.pages.findIndex(page => page.id === pageId);
 
-      if (pageIndex !== -1) {
-        // Don't allow removing the last page
-        if (state.form.pages.length <= 1) {
-          return;
-        }
+      if (pageIndex === -1) return;
 
-        // Remove the page
-        state.form.pages.splice(pageIndex, 1);
+      // Remove the page
+      state.form.pages = state.form.pages.filter(page => page.id !== pageId);
 
-        // Adjust current page index if needed
-        if (
-          state.form.currentPageIndex !== undefined &&
-          state.form.currentPageIndex >= state.form.pages.length
-        ) {
-          state.form.currentPageIndex = state.form.pages.length - 1;
-        }
-
-        // Update selected page ID
-        if (
-          state.form.currentPageIndex !== undefined &&
-          state.form.pages[state.form.currentPageIndex]
-        ) {
-          state.form.selectedPageId =
-            state.form.pages[state.form.currentPageIndex].id;
-        } else {
-          state.form.selectedPageId = null;
-        }
-
-        // Update last saved timestamp
-        state.form.lastSaved = new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+      // Adjust currentPageIndex if needed
+      if (
+        state.form.currentPageIndex &&
+        state.form.currentPageIndex >= pageIndex
+      ) {
+        state.form.currentPageIndex = Math.max(
+          0,
+          state.form.currentPageIndex - 1
+        );
       }
     },
     setCurrentPage: (state, action: PayloadAction<number>) => {
@@ -583,6 +534,15 @@ const formBuilderSlice = createSlice({
         if (index < state.form.pages.length && state.form.pages[index]) {
           state.form.selectedPageId = state.form.pages[index].id;
         }
+      }
+    },
+    setCurrentPageIndex: (state, action: PayloadAction<number>) => {
+      if (!state.form) return;
+
+      // Ensure the index is valid
+      const newIndex = action.payload;
+      if (newIndex >= 0 && newIndex <= state.form.pages.length) {
+        state.form.currentPageIndex = newIndex;
       }
     },
   },
@@ -664,6 +624,7 @@ export const {
   removeLogo,
   addPage,
   removePage,
+  setCurrentPageIndex,
   setCurrentPage,
 } = formBuilderSlice.actions;
 

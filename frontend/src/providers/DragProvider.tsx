@@ -1,13 +1,13 @@
 // src/providers/DragProvider.tsx
 'use client';
 
+import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { ReactNode } from 'react';
 import CustomDragLayer from '@/components/form-builder/CustomDragLayer';
 
 interface DragProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export default function DragProvider({ children }: DragProviderProps) {

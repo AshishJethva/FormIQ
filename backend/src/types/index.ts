@@ -1,13 +1,6 @@
-import { Request } from 'express';
-import { Document } from 'mongoose';
-
 export interface JwtPayload {
   id: string;
   iat: number;
-}
-
-export interface RequestWithUser extends Request {
-  user?: Document;
 }
 
 export interface UserPayload {

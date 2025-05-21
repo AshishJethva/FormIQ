@@ -2,8 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle } from 'lucide-react';
 import { useDrop } from 'react-dnd';
 import { ItemTypes } from '@/types/dragTypes';
 import { FieldType } from '@/types/form';
@@ -16,7 +14,6 @@ interface FieldPlaceholderProps {
 
 export default function FieldPlaceholder({
   index,
-  pageId,
   onDrop,
 }: FieldPlaceholderProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -24,11 +21,12 @@ export default function FieldPlaceholder({
   // Set up drop target
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: [ItemTypes.FORM_ELEMENT, ItemTypes.FORM_FIELD],
+    canDrop: () => true, // Add this line
     collect: monitor => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-    drop: (item: any, monitor) => {
+    drop: (item: any) => {
       // If it's a new element from the sidebar
       if (item && item.type === ItemTypes.FORM_ELEMENT && item.fieldType) {
         onDrop(item.fieldType, index);

@@ -1,4 +1,6 @@
-export const ItemTypes = {
-  FORM_ELEMENT: 'form_element',
-  FORM_FIELD: 'form_field',
-};
+// src/types/dragTypes.ts
+
+export enum ItemTypes {
+  FORM_ELEMENT = 'form-element',
+  FORM_FIELD = 'form-field',
+}

@@ -52,7 +52,7 @@ export default function FormLogo() {
         };
       }
     }
-  }, [logo?.src, logo?.size]);
+  }, [logo?.src, logo?.size, logo]);
 
   if (!logo || !logo.src) {
     return null;
@@ -104,7 +104,7 @@ export default function FormLogo() {
 
   return (
     <div
-      className={`flex ${getAlignmentClass()} w-full overflow-visible py-4`}
+      className={`flex ${getAlignmentClass()} w-full mb-8 overflow-visible py-4`}
       style={{
         minHeight: '80px',
         height: containerHeight === 'auto' ? 'auto' : containerHeight,

@@ -1,6 +1,6 @@
 // src/utils/email.ts
 import nodemailer from 'nodemailer';
-import { IUser } from '../models/userModel';
+import { IUser } from '../models/User';
 
 interface EmailOptions {
   email: string;

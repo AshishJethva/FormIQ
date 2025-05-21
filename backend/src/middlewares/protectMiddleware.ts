@@ -1,14 +1,14 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';
 import jwt from 'jsonwebtoken';
-import User from '../models/userModel';
-import { RequestWithUser } from '../types/index';
+import User from '../models/User';
 import { JwtPayload } from '../types/index';
+import { AuthUser } from '../types/express';
 
 // Protect routes middleware
 export const protect = catchAsync(
-  async (req: RequestWithUser, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     // Get token from authorization header or cookies
     let token: string | undefined;
 
@@ -50,7 +50,7 @@ export const protect = catchAsync(
     }
 
     // Grant access to protected route and add user to request object
-    req.user = currentUser;
+    req.user = currentUser as AuthUser;
     res.locals.user = currentUser;
     next();
   }

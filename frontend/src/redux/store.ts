@@ -15,30 +15,27 @@ import {
   REGISTER,
 } from 'redux-persist';
 
-// Configure persistence for each reducer
-const formsPersistConfig = {
-  key: 'forms',
-  storage,
-  whitelist: ['forms', 'labels'], // Only persist forms and labels
-};
-
-const userPersistConfig = {
-  key: 'user',
-  storage,
-  whitelist: ['token', 'user'], // Persist both token and user data
-};
-
-// Combine reducers
+// Combine reducers without individual persistence
 const rootReducer = combineReducers({
-  forms: persistReducer(formsPersistConfig, formReducer),
+  forms: formReducer,
   app: appReducer,
-  user: persistReducer(userPersistConfig, userReducer),
+  user: userReducer,
   formBuilder: formBuilderReducer,
 });
 
+// Configure persistence for the entire store
+const persistConfig = {
+  key: 'root',
+  storage,
+  whitelist: ['forms', 'user', 'formBuilder'], // List reducers to persist (exclude 'app' if not needed)
+};
+
+// Create a persisted reducer for the entire store
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
 // Create the store
 export const store = configureStore({
-  reducer: rootReducer,
+  reducer: persistedReducer,
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
       serializableCheck: {
