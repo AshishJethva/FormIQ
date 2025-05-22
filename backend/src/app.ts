@@ -7,9 +7,11 @@ import morgan from 'morgan';
 import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import formRoutes from './routes/forms';
+import labelRoutes from './routes/labels';
 import { globalErrorHandler } from './utils/errorHandler';
 import { AppError } from './utils/appError';
 import uploadRoutes from './routes/upload';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 
@@ -35,12 +37,25 @@ app.use(
     credentials: true,
   })
 );
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/forms', formRoutes);
-
+app.use('/api/labels', labelRoutes);
 app.use('/api/upload', uploadRoutes);
 
 app.use((req: Request, res: Response, next: NextFunction) => {

@@ -4,7 +4,11 @@ import { catchAsync } from '../utils/catchAsync';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { JwtPayload } from '../types/index';
-import { AuthUser } from '../types/express';
+// import { AuthUser } from '../types/express';
+
+interface AuthRequest extends Request {
+  user?: any;
+}
 
 // Protect routes middleware
 export const protect = catchAsync(
@@ -50,7 +54,7 @@ export const protect = catchAsync(
     }
 
     // Grant access to protected route and add user to request object
-    req.user = currentUser as AuthUser;
+    req.user = currentUser as AuthRequest['user'];
     res.locals.user = currentUser;
     next();
   }

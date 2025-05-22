@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { ZodError } from 'zod';
 import User from '../models/User';
-import { signupSchema, loginSchema } from '../schemas/authSchema';
+import { signupSchema, loginSchema } from '../validation/authValidation';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';
 import { UserPayload } from '../types/index';

@@ -1,3 +1,4 @@
+// types/auth/actions.ts
 export interface LoginRequest {
   email: string;
   password: string;

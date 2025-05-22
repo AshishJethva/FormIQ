@@ -5,8 +5,9 @@ import { Types } from 'mongoose';
 // Define the AuthUser interface
 export interface AuthUser {
   _id: Types.ObjectId;
+  id?: string;
   name?: string;
-  email?: string;
+  email: string;
 }
 
 // Important: When using ES modules, module augmentation needs to be done differently

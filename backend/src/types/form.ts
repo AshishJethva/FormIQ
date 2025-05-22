@@ -1,69 +1,81 @@
-import { Document, Types } from 'mongoose';
-
-export enum FieldType {
-  HEADING = 'HEADING',
-  FULL_NAME = 'FULL_NAME',
-  EMAIL = 'EMAIL',
-  PHONE = 'PHONE',
-  ADDRESS = 'ADDRESS',
-  DATE_PICKER = 'DATE_PICKER',
-  APPOINTMENT = 'APPOINTMENT',
-  SIGNATURE = 'SIGNATURE',
-  FILL_BLANK = 'FILL_BLANK',
-  PRODUCT_LIST = 'PRODUCT_LIST',
-}
-
-export interface IField {
+// src/types/index.ts - Type Definitions
+export interface Field {
   id: string;
   type: FieldType;
   label: string;
   required: boolean;
   helpText?: string;
   placeholder?: string;
-  labelAlignment?: 'LEFT' | 'CENTER' | 'RIGHT' | 'TOP';
-  options?: string[];
+  labelAlignment?: LabelAlignment;
+  options?: { label: string; value: string }[];
+  defaultValue?: string | string[] | number;
+  propertiesPanelOpen?: boolean;
 }
 
-export interface IPage {
+export interface FormPage {
   id: string;
-  fields: IField[];
+  fields: Field[];
 }
 
-export interface IFormSettings {
+export enum FieldType {
+  HEADING = 'heading',
+  FULL_NAME = 'fullName',
+  EMAIL = 'email',
+  ADDRESS = 'address',
+  PHONE = 'phone',
+  DATE_PICKER = 'datePicker',
+  APPOINTMENT = 'appointment',
+  SIGNATURE = 'signature',
+  FILL_BLANK = 'fillBlank',
+  PRODUCT_LIST = 'productList',
+}
+
+export interface LogoState {
+  src: string | null;
+  type: 'uploaded' | 'url' | null;
+  alignment: 'LEFT' | 'CENTER' | 'RIGHT';
+  size: number;
+  publicId?: string;
+}
+
+export interface FormSettings {
   submitButtonText: string;
-  defaultLabelAlignment: 'LEFT' | 'CENTER' | 'RIGHT' | 'TOP';
+  showLogo?: boolean;
   thankyouMessage: string;
+  defaultLabelAlignment: LabelAlignment;
   defaultRequiredField: boolean;
 }
 
-export interface ILogoState {
-  url: string;
-  size: number;
-  alignment: 'LEFT' | 'CENTER' | 'RIGHT';
+export type LabelAlignment = 'LEFT' | 'RIGHT';
+
+export interface Label {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: Date;
+  userId: string;
 }
 
-export interface IForm extends Document {
+export interface Form {
   id: string;
   title: string;
-  description: string;
-  creator: Types.ObjectId;
-  pages: IPage[];
-  selectedFieldId: string | null;
-  selectedPageId: string | null;
-  currentPageIndex: number;
-  propertiesPanelOpen: boolean;
-  settings: IFormSettings;
-  lastSaved: string;
-  logo: ILogoState | null;
+  description?: string;
+  pages: FormPage[];
+  selectedFieldId?: string | null;
+  selectedPageId?: string | null;
+  currentPageIndex?: number;
+  propertiesPanelOpen?: boolean;
+  logo?: LogoState | null;
+  settings?: FormSettings;
+  lastSaved?: string;
+  userId: string;
   createdAt: Date;
   updatedAt: Date;
+  isPublished: boolean;
+  submissions: number;
+  labels?: string[];
+  isFavorite: boolean;
+  isArchived: boolean;
+  isTrashed: boolean;
+  trashedAt?: Date;
 }
-
-export interface IFormSubmission extends Document {
-  form: Types.ObjectId;
-  data: Record<string, any>;
-  submittedBy: string | null; // Could be email or null for anonymous
-  submittedAt: Date;
-}
-
-export type LabelAlignment = 'LEFT' | 'CENTER' | 'RIGHT' | 'TOP';

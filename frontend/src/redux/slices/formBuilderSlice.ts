@@ -27,7 +27,6 @@ const formBuilderSlice = createSlice({
         state.form = {
           id: uuidv4(),
           title: 'Untitled Form',
-          description: '',
           pages: [
             {
               id: pageId,
@@ -239,6 +238,7 @@ const formBuilderSlice = createSlice({
       state.form.settings = {
         ...state.form.settings,
         ...action.payload,
+
       };
       state.form.lastSaved = new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -382,7 +382,7 @@ const formBuilderSlice = createSlice({
         label: getDefaultLabelForType(type),
         required: state.form.settings?.defaultRequiredField || false,
         helpText: '',
-        labelAlignment: state.form.settings?.defaultLabelAlignment || 'TOP',
+        labelAlignment: state.form.settings?.defaultLabelAlignment || 'LEFT',
       };
 
       // Add default helpText for email fields

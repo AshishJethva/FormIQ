@@ -17,7 +17,7 @@ import PropertiesPanel from './properties-panel/PropertiesPanel';
 import { AnimatePresence } from 'framer-motion';
 import DragProvider from '@/providers/DragProvider';
 
-export default function FormBuilderLayout() {
+export default function FormBuilder() {
   const dispatch = useDispatch();
   const formState = useSelector((state: RootState) => state.formBuilder);
   const [activeTab, setActiveTab] = useState<string>('BUILD');
