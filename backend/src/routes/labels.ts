@@ -11,6 +11,7 @@ import {
   createLabelSchema,
   updateLabelSchema,
 } from '../validation/labelValidation';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -23,7 +24,8 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { search, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
 
-    const query: any = { userId: req.user.id };
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const query: any = { userId };
 
     // Search functionality
     if (search) {
@@ -58,9 +60,10 @@ router.get(
   '/:id',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const label = await Label.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!label) {
@@ -90,7 +93,8 @@ router.post(
     const { name, color } = req.body;
 
     // Check if label with same name exists for this user
-    const existingLabel = await Label.findOne({ name, userId: req.user.id });
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const existingLabel = await Label.findOne({ name, userId });
     if (existingLabel) {
       throw new ApiError('Label with this name already exists', 400);
     }
@@ -98,7 +102,7 @@ router.post(
     const label = await Label.create({
       name,
       color,
-      userId: req.user.id,
+      userId,
     });
 
     res.status(201).json({
@@ -122,9 +126,10 @@ router.put(
   protect,
   validate(updateLabelSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const label = await Label.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!label) {
@@ -137,7 +142,7 @@ router.put(
     if (name && name !== label.name) {
       const existingLabel = await Label.findOne({
         name,
-        userId: req.user.id,
+        userId,
         _id: { $ne: req.params.id },
       });
       if (existingLabel) {
@@ -171,9 +176,10 @@ router.delete(
   '/:id',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const label = await Label.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!label) {
@@ -181,10 +187,7 @@ router.delete(
     }
 
     // Remove label from all forms
-    await Form.updateMany(
-      { userId: req.user.id },
-      { $pull: { labels: req.params.id } }
-    );
+    await Form.updateMany({ userId }, { $pull: { labels: req.params.id } });
 
     await Label.findByIdAndDelete(req.params.id);
 

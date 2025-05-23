@@ -1,10 +1,12 @@
 'use client';
+
+import { StoreDispatch } from '@/redux/store';
+
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import CreateFormModal from '@/components/modals/CreateFormModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FilterBar, Navbar, FormsList, Sidebar } from '@/components/dashboard';
-import type { SortOption } from '@/components/dashboard/FilterBar';
 import {
   AlertCircle,
   FileText,
@@ -13,18 +15,23 @@ import {
   Trash2,
   Circle,
   PlusSquare,
+  Loader2,
 } from 'lucide-react';
 
 // Import Redux actions and selectors
 import {
   selectForms,
-  createForm,
   Label,
+  fetchLabels,
+  fetchForms,
+  createFormAsync,
+  selectFormsLoading,
 } from '@/redux/slices/dashboard/formsSlice';
 
 // Import UI components
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useFormData } from '@/hooks/useFormData';
 
 // Define CustomLabel to match the Sidebar's interface
 interface CustomLabel {
@@ -34,14 +41,29 @@ interface CustomLabel {
   createdAt: number;
 }
 
-// Dashboard page component
 export default function DashboardPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch: StoreDispatch = useDispatch();
+
+  // Use the custom hook to load data
+  useFormData();
 
   // Check if the create modal should be shown
   const showCreateModal = searchParams.get('modal') === 'create';
+
+  // Redux selectors
+  const forms = useSelector(selectForms);
+  const formsLoading = useSelector(selectFormsLoading);
+
+  // Local state for UI
+  const [activeSection, setActiveSection] = useState('All');
+  const [activeSectionData, setActiveSectionData] = useState<Label | null>(
+    null
+  );
+  const [formName, setFormName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [isCreatingForm, setIsCreatingForm] = useState(false);
 
   // If Escape key is pressed, close the modal
   useEffect(() => {
@@ -55,46 +77,47 @@ export default function DashboardPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showCreateModal, router]);
 
-  // Get forms and labels from Redux store
-  const forms = useSelector(selectForms);
+  useEffect(() => {
+    dispatch(fetchLabels() as any);
+    dispatch(fetchForms({}) as any);
+  }, [dispatch]);
 
-  // Local state for UI
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('creation-date');
-  const [activeSection, setActiveSection] = useState('All');
-  // Fix the type to accept both Redux Label and Sidebar's CustomLabel
-  const [activeSectionData, setActiveSectionData] = useState<
-    CustomLabel | Label | null
-  >(null);
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-
-  // Handle section change from sidebar
-  // Update the parameter type to match what Sidebar passes
   const handleSectionChange = (section: string, data?: CustomLabel | Label) => {
     setActiveSection(section);
     setActiveSectionData(data || null);
-    setSearchTerm(''); // Reset search when changing sections
   };
 
   // Handle form creation
-  const handleCreateForm = () => {
+  const handleCreateForm = async () => {
     if (!formName.trim()) {
       toast.error('Form name is required');
       return;
     }
 
-    dispatch(
-      createForm({
-        name: formName,
-        description: formDescription,
-      })
-    );
+    setIsCreatingForm(true);
 
-    toast.success('Form created successfully');
-    setFormName('');
-    setFormDescription('');
-    handleSectionChange('All');
+    try {
+      await dispatch(
+        createFormAsync({
+          name: formName,
+          description: formDescription,
+        }) as any
+      ).unwrap();
+
+      toast.success('Form created successfully');
+      setFormName('');
+      setFormDescription('');
+      handleSectionChange('All');
+
+      // Refresh forms list
+      dispatch(fetchForms({}) as any);
+    } catch (error: any) {
+      toast.error('Failed to create form', {
+        description: error.message || 'Please try again',
+      });
+    } finally {
+      setIsCreatingForm(false);
+    }
   };
 
   // Filter forms based on the active section
@@ -227,8 +250,16 @@ export default function DashboardPage() {
                   <Button
                     className='bg-[#ff6100] hover:bg-[#E65700] text-white'
                     onClick={handleCreateForm}
+                    disabled={isCreatingForm || !formName.trim()}
                   >
-                    Create Form
+                    {isCreatingForm ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Form'
+                    )}
                   </Button>
                 </div>
               </div>
@@ -277,14 +308,7 @@ export default function DashboardPage() {
                   : 'Dashboard'}
               </h1>
             </div>
-            {!isTrash && (
-              <FilterBar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-              />
-            )}
+            {!isTrash && <FilterBar activeSection={activeSection} />}
             {isTrash && (
               <div className='text-sm text-gray-500'>
                 Forms are permanently deleted after 30 days
@@ -301,22 +325,25 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Forms list or empty state */}
-          {hasFormsInSection ? (
-            <FormsList
-              forms={forms}
-              searchTerm={searchTerm}
-              sortBy={sortBy}
-              activeSection={activeSection}
-              onSectionChange={handleSectionChange}
-            />
-          ) : (
-            <div className='text-center py-12 text-gray-500'>
-              {getEmptyStateContent().icon}
-              <p className='text-lg mb-2'>{getEmptyStateContent().title}</p>
-              <p>{getEmptyStateContent().description}</p>
+          {/* Loading state */}
+          {formsLoading && (
+            <div className='text-center py-12'>
+              <Loader2 className='h-8 w-8 mx-auto mb-4 animate-spin text-gray-400' />
+              <p className='text-gray-500'>Loading forms...</p>
             </div>
           )}
+
+          {/* Forms list or empty state */}
+          {!formsLoading &&
+            (hasFormsInSection ? (
+              <FormsList activeSection={activeSection} />
+            ) : (
+              <div className='text-center py-12 text-gray-500'>
+                {getEmptyStateContent().icon}
+                <p className='text-lg mb-2'>{getEmptyStateContent().title}</p>
+                <p>{getEmptyStateContent().description}</p>
+              </div>
+            ))}
         </main>
       </>
     );

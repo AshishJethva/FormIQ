@@ -23,32 +23,6 @@ api.interceptors.request.use(
   error => Promise.reject(error)
 );
 
-// Form API endpoints
-export const formAPI = {
-  // Get all forms for current user
-  getForms: () => api.get('/forms'),
-
-  // Get a specific form
-  getForm: (formId: string) => api.get(`/forms/${formId}`),
-
-  // Create a new form
-  createForm: (formData: any) => api.post('/forms', formData),
-
-  // Update an existing form
-  updateForm: (formId: string, formData: any) =>
-    api.put(`/forms/${formId}`, formData),
-
-  // Delete a form
-  deleteForm: (formId: string) => api.delete(`/forms/${formId}`),
-
-  // Update form logo
-  updateLogo: (formId: string, logoData: any) =>
-    api.put(`/forms/${formId}/logo`, logoData),
-
-  // Remove form logo
-  removeLogo: (formId: string) => api.delete(`/forms/${formId}/logo`),
-};
-
 // Upload API endpoints
 export const uploadAPI = {
   // Upload logo to Cloudinary
@@ -65,7 +39,6 @@ export const uploadAPI = {
 };
 
 const apiService = {
-  formAPI,
   uploadAPI,
 };
 

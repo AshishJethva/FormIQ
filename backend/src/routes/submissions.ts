@@ -1,13 +1,13 @@
 // src/routes/submissions.ts - Submissions Routes
 import express from 'express';
 import { Request, Response } from 'express';
-import { protect, optionalAuth } from '../middleware/auth';
+import { protect } from '../middleware/protect';
 import Submission from '../models/Submission';
 import Form from '../models/Form';
 import { validate } from '../middleware/validation';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/ApiError';
-import { submitFormSchema } from '../validation/schemas';
+import { submitFormSchema } from '../validation/submissionValidation';
 
 const router = express.Router();
 
@@ -122,7 +122,6 @@ router.get(
 // @access  Public
 router.post(
   '/:formId/submit',
-  optionalAuth,
   validate(submitFormSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { formId } = req.params;

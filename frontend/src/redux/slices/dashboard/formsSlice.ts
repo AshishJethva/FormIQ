@@ -1,23 +1,25 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { formsService } from '@/services/forms';
+import { labelsService } from '@/services/labels';
 import type { RootState } from '../../store';
 
 // Define interface for forms
 export interface Form {
-  id: number;
+  id: string;
   name: string;
+  description?: string;
   submissions: number;
   createdAt: string;
-  lastEdited?: string;
-  lastSubmission?: string;
-  unread?: boolean;
-  isFavorite?: boolean;
-  isArchived?: boolean;
-  isTrashed?: boolean;
-  labels?: string[];
+  lastEdited: string;
+  lastSubmission: string;
+  unread: boolean;
+  isFavorite: boolean;
+  isArchived: boolean;
+  isTrashed: boolean;
+  labels: string[];
   daysRemaining?: number;
 }
 
-// Define interface for labels
 export interface Label {
   id: string;
   name: string;
@@ -25,120 +27,208 @@ export interface Label {
   createdAt: number;
 }
 
-// Define interface for the forms state
 interface FormsState {
   forms: Form[];
   labels: Label[];
   isLoading: boolean;
+  labelsLoading: boolean;
   error: string | null;
+  labelsError: string | null;
+  pagination: {
+    current: number;
+    pages: number;
+    total: number;
+    limit: number;
+  } | null;
+  currentFilters: {
+    search: string;
+    status: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    labels: string[];
+  };
 }
 
-// Sample initial data
-const initialForms: Form[] = [
-  {
-    id: 1,
-    name: 'Form',
-    submissions: 0,
-    createdAt: '2025-05-11',
-    lastEdited: '2025-05-12',
-    lastSubmission: '',
-    unread: false,
-    isFavorite: false,
-    isArchived: false,
-    isTrashed: false,
-  },
-  {
-    id: 2,
-    name: 'React Developer Job Application',
-    submissions: 3,
-    createdAt: '2025-05-08',
-    lastEdited: '2025-05-10',
-    lastSubmission: '2025-05-14',
-    unread: true,
-    isFavorite: false,
-    isArchived: false,
-    isTrashed: false,
-  },
-  {
-    id: 3,
-    name: 'Customer Feedback Survey',
-    submissions: 12,
-    createdAt: '2025-05-05',
-    lastEdited: '2025-05-07',
-    lastSubmission: '2025-05-13',
-    unread: true,
-    isFavorite: true,
-    isArchived: false,
-    isTrashed: false,
-  },
-  {
-    id: 4,
-    name: 'Event Registration',
-    submissions: 8,
-    createdAt: '2025-05-09',
-    lastEdited: '2025-05-09',
-    lastSubmission: '2025-05-14',
-    unread: false,
-    isFavorite: false,
-    isArchived: false,
-    isTrashed: false,
-  },
-  {
-    id: 101,
-    name: 'Old Form',
-    submissions: 0,
-    createdAt: '2025-05-11',
-    lastEdited: '2025-05-12',
-    lastSubmission: '',
-    unread: false,
-    isFavorite: false,
-    isArchived: false,
-    isTrashed: true,
-    daysRemaining: 29,
-  },
-  {
-    id: 102,
-    name: 'Old Survey',
-    submissions: 5,
-    createdAt: '2025-05-09',
-    lastEdited: '2025-05-09',
-    lastSubmission: '',
-    unread: false,
-    isFavorite: false,
-    isArchived: false,
-    isTrashed: true,
-    daysRemaining: 28,
-  },
-];
+// Async thunks
+export const fetchForms = createAsyncThunk(
+  'forms/fetchForms',
+  async (
+    filters: {
+      search?: string;
+      labels?: string[];
+      status?:
+        | 'published'
+        | 'draft'
+        | 'archived'
+        | 'trashed'
+        | 'favorites'
+        | 'all';
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      page?: number;
+      limit?: number;
+    } = {}
+  ) => {
+    const response = await formsService.getForms(filters);
+    return response;
+  }
+);
 
-// Initial sample labels
-const initialLabels: Label[] = [
-  {
-    id: 'label-1',
-    name: 'Important',
-    color: '#EF4444', // Red
-    createdAt: Date.now() - 3000000,
-  },
-  {
-    id: 'label-2',
-    name: 'Work',
-    color: '#3B82F6', // Blue
-    createdAt: Date.now() - 2000000,
-  },
-  {
-    id: 'label-3',
-    name: 'Personal',
-    color: '#10B981', // Green
-    createdAt: Date.now() - 1000000,
-  },
-];
+export const toggleFormFavorite = createAsyncThunk(
+  'forms/toggleFavorite',
+  async (formId: string) => {
+    const response = await formsService.toggleFavorite(formId);
+    return { formId, ...response.data };
+  }
+);
 
-// Initial state
+export const archiveFormAsync = createAsyncThunk(
+  'forms/archiveForm',
+  async (formId: string) => {
+    await formsService.archiveForm(formId);
+    return formId;
+  }
+);
+
+export const trashFormAsync = createAsyncThunk(
+  'forms/trashForm',
+  async (formId: string) => {
+    await formsService.trashForm(formId);
+    return formId;
+  }
+);
+
+export const restoreFormAsync = createAsyncThunk(
+  'forms/restoreForm',
+  async (formId: string) => {
+    await formsService.restoreForm(formId);
+    return formId;
+  }
+);
+
+export const deleteFormAsync = createAsyncThunk(
+  'forms/deleteForm',
+  async (formId: string) => {
+    await formsService.deleteForm(formId);
+    return formId;
+  }
+);
+
+export const bulkTrashFormsAsync = createAsyncThunk(
+  'forms/bulkTrashForms',
+  async (formIds: string[]) => {
+    await formsService.bulkAction(formIds, 'trash');
+    return formIds;
+  }
+);
+
+export const bulkArchiveFormsAsync = createAsyncThunk(
+  'forms/bulkArchiveForms',
+  async (formIds: string[]) => {
+    await formsService.bulkAction(formIds, 'archive');
+    return formIds;
+  }
+);
+
+export const bulkAddLabelToFormsAsync = createAsyncThunk(
+  'forms/bulkAddLabelToForms',
+  async ({ formIds, labelId }: { formIds: string[]; labelId: string }) => {
+    await formsService.bulkAddLabel(formIds, labelId);
+    return { formIds, labelId };
+  }
+);
+
+export const bulkRemoveLabelFromFormsAsync = createAsyncThunk(
+  'forms/bulkRemoveLabelFromForms',
+  async ({ formIds, labelId }: { formIds: string[]; labelId: string }) => {
+    await formsService.bulkRemoveLabel(formIds, labelId);
+    return { formIds, labelId };
+  }
+);
+
+export const createFormAsync = createAsyncThunk(
+  'forms/createForm',
+  async (data: { name: string; description?: string }, { rejectWithValue }) => {
+    try {
+      const response = await formsService.createForm({
+        name: data.name,
+        description: data.description,
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to create form'
+      );
+    }
+  }
+);
+
+// Async thunks for labels
+export const fetchLabels = createAsyncThunk('forms/fetchLabels', async ({}) => {
+  const response = await labelsService.getLabels();
+  return response;
+});
+
+export const createLabelAsync = createAsyncThunk(
+  'forms/createLabel',
+  async (data: { name: string; color: string }, { rejectWithValue }) => {
+    try {
+      const response = await labelsService.createLabel(data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to create label'
+      );
+    }
+  }
+);
+
+export const updateLabelAsync = createAsyncThunk(
+  'forms/updateLabel',
+  async (
+    { id, data }: { id: string; data: { name?: string; color?: string } },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await labelsService.updateLabel(id, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to update label'
+      );
+    }
+  }
+);
+
+export const deleteLabelAsync = createAsyncThunk(
+  'forms/deleteLabel',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await labelsService.deleteLabel(id);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete label'
+      );
+    }
+  }
+);
+
 const initialState: FormsState = {
-  forms: initialForms,
-  labels: initialLabels,
+  forms: [],
+  labels: [],
   isLoading: false,
+  labelsLoading: false,
   error: null,
+  labelsError: null,
+  pagination: null,
+  currentFilters: {
+    search: '',
+    status: 'all',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    labels: [],
+  },
 };
 
 // Create the slice
@@ -157,7 +247,7 @@ export const formsSlice = createSlice({
     },
 
     // Toggle favorite status for a form
-    toggleFavorite: (state, action: PayloadAction<number>) => {
+    toggleFavorite: (state, action: PayloadAction<string>) => {
       const form = state.forms.find(form => form.id === action.payload);
       if (form) {
         form.isFavorite = !form.isFavorite;
@@ -165,7 +255,7 @@ export const formsSlice = createSlice({
     },
 
     // Archive a form
-    archiveForm: (state, action: PayloadAction<number>) => {
+    archiveForm: (state, action: PayloadAction<string>) => {
       const form = state.forms.find(form => form.id === action.payload);
       if (form) {
         form.isArchived = true;
@@ -173,7 +263,7 @@ export const formsSlice = createSlice({
     },
 
     // Move a form to trash
-    trashForm: (state, action: PayloadAction<number>) => {
+    trashForm: (state, action: PayloadAction<string>) => {
       const form = state.forms.find(form => form.id === action.payload);
       if (form) {
         form.isTrashed = true;
@@ -183,7 +273,7 @@ export const formsSlice = createSlice({
     },
 
     // Restore a form from archive or trash
-    restoreForm: (state, action: PayloadAction<number>) => {
+    restoreForm: (state, action: PayloadAction<string>) => {
       const form = state.forms.find(form => form.id === action.payload);
       if (form) {
         form.isArchived = false;
@@ -193,12 +283,12 @@ export const formsSlice = createSlice({
     },
 
     // Permanently delete a form
-    deleteForm: (state, action: PayloadAction<number>) => {
+    deleteForm: (state, action: PayloadAction<string>) => {
       state.forms = state.forms.filter(form => form.id !== action.payload);
     },
 
     // Bulk actions - move multiple forms to trash
-    bulkTrashForms: (state, action: PayloadAction<number[]>) => {
+    bulkTrashForms: (state, action: PayloadAction<string[]>) => {
       state.forms = state.forms.map(form =>
         action.payload.includes(form.id)
           ? { ...form, isTrashed: true, daysRemaining: 30 }
@@ -207,7 +297,7 @@ export const formsSlice = createSlice({
     },
 
     // Bulk actions - archive multiple forms
-    bulkArchiveForms: (state, action: PayloadAction<number[]>) => {
+    bulkArchiveForms: (state, action: PayloadAction<string[]>) => {
       state.forms = state.forms.map(form =>
         action.payload.includes(form.id) ? { ...form, isArchived: true } : form
       );
@@ -216,7 +306,7 @@ export const formsSlice = createSlice({
     // Add label to a form
     addLabelToForm: (
       state,
-      action: PayloadAction<{ formId: number; labelId: string }>
+      action: PayloadAction<{ formId: string; labelId: string }>
     ) => {
       const form = state.forms.find(form => form.id === action.payload.formId);
       if (form) {
@@ -232,7 +322,7 @@ export const formsSlice = createSlice({
     // Remove label from a form
     removeLabelFromForm: (
       state,
-      action: PayloadAction<{ formId: number; labelId: string }>
+      action: PayloadAction<{ formId: string; labelId: string }>
     ) => {
       const form = state.forms.find(form => form.id === action.payload.formId);
       if (form && form.labels) {
@@ -245,9 +335,9 @@ export const formsSlice = createSlice({
       state,
       action: PayloadAction<{ name: string; description?: string }>
     ) => {
-      const newId = Math.max(...state.forms.map(form => form.id)) + 1;
+      const newId = Math.max(...state.forms.map(form => parseInt(form.id))) + 1;
       const newForm: Form = {
-        id: newId,
+        id: newId.toString(),
         name: action.payload.name,
         submissions: 0,
         createdAt: new Date().toISOString().split('T')[0],
@@ -256,6 +346,8 @@ export const formsSlice = createSlice({
         isFavorite: false,
         isArchived: false,
         isTrashed: false,
+        labels: [],
+        lastSubmission: '',
       };
       state.forms.push(newForm);
     },
@@ -308,7 +400,7 @@ export const formsSlice = createSlice({
     bulkAddLabelToForms: (
       state,
       action: PayloadAction<{
-        formIds: number[];
+        formIds: string[];
         labelId: string;
       }>
     ) => {
@@ -330,7 +422,7 @@ export const formsSlice = createSlice({
     bulkRemoveLabelFromForms: (
       state,
       action: PayloadAction<{
-        formIds: number[];
+        formIds: string[];
         labelId: string;
       }>
     ) => {
@@ -343,6 +435,159 @@ export const formsSlice = createSlice({
         }
       });
     },
+
+    setFilters: (
+      state,
+      action: PayloadAction<Partial<typeof initialState.currentFilters>>
+    ) => {
+      state.currentFilters = { ...state.currentFilters, ...action.payload };
+    },
+
+    clearError: state => {
+      state.error = null;
+    },
+    clearLabelsError: state => {
+      state.labelsError = null;
+    },
+
+    toggleFavoriteOptimistic: (state, action: PayloadAction<string>) => {
+      const form = state.forms.find(form => form.id === action.payload);
+      if (form) {
+        form.isFavorite = !form.isFavorite;
+      }
+    },
+  },
+  extraReducers: builder => {
+    builder
+      .addCase(fetchForms.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchForms.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.forms = action.payload.data;
+        state.pagination = action.payload.pagination;
+      })
+      .addCase(fetchForms.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Failed to fetch forms';
+      })
+      .addCase(createFormAsync.fulfilled, (state, action) => {
+        state.forms.unshift(action.payload);
+      })
+      .addCase(toggleFormFavorite.fulfilled, (state, action) => {
+        const form = state.forms.find(
+          form => form.id === action.payload.formId
+        );
+        if (form) {
+          form.isFavorite = action.payload.isFavorite;
+        }
+      })
+      .addCase(archiveFormAsync.fulfilled, (state, action) => {
+        const form = state.forms.find(form => form.id === action.payload);
+        if (form) {
+          form.isArchived = true;
+        }
+      })
+      .addCase(trashFormAsync.fulfilled, (state, action) => {
+        const form = state.forms.find(form => form.id === action.payload);
+        if (form) {
+          form.isTrashed = true;
+          form.daysRemaining = 30;
+        }
+      })
+      .addCase(restoreFormAsync.fulfilled, (state, action) => {
+        const form = state.forms.find(form => form.id === action.payload);
+        if (form) {
+          form.isArchived = false;
+          form.isTrashed = false;
+          form.daysRemaining = undefined;
+        }
+      })
+      .addCase(deleteFormAsync.fulfilled, (state, action) => {
+        state.forms = state.forms.filter(form => form.id !== action.payload);
+      })
+      .addCase(bulkTrashFormsAsync.fulfilled, (state, action) => {
+        state.forms = state.forms.map(form =>
+          action.payload.includes(form.id)
+            ? { ...form, isTrashed: true, daysRemaining: 30 }
+            : form
+        );
+      })
+      .addCase(bulkArchiveFormsAsync.fulfilled, (state, action) => {
+        state.forms = state.forms.map(form =>
+          action.payload.includes(form.id)
+            ? { ...form, isArchived: true }
+            : form
+        );
+      })
+      .addCase(bulkAddLabelToFormsAsync.fulfilled, (state, action) => {
+        const { formIds, labelId } = action.payload;
+        state.forms = state.forms.map(form => {
+          if (formIds.includes(form.id)) {
+            const labels = form.labels || [];
+            if (!labels.includes(labelId)) {
+              return { ...form, labels: [...labels, labelId] };
+            }
+          }
+          return form;
+        });
+      })
+      .addCase(bulkRemoveLabelFromFormsAsync.fulfilled, (state, action) => {
+        const { formIds, labelId } = action.payload;
+        state.forms = state.forms.map(form => {
+          if (formIds.includes(form.id) && form.labels) {
+            return {
+              ...form,
+              labels: form.labels.filter(id => id !== labelId),
+            };
+          }
+          return form;
+        });
+      })
+
+      // Fetch labels
+      .addCase(fetchLabels.pending, state => {
+        state.labelsLoading = true;
+        state.labelsError = null;
+      })
+      .addCase(fetchLabels.fulfilled, (state, action) => {
+        state.labelsLoading = false;
+        state.labels = action.payload.data;
+      })
+      .addCase(fetchLabels.rejected, (state, action) => {
+        state.labelsLoading = false;
+        state.labelsError =
+          (action.payload as string) || 'Failed to fetch labels';
+      })
+
+      // Create label
+      .addCase(createLabelAsync.fulfilled, (state, action) => {
+        state.labels.unshift(action.payload);
+      })
+
+      // Update label
+      .addCase(updateLabelAsync.fulfilled, (state, action) => {
+        const index = state.labels.findIndex(
+          label => label.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.labels[index] = action.payload;
+        }
+      })
+
+      // Delete label
+      .addCase(deleteLabelAsync.fulfilled, (state, action) => {
+        state.labels = state.labels.filter(
+          label => label.id !== action.payload
+        );
+        // Remove label from all forms
+        state.forms = state.forms.map(form => ({
+          ...form,
+          labels:
+            form.labels?.filter(labelId => labelId !== action.payload) || [],
+        }));
+      });
   },
 });
 
@@ -365,15 +610,28 @@ export const {
   deleteLabel,
   bulkAddLabelToForms,
   bulkRemoveLabelFromForms,
+  setFilters,
+  clearError,
+  toggleFavoriteOptimistic,
+  clearLabelsError,
 } = formsSlice.actions;
 
 // Export selectors
 export const selectForms = (state: RootState) => state.forms.forms;
 export const selectLabels = (state: RootState) => state.forms.labels;
-export const selectFormById = (id: number) => (state: RootState) =>
+export const selectFormById = (id: string) => (state: RootState) =>
   state.forms.forms.find(form => form.id === id);
 export const selectLabelById = (id: string) => (state: RootState) =>
   state.forms.labels.find(label => label.id === id);
+export const selectFormsLoading = (state: RootState) => state.forms.isLoading;
+export const selectLabelsLoading = (state: RootState) =>
+  state.forms.labelsLoading;
+export const selectLabelsError = (state: RootState) => state.forms.labelsError;
+export const selectFormsError = (state: RootState) => state.forms.error;
+export const selectFormsPagination = (state: RootState) =>
+  state.forms.pagination;
+export const selectCurrentFilters = (state: RootState) =>
+  state.forms.currentFilters;
 
 // Export reducer
 export default formsSlice.reducer;

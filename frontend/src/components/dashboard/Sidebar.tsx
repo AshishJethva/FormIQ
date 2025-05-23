@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import {
@@ -43,11 +43,14 @@ import {
 
 // Import Redux actions and selectors
 import {
-  createLabel,
-  updateLabel,
-  deleteLabel,
   selectLabels,
   Label,
+  createLabelAsync,
+  updateLabelAsync,
+  deleteLabelAsync,
+  selectLabelsLoading,
+  selectLabelsError,
+  clearLabelsError,
 } from '@/redux/slices/dashboard/formsSlice';
 
 // Import utility for class name merging
@@ -63,6 +66,8 @@ interface SidebarProps {
 const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   const dispatch = useDispatch();
   const labels = useSelector(selectLabels);
+  const labelsLoading = useSelector(selectLabelsLoading);
+  const labelsError = useSelector(selectLabelsError);
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState('All');
@@ -73,7 +78,6 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   const [showLabels, setShowLabels] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatingLabel, setIsCreatingLabel] = useState(false);
-  // const [showCreateActions, setShowCreateActions] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,21 +93,13 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     '#14B8A6', // Teal
   ];
 
-  // Close create actions dropdown when clicking outside
-
-  // React.useEffect(() => {
-  //   const handleOutsideClick = (e: MouseEvent) => {
-  //     if (
-  //       showCreateActions &&
-  //       !(e.target as Element).closest('#create-button')
-  //     ) {
-  //       setShowCreateActions(false);
-  //     }
-  //   };
-
-  //   document.addEventListener('mousedown', handleOutsideClick);
-  //   return () => document.removeEventListener('mousedown', handleOutsideClick);
-  // }, [showCreateActions]);
+  // Show error toast if labels fail to load
+  useEffect(() => {
+    if (labelsError) {
+      toast.error('Failed to fetch labels');
+      dispatch(clearLabelsError());
+    }
+  }, [labelsError, dispatch]);
 
   // Handle tab change and pass to parent if callback exists
   const handleTabChange = (tab: string, data?: Label | undefined) => {
@@ -119,7 +115,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   };
 
   // Handle create/edit label form submission
-  const handleCreateLabel = (e: React.FormEvent) => {
+  const handleCreateLabel = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newLabelName.trim()) {
@@ -144,31 +140,32 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
 
     setIsCreatingLabel(true);
 
-    // Simulate API call with timeout
-    setTimeout(() => {
+    try {
       if (editLabelId) {
-        // Update existing label using Redux
-        dispatch(
-          updateLabel({
+        // Update existing label
+        await dispatch(
+          updateLabelAsync({
             id: editLabelId,
-            name: newLabelName,
-            color: selectedColor,
-          })
-        );
+            data: {
+              name: newLabelName,
+              color: selectedColor,
+            },
+          }) as any
+        ).unwrap();
 
-        toast.success(`Label updated`, {
+        toast.success('Label updated', {
           description: `"${newLabelName}" has been updated successfully`,
         });
       } else {
-        // Create new label using Redux
-        dispatch(
-          createLabel({
+        // Create new label
+        await dispatch(
+          createLabelAsync({
             name: newLabelName,
             color: selectedColor,
-          })
-        );
+          }) as any
+        ).unwrap();
 
-        toast.success(`Label created`, {
+        toast.success('Label created', {
           description: `"${newLabelName}" has been created successfully`,
         });
       }
@@ -179,21 +176,36 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
       setEditLabelId(null);
       setShowLabelModal(false);
       setIsCreatingLabel(false);
-    }, 600); // Short delay for UX feedback
+    } catch (error: any) {
+      toast.error(
+        editLabelId ? 'Failed to update label' : 'Failed to create label',
+        {
+          description: error.message || 'Please try again',
+        }
+      );
+    } finally {
+      setIsCreatingLabel(false);
+    }
   };
 
   // Handle delete label
-  const handleDeleteLabel = (id: string, name: string) => {
-    dispatch(deleteLabel(id));
+  const handleDeleteLabel = async (id: string, name: string) => {
+    try {
+      await dispatch(deleteLabelAsync(id) as any).unwrap();
 
-    // If we're currently viewing this label, switch to All
-    if (activeTab === `label-${id}`) {
-      handleTabChange('All');
+      // If we're currently viewing this label, switch to All
+      if (activeTab === `label-${id}`) {
+        handleTabChange('All');
+      }
+
+      toast.success('Label deleted', {
+        description: `"${name}" has been removed`,
+      });
+    } catch (error: any) {
+      toast.error('Failed to delete label', {
+        description: error.message || 'Please try again',
+      });
     }
-
-    toast.success(`Label deleted`, {
-      description: `"${name}" has been removed`,
-    });
   };
 
   // Handle edit label
@@ -228,25 +240,6 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
             <Plus className=' h-3 w-3 ' />
             <span className='font-semibold'>CREATE</span>
           </Button>
-
-          {/* Create Actions Dropdown */}
-          {/* {showCreateActions && (
-            <div className='absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10'>
-              <div className='py-1'>
-                <button
-                  className='flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 transition-colors'
-                  onClick={() => {
-                    setShowCreateActions(false);
-                    handleTabChange('CreateForm');
-                    toast.success('Create a new form');
-                  }}
-                >
-                  <Tag className='h-4 w-4 mr-2 text-blue-500' />
-                  New Form
-                </button>
-              </div>
-            </div>
-          )} */}
         </div>
       </div>
 
@@ -280,6 +273,9 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                 <ChevronRight className='h-4 w-4 text-gray-500 mr-1' />
               )}
               <p className='text-sm text-gray-600'>Labels</p>
+              {labelsLoading && (
+                <Loader2 className='h-3 w-3 text-gray-400 ml-2 animate-spin' />
+              )}
             </div>
             <Button
               variant='ghost'
@@ -330,6 +326,13 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                   filteredLabels.length > 8 ? 'pr-1' : ''
                 }`}
               >
+                {/* Loading state */}
+                {labelsLoading && labels.length === 0 && (
+                  <div className='px-3 py-2 text-xs text-gray-500 text-center'>
+                    Loading labels...
+                  </div>
+                )}
+
                 {/* No labels message */}
                 {filteredLabels.length === 0 && searchTerm && (
                   <div className='px-3 py-2 text-xs text-gray-500 text-center'>
@@ -338,7 +341,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                 )}
 
                 {/* Create label option when no labels exist */}
-                {labels.length === 0 && !searchTerm && (
+                {!labelsLoading && labels.length === 0 && !searchTerm && (
                   <div
                     className='p-3 rounded-md cursor-pointer hover:bg-gray-100 transition-colors'
                     onClick={() => setShowLabelModal(true)}
@@ -353,68 +356,71 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                 )}
 
                 {/* Label items */}
-                {sortedLabels.map(label => (
-                  <div
-                    key={label.id}
-                    className={cn(
-                      'group flex items-center justify-between p-3 rounded-md cursor-pointer transition-all my-0.5',
-                      activeTab === `label-${label.id}`
-                        ? 'bg-blue-100'
-                        : 'hover:bg-gray-100'
-                    )}
-                    onClick={() => handleTabChange(`label-${label.id}`, label)}
-                  >
-                    <div className='flex items-center overflow-hidden'>
-                      <Circle
-                        className='mr-3 h-4 w-4 flex-shrink-0'
-                        fill={label.color}
-                        color={label.color}
-                      />
-                      <span className='text-sm truncate'>{label.name}</span>
-                    </div>
+                {!labelsLoading &&
+                  sortedLabels.map(label => (
+                    <div
+                      key={label.id}
+                      className={cn(
+                        'group flex items-center justify-between p-3 rounded-md cursor-pointer transition-all my-0.5',
+                        activeTab === `label-${label.id}`
+                          ? 'bg-blue-100'
+                          : 'hover:bg-gray-100'
+                      )}
+                      onClick={() =>
+                        handleTabChange(`label-${label.id}`, label)
+                      }
+                    >
+                      <div className='flex items-center overflow-hidden'>
+                        <Circle
+                          className='mr-3 h-4 w-4 flex-shrink-0'
+                          fill={label.color}
+                          color={label.color}
+                        />
+                        <span className='text-sm truncate'>{label.name}</span>
+                      </div>
 
-                    {/* Label actions */}
-                    <div className='flex items-center opacity-0 group-hover:opacity-100 transition-opacity '>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant='ghost'
-                            size='icon'
-                            className='h-6 w-6 p-0 hover:bg-gray-200'
-                            onClick={e => e.stopPropagation()}
+                      {/* Label actions */}
+                      <div className='flex items-center opacity-0 group-hover:opacity-100 transition-opacity '>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant='ghost'
+                              size='icon'
+                              className='h-6 w-6 p-0 hover:bg-gray-200'
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <MoreVertical className='h-3 w-3 text-gray-500' />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align='end'
+                            className='w-35 bg-[#102035] text-white font-bold'
                           >
-                            <MoreVertical className='h-3 w-3 text-gray-500' />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align='end'
-                          className='w-35 bg-[#102035] text-white font-bold'
-                        >
-                          <DropdownMenuItem
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleEditLabel(label);
-                            }}
-                          >
-                            <Edit className='mr-2 h-4 w-4' />
-                            <span>Edit</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleDeleteLabel(label.id, label.name);
-                            }}
-                            className='text-red-600 focus:text-red-600'
-                          >
-                            <Trash className='mr-2 h-4 w-4' />
-                            <span>Delete</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleEditLabel(label);
+                              }}
+                            >
+                              <Edit className='mr-2 h-4 w-4' />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleDeleteLabel(label.id, label.name);
+                              }}
+                              className='text-red-600 focus:text-red-600'
+                            >
+                              <Trash className='mr-2 h-4 w-4' />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </>
           )}

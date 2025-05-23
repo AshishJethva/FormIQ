@@ -1,7 +1,8 @@
 'use client';
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import type { SortOption } from './FilterBar';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Star,
   MoreHorizontal,
@@ -26,20 +27,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 import {
-  Form,
-  toggleFavorite,
-  archiveForm,
-  trashForm,
-  restoreForm,
-  deleteForm,
-  bulkArchiveForms,
-  bulkTrashForms,
-  bulkAddLabelToForms,
-  bulkRemoveLabelFromForms,
   selectLabels,
+  selectForms,
+  selectFormsLoading,
+  selectFormsError,
+  toggleFormFavorite,
+  archiveFormAsync,
+  trashFormAsync,
+  restoreFormAsync,
+  deleteFormAsync,
+  bulkArchiveFormsAsync,
+  bulkTrashFormsAsync,
+  bulkAddLabelToFormsAsync,
+  bulkRemoveLabelFromFormsAsync,
+  toggleFavoriteOptimistic,
 } from '@/redux/slices/dashboard/formsSlice';
 
 // Dialog for label selection
@@ -53,94 +55,152 @@ import {
 
 // Update the interface to match what Sidebar and Dashboard are expecting
 interface FormsListProps {
-  forms: Form[];
-  searchTerm?: string;
-  sortBy: SortOption;
   activeSection?: string;
-  onSectionChange?: (section: string, data?: any) => void;
 }
 
-const FormsList: React.FC<FormsListProps> = ({
-  forms,
-  searchTerm = '',
-  sortBy,
-  activeSection = 'All',
-}) => {
+const FormsList: React.FC<FormsListProps> = () => {
   const dispatch = useDispatch();
+  const forms = useSelector(selectForms);
   const labels = useSelector(selectLabels);
-  const [selectedForms, setSelectedForms] = useState<number[]>([]);
+  const isLoading = useSelector(selectFormsLoading);
+  const error = useSelector(selectFormsError);
+
+  const [selectedForms, setSelectedForms] = useState<string[]>([]);
   const [showLabelDialog, setShowLabelDialog] = useState(false);
   const [labelOperations, setLabelOperations] = useState<
     Record<string, 'add' | 'remove'>
   >({});
 
-  // Filter forms based on search term
-  let filteredForms = forms.filter(form => {
-    // Filter by search term first
-    if (!form.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
+  // Handle form actions with backend calls
+  const handleToggleFavorite = async (e: React.MouseEvent, formId: string) => {
+    e.stopPropagation();
 
-    // Then filter by section
-    switch (activeSection) {
-      case 'All':
-        return !form.isArchived && !form.isTrashed;
-      case 'Favorites':
-        return form.isFavorite && !form.isArchived && !form.isTrashed;
-      case 'Archive':
-        return form.isArchived && !form.isTrashed;
-      case 'Trash':
-        return form.isTrashed;
-      case 'Drafts':
-        // Implement draft logic if needed
-        return !form.isArchived && !form.isTrashed;
-      default:
-        // Handle label filtering
-        if (activeSection.startsWith('label-')) {
-          const labelId = activeSection.replace('label-', '');
-          return (
-            form.labels?.includes(labelId) &&
-            !form.isArchived &&
-            !form.isTrashed
+    // Optimistic update
+    dispatch(toggleFavoriteOptimistic(formId));
+
+    try {
+      await dispatch(toggleFormFavorite(formId) as any).unwrap();
+      toast.success('Form favorite status updated');
+    } catch {
+      // Revert optimistic update on error
+      dispatch(toggleFormFavorite(formId) as any);
+      toast.error('Failed to update favorite status');
+    }
+  };
+
+  const handleFormAction = async (action: string, formId: string) => {
+    try {
+      switch (action) {
+        case 'Move to Trash':
+          await dispatch(trashFormAsync(formId) as any).unwrap();
+          toast.success('Form moved to Trash');
+          break;
+
+        case 'Archive':
+          await dispatch(archiveFormAsync(formId) as any).unwrap();
+          toast.success('Form archived');
+          break;
+
+        case 'Restore':
+          await dispatch(restoreFormAsync(formId) as any).unwrap();
+          toast.success('Form restored');
+          break;
+
+        case 'Delete Permanently':
+          await dispatch(deleteFormAsync(formId) as any).unwrap();
+          toast.success('Form permanently deleted');
+          break;
+
+        case 'Add Label':
+        case 'Manage Labels':
+          setShowLabelDialog(true);
+          setSelectedForms([formId]);
+          setLabelOperations({});
+          return;
+
+        default:
+          toast.success(`${action} action triggered for form`);
+          return;
+      }
+
+      // Remove from selection if it was selected
+      if (selectedForms.includes(formId)) {
+        setSelectedForms(prev => prev.filter(id => id !== formId));
+      }
+    } catch {
+      toast.error(`Failed to ${action.toLowerCase()}`);
+    }
+  };
+
+  const handleBulkAction = async (action: string) => {
+    try {
+      switch (action) {
+        case 'Move to Trash':
+          await dispatch(bulkTrashFormsAsync(selectedForms) as any).unwrap();
+          toast.success(`${selectedForms.length} forms moved to Trash`);
+          break;
+
+        case 'Archive':
+          await dispatch(bulkArchiveFormsAsync(selectedForms) as any).unwrap();
+          toast.success(`${selectedForms.length} forms archived`);
+          break;
+
+        case 'Label as':
+        case 'Manage Labels':
+          setShowLabelDialog(true);
+          setLabelOperations({});
+          return;
+
+        default:
+          toast.success(`${action} action triggered for selected forms`);
+          return;
+      }
+
+      setSelectedForms([]);
+    } catch {
+      toast.error(`Failed to ${action.toLowerCase()} forms`);
+    }
+  };
+
+  const handleApplyLabels = async () => {
+    try {
+      const addPromises: Promise<any>[] = [];
+      const removePromises: Promise<any>[] = [];
+
+      Object.entries(labelOperations).forEach(([labelId, operation]) => {
+        if (operation === 'add') {
+          addPromises.push(
+            dispatch(
+              bulkAddLabelToFormsAsync({
+                formIds: selectedForms,
+                labelId,
+              }) as any
+            ).unwrap()
+          );
+        } else {
+          removePromises.push(
+            dispatch(
+              bulkRemoveLabelFromFormsAsync({
+                formIds: selectedForms,
+                labelId,
+              }) as any
+            ).unwrap()
           );
         }
-        return !form.isArchived && !form.isTrashed;
-    }
-  });
+      });
 
-  // Sort forms based on selected option
-  filteredForms = [...filteredForms].sort((a, b) => {
-    switch (sortBy) {
-      case 'title-az':
-        return a.name.localeCompare(b.name);
-      case 'title-za':
-        return b.name.localeCompare(a.name);
-      case 'creation-date':
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      case 'submission-count':
-        return b.submissions - a.submissions;
-      case 'last-edit':
-        if (!a.lastEdited || !b.lastEdited) return 0;
-        return (
-          new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime()
-        );
-      case 'last-submission':
-        if (!a.lastSubmission || !b.lastSubmission) return 0;
-        return (
-          new Date(b.lastSubmission).getTime() -
-          new Date(a.lastSubmission).getTime()
-        );
-      case 'unread':
-        return (b.unread ? 1 : 0) - (a.unread ? 1 : 0);
-      default:
-        return 0;
+      await Promise.all([...addPromises, ...removePromises]);
+
+      toast.success('Labels updated successfully');
+      setLabelOperations({});
+      setShowLabelDialog(false);
+    } catch {
+      toast.error('Failed to update labels');
     }
-  });
+  };
 
   // Toggle form selection
-  const handleToggleSelect = (formId: number) => {
+  const handleToggleSelect = (formId: string) => {
     setSelectedForms(prev =>
       prev.includes(formId)
         ? prev.filter(id => id !== formId)
@@ -150,26 +210,13 @@ const FormsList: React.FC<FormsListProps> = ({
 
   // Select all visible forms
   const handleSelectAll = () => {
-    const allIds = filteredForms.map(form => form.id);
+    const allIds = forms.map(form => form.id);
     setSelectedForms(allIds);
   };
 
   // Deselect all forms
   const handleDeselectAll = () => {
     setSelectedForms([]);
-  };
-
-  // Toggle favorite status
-  const handleToggleFavorite = (e: React.MouseEvent, formId: number) => {
-    e.stopPropagation();
-    dispatch(toggleFavorite(formId));
-
-    // Find the form to show the correct toast message
-    const form = forms.find(f => f.id === formId);
-    const isFavorite = !form?.isFavorite;
-    const actionText = isFavorite ? 'added to' : 'removed from';
-
-    toast.success(`Form ${actionText} favorites`);
   };
 
   // Helper functions for label management
@@ -194,119 +241,6 @@ const FormsList: React.FC<FormsListProps> = ({
     }));
   };
 
-  // Handle applying labels
-  const handleApplyLabels = () => {
-    // Process each label operation
-    Object.entries(labelOperations).forEach(([labelId, operation]) => {
-      if (operation === 'add') {
-        dispatch(
-          bulkAddLabelToForms({
-            formIds: selectedForms,
-            labelId,
-          })
-        );
-
-        const label = labels.find(l => l.id === labelId);
-        toast.success(
-          `Label "${label?.name}" applied to ${selectedForms.length} form(s)`
-        );
-      } else {
-        dispatch(
-          bulkRemoveLabelFromForms({
-            formIds: selectedForms,
-            labelId,
-          })
-        );
-
-        const label = labels.find(l => l.id === labelId);
-        toast.success(
-          `Label "${label?.name}" removed from ${selectedForms.length} form(s)`
-        );
-      }
-    });
-
-    // Reset state
-    setLabelOperations({});
-    setShowLabelDialog(false);
-  };
-
-  // Handle form action - modified to stay in the same section
-  const handleFormAction = (action: string, formId: number) => {
-    switch (action) {
-      case 'Move to Trash':
-        dispatch(trashForm(formId));
-        toast.success('Form moved to Trash');
-        // Stay in the same section - no navigation
-        break;
-
-      case 'Archive':
-        dispatch(archiveForm(formId));
-        toast.success('Form archived');
-        // Stay in the same section - no navigation
-        break;
-
-      case 'Restore':
-        dispatch(restoreForm(formId));
-        toast.success('Form restored');
-        // Stay in the same section - no navigation
-        break;
-
-      case 'Delete Permanently':
-        dispatch(deleteForm(formId));
-        toast.success('Form permanently deleted');
-        break;
-
-      case 'Add Label':
-      case 'Manage Labels':
-        setShowLabelDialog(true);
-        setSelectedForms([formId]);
-        // Reset any previous label operations
-        setLabelOperations({});
-        break;
-
-      default:
-        toast.success(`${action} action triggered for form #${formId}`);
-        return;
-    }
-
-    // Deselect the form if it was selected (except for label operations)
-    if (
-      action !== 'Add Label' &&
-      action !== 'Manage Labels' &&
-      selectedForms.includes(formId)
-    ) {
-      setSelectedForms(prev => prev.filter(id => id !== formId));
-    }
-  };
-
-  // Handle bulk actions for selected forms
-  const handleBulkAction = (action: string) => {
-    switch (action) {
-      case 'Move to Trash':
-        dispatch(bulkTrashForms(selectedForms));
-        toast.success(`${selectedForms.length} forms moved to Trash`);
-        setSelectedForms([]);
-        break;
-
-      case 'Archive':
-        dispatch(bulkArchiveForms(selectedForms));
-        toast.success(`${selectedForms.length} forms archived`);
-        setSelectedForms([]);
-        break;
-
-      case 'Label as':
-      case 'Manage Labels':
-        setShowLabelDialog(true);
-        // Reset any previous label operations
-        setLabelOperations({});
-        return;
-
-      default:
-        toast.success(`${action} action triggered for selected forms`);
-        return;
-    }
-  };
-
   // Format date for display
   const getFormattedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -317,6 +251,22 @@ const FormsList: React.FC<FormsListProps> = ({
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center py-10'>
+        <div className='text-gray-500'>Loading forms...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='flex items-center justify-center py-10'>
+        <div className='text-red-500'>Error: {error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-2'>
       {/* Selection Actions Bar - shown when forms are selected */}
@@ -325,11 +275,10 @@ const FormsList: React.FC<FormsListProps> = ({
           <div className='flex items-center'>
             <Checkbox
               checked={
-                selectedForms.length === filteredForms.length &&
-                filteredForms.length > 0
+                selectedForms.length === forms.length && forms.length > 0
               }
               onCheckedChange={() => {
-                if (selectedForms.length === filteredForms.length) {
+                if (selectedForms.length === forms.length) {
                   handleDeselectAll();
                 } else {
                   handleSelectAll();
@@ -386,15 +335,12 @@ const FormsList: React.FC<FormsListProps> = ({
       )}
 
       {/* Forms List */}
-      {filteredForms.length === 0 ? (
+      {forms.length === 0 ? (
         <div className='text-center py-10'>
-          <p className='text-gray-500'>
-            No forms found
-            {searchTerm ? ' matching your search' : ' in this section'}.
-          </p>
+          <p className='text-gray-500'>No forms found in this section.</p>
         </div>
       ) : (
-        filteredForms.map(form => (
+        forms.map(form => (
           <motion.div
             key={form.id}
             initial={{ opacity: 0, y: 5 }}

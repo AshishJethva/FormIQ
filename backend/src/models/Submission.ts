@@ -35,20 +35,7 @@ const submissionSchema = new Schema<ISubmission>(
       default: Date.now,
       index: true,
     },
-    ipAddress: {
-      type: String,
-      validate: {
-        validator: function (ip: string) {
-          if (!ip) return true;
-          // Basic IP validation
-          return (
-            /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(ip) ||
-            /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/.test(ip)
-          );
-        },
-        message: 'Invalid IP address format',
-      },
-    },
+    ipAddress: { type: String },
     userAgent: { type: String },
     metadata: { type: Schema.Types.Mixed, default: {} },
   },

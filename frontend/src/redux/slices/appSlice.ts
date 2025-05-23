@@ -127,26 +127,6 @@ const appSlice = createSlice({
       state.notifications.error = action.payload;
     },
   },
-  extraReducers: builder => {
-    builder
-      .addCase(connectWebSocket.pending, state => {
-        state.notifications.isLoading = true;
-        state.notifications.error = null;
-      })
-      .addCase(connectWebSocket.fulfilled, state => {
-        state.notifications.isLoading = false;
-        state.notifications.isConnected = true;
-        state.notifications.error = null;
-      })
-      .addCase(connectWebSocket.rejected, (state, action) => {
-        state.notifications.isLoading = false;
-        state.notifications.isConnected = false;
-        state.notifications.error = action.payload as string;
-      })
-      .addCase(disconnectWebSocket.fulfilled, state => {
-        state.notifications.isConnected = false;
-      });
-  },
 });
 
 export const {

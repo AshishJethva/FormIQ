@@ -1,4 +1,4 @@
-// src/models/Form.ts - Enhanced Form Model
+// src/models/Form.ts
 import mongoose, { Schema, Document } from 'mongoose';
 import { Form, FormPage, Field, LogoState, FormSettings } from '../types/form';
 
@@ -9,7 +9,7 @@ const fieldSchema = new Schema<Field>({
   type: {
     type: String,
     required: true,
-    enum: Object.values([
+    enum: [
       'heading',
       'fullName',
       'email',
@@ -20,7 +20,7 @@ const fieldSchema = new Schema<Field>({
       'signature',
       'fillBlank',
       'productList',
-    ]),
+    ],
   },
   label: { type: String, required: true },
   required: { type: Boolean, default: false },
@@ -83,7 +83,6 @@ const formSchema = new Schema<IForm>(
       type: String,
       required: [true, 'Form title is required'],
       trim: true,
-      unique: true,
       maxlength: [200, 'Title cannot exceed 200 characters'],
       minlength: [1, 'Title must be at least 1 character long'],
     },
@@ -110,7 +109,7 @@ const formSchema = new Schema<IForm>(
     settings: { type: settingsSchema, default: () => ({}) },
     lastSaved: { type: String },
     userId: {
-      type: String,
+      type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'User ID is required'],
       index: true,

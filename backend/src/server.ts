@@ -31,3 +31,9 @@ try {
 } catch (error) {
   console.error('Server error:', error);
 }
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err: Error) => {
+  console.error(`Error: ${err.message}`);
+  process.exit(1);
+});

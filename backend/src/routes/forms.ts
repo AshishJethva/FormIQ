@@ -12,6 +12,7 @@ import {
   updateFormSchema,
 } from '../validation/formValidation';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -32,8 +33,8 @@ router.get(
       limit = '50',
     } = req.query;
 
-    // Build query
-    const query: any = { userId: req.user.id };
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const query: any = { userId };
 
     // Search functionality
     if (search) {
@@ -140,9 +141,10 @@ router.get(
   '/:id',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -167,10 +169,11 @@ router.post(
     const { name, description } = req.body;
 
     const pageId = uuidv4();
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.create({
       title: name,
       description,
-      userId: req.user.id,
+      userId,
       pages: [
         {
           id: pageId,
@@ -203,9 +206,10 @@ router.put(
   protect,
   validate(updateFormSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -236,9 +240,10 @@ router.patch(
   '/:id/favorite',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -263,9 +268,10 @@ router.patch(
   '/:id/archive',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -289,9 +295,10 @@ router.patch(
   '/:id/trash',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -315,9 +322,10 @@ router.patch(
   '/:id/restore',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -342,9 +350,10 @@ router.delete(
   '/:id',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const form = await Form.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId,
     });
 
     if (!form) {
@@ -399,8 +408,9 @@ router.patch(
         throw new ApiError('Invalid action', 400);
     }
 
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const result = await Form.updateMany(
-      { _id: { $in: formIds }, userId: req.user.id },
+      { _id: { $in: formIds }, userId },
       updateData
     );
 
@@ -424,19 +434,20 @@ router.patch(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const { formIds, labelId } = req.body;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
 
     if (!formIds || !Array.isArray(formIds) || !labelId) {
       throw new ApiError('Form IDs and label ID are required', 400);
     }
 
     // Verify label belongs to user
-    const label = await Label.findOne({ _id: labelId, userId: req.user.id });
+    const label = await Label.findOne({ _id: labelId, userId });
     if (!label) {
       throw new ApiError('Label not found', 404);
     }
 
     const result = await Form.updateMany(
-      { _id: { $in: formIds }, userId: req.user.id },
+      { _id: { $in: formIds }, userId },
       { $addToSet: { labels: labelId } }
     );
 
@@ -461,8 +472,9 @@ router.patch(
       throw new ApiError('Form IDs and label ID are required', 400);
     }
 
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const result = await Form.updateMany(
-      { _id: { $in: formIds }, userId: req.user.id },
+      { _id: { $in: formIds }, userId },
       { $pull: { labels: labelId } }
     );
 

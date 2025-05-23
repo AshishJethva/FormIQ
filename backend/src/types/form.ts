@@ -57,7 +57,6 @@ export interface Label {
 }
 
 export interface Form {
-  id: string;
   title: string;
   description?: string;
   pages: FormPage[];
@@ -68,10 +67,11 @@ export interface Form {
   logo?: LogoState | null;
   settings?: FormSettings;
   lastSaved?: string;
-  userId: string;
+  userId: string | any;
   createdAt: Date;
   updatedAt: Date;
   isPublished: boolean;
+  daysRemaining?: number;
   submissions: number;
   labels?: string[];
   isFavorite: boolean;
