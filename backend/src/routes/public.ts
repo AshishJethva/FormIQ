@@ -27,7 +27,7 @@ router.get(
     // Return only necessary data for public form
     const publicFormData = {
       id: form.id,
-      title: form.title,
+      title: form.title || 'Untitled Form',
       description: form.description,
       pages: form.pages,
       settings: {

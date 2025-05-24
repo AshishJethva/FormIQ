@@ -1,21 +1,99 @@
 // src/redux/slices/formBuilderSlice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 import { Form, Field, FieldType, FormSettings, LogoState } from '@/types/form';
+import axios from 'axios';
+import { apiConfig } from '@/config/api';
 
 interface FormBuilderState {
   form: Form | null;
   isPreviewMode: boolean;
   isSaving: boolean;
+  isLoading: boolean;
   showGridLines: boolean;
+  error: string | null;
 }
 
 const initialState: FormBuilderState = {
   form: null,
   isPreviewMode: false,
   isSaving: false,
+  isLoading: false,
   showGridLines: false,
+  error: null,
 };
+
+// Async thunk to load form from backend
+export const loadFormAsync = createAsyncThunk(
+  'formBuilder/loadForm',
+  async (formId: string, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.get(`${apiConfig.url}/forms/${formId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error || error.message || 'Failed to load form'
+      );
+    }
+  }
+);
+
+// Async thunk to save form to backend
+export const saveFormAsync = createAsyncThunk(
+  'formBuilder/saveForm',
+  async (formId: string, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { formBuilder: FormBuilderState };
+      const form = state.formBuilder.form;
+
+      if (!form) {
+        throw new Error('No form data to save');
+      }
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.put(
+        `${apiConfig.url}/forms/${formId}`,
+        {
+          title: form.title,
+          description: form.description,
+          pages: form.pages,
+          selectedFieldId: form.selectedFieldId,
+          selectedPageId: form.selectedPageId,
+          currentPageIndex: form.currentPageIndex,
+          propertiesPanelOpen: form.propertiesPanelOpen,
+          logo: form.logo,
+          settings: form.settings,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.error || error.message || 'Failed to save form'
+      );
+    }
+  }
+);
 
 const formBuilderSlice = createSlice({
   name: 'formBuilder',
@@ -50,6 +128,45 @@ const formBuilderSlice = createSlice({
         };
       }
     },
+
+    // Action to load form data from backend response
+    loadFormData: (state, action: PayloadAction<any>) => {
+      const formData = action.payload;
+
+      // Ensure pages exist and are properly structured
+      const pages =
+        formData.pages && Array.isArray(formData.pages)
+          ? formData.pages
+          : [{ id: uuidv4(), fields: [] }];
+
+      state.form = {
+        id: formData.id || formData._id,
+        title: formData.title || 'Untitled Form',
+        description: formData.description,
+        pages: pages,
+        selectedFieldId: formData.selectedFieldId || null,
+        selectedPageId: formData.selectedPageId || pages[0]?.id,
+        currentPageIndex: formData.currentPageIndex || 0,
+        propertiesPanelOpen: false, // Always start with panel closed
+        logo: formData.logo || null,
+        settings: {
+          submitButtonText: formData.settings?.submitButtonText || 'Submit',
+          defaultLabelAlignment:
+            formData.settings?.defaultLabelAlignment || 'LEFT',
+          thankyouMessage:
+            formData.settings?.thankyouMessage ||
+            'Thank you for your submission!',
+          defaultRequiredField:
+            formData.settings?.defaultRequiredField || false,
+          showLogo: formData.settings?.showLogo || false,
+        },
+        lastSaved: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+    },
+
     setFormTitle: (state, action: PayloadAction<string>) => {
       if (state.form) {
         state.form.title = action.payload;
@@ -210,11 +327,13 @@ const formBuilderSlice = createSlice({
     selectField: (state, action: PayloadAction<string>) => {
       if (state.form) {
         state.form.selectedFieldId = action.payload;
+        // state.form.propertiesPanelOpen = true;
       }
     },
     clearSelectedField: state => {
       if (state.form) {
         state.form.selectedFieldId = null;
+        // state.form.propertiesPanelOpen = false;
       }
     },
     togglePropertiesPanel: (
@@ -238,7 +357,6 @@ const formBuilderSlice = createSlice({
       state.form.settings = {
         ...state.form.settings,
         ...action.payload,
-
       };
       state.form.lastSaved = new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -545,6 +663,79 @@ const formBuilderSlice = createSlice({
         state.form.currentPageIndex = newIndex;
       }
     },
+    clearError: state => {
+      state.error = null;
+    },
+  },
+
+  extraReducers: builder => {
+    builder
+      // Load form cases
+      .addCase(loadFormAsync.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(loadFormAsync.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+
+        const formData = action.payload;
+
+        // Ensure pages exist and are properly structured
+        const pages =
+          formData.pages && Array.isArray(formData.pages)
+            ? formData.pages
+            : [{ id: uuidv4(), fields: [] }];
+
+        state.form = {
+          id: formData.id || formData._id,
+          title: formData.title || 'Untitled Form',
+          description: formData.description,
+          pages: pages,
+          selectedFieldId: null, // Always start with no field selected
+          selectedPageId: formData.selectedPageId || pages[0]?.id,
+          currentPageIndex: formData.currentPageIndex || 0,
+          propertiesPanelOpen: false, // Always start with panel closed
+          logo: formData.logo || null,
+          settings: {
+            submitButtonText: formData.settings?.submitButtonText || 'Submit',
+            defaultLabelAlignment:
+              formData.settings?.defaultLabelAlignment || 'LEFT',
+            thankyouMessage:
+              formData.settings?.thankyouMessage ||
+              'Thank you for your submission!',
+            defaultRequiredField:
+              formData.settings?.defaultRequiredField || false,
+            showLogo: formData.settings?.showLogo || false,
+          },
+          lastSaved: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        };
+      })
+      .addCase(loadFormAsync.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Save form cases
+      .addCase(saveFormAsync.pending, state => {
+        state.isSaving = true;
+      })
+      .addCase(saveFormAsync.fulfilled, state => {
+        state.isSaving = false;
+        if (state.form) {
+          state.form.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+      })
+      .addCase(saveFormAsync.rejected, (state, action) => {
+        state.isSaving = false;
+        state.error = action.payload as string;
+      });
   },
 });
 
@@ -604,6 +795,7 @@ function getLabelForType(type: FieldType): string {
 
 export const {
   initializeForm,
+  loadFormData,
   setFormTitle,
   addField,
   updateField,
@@ -626,6 +818,7 @@ export const {
   removePage,
   setCurrentPageIndex,
   setCurrentPage,
+  clearError,
 } = formBuilderSlice.actions;
 
 export default formBuilderSlice.reducer;

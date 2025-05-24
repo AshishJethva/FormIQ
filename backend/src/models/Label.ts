@@ -16,6 +16,7 @@ const labelSchema = new Schema<ILabel>(
       required: [true, 'Label name is required'],
       trim: true,
       maxlength: [50, 'Label name cannot exceed 50 characters'],
+      minlength: [1, 'Label name must be at least 1 character long'],
     },
     color: {
       type: String,
@@ -43,7 +44,15 @@ const labelSchema = new Schema<ILabel>(
         return ret;
       },
     },
-    toObject: { virtuals: true },
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        ret.id = ret._id.toString();
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 
@@ -54,5 +63,8 @@ labelSchema.virtual('id').get(function () {
 
 // Compound index for user and label name uniqueness
 labelSchema.index({ userId: 1, name: 1 }, { unique: true });
+
+// Index for performance
+labelSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.model<ILabel>('Label', labelSchema);

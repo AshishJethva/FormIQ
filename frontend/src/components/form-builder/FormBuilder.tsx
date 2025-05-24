@@ -17,7 +17,7 @@ import PropertiesPanel from './properties-panel/PropertiesPanel';
 import { AnimatePresence } from 'framer-motion';
 import DragProvider from '@/providers/DragProvider';
 
-export default function FormBuilder() {
+export default function FormBuilder({ lastSaved }: { lastSaved?: string }) {
   const dispatch = useDispatch();
   const formState = useSelector((state: RootState) => state.formBuilder);
   const [activeTab, setActiveTab] = useState<string>('BUILD');
@@ -83,7 +83,7 @@ export default function FormBuilder() {
         {/* Header */}
         <FormBuilderHeader
           title={formState.form.title || 'My Form'}
-          lastSaved={formState.form.lastSaved || '5:08 PM'}
+          lastSaved={lastSaved ||  '00:00 UTC'}
         />
 
         {/* Navigation */}

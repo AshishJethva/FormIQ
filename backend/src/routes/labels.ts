@@ -22,28 +22,25 @@ router.get(
   '/',
   protect,
   asyncHandler(async (req: Request, res: Response) => {
-    const { search, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const { search } = req.query;
 
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const query: any = { userId };
 
-    // Search functionality
-    if (search) {
-      query.name = { $regex: search, $options: 'i' };
+    // Simple text search - only search by label name
+    if (search && typeof search === 'string' && search.trim()) {
+      query.name = { $regex: search.trim(), $options: 'i' }; // Case insensitive search
     }
 
-    // Sort options
-    const sortObj: any = {};
-    sortObj[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
-
-    const labels = await Label.find(query).sort(sortObj);
+    // Always sort by newest first
+    const labels = await Label.find(query).sort({ createdAt: -1 });
 
     // Transform to match frontend expectations
     const transformedLabels = labels.map(label => ({
       id: label.id,
       name: label.name,
       color: label.color,
-      createdAt: label.createdAt.getTime(),
+      createdAt: label.createdAt.getTime(), // Convert Date to timestamp
     }));
 
     res.status(200).json({
@@ -61,6 +58,12 @@ router.get(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      throw new ApiError('Invalid label ID format', 400);
+    }
+
     const label = await Label.findOne({
       _id: req.params.id,
       userId,
@@ -127,6 +130,12 @@ router.put(
   validate(updateLabelSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      throw new ApiError('Invalid label ID format', 400);
+    }
+
     const label = await Label.findOne({
       _id: req.params.id,
       userId,
@@ -177,6 +186,12 @@ router.delete(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      throw new ApiError('Invalid label ID format', 400);
+    }
+
     const label = await Label.findOne({
       _id: req.params.id,
       userId,

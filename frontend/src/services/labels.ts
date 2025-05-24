@@ -5,6 +5,7 @@ import { apiConfig } from '@/config/api';
 // Create axios instance with base URL and default headers
 const api = axios.create({
   baseURL: apiConfig.url,
+  withCredentials: true, // Important for cookie-based auth
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,59 +14,188 @@ const api = axios.create({
 // Add request interceptor for auth tokens
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || getCookieValue('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
-  error => Promise.reject(error)
+  error => {
+    return Promise.reject(error);
+  }
 );
 
-export interface CreateLabelData {
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error.response?.data || error.message);
+
+    // Handle specific error cases
+    if (error.response?.status === 401) {
+      // Handle unauthorized - maybe redirect to login
+      console.warn('Unauthorized request - token may be expired');
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Helper function to get cookie value
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
+}
+
+export interface CreateLabelRequest {
   name: string;
   color: string;
 }
 
-export interface UpdateLabelData {
+export interface UpdateLabelRequest {
   name?: string;
   color?: string;
 }
 
-export interface LabelFilters {
-  search?: string;
-}
-
-export interface Label {
+export interface LabelResponse {
   id: string;
   name: string;
   color: string;
   createdAt: number;
 }
 
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+export interface LabelFilters {
+  search?: string;
+}
+
 export const labelsService = {
-  async getLabels() {
-    const response = await api.get('/labels');
-    return response.data;
+  async getLabels(search?: string) {
+    try {
+      const url = search
+        ? `/labels?search=${encodeURIComponent(search)}`
+        : '/labels';
+
+      console.log(
+        'Fetching labels:',
+        search ? `with search: "${search}"` : 'all labels'
+      );
+
+      const response = await api.get<ApiResponse<LabelResponse[]>>(url);
+
+      console.log('Labels fetch response:', response.data);
+
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch labels');
+      }
+
+      if (!Array.isArray(response.data.data)) {
+        throw new Error('Expected array of labels from server');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching labels:', error);
+
+      let errorMessage = 'Failed to fetch labels';
+
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage =
+          'Cannot connect to server. Please check if the backend is running.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please login again.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
+    }
   },
 
+  // Get single label
   async getLabel(id: string) {
-    const response = await api.get(`/labels/${id}`);
-    return response.data;
+    try {
+      const response = await api.get<ApiResponse<LabelResponse>>(
+        `/labels/${id}`
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching label:', error);
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to fetch label'
+      );
+    }
   },
 
-  async createLabel(data: CreateLabelData) {
-    const response = await api.post('/labels', data);
-    return response.data;
+  // Create new label
+  async createLabel(data: CreateLabelRequest) {
+    try {
+      console.log('Creating label with data:', data);
+      const response = await api.post<ApiResponse<LabelResponse>>(
+        '/labels',
+        data
+      );
+      console.log('Label creation response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error creating label:', error);
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to create label'
+      );
+    }
   },
 
-  async updateLabel(id: string, data: UpdateLabelData) {
-    const response = await api.put(`/labels/${id}`, data);
-    return response.data;
+  // Update label
+  async updateLabel(id: string, data: UpdateLabelRequest) {
+    try {
+      console.log('Updating label:', id, 'with data:', data);
+      const response = await api.put<ApiResponse<LabelResponse>>(
+        `/labels/${id}`,
+        data
+      );
+      console.log('Label update response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating label:', error);
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to update label'
+      );
+    }
   },
 
+  // Delete label
   async deleteLabel(id: string) {
-    const response = await api.delete(`/labels/${id}`);
-    return response.data;
+    try {
+      console.log('Deleting label:', id);
+      const response = await api.delete<ApiResponse<null>>(`/labels/${id}`);
+      console.log('Label deletion response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error deleting label:', error);
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to delete label'
+      );
+    }
   },
 };

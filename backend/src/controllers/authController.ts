@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { ZodError } from 'zod';
 import User from '../models/User';
 import { signupSchema, loginSchema } from '../validation/authValidation';
@@ -9,37 +9,18 @@ import { UserPayload } from '../types/index';
 import { sendOTPEmail } from '../utils/email';
 
 // Helper function to sign JWT token
+
 const signToken = (id: string): string => {
-  // Ensure id is converted to string if it's a Mongoose ObjectId
-  const userId = String(id);
+  const payload = { id };
+  const secret = process.env.JWT_SECRET ?? 'fallback_dev_secret_32_characters';
 
-  // Use a fallback secret that's definitely valid
-  const jwtSecret =
-    process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
+  const expiresIn = (process.env.JWT_EXPIRES_IN || '90d') as unknown as
+    | number
+    | import('ms').StringValue;
 
-  const finalSecret =
-    jwtSecret.length >= 32
-      ? jwtSecret
-      : 'your_secret_key_must_be_at_least_32_chars_long';
+  const options: SignOptions = { expiresIn };
 
-  const expiresIn = process.env.JWT_EXPIRES_IN || '90d';
-  // Add error handling for the signing process
-  try {
-    // Create a simplified payload
-    const payload = { id: userId };
-
-    return jwt.sign(payload, finalSecret, { expiresIn });
-  } catch (error) {
-    console.error('JWT Sign Error:', error);
-
-    if (process.env.NODE_ENV === 'development') {
-      // Return a working temporary token in development
-      return jwt.sign({ id: 'temporary' }, 'temporary_secret', {
-        expiresIn: '1h',
-      });
-    }
-    throw new Error('Failed to generate authentication token');
-  }
+  return jwt.sign(payload, secret, options);
 };
 
 const createSendToken = (

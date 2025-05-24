@@ -97,7 +97,7 @@ router.get(
     // Transform to match frontend expectations
     const transformedForms = forms.map(form => ({
       id: form.id,
-      name: form.title,
+      name: form.title || 'Untitled Form',
       description: form.description,
       submissions: form.submissions,
       createdAt: form.createdAt.toISOString().split('T')[0],
@@ -151,9 +151,45 @@ router.get(
       throw new ApiError('Form not found', 404);
     }
 
+    // Return form data in the format expected by form builder
+    const formData = {
+      id: form.id,
+      title: form.title || 'Untitled Form',
+      description: form.description,
+      pages: form.pages || [{ id: uuidv4(), fields: [] }],
+      selectedFieldId: form.selectedFieldId,
+      selectedPageId: form.selectedPageId,
+      currentPageIndex: form.currentPageIndex || 0,
+      propertiesPanelOpen: false, // Always start with panel closed
+      logo: form.logo,
+      settings: {
+        submitButtonText: form.settings?.submitButtonText || 'Submit',
+        defaultLabelAlignment: form.settings?.defaultLabelAlignment || 'LEFT',
+        thankyouMessage:
+          form.settings?.thankyouMessage || 'Thank you for your submission!',
+        defaultRequiredField: form.settings?.defaultRequiredField || false,
+        showLogo: form.settings?.showLogo || false,
+      },
+      lastSaved:
+        form.lastSaved ||
+        new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      userId: form.userId,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt,
+      isPublished: form.isPublished,
+      submissions: form.submissions,
+      labels: form.labels,
+      isFavorite: form.isFavorite,
+      isArchived: form.isArchived,
+      isTrashed: form.isTrashed,
+    };
+
     res.status(200).json({
       success: true,
-      data: form,
+      data: formData,
     });
   })
 );
@@ -166,13 +202,23 @@ router.post(
   protect,
   validate(createFormSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { name, description } = req.body;
+    const { name } = req.body;
 
     const pageId = uuidv4();
     const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    // Generate unique title if duplicate exists
+    let uniqueTitle = name || 'Form';
+    let counter = 1;
+
+    // Check if title already exists for this user
+    while (await Form.findOne({ title: uniqueTitle, userId })) {
+      uniqueTitle = `${name || 'Form'} (${counter})`;
+      counter++;
+    }
+
     const form = await Form.create({
-      title: name,
-      description,
+      title: uniqueTitle,
       userId,
       pages: [
         {
@@ -187,12 +233,41 @@ router.post(
         defaultLabelAlignment: 'LEFT',
         thankyouMessage: 'Thank you for your submission!',
         defaultRequiredField: false,
+        showLogo: false,
       },
+      lastSaved: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     });
+
+    // Return form data in the format expected by frontend
+    const formData = {
+      id: form.id,
+      title: form.title,
+      description: form.description,
+      pages: form.pages,
+      selectedFieldId: form.selectedFieldId,
+      selectedPageId: form.selectedPageId,
+      currentPageIndex: form.currentPageIndex,
+      propertiesPanelOpen: false,
+      logo: form.logo,
+      settings: form.settings,
+      lastSaved: form.lastSaved,
+      userId: form.userId,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt,
+      isPublished: form.isPublished,
+      submissions: form.submissions,
+      labels: form.labels,
+      isFavorite: form.isFavorite,
+      isArchived: form.isArchived,
+      isTrashed: form.isTrashed,
+    };
 
     res.status(201).json({
       success: true,
-      data: form,
+      data: formData,
       message: 'Form created successfully',
     });
   })
@@ -216,18 +291,62 @@ router.put(
       throw new ApiError('Form not found', 404);
     }
 
-    // Update form fields
-    Object.keys(req.body).forEach(key => {
+    // Update form fields with validation
+    const allowedUpdates = [
+      'title',
+      'description',
+      'pages',
+      'selectedFieldId',
+      'selectedPageId',
+      'currentPageIndex',
+      'propertiesPanelOpen',
+      'logo',
+      'settings',
+      'isPublished',
+      'labels',
+    ];
+
+    allowedUpdates.forEach(key => {
       if (req.body[key] !== undefined) {
         (form as any)[key] = req.body[key];
       }
     });
 
+    // Update lastSaved timestamp
+    form.lastSaved = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
     await form.save();
+
+    // Return updated form data
+    const formData = {
+      id: form.id,
+      title: form.title,
+      description: form.description,
+      pages: form.pages,
+      selectedFieldId: form.selectedFieldId,
+      selectedPageId: form.selectedPageId,
+      currentPageIndex: form.currentPageIndex,
+      propertiesPanelOpen: form.propertiesPanelOpen,
+      logo: form.logo,
+      settings: form.settings,
+      lastSaved: form.lastSaved,
+      userId: form.userId,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt,
+      isPublished: form.isPublished,
+      submissions: form.submissions,
+      labels: form.labels,
+      isFavorite: form.isFavorite,
+      isArchived: form.isArchived,
+      isTrashed: form.isTrashed,
+    };
 
     res.status(200).json({
       success: true,
-      data: form,
+      data: formData,
       message: 'Form updated successfully',
     });
   })
@@ -369,6 +488,46 @@ router.delete(
   })
 );
 
+// @desc    Publish/Unpublish form
+// @route   PATCH /api/forms/:id/publish
+// @access  Private
+router.patch(
+  '/:id/publish',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { isPublished } = req.body;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    const form = await Form.findOne({
+      _id: req.params.id,
+      userId,
+    });
+
+    if (!form) {
+      throw new ApiError('Form not found', 404);
+    }
+
+    // Validate form has at least one field before publishing
+    if (isPublished) {
+      const hasFields = form.pages?.some(
+        page => page.fields && page.fields.length > 0
+      );
+      if (!hasFields) {
+        throw new ApiError('Cannot publish form without fields', 400);
+      }
+    }
+
+    form.isPublished = isPublished;
+    await form.save();
+
+    res.status(200).json({
+      success: true,
+      data: { isPublished: form.isPublished },
+      message: `Form ${isPublished ? 'published' : 'unpublished'} successfully`,
+    });
+  })
+);
+
 // @desc    Bulk operations on forms
 // @route   PATCH /api/forms/bulk
 // @access  Private
@@ -436,20 +595,58 @@ router.patch(
     const { formIds, labelId } = req.body;
     const userId = new mongoose.Types.ObjectId(req.user.id);
 
+    console.log('Bulk add label request:', {
+      formIds,
+      labelId,
+      userId: userId.toString(),
+    });
+
     if (!formIds || !Array.isArray(formIds) || !labelId) {
       throw new ApiError('Form IDs and label ID are required', 400);
     }
 
-    // Verify label belongs to user
-    const label = await Label.findOne({ _id: labelId, userId });
-    if (!label) {
-      throw new ApiError('Label not found', 404);
+    if (formIds.length === 0) {
+      throw new ApiError('At least one form ID is required', 400);
     }
 
+    // Validate all form IDs
+    const invalidIds = formIds.filter(
+      id => !mongoose.Types.ObjectId.isValid(id)
+    );
+    if (invalidIds.length > 0) {
+      throw new ApiError(`Invalid form IDs: ${invalidIds.join(', ')}`, 400);
+    }
+
+    // Validate label ID
+    if (!mongoose.Types.ObjectId.isValid(labelId)) {
+      throw new ApiError('Invalid label ID format', 400);
+    }
+
+    // Verify label exists and belongs to user
+    const label = await Label.findOne({ _id: labelId, userId });
+    if (!label) {
+      throw new ApiError('Label not found or access denied', 404);
+    }
+
+    // Verify forms exist and belong to user
+    const existingForms = await Form.find({
+      _id: { $in: formIds },
+      userId,
+    });
+
+    if (existingForms.length !== formIds.length) {
+      const foundIds = existingForms.map(f => f._id.toString());
+      const notFoundIds = formIds.filter(id => !foundIds.includes(id));
+      throw new ApiError(`Forms not found: ${notFoundIds.join(', ')}`, 404);
+    }
+
+    // Add label to forms (using string ID, not ObjectId)
     const result = await Form.updateMany(
       { _id: { $in: formIds }, userId },
       { $addToSet: { labels: labelId } }
     );
+
+    console.log('Bulk add label result:', result);
 
     res.status(200).json({
       success: true,
@@ -467,21 +664,137 @@ router.patch(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const { formIds, labelId } = req.body;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    console.log('Bulk remove label request:', {
+      formIds,
+      labelId,
+      userId: userId.toString(),
+    });
 
     if (!formIds || !Array.isArray(formIds) || !labelId) {
       throw new ApiError('Form IDs and label ID are required', 400);
     }
 
-    const userId = new mongoose.Types.ObjectId(req.user.id);
+    if (formIds.length === 0) {
+      throw new ApiError('At least one form ID is required', 400);
+    }
+
+    // Validate all form IDs
+    const invalidIds = formIds.filter(
+      id => !mongoose.Types.ObjectId.isValid(id)
+    );
+    if (invalidIds.length > 0) {
+      throw new ApiError(`Invalid form IDs: ${invalidIds.join(', ')}`, 400);
+    }
+
+    // Validate label ID
+    if (!mongoose.Types.ObjectId.isValid(labelId)) {
+      throw new ApiError('Invalid label ID format', 400);
+    }
+
+    // Verify forms exist and belong to user (don't need to verify label exists for removal)
+    const existingForms = await Form.find({
+      _id: { $in: formIds },
+      userId,
+    });
+
+    if (existingForms.length !== formIds.length) {
+      const foundIds = existingForms.map(f => f._id.toString());
+      const notFoundIds = formIds.filter(id => !foundIds.includes(id));
+      throw new ApiError(`Forms not found: ${notFoundIds.join(', ')}`, 404);
+    }
+
+    // Remove label from forms (using string ID, not ObjectId)
     const result = await Form.updateMany(
       { _id: { $in: formIds }, userId },
       { $pull: { labels: labelId } }
     );
 
+    console.log('Bulk remove label result:', result);
+
     res.status(200).json({
       success: true,
       message: `Label removed from ${result.modifiedCount} forms`,
       modified: result.modifiedCount,
+    });
+  })
+);
+
+// @desc    Duplicate form
+// @route   POST /api/forms/:id/duplicate
+// @access  Private
+router.post(
+  '/:id/duplicate',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const originalForm = await Form.findOne({
+      _id: req.params.id,
+      userId,
+    });
+
+    if (!originalForm) {
+      throw new ApiError('Form not found', 404);
+    }
+
+    // Create a new form with copied data
+    const duplicatedForm = new Form({
+      title: `${originalForm.title} (Copy)`,
+      description: originalForm.description,
+      userId,
+      pages: originalForm.pages?.map(page => ({
+        id: uuidv4(), // Generate new page ID
+        fields:
+          page.fields?.map(field => ({
+            ...field,
+            id: uuidv4(), // Generate new field IDs
+          })) || [],
+      })) || [{ id: uuidv4(), fields: [] }],
+      selectedFieldId: null,
+      selectedPageId: null,
+      currentPageIndex: 0,
+      propertiesPanelOpen: false,
+      logo: originalForm.logo,
+      settings: originalForm.settings,
+      isPublished: false, // New forms start as drafts
+      submissions: 0,
+      labels: originalForm.labels,
+      isFavorite: false,
+      isArchived: false,
+      isTrashed: false,
+    });
+
+    await duplicatedForm.save();
+
+    // Return the duplicated form data
+    const formData = {
+      id: duplicatedForm.id,
+      title: duplicatedForm.title,
+      description: duplicatedForm.description,
+      pages: duplicatedForm.pages,
+      selectedFieldId: duplicatedForm.selectedFieldId,
+      selectedPageId: duplicatedForm.selectedPageId,
+      currentPageIndex: duplicatedForm.currentPageIndex,
+      propertiesPanelOpen: duplicatedForm.propertiesPanelOpen,
+      logo: duplicatedForm.logo,
+      settings: duplicatedForm.settings,
+      lastSaved: duplicatedForm.lastSaved,
+      userId: duplicatedForm.userId,
+      createdAt: duplicatedForm.createdAt,
+      updatedAt: duplicatedForm.updatedAt,
+      isPublished: duplicatedForm.isPublished,
+      submissions: duplicatedForm.submissions,
+      labels: duplicatedForm.labels,
+      isFavorite: duplicatedForm.isFavorite,
+      isArchived: duplicatedForm.isArchived,
+      isTrashed: duplicatedForm.isTrashed,
+    };
+
+    res.status(201).json({
+      success: true,
+      data: formData,
+      message: 'Form duplicated successfully',
     });
   })
 );
