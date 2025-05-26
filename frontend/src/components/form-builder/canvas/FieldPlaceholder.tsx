@@ -49,7 +49,7 @@ export default function FieldPlaceholder({
   if (!showPlaceholder) {
     return (
       <div
-        ref={drop}
+        ref={drop as any}
         className='h-4 w-full'
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

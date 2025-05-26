@@ -31,7 +31,7 @@ export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
 
   return (
     <div
-      ref={drop}
+      ref={drop as any}
       className={`mx-4 transition-all duration-200 relative
         ${isActive ? 'py-8' : 'py-0'}
       `}

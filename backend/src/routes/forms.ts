@@ -72,10 +72,12 @@ router.get(
       case 'favorites':
         query.isFavorite = true;
         query.isTrashed = false;
+        query.isArchived = false;
         break;
       default:
-        // All forms except trashed
         query.isTrashed = false;
+        query.isArchived = false;
+        break;
     }
 
     // Pagination
@@ -87,6 +89,8 @@ router.get(
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
+    console.log('Forms query:', JSON.stringify(query, null, 2));
+
     const forms = await Form.find(query)
       .sort(sortObj)
       .skip(skip)
@@ -94,32 +98,40 @@ router.get(
 
     const total = await Form.countDocuments(query);
 
+    console.log(`Found ${forms.length} forms, total: ${total}`);
+
     // Transform to match frontend expectations
-    const transformedForms = forms.map(form => ({
-      id: form.id,
-      name: form.title || 'Untitled Form',
-      description: form.description,
-      submissions: form.submissions,
-      createdAt: form.createdAt.toISOString().split('T')[0],
-      lastEdited: form.updatedAt.toISOString().split('T')[0],
-      lastSubmission: form.updatedAt.toISOString().split('T')[0],
-      unread: false,
-      isFavorite: form.isFavorite,
-      isArchived: form.isArchived,
-      isTrashed: form.isTrashed,
-      labels: form.labels || [],
-      daysRemaining:
-        form.isTrashed && form.trashedAt
-          ? Math.max(
-              0,
-              30 -
-                Math.floor(
-                  (Date.now() - form.trashedAt.getTime()) /
-                    (1000 * 60 * 60 * 24)
-                )
-            )
-          : undefined,
-    }));
+    const transformedForms = forms.map(form => {
+      // Calculate days remaining for trashed forms
+      let daysRemaining = undefined;
+      if (form.isTrashed && form.trashedAt) {
+        const now = new Date();
+        const trashedDate = new Date(form.trashedAt);
+        const daysPassed = Math.floor(
+          (now.getTime() - trashedDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        daysRemaining = Math.max(0, 30 - daysPassed);
+      }
+
+      return {
+        id: form.id,
+        name: form.title || 'Untitled Form',
+        description: form.description,
+        submissions: form.submissions,
+        createdAt: form.createdAt.toISOString().split('T')[0],
+        lastEdited: form.updatedAt.toISOString().split('T')[0],
+        lastSubmission: form.updatedAt.toISOString().split('T')[0],
+        unread: false,
+        isFavorite: form.isFavorite,
+        isArchived: form.isArchived,
+        isTrashed: form.isTrashed,
+        labels: form.labels || [],
+        daysRemaining,
+        trashedAt: form.trashedAt,
+      };
+    });
+
+    console.log(`Transformed ${transformedForms.length} forms`);
 
     res.status(200).json({
       success: true,
@@ -352,6 +364,61 @@ router.put(
   })
 );
 
+router.patch(
+  '/:id/rename',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    const userId = (req as any).user.id;
+
+    // Validation
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      throw new ApiError(
+        'Form name is required and must be a non-empty string',
+        400
+      );
+    }
+
+    if (name.trim().length > 100) {
+      throw new ApiError('Form name must be less than 100 characters', 400);
+    }
+
+    // Find and update the form
+    const form = await Form.findOneAndUpdate(
+      {
+        _id: id,
+        userId: userId, // Ensure user owns the form
+      },
+      {
+        title: name.trim(),
+        updatedAt: new Date(),
+      },
+      {
+        new: true, // Return the updated document
+        runValidators: true,
+      }
+    );
+
+    if (!form) {
+      throw new ApiError(
+        'Form not found or you do not have permission to edit it',
+        404
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Form renamed successfully',
+      data: {
+        id: form._id,
+        name: form.title,
+        lastEdited: form.updatedAt,
+      },
+    });
+  })
+);
+
 // @desc    Toggle form favorite
 // @route   PATCH /api/forms/:id/favorite
 // @access  Private
@@ -470,20 +537,119 @@ router.delete(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    // First, find the form to ensure it exists and belongs to the user
     const form = await Form.findOne({
       _id: req.params.id,
       userId,
     });
 
     if (!form) {
+      console.log(`Form ${req.params.id} not found for user ${userId}`);
       throw new ApiError('Form not found', 404);
     }
 
-    await Form.findByIdAndDelete(req.params.id);
+    // Delete the form permanently
+    const deleteResult = await Form.deleteOne({
+      _id: req.params.id,
+      userId,
+    });
+
+    if (deleteResult.deletedCount === 0) {
+      console.log(`Failed to delete form ${req.params.id}`);
+      throw new ApiError('Failed to delete form', 500);
+    }
 
     res.status(200).json({
       success: true,
       message: 'Form deleted permanently',
+    });
+  })
+);
+
+// @desc    Cleanup old trashed forms (30+ days)
+// @route   DELETE /api/forms/cleanup-trash
+// @access  Private
+router.delete(
+  '/cleanup-trash',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    console.log(
+      `Cleaning up forms trashed before: ${thirtyDaysAgo} for user: ${userId}`
+    );
+
+    // Find forms that have been in trash for 30+ days
+    const formsToDelete = await Form.find({
+      userId,
+      isTrashed: true,
+      trashedAt: { $lte: thirtyDaysAgo },
+    });
+
+    console.log(`Found ${formsToDelete.length} forms to cleanup`);
+
+    if (formsToDelete.length === 0) {
+      res.status(200).json({
+        success: true,
+        message: 'No old trashed forms to cleanup',
+        deletedCount: 0,
+      });
+      return;
+    }
+
+    // Delete the old trashed forms
+    const result = await Form.deleteMany({
+      userId,
+      isTrashed: true,
+      trashedAt: { $lte: thirtyDaysAgo },
+    });
+
+    console.log(`Cleanup result:`, result);
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} old trashed forms cleaned up successfully`,
+      deletedCount: result.deletedCount,
+      cleanupDate: new Date(),
+    });
+  })
+);
+
+// @desc    Get trash statistics
+// @route   GET /api/forms/trash-stats
+// @access  Private
+router.get(
+  '/trash-stats',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const totalTrashed = await Form.countDocuments({
+      userId,
+      isTrashed: true,
+    });
+
+    const expiredForms = await Form.countDocuments({
+      userId,
+      isTrashed: true,
+      trashedAt: { $lte: thirtyDaysAgo },
+    });
+
+    const activeTrashed = totalTrashed - expiredForms;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalTrashed,
+        activeTrashed,
+        expiredForms,
+        canCleanup: expiredForms > 0,
+      },
     });
   })
 );

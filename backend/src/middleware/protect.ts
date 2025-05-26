@@ -4,7 +4,6 @@ import { catchAsync } from '../utils/catchAsync';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { JwtPayload } from '../types/index';
-// import { AuthUser } from '../types/express';
 
 interface AuthRequest extends Request {
   user?: any;

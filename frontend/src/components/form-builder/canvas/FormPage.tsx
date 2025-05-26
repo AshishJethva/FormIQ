@@ -1,4 +1,4 @@
-
+// src/components/canvas/FormPage.tsx
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
@@ -77,8 +77,8 @@ const FormPage: React.FC<FormPageProps> = ({
               <div className='py-12 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 mx-4'>
                 <div className='text-gray-500 mb-2'>No fields added yet</div>
                 <div className='text-gray-400 text-sm'>
-                  Drag elements from the left panel or click the &apos;+&apos; button to
-                  add a field
+                  Drag elements from the left panel or click the &apos;+&apos;
+                  button to add a field
                 </div>
               </div>
             )}

@@ -265,7 +265,7 @@ export default function LogoPropertiesPanel({
 
       // Start loading the image
       img.src = logoUrl;
-    } catch (error) {
+    } catch {
       toast.error('Error loading image URL');
     }
   };

@@ -1,95 +1,26 @@
-// src/app/form-builder/page.tsx
+// src/app/buid/[formId]/page.tsx
 'use client';
 
 import { Provider } from 'react-redux';
-import { store } from '@/redux/store';
-import { useEffect, useState, useRef } from 'react';
+import { AppDispatch, store } from '@/redux/store';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { toast } from 'sonner';
 import FormBuilder from '@/components/form-builder/FormBuilder';
-import { initializeForm, setFormTitle } from '@/redux/slices/formBuilderSlice';
+import {
+  initializeForm,
+  loadFormAsync,
+  setFormTitle,
+} from '@/redux/slices/formBuilderSlice';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
-
-// Auto-save hook
-const useAutoSave = (
-  formData: any,
-  formId: string,
-  isEnabled: boolean = true
-) => {
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastDataRef = useRef<string>('');
-
-  useEffect(() => {
-    if (!isEnabled || !formData || !formId) return;
-
-    const currentDataString = JSON.stringify(formData);
-
-    // Only save if data has actually changed
-    if (currentDataString === lastDataRef.current) return;
-
-    lastDataRef.current = currentDataString;
-
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for auto-save (2 seconds after last change)
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        setIsSaving(true);
-
-        const token = localStorage.getItem('token');
-        await axios.put(
-          `${apiConfig.url}/forms/${formId}`,
-          {
-            title: formData.title,
-            description: formData.description,
-            pages: formData.pages,
-            selectedFieldId: formData.selectedFieldId,
-            selectedPageId: formData.selectedPageId,
-            currentPageIndex: formData.currentPageIndex,
-            propertiesPanelOpen: formData.propertiesPanelOpen,
-            logo: formData.logo,
-            settings: formData.settings,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        setLastSaved(new Date());
-        console.log('Form auto-saved successfully');
-      } catch (error) {
-        console.error('Auto-save failed:', error);
-        toast.error('Failed to auto-save form changes');
-      } finally {
-        setIsSaving(false);
-      }
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [formData, formId, isEnabled]);
-
-  return { isSaving, lastSaved };
-};
+import useAutoSave from '@/hooks/useAutoSave';
 
 export default function FormBuilderPage() {
   const params = useParams();
   const router = useRouter();
-  const dispatch = useDispatch();
   const formId = params.formId as string;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +28,13 @@ export default function FormBuilderPage() {
   const [formExists, setFormExists] = useState(false);
 
   const form = useSelector((state: RootState) => state.formBuilder.form);
+  const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    if (formId) {
+      dispatch(loadFormAsync(formId));
+    }
+  }, [dispatch, formId]);
 
   // Enable auto-save after form is loaded
   const { lastSaved } = useAutoSave(form, formId, formExists);
