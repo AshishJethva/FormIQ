@@ -209,8 +209,10 @@
 
 // export default mongoose.model<IForm>('Form', formSchema);
 
-// src/models/Form.ts
+// src/models/Form.ts - Enhanced Form Model
 import mongoose, { Schema, Document } from 'mongoose';
+import { pageSchema } from '../validation/formValidation';
+import { FormPage } from '../types/form';
 
 // Field Schema
 const FieldSchema = new Schema(
@@ -374,6 +376,14 @@ const FormSchema = new Schema<IForm>(
       trim: true,
       maxlength: [1000, 'Description cannot exceed 1000 characters'],
     },
+    pages: [
+      {
+        id: String,
+        fields: [
+          /* your field schema */
+        ],
+      },
+    ],
     selectedFieldId: {
       type: String,
       default: null,

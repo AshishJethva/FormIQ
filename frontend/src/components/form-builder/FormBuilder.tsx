@@ -1,122 +1,4 @@
-// // src/components/form-builder/FormBuilder.tsx
-// 'use client';
-
-// import { useState, useEffect } from 'react';
-// import { useSelector, useDispatch } from 'react-redux';
-// import { RootState } from '@/redux/store';
-// import {
-//   setPreviewMode,
-//   clearSelectedField,
-//   initializeForm,
-// } from '@/redux/slices/formBuilderSlice';
-// import FormBuilderHeader from './navigation/FormBuilderHeader';
-// import MainNavigation from './navigation/MainNavigation';
-// import ElementsPanel from './elements-panel/ElementsPanel';
-// import FormCanvas from './canvas/FormCanvas';
-// import PropertiesPanel from './properties-panel/PropertiesPanel';
-// import { AnimatePresence } from 'framer-motion';
-// import DragProvider from '@/providers/DragProvider';
-
-// export default function FormBuilder({ lastSaved }: { lastSaved?: string }) {
-//   const dispatch = useDispatch();
-//   const formState = useSelector((state: RootState) => state.formBuilder);
-//   const [activeTab, setActiveTab] = useState<string>('BUILD');
-//   const [isPreviewEnabled, setIsPreviewEnabled] = useState<boolean>(
-//     formState.isPreviewMode
-//   );
-//   const [elementsVisible, setElementsVisible] = useState<boolean>(true);
-
-//   // Sync preview mode with Redux state
-//   useEffect(() => {
-//     setIsPreviewEnabled(formState.isPreviewMode);
-//   }, [formState.isPreviewMode]);
-
-//   // Initialize the form when the component mounts
-//   useEffect(() => {
-//     dispatch(initializeForm());
-//   }, [dispatch]);
-
-//   const handleTabChange = (tab: string) => {
-//     setActiveTab(tab);
-
-//     // Hide elements panel if not on BUILD tab
-//     if (tab !== 'BUILD') {
-//       setElementsVisible(false);
-//       // Clear any selected field when changing tabs
-//       dispatch(clearSelectedField());
-//     } else {
-//       setElementsVisible(true);
-//     }
-//   };
-
-//   const handlePreviewToggle = (enabled: boolean) => {
-//     setIsPreviewEnabled(enabled);
-//     dispatch(setPreviewMode(enabled));
-
-//     // Hide panels in preview mode
-//     if (enabled) {
-//       setElementsVisible(false);
-//       // Clear any selected field when entering preview mode
-//       dispatch(clearSelectedField());
-//     } else if (activeTab === 'BUILD') {
-//       setElementsVisible(true);
-//     }
-//   };
-
-//   // Console log to debug panel state
-//   useEffect(() => {
-//     console.log(
-//       'FormBuilderLayout - Selected Field:',
-//       formState.form?.selectedFieldId
-//     );
-//     console.log(
-//       'FormBuilderLayout - PropertiesPanel Open:',
-//       formState.form?.propertiesPanelOpen
-//     );
-//   }, [formState.form?.selectedFieldId, formState.form?.propertiesPanelOpen]);
-
-//   if (!formState.form) return null;
-
-//   return (
-//     <DragProvider>
-//       <div className='flex flex-col h-screen bg-gray-100 overflow-hidden'>
-//         {/* Header */}
-//         <FormBuilderHeader
-//           title={formState.form.title || 'My Form'}
-//           lastSaved={lastSaved ||  '00:00 UTC'}
-//         />
-
-//         {/* Navigation */}
-//         <MainNavigation
-//           activeTab={activeTab}
-//           onTabChange={handleTabChange}
-//           isPreviewEnabled={isPreviewEnabled}
-//           onPreviewToggle={handlePreviewToggle}
-//         />
-
-//         {/* Main Content Area */}
-//         <div className='flex flex-1 relative overflow-hidden'>
-//           {/* Elements Panel - Only shown on BUILD tab when not in preview mode */}
-//           <AnimatePresence>
-//             {activeTab === 'BUILD' && elementsVisible && !isPreviewEnabled && (
-//               <ElementsPanel />
-//             )}
-//           </AnimatePresence>
-
-//           {/* Form Canvas */}
-//           <FormCanvas />
-
-//           {/* Properties Panel - Only shown when a field is selected and not in preview mode */}
-//           {formState.form.selectedFieldId &&
-//             formState.form.propertiesPanelOpen &&
-//             !isPreviewEnabled && <PropertiesPanel />}
-//         </div>
-//       </div>
-//     </DragProvider>
-//   );
-// }
-
-// src/components/form-builder/FormBuilder.tsx
+// src/components/form-builder/FormBuilder.tsx - Enhanced with Debug Logging
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -128,6 +10,8 @@ import {
   clearSelectedField,
   initializeForm,
   saveFormAsync,
+  loadFormAsync,
+  clearError,
 } from '@/redux/slices/formBuilderSlice';
 import FormBuilderHeader from './navigation/FormBuilderHeader';
 import MainNavigation from './navigation/MainNavigation';
@@ -153,6 +37,19 @@ export default function FormBuilder() {
   const [isPreviewEnabled, setIsPreviewEnabled] = useState<boolean>(false);
   const [elementsVisible, setElementsVisible] = useState<boolean>(true);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 FormBuilder Debug - Current State:', {
+      formId,
+      hasForm: !!formState.form,
+      isLoading: formState.isLoading,
+      error: formState.error,
+      pageCount: formState.form?.pages?.length || 0,
+      currentPageIndex: formState.form?.currentPageIndex,
+      hasUnsavedChanges: formState.hasUnsavedChanges,
+    });
+  }, [formState, formId]);
+
   // Determine current page based on pathname
   const getCurrentPage = () => {
     if (pathname.includes('/settings')) return 'SETTINGS';
@@ -167,16 +64,16 @@ export default function FormBuilder() {
   const { isSaving, lastSaved, saveError } = useAutoSave(
     formState.form,
     formId,
-    !!formState.form && !formState.isPreviewMode, // Only auto-save when not in preview
+    !!formState.form && !formState.isPreviewMode && !formState.isLoading,
     {
-      delay: 2000, // 2 second delay
-      enableToast: false, // Don't show toast for auto-save (only manual saves)
+      delay: 3000, // 3 second delay to reduce server load
+      enableToast: false,
       retryAttempts: 3,
       onSaveSuccess: data => {
-        console.log('Form saved successfully:', data);
+        console.log('✅ Auto-save successful:', data);
       },
       onSaveError: error => {
-        console.error('Auto-save error:', error);
+        console.error('❌ Auto-save error:', error);
       },
     }
   );
@@ -185,9 +82,11 @@ export default function FormBuilder() {
   const handleManualSave = async () => {
     if (formState.form && formId) {
       try {
+        console.log('🔄 Manual save initiated');
         await dispatch(saveFormAsync(formId));
+        console.log('✅ Manual save completed');
       } catch (error) {
-        console.error('Manual save failed:', error);
+        console.error('❌ Manual save failed:', error);
       }
     }
   };
@@ -199,10 +98,51 @@ export default function FormBuilder() {
     dispatch(setPreviewMode(isPreview));
   }, [dispatch, pathname]);
 
-  // Initialize the form when the component mounts
+  // Load form from backend when component mounts or formId changes
   useEffect(() => {
-    dispatch(initializeForm());
-  }, [dispatch]);
+    const loadForm = async () => {
+      if (formId) {
+        try {
+          console.log('🔄 Loading form with ID:', formId);
+
+          // Clear any existing errors
+          dispatch(clearError());
+
+          // Load form from backend
+          const result = await dispatch(loadFormAsync(formId));
+
+          if (loadFormAsync.fulfilled.match(result)) {
+            console.log('✅ Form loaded successfully:', {
+              title: result.payload.title,
+              pageCount: result.payload.pages?.length || 0,
+              fieldsCount:
+                result.payload.pages?.reduce(
+                  (total: number, page: any) =>
+                    total + (page.fields?.length || 0),
+                  0
+                ) || 0,
+            });
+          } else if (loadFormAsync.rejected.match(result)) {
+            console.error('❌ Form loading failed:', result.payload);
+            // If loading fails, try to initialize a new form
+            dispatch(initializeForm());
+          }
+        } catch (error) {
+          console.error('❌ Form loading error:', error);
+          // If loading fails, initialize a new form
+          dispatch(initializeForm());
+        }
+      } else {
+        console.log('🆕 No formId provided, initializing new form');
+        dispatch(initializeForm());
+      }
+    };
+
+    // Only load if we don't already have form data or if formId changed
+    if (!formState.form || (formId && formState.form.id !== formId)) {
+      loadForm();
+    }
+  }, [dispatch, formId, formState.form?.id]);
 
   // Handle visibility of elements panel
   useEffect(() => {
@@ -237,6 +177,7 @@ export default function FormBuilder() {
         <div className='text-center'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4'></div>
           <p className='text-gray-600'>Loading form...</p>
+          <p className='text-gray-400 text-sm mt-2'>Form ID: {formId}</p>
         </div>
       </div>
     );
@@ -252,18 +193,47 @@ export default function FormBuilder() {
             Error Loading Form
           </h1>
           <p className='text-gray-600 mb-4'>{formState.error}</p>
+          <p className='text-gray-400 text-sm mb-4'>Form ID: {formId}</p>
           <button
-            onClick={() => window.location.reload()}
-            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'
+            onClick={() => {
+              dispatch(clearError());
+              window.location.reload();
+            }}
+            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2'
           >
             Try Again
+          </button>
+          <button
+            onClick={() => {
+              dispatch(clearError());
+              dispatch(initializeForm());
+            }}
+            className='bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600'
+          >
+            Create New Form
           </button>
         </div>
       </div>
     );
   }
 
-  if (!formState.form) return null;
+  if (!formState.form) {
+    console.log('⚠️ No form data available, showing fallback');
+    return (
+      <div className='flex items-center justify-center h-screen bg-gray-100'>
+        <div className='text-center'>
+          <div className='text-gray-500 text-6xl mb-4'>📝</div>
+          <p className='text-gray-600 mb-4'>No form data available</p>
+          <button
+            onClick={() => dispatch(initializeForm())}
+            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'
+          >
+            Initialize Form
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate last saved time
   const getLastSavedDisplay = () => {
@@ -277,6 +247,18 @@ export default function FormBuilder() {
     }
     return formState.form?.lastSaved || '00:00';
   };
+
+  // Debug info for form pages
+  console.log('📄 Form Pages Debug:', {
+    totalPages: formState.form.pages?.length || 0,
+    currentPageIndex: formState.form.currentPageIndex,
+    pages:
+      formState.form.pages?.map((page, index) => ({
+        index,
+        id: page?.id,
+        fieldsCount: page?.fields?.length || 0,
+      })) || [],
+  });
 
   // Render preview page
   if (currentPage === 'PREVIEW' || isPreviewEnabled) {

@@ -195,24 +195,79 @@ router.get(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+    const formId = req.params.id;
+
+    console.log('🔍 Loading form:', { formId, userId: userId.toString() });
+
     const form = await Form.findOne({
       _id: req.params.id,
       userId,
     });
 
     if (!form) {
+      console.log('❌ Form not found:', { formId, userId: userId.toString() });
       throw new ApiError('Form not found', 404);
     }
+
+    console.log('📄 Form found:', {
+      id: form._id,
+      title: form.title,
+      pagesCount: form.pages?.length || 0,
+      rawPages: form.pages,
+    });
+
+    // Ensure pages are properly structured
+    let pages = form.pages || [];
+
+    // If pages is not an array or is empty, create a default page
+    if (!Array.isArray(pages) || pages.length === 0) {
+      console.log('🔧 Creating default page structure');
+      pages = [
+        {
+          id: uuidv4(),
+          fields: [],
+        },
+      ];
+    }
+
+    // Ensure each page has proper structure
+    pages = pages.map((page: any, index: number) => {
+      if (!page || typeof page !== 'object') {
+        console.log(`🔧 Fixing page structure at index ${index}`);
+        return {
+          id: uuidv4(),
+          fields: [],
+        };
+      }
+
+      // Ensure page has id and fields
+      const pageData = {
+        id: page.id || uuidv4(),
+        fields: Array.isArray(page.fields) ? page.fields : [],
+      };
+
+      console.log(`📄 Page ${index}:`, {
+        id: pageData.id,
+        fieldsCount: pageData.fields.length,
+        fields: pageData.fields.map((f: any) => ({
+          id: f?.id,
+          type: f?.type,
+          label: f?.label,
+        })),
+      });
+
+      return pageData;
+    });
 
     // Return form data in the format expected by form builder
     const formData = {
       id: form.id,
       title: form.title || 'Untitled Form',
       description: form.description,
-      pages: form.pages || [{ id: uuidv4(), fields: [] }],
-      selectedFieldId: form.selectedFieldId,
-      selectedPageId: form.selectedPageId,
-      currentPageIndex: form.currentPageIndex || 0,
+      pages: pages || [{ id: uuidv4(), fields: [] }],
+      selectedFieldId: null, // Always start with no selection
+      selectedPageId: pages[0]?.id || uuidv4(),
+      currentPageIndex: Math.min(form.currentPageIndex || 0, pages.length - 1),
       propertiesPanelOpen: false, // Always start with panel closed
       logo: form.logo,
       settings: {
@@ -239,6 +294,17 @@ router.get(
       isArchived: form.isArchived,
       isTrashed: form.isTrashed,
     };
+
+    console.log('✅ Returning form data:', {
+      id: formData.id,
+      title: formData.title,
+      pagesCount: formData.pages.length,
+      currentPageIndex: formData.currentPageIndex,
+      totalFields: formData.pages.reduce(
+        (total, page) => total + (page.fields?.length || 0),
+        0
+      ),
+    });
 
     res.status(200).json({
       success: true,
@@ -335,13 +401,44 @@ router.put(
   validate(updateFormSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+    const formId = req.params.id;
+
+    console.log('🔄 Updating form:', {
+      formId,
+      userId: userId.toString(),
+      dataKeys: Object.keys(req.body),
+      pagesCount: req.body.pages?.length || 0,
+    });
+
     const form = await Form.findOne({
-      _id: req.params.id,
+      _id: formId,
       userId,
     });
 
     if (!form) {
+      console.log('❌ Form not found for update:', {
+        formId,
+        userId: userId.toString(),
+      });
       throw new ApiError('Form not found', 404);
+    }
+
+    // Log incoming pages data
+    if (req.body.pages) {
+      console.log('📄 Incoming pages data:', {
+        pagesCount: req.body.pages.length,
+        pages: req.body.pages.map((page: any, index: number) => ({
+          index,
+          id: page?.id,
+          fieldsCount: page?.fields?.length || 0,
+          fields:
+            page?.fields?.map((f: any) => ({
+              id: f?.id,
+              type: f?.type,
+              label: f?.label,
+            })) || [],
+        })),
+      });
     }
 
     // Update form fields with validation
@@ -371,14 +468,24 @@ router.put(
       minute: '2-digit',
     });
 
-    await form.save();
+    try {
+      await form.save();
+      console.log('✅ Form updated successfully:', {
+        id: form.id,
+        title: form.title,
+        pagesCount: form.pages?.length || 0,
+      });
+    } catch (saveError) {
+      console.error('❌ Error saving form:', saveError);
+      throw new ApiError('Failed to save form', 500);
+    }
 
     // Return updated form data
     const formData = {
       id: form.id,
       title: form.title,
       description: form.description,
-      pages: form.pages,
+      pages: form.pages || [],
       selectedFieldId: form.selectedFieldId,
       selectedPageId: form.selectedPageId,
       currentPageIndex: form.currentPageIndex,
@@ -390,8 +497,8 @@ router.put(
       createdAt: form.createdAt,
       updatedAt: form.updatedAt,
       isPublished: form.isPublished,
-      submissions: form.submissions,
       labels: form.labels,
+      submissions: form.submissions,
       isFavorite: form.isFavorite,
       isArchived: form.isArchived,
       isTrashed: form.isTrashed,
