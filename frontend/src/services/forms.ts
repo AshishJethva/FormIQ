@@ -66,6 +66,9 @@ const mapSortOptionToBackend = (
 
 export const formsService = {
   async getForms(filters: FormFilters = {}) {
+    // DEBUG: Log the incoming filters
+    console.log('🚀 formsService.getForms called with filters:', filters);
+
     // Map frontend sort option to backend format
     let sortBy = filters.sortBy;
     let sortOrder = filters.sortOrder;
@@ -110,11 +113,45 @@ export const formsService = {
       }
     });
 
-    console.log('Fetching forms with params:', params);
+    // DEBUG: Log params after removing undefined values
+    console.log('🧹 Params after cleanup:', params);
 
-    const response = await api.get('/forms', { params });
+    // DEBUG: Check if labels is still present
+    if (params.labels) {
+      console.log('🏷️ Labels param details:', {
+        type: typeof params.labels,
+        isArray: Array.isArray(params.labels),
+        value: params.labels,
+        length: Array.isArray(params.labels) ? params.labels.length : 'N/A',
+      });
+    } else {
+      console.log('❌ No labels param in final params');
+    }
 
-    console.log('Forms API response:', response.data);
+    console.log('🔗 Final params being sent to API:', params);
+
+    const response = await api.get('/forms', {
+      params,
+      paramsSerializer: {
+        serialize: params => {
+          const searchParams = new URLSearchParams();
+
+          Object.entries(params).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              value.forEach(item => {
+                if (item !== undefined && item !== null) {
+                  searchParams.append(key, String(item));
+                }
+              });
+            } else if (value !== undefined && value !== null) {
+              searchParams.append(key, String(value));
+            }
+          });
+
+          return searchParams.toString();
+        },
+      },
+    });
 
     return response.data;
   },

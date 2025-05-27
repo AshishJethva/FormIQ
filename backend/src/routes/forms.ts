@@ -47,7 +47,15 @@ router.get(
     // Filter by labels
     if (labels) {
       const labelArray = Array.isArray(labels) ? labels : [labels];
-      query.labels = { $in: labelArray };
+
+      // Remove empty/null/undefined values
+      const validLabels = labelArray.filter(
+        label => label && typeof label === 'string' && label.trim() !== ''
+      );
+
+      if (validLabels.length > 0) {
+        query.labels = { $in: validLabels };
+      }
     }
 
     // Filter by status
@@ -89,12 +97,45 @@ router.get(
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
-    console.log('Forms query:', JSON.stringify(query, null, 2));
+    console.log(
+      '🔍 FINAL QUERY BEFORE DATABASE:',
+      JSON.stringify(query, null, 2)
+    );
 
     const forms = await Form.find(query)
       .sort(sortObj)
       .skip(skip)
       .limit(limitNum);
+
+    console.log('📊 DATABASE RESULTS:', {
+      totalFound: forms.length,
+      queryHadLabelFilter: !!query.labels,
+      sampleFormLabels: forms.slice(0, 3).map(f => ({
+        id: f._id,
+        title: f.title,
+        labels: f.labels,
+      })),
+    });
+
+    // If you have label filtering but got results, check if they actually match
+    if (query.labels && forms.length > 0) {
+      const expectedLabels = query.labels.$in;
+      console.log('🎯 Expected labels:', expectedLabels);
+
+      forms.forEach(form => {
+        const hasMatchingLabel = form.labels?.some(label =>
+          expectedLabels.includes(label)
+        );
+        if (!hasMatchingLabel) {
+          console.log('❌ Form WITHOUT expected labels:', {
+            formId: form._id,
+            formTitle: form.title,
+            formLabels: form.labels,
+            expectedLabels,
+          });
+        }
+      });
+    }
 
     const total = await Form.countDocuments(query);
 

@@ -70,6 +70,11 @@ export default function DashboardPage() {
   const fetchFormsForCurrentSection = useCallback(() => {
     let filters: any = {};
 
+    console.log(
+      '🔄 fetchFormsForCurrentSection called with activeSection:',
+      activeSection
+    );
+
     switch (activeSection) {
       case 'All':
         filters = { status: 'all' };
@@ -89,18 +94,44 @@ export default function DashboardPage() {
       default:
         if (activeSection.startsWith('label-')) {
           const labelId = activeSection.replace('label-', '');
-          filters = { labels: [labelId], status: 'all' };
+
+          console.log('🏷️ Processing label section:', {
+            activeSection,
+            extractedLabelId: labelId,
+            labelIdTrimmed: labelId.trim(),
+          });
+
+          // Ensure labelId is valid
+          if (labelId && labelId.trim()) {
+            filters = {
+              labels: [labelId.trim()],
+              status: 'all',
+            };
+            console.log('✅ Created filters for label:', filters);
+          } else {
+            console.error('❌ Invalid label ID extracted:', labelId);
+            filters = { status: 'all' };
+          }
         } else {
           filters = { status: 'all' };
         }
     }
 
-    console.log(
-      'Fetching forms for section:',
-      activeSection,
-      'with filters:',
-      filters
-    );
+    console.log('🎯 Final filters about to dispatch:', filters);
+
+    // DEBUG: Check the filters right before dispatching
+    if (filters.labels) {
+      console.log('🏷️ Labels in final filters:', {
+        labels: filters.labels,
+        type: typeof filters.labels,
+        isArray: Array.isArray(filters.labels),
+        firstItem: filters.labels[0],
+        length: filters.labels.length,
+      });
+    }
+
+    console.log('📤 Dispatching fetchForms with filters:', filters);
+
     dispatch(fetchForms(filters) as any);
   }, [activeSection, dispatch]);
 

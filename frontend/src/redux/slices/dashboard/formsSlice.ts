@@ -70,6 +70,20 @@ export const fetchForms = createAsyncThunk(
       limit?: number;
     } = {}
   ) => {
+    // DEBUG: Log what the thunk receives
+    console.log('🎯 Redux fetchForms thunk called with:', filters);
+
+    if (filters.labels) {
+      console.log('🏷️ Labels in Redux thunk:', {
+        labels: filters.labels,
+        type: typeof filters.labels,
+        isArray: Array.isArray(filters.labels),
+        length: filters.labels.length,
+        values: filters.labels,
+      });
+    } else {
+      console.log('❌ No labels in Redux thunk filters');
+    }
     const response = await formsService.getForms(filters);
     return response;
   }
