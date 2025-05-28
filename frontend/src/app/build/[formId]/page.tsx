@@ -5,8 +5,7 @@ import { Provider } from 'react-redux';
 import { AppDispatch, store } from '@/redux/store';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/redux/store';
+import { useDispatch } from 'react-redux';
 import { toast } from 'sonner';
 import FormBuilder from '@/components/form-builder/FormBuilder';
 import {
@@ -16,7 +15,6 @@ import {
 } from '@/redux/slices/formBuilderSlice';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
-import useAutoSave from '@/hooks/useAutoSave';
 
 export default function FormBuilderPage() {
   const params = useParams();
@@ -25,9 +23,7 @@ export default function FormBuilderPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [formExists, setFormExists] = useState(false);
 
-  const form = useSelector((state: RootState) => state.formBuilder.form);
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
@@ -35,9 +31,6 @@ export default function FormBuilderPage() {
       dispatch(loadFormAsync(formId));
     }
   }, [dispatch, formId]);
-
-  // Enable auto-save after form is loaded
-  const { lastSaved } = useAutoSave(form, formId, formExists);
 
   // Load form data from backend
   useEffect(() => {
@@ -66,10 +59,6 @@ export default function FormBuilderPage() {
           // Initialize form builder with loaded data
           dispatch(initializeForm());
           dispatch(setFormTitle(formData.title));
-
-          // Update form state with loaded data
-          // You might need to create additional actions to fully load the form state
-          setFormExists(true);
         } catch (fetchError: any) {
           console.log(
             'Form not found, might be a new form:',
@@ -79,7 +68,6 @@ export default function FormBuilderPage() {
           if (fetchError.response?.status === 404) {
             // Form doesn't exist yet - initialize with empty form
             dispatch(initializeForm());
-            setFormExists(true);
           } else {
             throw fetchError;
           }
@@ -97,40 +85,6 @@ export default function FormBuilderPage() {
       loadForm();
     }
   }, [formId, dispatch, router]);
-
-  // Handle user actions that trigger immediate saves
-  const handleFieldAction = async (action: string) => {
-    if (!formExists) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${apiConfig.url}/forms/${formId}`,
-        {
-          title: form?.title,
-          description: form?.description,
-          pages: form?.pages,
-          selectedFieldId: form?.selectedFieldId,
-          selectedPageId: form?.selectedPageId,
-          currentPageIndex: form?.currentPageIndex,
-          propertiesPanelOpen: form?.propertiesPanelOpen,
-          logo: form?.logo,
-          settings: form?.settings,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      console.log(`Form saved after ${action}`);
-    } catch (error) {
-      console.error(`Failed to save form after ${action}:`, error);
-      toast.error(`Failed to save ${action}`);
-    }
-  };
 
   // Loading state
   if (isLoading) {
@@ -170,7 +124,7 @@ export default function FormBuilderPage() {
   return (
     <Provider store={store}>
       <div className='relative'>
-        <FormBuilder lastSaved={lastSaved?.toISOString()} />
+        <FormBuilder />
       </div>
     </Provider>
   );

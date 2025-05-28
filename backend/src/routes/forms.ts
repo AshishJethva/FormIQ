@@ -16,6 +16,88 @@ import mongoose from 'mongoose';
 
 const router = express.Router();
 
+// @desc    Get public form for submission
+// @route   GET /api/forms/public/:formId
+// @access  Public
+router.get(
+  '/public/:formId',
+  asyncHandler(async (req: Request, res: Response) => {
+    const formId = req.params.formId;
+
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
+    }
+
+    console.log('🌐 Public form request:', { formId });
+
+    // ✅ Always fetch fresh data from database (no caching)
+    const form = await Form.findOne({
+      _id: formId,
+      isPublished: true,
+      isTrashed: false,
+      isArchived: false,
+      'settings.isEnabled': { $ne: false }, // Form must be enabled
+    });
+
+    if (!form) {
+      console.log('❌ Public form not found or not available:', { formId });
+      throw new ApiError('Form not found or not available', 404);
+    }
+
+    // Increment view count
+    try {
+      await Form.findByIdAndUpdate(formId, { $inc: { views: 1 } });
+      console.log('📊 View count incremented');
+    } catch (error) {
+      console.warn('⚠️ Failed to increment view count:', error);
+      // Don't fail the request if view count update fails
+    }
+
+    // Return latest form structure
+    const formData = {
+      id: form.id,
+      title: form.title,
+      description: form.description,
+      pages: form.pages || [],
+      logo: form.logo,
+      settings: {
+        submitButtonText: form.settings?.submitButtonText || 'Submit',
+        thankyouMessage:
+          form.settings?.thankyouMessage || 'Thank you for your submission!',
+        showLogo: form.settings?.showLogo || false,
+        allowMultipleSubmissions:
+          form.settings?.allowMultipleSubmissions !== false,
+        collectIpAddress: form.settings?.collectIpAddress !== false,
+      },
+      updatedAt: form.updatedAt, // ✅ Include update timestamp for debugging
+      publishedAt: form.publishedAt,
+    };
+
+    console.log('🌐 Serving published form:', {
+      formId,
+      title: form.title,
+      pagesCount: formData.pages.length,
+      lastUpdated: form.updatedAt,
+      totalFields: formData.pages.reduce(
+        (total, page) => total + (page.fields?.length || 0),
+        0
+      ),
+    });
+
+    // Set cache headers to ensure fresh data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formData,
+    });
+  })
+);
+
 // @desc    Get all forms for authenticated user
 // @route   GET /api/forms
 // @access  Private
@@ -209,12 +291,30 @@ router.get(
       throw new ApiError('Form not found', 404);
     }
 
-    console.log('📄 Form found:', {
-      id: form._id,
-      title: form.title,
-      pagesCount: form.pages?.length || 0,
-      rawPages: form.pages,
-    });
+    const settings = {
+      submitButtonText: form.settings?.submitButtonText || 'Submit',
+      defaultLabelAlignment: form.settings?.defaultLabelAlignment || 'LEFT',
+      thankyouMessage:
+        form.settings?.thankyouMessage || 'Thank you for your submission!',
+      defaultRequiredField: form.settings?.defaultRequiredField || false,
+      showLogo: form.settings?.showLogo || false,
+      isEnabled:
+        form.settings?.isEnabled !== undefined ? form.settings.isEnabled : true,
+
+      allowMultipleSubmissions:
+        form.settings?.allowMultipleSubmissions !== undefined
+          ? form.settings.allowMultipleSubmissions
+          : true,
+      allowMultipleEmailSubmissions:
+        form.settings?.allowMultipleEmailSubmissions !== undefined
+          ? form.settings.allowMultipleEmailSubmissions
+          : true,
+      collectIpAddress:
+        form.settings?.collectIpAddress !== undefined
+          ? form.settings.collectIpAddress
+          : true,
+      enableCaptcha: form.settings?.enableCaptcha || false,
+    };
 
     // Ensure pages are properly structured
     let pages = form.pages || [];
@@ -265,19 +365,12 @@ router.get(
       title: form.title || 'Untitled Form',
       description: form.description,
       pages: pages || [{ id: uuidv4(), fields: [] }],
-      selectedFieldId: null, // Always start with no selection
+      selectedFieldId: null,
       selectedPageId: pages[0]?.id || uuidv4(),
       currentPageIndex: Math.min(form.currentPageIndex || 0, pages.length - 1),
-      propertiesPanelOpen: false, // Always start with panel closed
+      propertiesPanelOpen: false,
       logo: form.logo,
-      settings: {
-        submitButtonText: form.settings?.submitButtonText || 'Submit',
-        defaultLabelAlignment: form.settings?.defaultLabelAlignment || 'LEFT',
-        thankyouMessage:
-          form.settings?.thankyouMessage || 'Thank you for your submission!',
-        defaultRequiredField: form.settings?.defaultRequiredField || false,
-        showLogo: form.settings?.showLogo || false,
-      },
+      settings: settings,
       lastSaved:
         form.lastSaved ||
         new Date().toLocaleTimeString([], {
@@ -294,17 +387,6 @@ router.get(
       isArchived: form.isArchived,
       isTrashed: form.isTrashed,
     };
-
-    console.log('✅ Returning form data:', {
-      id: formData.id,
-      title: formData.title,
-      pagesCount: formData.pages.length,
-      currentPageIndex: formData.currentPageIndex,
-      totalFields: formData.pages.reduce(
-        (total, page) => total + (page.fields?.length || 0),
-        0
-      ),
-    });
 
     res.status(200).json({
       success: true,
@@ -353,6 +435,7 @@ router.post(
         thankyouMessage: 'Thank you for your submission!',
         defaultRequiredField: false,
         showLogo: false,
+        isEnabled: true,
       },
       lastSaved: new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -423,22 +506,21 @@ router.put(
       throw new ApiError('Form not found', 404);
     }
 
-    // Log incoming pages data
-    if (req.body.pages) {
-      console.log('📄 Incoming pages data:', {
-        pagesCount: req.body.pages.length,
-        pages: req.body.pages.map((page: any, index: number) => ({
-          index,
-          id: page?.id,
-          fieldsCount: page?.fields?.length || 0,
-          fields:
-            page?.fields?.map((f: any) => ({
-              id: f?.id,
-              type: f?.type,
-              label: f?.label,
-            })) || [],
-        })),
+    const wasPublished = form.isPublished;
+
+    if (req.body.title && req.body.title.trim() !== form.title) {
+      const titleExists = await Form.findOne({
+        title: req.body.title.trim(),
+        userId,
+        _id: { $ne: formId },
       });
+
+      if (titleExists) {
+        throw new ApiError(
+          'A form with this title already exists. Please choose a different title.',
+          400
+        );
+      }
     }
 
     // Update form fields with validation
@@ -462,7 +544,6 @@ router.put(
       }
     });
 
-    // Update lastSaved timestamp
     form.lastSaved = new Date().toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
@@ -470,11 +551,19 @@ router.put(
 
     try {
       await form.save();
-      console.log('✅ Form updated successfully:', {
-        id: form.id,
-        title: form.title,
-        pagesCount: form.pages?.length || 0,
-      });
+
+      // ✅ NEW: Log published form updates
+      if (wasPublished || form.isPublished) {
+        console.log('🌐 PUBLISHED FORM UPDATED:', {
+          id: form.id,
+          title: form.title,
+          pagesCount: form.pages?.length || 0,
+          isEnabled: form.settings?.isEnabled,
+          updatedAt: form.updatedAt,
+        });
+      }
+
+      console.log('✅ Form updated successfully');
     } catch (saveError) {
       console.error('❌ Error saving form:', saveError);
       throw new ApiError('Failed to save form', 500);
@@ -507,7 +596,10 @@ router.put(
     res.status(200).json({
       success: true,
       data: formData,
-      message: 'Form updated successfully',
+      message:
+        wasPublished || form.isPublished
+          ? 'Published form updated successfully - changes are live!'
+          : 'Form updated successfully',
     });
   })
 );

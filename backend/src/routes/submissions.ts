@@ -1,345 +1,4 @@
-// // src/routes/submissions.ts - Submissions Routes
-// import express from 'express';
-// import { Request, Response } from 'express';
-// import { protect } from '../middleware/protect';
-// import Submission from '../models/Submission';
-// import Form from '../models/Form';
-// import { validate } from '../middleware/validation';
-// import { asyncHandler } from '../utils/asyncHandler';
-// import { ApiError } from '../utils/ApiError';
-// import { submitFormSchema } from '../validation/submissionValidation';
-
-// const router = express.Router();
-
-// // @desc    Get all submissions for a form
-// // @route   GET /api/submissions/form/:formId
-// // @access  Private
-// router.get(
-//   '/form/:formId',
-//   protect,
-//   asyncHandler(async (req: Request, res: Response) => {
-//     const { formId } = req.params;
-//     const {
-//       page = '1',
-//       limit = '20',
-//       sortBy = 'submittedAt',
-//       sortOrder = 'desc',
-//       search,
-//       dateFrom,
-//       dateTo,
-//     } = req.query;
-
-//     // Verify form belongs to user
-//     const form = await Form.findOne({ _id: formId, userId: req.user.id });
-//     if (!form) {
-//       throw new ApiError('Form not found', 404);
-//     }
-
-//     // Build query
-//     const query: any = { formId };
-
-//     // Date range filter
-//     if (dateFrom || dateTo) {
-//       query.submittedAt = {};
-//       if (dateFrom) query.submittedAt.$gte = new Date(dateFrom as string);
-//       if (dateTo) query.submittedAt.$lte = new Date(dateTo as string);
-//     }
-
-//     // Search filter (search in submission data)
-//     if (search) {
-//       query.$or = [
-//         { 'data.email': { $regex: search, $options: 'i' } },
-//         { 'data.name': { $regex: search, $options: 'i' } },
-//         { 'data.fullName': { $regex: search, $options: 'i' } },
-//         { 'data.phone': { $regex: search, $options: 'i' } },
-//       ];
-//     }
-
-//     // Pagination
-//     const pageNum = parseInt(page as string, 10) || 1;
-//     const limitNum = parseInt(limit as string, 10) || 20;
-//     const skip = (pageNum - 1) * limitNum;
-
-//     // Sort options
-//     const sortObj: any = {};
-//     sortObj[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
-
-//     const submissions = await Submission.find(query)
-//       .sort(sortObj)
-//       .skip(skip)
-//       .limit(limitNum);
-
-//     const total = await Submission.countDocuments(query);
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         submissions,
-//         pagination: {
-//           current: pageNum,
-//           pages: Math.ceil(total / limitNum),
-//           total,
-//           limit: limitNum,
-//         },
-//       },
-//     });
-//   })
-// );
-
-// // @desc    Get single submission
-// // @route   GET /api/submissions/:id
-// // @access  Private
-// router.get(
-//   '/:id',
-//   protect,
-//   asyncHandler(async (req: Request, res: Response) => {
-//     const submission = await Submission.findById(req.params.id).populate(
-//       'formId'
-//     );
-
-//     if (!submission) {
-//       throw new ApiError('Submission not found', 404);
-//     }
-
-//     // Verify form belongs to user
-//     const form = await Form.findOne({
-//       _id: submission.formId,
-//       userId: req.user.id,
-//     });
-//     if (!form) {
-//       throw new ApiError('Not authorized to access this submission', 403);
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       data: submission,
-//     });
-//   })
-// );
-
-// // @desc    Submit form data (public endpoint)
-// // @route   POST /api/submissions/:formId/submit
-// // @access  Public
-// router.post(
-//   '/:formId/submit',
-//   validate(submitFormSchema),
-//   asyncHandler(async (req: Request, res: Response) => {
-//     const { formId } = req.params;
-//     const { data: submissionData } = req.body;
-
-//     // Check if form exists and is published
-//     const form = await Form.findById(formId);
-//     if (!form) {
-//       throw new ApiError('Form not found', 404);
-//     }
-
-//     if (!form.isPublished) {
-//       throw new ApiError('Form is not published', 400);
-//     }
-
-//     if (form.isTrashed || form.isArchived) {
-//       throw new ApiError('Form is not available', 400);
-//     }
-
-//     // Validate submission data against form structure
-//     const validationErrors = validateSubmissionData(submissionData, form.pages);
-//     if (validationErrors.length > 0) {
-//       throw new ApiError(
-//         `Validation failed: ${validationErrors.join(', ')}`,
-//         400
-//       );
-//     }
-
-//     // Create submission record
-//     const submission = await Submission.create({
-//       formId,
-//       data: submissionData,
-//       submittedAt: new Date(),
-//       ipAddress: req.ip,
-//       userAgent: req.get('User-Agent'),
-//       metadata: {
-//         userId: req.user?.id || null,
-//         timestamp: new Date().toISOString(),
-//       },
-//     });
-
-//     // Update form submission count
-//     await Form.findByIdAndUpdate(formId, {
-//       $inc: { submissions: 1 },
-//       $set: { updatedAt: new Date() },
-//     });
-
-//     res.status(201).json({
-//       success: true,
-//       data: {
-//         submissionId: submission._id,
-//         message:
-//           form.settings?.thankyouMessage || 'Thank you for your submission!',
-//       },
-//       message: 'Form submitted successfully',
-//     });
-//   })
-// );
-
-// // @desc    Delete submission
-// // @route   DELETE /api/submissions/:id
-// // @access  Private
-// router.delete(
-//   '/:id',
-//   protect,
-//   asyncHandler(async (req: Request, res: Response) => {
-//     const submission = await Submission.findById(req.params.id);
-
-//     if (!submission) {
-//       throw new ApiError('Submission not found', 404);
-//     }
-
-//     // Verify form ownership
-//     const form = await Form.findOne({
-//       _id: submission.formId,
-//       userId: req.user.id,
-//     });
-//     if (!form) {
-//       throw new ApiError('Not authorized to delete this submission', 403);
-//     }
-
-//     await Submission.findByIdAndDelete(req.params.id);
-
-//     // Update form submission count
-//     await Form.findByIdAndUpdate(submission.formId, {
-//       $inc: { submissions: -1 },
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Submission deleted successfully',
-//     });
-//   })
-// );
-
-// // @desc    Export submissions
-// // @route   GET /api/submissions/form/:formId/export
-// // @access  Private
-// router.get(
-//   '/form/:formId/export',
-//   protect,
-//   asyncHandler(async (req: Request, res: Response) => {
-//     const { formId } = req.params;
-//     const { format = 'csv' } = req.query;
-
-//     // Verify form belongs to user
-//     const form = await Form.findOne({ _id: formId, userId: req.user.id });
-//     if (!form) {
-//       throw new ApiError('Form not found', 404);
-//     }
-
-//     const submissions = await Submission.find({ formId }).sort({
-//       submittedAt: -1,
-//     });
-
-//     if (format === 'csv') {
-//       const csvData = generateCSVExport(submissions, form);
-//       res.set({
-//         'Content-Type': 'text/csv',
-//         'Content-Disposition': `attachment; filename="${form.title}-submissions.csv"`,
-//       });
-//       res.send(csvData);
-//     } else {
-//       res.status(200).json({
-//         success: true,
-//         data: submissions,
-//         count: submissions.length,
-//       });
-//     }
-//   })
-// );
-
-// // Helper function to validate submission data
-// function validateSubmissionData(data: any, pages: any[]): string[] {
-//   const errors: string[] = [];
-
-//   for (const page of pages) {
-//     for (const field of page.fields || []) {
-//       const value =
-//         data[field.id] || data[field.label?.toLowerCase().replace(/\s+/g, '_')];
-
-//       // Required field validation
-//       if (
-//         field.required &&
-//         (!value || (typeof value === 'string' && value.trim() === ''))
-//       ) {
-//         errors.push(`${field.label} is required`);
-//         continue;
-//       }
-
-//       if (!value) continue; // Skip validation for empty optional fields
-
-//       // Type-specific validation
-//       switch (field.type) {
-//         case 'email':
-//           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-//             errors.push(`${field.label} must be a valid email address`);
-//           }
-//           break;
-
-//         case 'phone':
-//           if (!/^\+?[\d\s\-\(\)]+$/.test(value)) {
-//             errors.push(`${field.label} must be a valid phone number`);
-//           }
-//           break;
-
-//         case 'fullName':
-//           if (typeof value !== 'string' || value.trim().length < 2) {
-//             errors.push(`${field.label} must be at least 2 characters long`);
-//           }
-//           break;
-//       }
-//     }
-//   }
-
-//   return errors;
-// }
-
-// // Helper function to generate CSV export
-// function generateCSVExport(submissions: any[], form: any): string {
-//   if (submissions.length === 0) return 'No submissions found';
-
-//   // Get all unique field names
-//   const allFields = new Set<string>();
-//   submissions.forEach(submission => {
-//     Object.keys(submission.data).forEach(field => allFields.add(field));
-//   });
-
-//   const headers = ['Submission ID', 'Submitted At', ...Array.from(allFields)];
-
-//   const csvRows = [
-//     headers.join(','),
-//     ...submissions.map(submission => {
-//       const row = [
-//         submission._id.toString(),
-//         new Date(submission.submittedAt).toISOString(),
-//         ...Array.from(allFields).map(field => {
-//           const value = submission.data[field];
-//           // Escape commas and quotes in CSV
-//           if (
-//             typeof value === 'string' &&
-//             (value.includes(',') || value.includes('"'))
-//           ) {
-//             return `"${value.replace(/"/g, '""')}"`;
-//           }
-//           return value || '';
-//         }),
-//       ];
-//       return row.join(',');
-//     }),
-//   ];
-
-//   return csvRows.join('\n');
-// }
-
-// export default router;
-
-// src/routes/submissions.ts - Enhanced Submissions Routes
+// src/routes/submissions.ts - Submissions Routes
 import express from 'express';
 import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';
@@ -550,6 +209,135 @@ router.post(
       throw new ApiError('Form is not available', 400);
     }
 
+    // Check if form is enabled
+    if (form.settings?.isEnabled === false) {
+      throw new ApiError(
+        'Form is currently disabled and not accepting submissions',
+        403
+      );
+    }
+
+    // ✅ ENHANCED: Check multiple submission restrictions
+    if (!form.settings?.allowMultipleSubmissions) {
+      const clientIp = req.ip || req.connection.remoteAddress;
+      if (clientIp) {
+        const existingSubmission = await Submission.findOne({
+          formId,
+          ipAddress: clientIp,
+          submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // Last 24 hours
+        });
+
+        if (existingSubmission) {
+          throw new ApiError(
+            'You have already submitted this form recently',
+            429
+          );
+        }
+      }
+    }
+
+    // ✅ NEW: Check email-based multiple submission restrictions
+    if (
+      form.settings?.allowMultipleSubmissions &&
+      !form.settings?.allowMultipleEmailSubmissions
+    ) {
+      // Extract email from submission data
+      let submittedEmail = null;
+
+      // Look for email in submission data
+      for (const [fieldId, value] of Object.entries(submissionData || {})) {
+        if (
+          typeof value === 'string' &&
+          value.includes('@') &&
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+        ) {
+          submittedEmail = value.toLowerCase().trim();
+          break;
+        }
+      }
+
+      if (submittedEmail) {
+        console.log(
+          '🔍 Checking for duplicate email submission:',
+          submittedEmail
+        );
+
+        // Check if this email has already submitted
+        const existingEmailSubmission = await Submission.findOne({
+          formId,
+          $or: [
+            { 'data.email': submittedEmail },
+            { 'data.emailAddress': submittedEmail },
+            // Check all fields for email values
+            ...Object.keys(submissionData || {}).map(fieldId => ({
+              [`data.${fieldId}`]: submittedEmail,
+            })),
+          ],
+          submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // Last 24 hours
+        });
+
+        if (existingEmailSubmission) {
+          console.log('❌ Duplicate email submission blocked:', submittedEmail);
+          throw new ApiError(
+            'This email address has already been used to submit this form recently',
+            429
+          );
+        }
+      }
+    }
+
+    const hasAnyFields = form.pages?.some(
+      page =>
+        page.fields && Array.isArray(page.fields) && page.fields.length > 0
+    );
+
+    if (!hasAnyFields) {
+      console.log('⚠️ Form has no fields, allowing empty submission');
+
+      // Allow submission but create a basic record
+      const submissionPayload: any = {
+        formId,
+        data: submissionData || {},
+        submittedAt: new Date(),
+        status: 'processed',
+        metadata: {
+          timestamp: new Date().toISOString(),
+          formVersion: form.updatedAt,
+          note: 'Form submitted with no fields',
+        },
+      };
+
+      // Add IP address if collection is enabled
+      if (form.settings?.collectIpAddress !== false) {
+        submissionPayload.ipAddress = req.ip || req.connection.remoteAddress;
+      }
+
+      submissionPayload.userAgent = req.get('User-Agent');
+      submissionPayload.referrer = req.get('Referer');
+
+      const submission = await Submission.create(submissionPayload);
+
+      // Update form submission count
+      await Form.findByIdAndUpdate(formId, {
+        $inc: { submissions: 1 },
+        $set: { updatedAt: new Date() },
+      });
+
+      console.log('✅ Empty form submission processed successfully');
+
+      res.status(201).json({
+        success: true,
+        data: {
+          submissionId: submission._id,
+          message:
+            form.settings?.thankyouMessage || 'Thank you for your submission!',
+          submittedAt: submission.submittedAt,
+        },
+        message: 'Form submitted successfully',
+      });
+      return;
+    }
+
     // Check if multiple submissions are allowed
     if (!form.settings?.allowMultipleSubmissions) {
       const clientIp = req.ip || req.connection.remoteAddress;
@@ -570,10 +358,15 @@ router.post(
     }
 
     // Validate submission data against form structure
-    const validationErrors = validateSubmissionData(submissionData, form.pages);
+    const validationErrors = validateSubmissionData(
+      submissionData || {},
+      form.pages || []
+    );
+
     if (validationErrors.length > 0) {
+      console.log('❌ Validation errors found:', validationErrors);
       throw new ApiError(
-        `Validation failed: ${validationErrors.join(', ')}`,
+        `Validation failed: ${validationErrors.join('; ')}`,
         400
       );
     }
@@ -581,7 +374,7 @@ router.post(
     // Create submission record
     const submissionPayload: any = {
       formId,
-      data: submissionData,
+      data: submissionData || {},
       submittedAt: new Date(),
       status: 'processed',
       metadata: {
@@ -1003,8 +796,30 @@ router.get(
 function validateSubmissionData(data: any, pages: any[]): string[] {
   const errors: string[] = [];
 
+  // Handle case where no pages exist
+  if (!pages || !Array.isArray(pages) || pages.length === 0) {
+    console.log('⚠️ No pages found in form');
+    return []; // Allow submission if no pages (empty form)
+  }
+
   for (const page of pages) {
+    // Handle case where page has no fields
+    if (
+      !page.fields ||
+      !Array.isArray(page.fields) ||
+      page.fields.length === 0
+    ) {
+      console.log('⚠️ Page has no fields:', page.id);
+      continue; // Skip pages with no fields
+    }
+
     for (const field of page.fields || []) {
+      // Skip validation for heading fields (they don't collect data)
+      if (field.type === 'heading') {
+        console.log('⏭️ Skipping heading field:', field.label);
+        continue;
+      }
+
       const value = data[field.id];
 
       // Required field validation
@@ -1037,7 +852,7 @@ function validateSubmissionData(data: any, pages: any[]): string[] {
         }
       }
 
-      if (!value) continue; // Skip validation for empty optional fields
+      if (!value) continue;
 
       // Type-specific validation
       switch (field.type) {

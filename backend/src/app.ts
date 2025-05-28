@@ -3,7 +3,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import helmet from 'helmet';
-
 import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import formRoutes from './routes/forms';

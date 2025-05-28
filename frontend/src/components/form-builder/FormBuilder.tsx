@@ -9,7 +9,6 @@ import {
   setPreviewMode,
   clearSelectedField,
   initializeForm,
-  saveFormAsync,
   loadFormAsync,
   clearError,
 } from '@/redux/slices/formBuilderSlice';
@@ -34,21 +33,10 @@ export default function FormBuilder() {
   const formState = useSelector((state: RootState) => state.formBuilder);
   const formId = params.formId as string;
 
+  const isPublishedForm = formState.form?.isPublished;
+
   const [isPreviewEnabled, setIsPreviewEnabled] = useState<boolean>(false);
   const [elementsVisible, setElementsVisible] = useState<boolean>(true);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 FormBuilder Debug - Current State:', {
-      formId,
-      hasForm: !!formState.form,
-      isLoading: formState.isLoading,
-      error: formState.error,
-      pageCount: formState.form?.pages?.length || 0,
-      currentPageIndex: formState.form?.currentPageIndex,
-      hasUnsavedChanges: formState.hasUnsavedChanges,
-    });
-  }, [formState, formId]);
 
   // Determine current page based on pathname
   const getCurrentPage = () => {
@@ -66,30 +54,21 @@ export default function FormBuilder() {
     formId,
     !!formState.form && !formState.isPreviewMode && !formState.isLoading,
     {
-      delay: 3000, // 3 second delay to reduce server load
+      delay: isPublishedForm ? 500 : 1000,
       enableToast: false,
       retryAttempts: 3,
+      forceUpdatePublished: isPublishedForm,
       onSaveSuccess: data => {
         console.log('✅ Auto-save successful:', data);
+        if (isPublishedForm) {
+          console.log('🌐 Published form updated - changes are live!');
+        }
       },
       onSaveError: error => {
         console.error('❌ Auto-save error:', error);
       },
     }
   );
-
-  // Manual save function
-  const handleManualSave = async () => {
-    if (formState.form && formId) {
-      try {
-        console.log('🔄 Manual save initiated');
-        await dispatch(saveFormAsync(formId));
-        console.log('✅ Manual save completed');
-      } catch (error) {
-        console.error('❌ Manual save failed:', error);
-      }
-    }
-  };
 
   // Sync preview mode with URL hash
   useEffect(() => {
@@ -274,7 +253,6 @@ export default function FormBuilder() {
           lastSaved={getLastSavedDisplay()}
           isSaving={isSaving}
           saveError={saveError}
-          onManualSave={handleManualSave}
         />
         <MainNavigation
           isPreviewEnabled={isPreviewEnabled}
@@ -296,7 +274,6 @@ export default function FormBuilder() {
           lastSaved={getLastSavedDisplay()}
           isSaving={isSaving}
           saveError={saveError}
-          onManualSave={handleManualSave}
         />
         <MainNavigation
           isPreviewEnabled={isPreviewEnabled}
@@ -319,7 +296,6 @@ export default function FormBuilder() {
           lastSaved={getLastSavedDisplay()}
           isSaving={isSaving}
           saveError={saveError}
-          onManualSave={handleManualSave}
         />
 
         {/* Navigation */}

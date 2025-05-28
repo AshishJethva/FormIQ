@@ -88,7 +88,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
       setIsSubmitted(true);
       toast.success('Form submitted successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit form');
     } finally {
       setIsSubmitting(false);

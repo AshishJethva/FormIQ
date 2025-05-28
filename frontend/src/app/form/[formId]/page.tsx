@@ -6,11 +6,16 @@ import { useParams } from 'next/navigation';
 import { Form, Field, FieldType } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import axios from 'axios';
-import { apiConfig } from '@/config/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
+import {
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  RefreshCw,
+} from 'lucide-react';
+import { getPublicForm, submitForm } from '@/services/formSubmission';
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -24,6 +29,7 @@ export default function PublicFormPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     loadForm();
@@ -32,25 +38,23 @@ export default function PublicFormPage() {
   const loadForm = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `${apiConfig.url}/public/forms/${formId}`
-      );
-      setForm(response.data.data);
       setSubmitError('');
+      const response = await getPublicForm(formId);
+      setForm(response.data);
     } catch (error: any) {
-      console.error('Error loading form:', error);
-      if (error.response?.status === 404) {
-        setSubmitError('Form not found or is no longer available.');
-      } else {
-        setSubmitError('Unable to load form. Please try again later.');
-      }
-      toast.error('Form not found or not available');
+      console.error('❌ Error loading form:', error);
+      setSubmitError(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const validateField = (field: Field, value: any): string => {
+    if (field.type === FieldType.HEADING) {
+      return '';
+    }
+
     if (field.required) {
       if (!value || (typeof value === 'string' && value.trim() === '')) {
         return `${field.label} is required`;
@@ -104,6 +108,8 @@ export default function PublicFormPage() {
     if (!form) return false;
 
     const currentPage = form.pages[currentPageIndex];
+    if (!currentPage?.fields) return true;
+
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
@@ -139,7 +145,6 @@ export default function PublicFormPage() {
   const handleNext = () => {
     if (validateCurrentPage()) {
       setCurrentPageIndex(prev => prev + 1);
-      // Scroll to top when navigating
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       // Scroll to first error
@@ -168,22 +173,41 @@ export default function PublicFormPage() {
     setSubmitError('');
 
     try {
-      await axios.post(`${apiConfig.url}/submissions/${formId}/submit`, {
-        data: formData,
-      });
+      const result = await submitForm(formId, formData);
 
       setIsSubmitted(true);
-      toast.success('Form submitted successfully!');
+      toast.success(result.data.message || 'Form submitted successfully!');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Reset retry count on success
+      setRetryCount(0);
     } catch (error: any) {
-      console.error('Submission error:', error);
-      const errorMessage =
-        error.response?.data?.message ||
-        'Failed to submit form. Please try again.';
-      setSubmitError(errorMessage);
-      toast.error(errorMessage);
+      console.error('❌ Submission error:', error);
+      setSubmitError(error.message);
+
+      // Show user-friendly error message
+      if (error.message.includes('Please check your form inputs:')) {
+        toast.error('Please fix the form errors and try again');
+      } else {
+        toast.error(error.message);
+      }
+
+      // Scroll to top to show error message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    if (
+      submitError.includes('Network error') ||
+      submitError.includes('timeout')
+    ) {
+      loadForm(); // Reload form if network error
+    } else {
+      setSubmitError('');
     }
   };
 
@@ -283,7 +307,6 @@ export default function PublicFormPage() {
             </label>
             <Input
               type='email'
-              placeholder={field.placeholder || 'Enter your email address'}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className={`w-full ${
@@ -307,7 +330,6 @@ export default function PublicFormPage() {
             </label>
             <Input
               type='tel'
-              placeholder={field.placeholder || 'Enter your phone number'}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className={`w-full ${
@@ -527,7 +549,7 @@ export default function PublicFormPage() {
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <Input
-              placeholder={field.placeholder || field.label}
+              placeholder={field.label}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className={`w-full ${
@@ -551,6 +573,11 @@ export default function PublicFormPage() {
         <div className='text-center'>
           <Loader2 className='w-8 h-8 animate-spin mx-auto mb-4 text-blue-500' />
           <p className='text-gray-600'>Loading form...</p>
+          {retryCount > 0 && (
+            <p className='text-gray-500 text-sm mt-2'>
+              Attempt {retryCount + 1}...
+            </p>
+          )}
         </div>
       </div>
     );
@@ -565,16 +592,38 @@ export default function PublicFormPage() {
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>
             Form Unavailable
           </h1>
-          <p className='text-gray-600 mb-6'>
-            {submitError ||
-              'This form may have been deleted or is no longer available.'}
-          </p>
-          <Button
-            onClick={() => window.location.reload()}
-            className='bg-blue-500 hover:bg-blue-600'
-          >
-            Try Again
-          </Button>
+
+          <div className='bg-red-50 border border-red-200 rounded-lg p-4 mb-6'>
+            <p className='text-red-800 text-sm'>
+              {submitError ||
+                'This form may have been deleted or is no longer available.'}
+            </p>
+          </div>
+
+          <div className='flex flex-col sm:flex-row gap-3 justify-center'>
+            <Button
+              onClick={handleRetry}
+              className='bg-blue-500 hover:bg-blue-600 flex items-center'
+            >
+              <RefreshCw className='w-4 h-4 mr-2' />
+              Try Again
+            </Button>
+
+            {retryCount >= 2 && (
+              <Button
+                onClick={() => window.location.reload()}
+                variant='outline'
+              >
+                Refresh Page
+              </Button>
+            )}
+          </div>
+
+          {retryCount > 0 && (
+            <p className='text-gray-500 text-sm mt-4'>
+              Retry attempt: {retryCount}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -607,14 +656,14 @@ export default function PublicFormPage() {
 
           <div className='bg-gray-50 rounded-lg p-4 mb-6'>
             <p className='text-sm text-gray-600 mb-3'>
-              Now create your own FormIQ - It&apos;s free!
+              Create your own forms like this one - It&apos;s free!
             </p>
             <Button
               className='bg-green-500 hover:bg-green-600 text-white w-full'
               onClick={() => window.open('/', '_blank')}
             >
               <ExternalLink className='w-4 h-4 mr-2' />
-              Create your own FormIQ
+              Try FormIQ
             </Button>
           </div>
 
@@ -625,6 +674,7 @@ export default function PublicFormPage() {
               setCurrentPageIndex(0);
               setFormData({});
               setErrors({});
+              setSubmitError('');
             }}
             className='w-full'
           >

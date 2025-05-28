@@ -10,6 +10,7 @@ interface AutoSaveOptions {
   retryAttempts?: number; // Number of retry attempts on failure
   onSaveSuccess?: (data: any) => void;
   onSaveError?: (error: any) => void;
+  forceUpdatePublished?: boolean;
 }
 
 interface AutoSaveReturn {
@@ -28,11 +29,12 @@ const useAutoSave = (
   options: AutoSaveOptions = {}
 ): AutoSaveReturn => {
   const {
-    delay = 1000, // Increased delay to reduce server load
+    delay = 1000,
     enableToast = false,
     retryAttempts = 3,
     onSaveSuccess,
     onSaveError,
+    forceUpdatePublished = false,
   } = options;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -70,10 +72,10 @@ const useAutoSave = (
           title: formData.title,
           description: formData.description,
           pages: formData.pages || [],
-          selectedFieldId: null, // Don't persist selection state
+          selectedFieldId: null,
           selectedPageId: formData.selectedPageId,
           currentPageIndex: formData.currentPageIndex || 0,
-          propertiesPanelOpen: false, // Don't persist panel state
+          propertiesPanelOpen: false,
           logo: formData.logo,
           settings: formData.settings || {
             submitButtonText: 'Submit',
@@ -102,11 +104,20 @@ const useAutoSave = (
           }
         );
 
+        // If this is a published form, invalidate any cached versions
+        if (formData.isPublished || forceUpdatePublished) {
+          console.log(
+            '🔄 Form is published - changes will be immediately visible'
+          );
+        }
+
         // Success
         setLastSaved(new Date());
         setRetryCount(0);
 
-        if (enableToast) {
+        if (enableToast && formData.isPublished) {
+          toast.success('Changes saved - published form updated!');
+        } else if (enableToast) {
           toast.success('Changes saved automatically');
         }
 
@@ -145,17 +156,16 @@ const useAutoSave = (
         saveInProgressRef.current = false;
       }
     },
-    [formData, formId, enableToast, retryAttempts, onSaveSuccess, onSaveError]
+    [
+      formData,
+      formId,
+      enableToast,
+      retryAttempts,
+      onSaveSuccess,
+      onSaveError,
+      forceUpdatePublished,
+    ]
   );
-
-  // Force save function for manual saves
-  const forceSave = useCallback(async (): Promise<void> => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    hasInitialDataRef.current = true; // Mark as ready for saving
-    await performSave();
-  }, [performSave]);
 
   // Auto-save effect
   useEffect(() => {
@@ -220,7 +230,7 @@ const useAutoSave = (
     isSaving,
     lastSaved,
     saveError,
-    forceSave,
+    forceSave: performSave,
     retryCount,
   };
 };

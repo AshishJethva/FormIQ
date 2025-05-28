@@ -1,11 +1,10 @@
-// src/types/index.ts - Type Definitions backend 
+// src/types/index.ts - Type Definitions backend
 export interface Field {
   id: string;
   type: FieldType;
   label: string;
   required: boolean;
   helpText?: string;
-  placeholder?: string;
   labelAlignment?: LabelAlignment;
   options?: { label: string; value: string }[];
   defaultValue?: string | string[] | number;
@@ -44,6 +43,11 @@ export interface FormSettings {
   thankyouMessage: string;
   defaultLabelAlignment: LabelAlignment;
   defaultRequiredField: boolean;
+  isEnabled?: boolean;
+  allowMultipleSubmissions?: boolean;
+  allowMultipleEmailSubmissions?: boolean;
+  collectIpAddress?: boolean;
+  enableCaptcha?: boolean;
 }
 
 export type LabelAlignment = 'LEFT' | 'RIGHT';

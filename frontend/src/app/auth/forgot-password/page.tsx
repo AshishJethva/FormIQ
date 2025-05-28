@@ -70,12 +70,7 @@ const ForgotPasswordEmailPage = () => {
                   Email
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder='Enter your email address'
-                    type='email'
-                    {...field}
-                    autoComplete='email'
-                  />
+                  <Input type='email' {...field} autoComplete='email' />
                 </FormControl>
                 <FormMessage />
               </FormItem>

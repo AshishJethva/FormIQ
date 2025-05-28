@@ -111,6 +111,54 @@ export default function FormCanvas() {
     }
   }, [editingLabelId]);
 
+  const FormBuilderWarnings = ({ form }: { form: any }) => {
+    const hasRequiredFields = form?.pages?.some((page: any) =>
+      page.fields?.some((field: any) => field.required === true)
+    );
+
+    const hasAnyFields = form?.pages?.some(
+      (page: any) => page.fields && page.fields.length > 0
+    );
+
+    if (!hasAnyFields) {
+      return (
+        <div className='mx-auto my-4 p-4 bg-orange-50 border border-orange-200 rounded-lg w-[768px]'>
+          <div className='flex items-center'>
+            <div className='text-orange-600 mr-2'>⚠️</div>
+            <div>
+              <h3 className='font-medium text-orange-900'>No Fields Added</h3>
+              <p className='text-orange-700 text-sm mt-1'>
+                Your form has no fields. Add some fields from the left panel to
+                collect user data.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!hasRequiredFields && form?.isPublished) {
+      return (
+        <div className='mx-auto my-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg w-[768px]'>
+          <div className='flex items-center'>
+            <div className='text-yellow-600 mr-2'>💡</div>
+            <div>
+              <h3 className='font-medium text-yellow-900'>
+                No Required Fields
+              </h3>
+              <p className='text-yellow-700 text-sm mt-1'>
+                Your published form has no required fields. Users can submit
+                empty forms. Consider making some fields required.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   // Handle logo click to open properties panel
   const handleLogoClick = () => {
     setIsLogoPropertiesOpen(true);
@@ -384,11 +432,7 @@ export default function FormCanvas() {
       return (
         <div
           className={`mb-2 ${
-            field.labelAlignment === 'LEFT'
-              ? 'text-left'
-              : field.labelAlignment === 'RIGHT'
-              ? 'text-right'
-              : ''
+            field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
           }`}
         >
           {isEditing ? (
@@ -427,12 +471,24 @@ export default function FormCanvas() {
                   onChange={handleLabelChange}
                   onBlur={handleLabelBlur}
                   onKeyDown={handleLabelKeyDown}
-                  className='bg-transparent w-full text-3xl font-semibold my-5 py-2 pb-5 text-gray-700 outline-none border-none focus:outline-none focus:ring-0 focus:border-none '
+                  className={`bg-transparent w-full text-3xl font-semibold my-5 py-2 pb-5 text-gray-700 outline-none border-none focus:outline-none focus:ring-0 focus:border-none ${
+                    field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
+                  }`}
+                  style={{
+                    textAlign:
+                      field.labelAlignment === 'LEFT' ? 'left' : 'right',
+                  }}
                   autoFocus
                 />
               ) : (
                 <h3
-                  className='text-3xl my-5 py-2 pb-5 border-b font-semibold border-gray-200  text-gray-700 cursor-pointer'
+                  className={`text-3xl my-5 py-2 pb-5 border-b font-semibold border-gray-200  text-gray-700 cursor-pointer ${
+                    field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
+                  }`}
+                  style={{
+                    textAlign:
+                      field.labelAlignment === 'LEFT' ? 'left' : 'right',
+                  }}
                   onClick={e => handleLabelClick(e, field.id, field.label)}
                 >
                   {field.label}
@@ -447,7 +503,7 @@ export default function FormCanvas() {
               {renderEditableLabel()}
               <Input
                 type='email'
-                placeholder={field.placeholder || 'Email address'}
+                placeholder='Email address'
                 disabled
                 className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
@@ -777,6 +833,9 @@ export default function FormCanvas() {
     <div className='w-full h-full overflow-y-auto bg-gray-100'>
       {/* Logo Area - Outside the form */}
       {renderLogoArea()}
+
+      {/* Warnings */}
+      <FormBuilderWarnings form={form} />
 
       {/* Page Label with Remove Page option */}
       {!isFirstPage && (
