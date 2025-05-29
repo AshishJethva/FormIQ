@@ -209,7 +209,6 @@ router.post(
         // submissionId: submission._id,
       });
     } catch (error) {
-      console.error('❌ Error processing form submission:', error);
       throw new ApiError('Failed to process form submission', 500);
     }
   })

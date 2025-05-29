@@ -19,7 +19,8 @@ import {
   Archive,
   Tag,
   ChevronRight,
-  RotateCcw, // For restore icon
+  RotateCcw,
+  ExternalLink, // For restore icon
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -102,6 +103,12 @@ const FormsList: React.FC<FormsListProps> = ({
       onFormAction();
     }
   }, [onFormAction]);
+
+  // Handle submissions link click
+  const handleSubmissionsClick = (e: React.MouseEvent, formId: string) => {
+    e.stopPropagation(); // Prevent form selection
+    router.push(`/build/${formId}/submissions`);
+  };
 
   // Rename form functionality
   const handleRenameStart = (formId: string, currentName: string) => {
@@ -284,13 +291,13 @@ const FormsList: React.FC<FormsListProps> = ({
           break;
 
         case 'Settings':
-          // Navigate to form settings (could be a tab in form builder)
-          router.push(`/build/${formId}?tab=settings`);
+          // Navigate to form settings
+          router.push(`/build/${formId}/settings`);
           break;
 
         case 'Publish Form':
-          // Handle publish logic
-          toast.success('Form publishing feature coming soon');
+          // Navigate to form settings
+          router.push(`/build/${formId}/publish`);
           break;
 
         case 'Move to Trash':
@@ -688,11 +695,22 @@ const FormsList: React.FC<FormsListProps> = ({
                 ) : (
                   <h3 className='font-medium text-sm truncate'>{form.name}</h3>
                 )}
-                <p className='text-xs text-gray-500 truncate'>
-                  {form.submissions}{' '}
-                  {form.submissions === 1 ? 'Submission' : 'Submissions'}.
-                  Created on {getFormattedDate(form.createdAt)}
-                </p>
+                <div className='text-xs text-gray-500 truncate flex items-center gap-1'>
+                  {/* ✅ NEW: Make submissions count clickable */}
+                  <button
+                    onClick={e => handleSubmissionsClick(e, form.id)}
+                    className='text-[#2E66C3] hover:text-blue-800 hover:underline font-medium transition-colors inline-flex items-center gap-1 cursor-pointer'
+                    title={`View ${form.submissions} submission${
+                      form.submissions === 1 ? '' : 's'
+                    }`}
+                  >
+                    {form.submissions}{' '}
+                    {form.submissions === 1 ? 'Submission' : 'Submissions'}
+                    <ExternalLink className='h-3 w-3' />
+                  </button>
+                  <span>•</span>
+                  <span>Created on {getFormattedDate(form.createdAt)}</span>
+                </div>
               </div>
             </div>
 

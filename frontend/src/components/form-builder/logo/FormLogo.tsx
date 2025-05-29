@@ -58,42 +58,34 @@ export default function FormLogo() {
     return null;
   }
 
-  // Get the alignment class
-  const getAlignmentClass = () => {
-    switch (logo.alignment) {
-      case 'LEFT':
-        return 'justify-start';
-      case 'RIGHT':
-        return 'justify-end';
-      case 'CENTER':
-      default:
-        return 'justify-center';
-    }
-  };
-
-  // Calculate container width based on logo size percentage (0-100)
-  const getContainerStyle = () => {
-    // Ensure minimum size is 5% for visibility
-    const minSize = 5;
-    const effectiveSize = Math.max(minSize, logo.size || 50);
-
-    return {
-      width: `${effectiveSize}%`,
-      transition: 'all 0.3s ease',
-      minHeight: '60px',
-      height: containerHeight,
-    };
-  };
-
   // Calculate image style to maintain aspect ratio without cropping
   const getImageStyle = () => {
     const size = logo.size || 50;
-    // Increase max height for larger logos
-    const maxHeight =
-      size > 90 ? '220px' : size > 70 ? '180px' : size > 50 ? '150px' : '120px';
+
+    // ✅ ENHANCED: Better scaling for 100% logos
+    let maxHeight: string;
+    let maxWidth: string;
+
+    if (size >= 100) {
+      // For 100% size, allow much larger dimensions
+      maxHeight = '300px';
+      maxWidth = '100%';
+    } else if (size > 90) {
+      maxHeight = '220px';
+      maxWidth = '90%';
+    } else if (size > 70) {
+      maxHeight = '180px';
+      maxWidth = '80%';
+    } else if (size > 50) {
+      maxHeight = '150px';
+      maxWidth = '70%';
+    } else {
+      maxHeight = '120px';
+      maxWidth = '60%';
+    }
 
     return {
-      maxWidth: '100%',
+      maxWidth: maxWidth,
       maxHeight: maxHeight,
       width: 'auto',
       height: 'auto',
@@ -104,15 +96,30 @@ export default function FormLogo() {
 
   return (
     <div
-      className={`flex ${getAlignmentClass()} w-full mb-8 overflow-visible py-4`}
+      className={`flex w-full overflow-visible ${
+        logo.alignment === 'LEFT'
+          ? 'justify-start'
+          : logo.alignment === 'RIGHT'
+          ? 'justify-end'
+          : 'justify-center'
+      }`}
       style={{
         minHeight: '80px',
         height: containerHeight === 'auto' ? 'auto' : containerHeight,
+        padding: '0 0',
+        margin: 0,
       }}
     >
       <div
         className='relative flex items-center justify-center'
-        style={getContainerStyle()}
+        style={{
+          // ✅ FIXED: Let width be determined by size percentage
+          width: logo.size >= 100 ? '100%' : `${Math.max(5, logo.size || 50)}%`,
+          transition: 'all 0.3s ease',
+          minHeight: '60px',
+          height: containerHeight,
+          margin: 0,
+        }}
       >
         <img
           ref={imgRef}
@@ -120,7 +127,6 @@ export default function FormLogo() {
           alt='Form Logo'
           style={getImageStyle()}
           onLoad={() => {
-            // Additional trigger for height adjustment on load
             if (imgRef.current && logo.size && logo.size > 70) {
               const aspectRatio =
                 imgRef.current.naturalWidth / imgRef.current.naturalHeight;

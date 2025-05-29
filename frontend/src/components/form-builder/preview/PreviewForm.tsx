@@ -29,7 +29,7 @@ export default function PreviewForm({
   const isLastPage = currentPageIndex === form.pages.length - 1;
 
   const handleInputChange = (fieldId: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [fieldId]: value,
     }));
@@ -112,7 +112,7 @@ export default function PreviewForm({
             </label>
             <Input
               type='email'
-              placeholder={field.placeholder || 'Email address'}
+              placeholder={'Email address'}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className='w-full'
@@ -131,11 +131,14 @@ export default function PreviewForm({
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <Input
-              type='tel'
-              placeholder={field.placeholder || '(000) 000-0000'}
+              type='number'
+              placeholder='9876543210'
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className='w-full'
+              pattern='[6-9]\d{9}'
+              maxLength={10}
+              minLength={10}
             />
             {field.helpText && (
               <div className='text-sm text-gray-500 mt-1'>{field.helpText}</div>
@@ -296,7 +299,7 @@ export default function PreviewForm({
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <Input
-              placeholder={field.placeholder || field.label}
+              placeholder={field.label}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className='w-full'
@@ -312,8 +315,8 @@ export default function PreviewForm({
   return (
     <div className='max-w-3xl mx-auto p-8'>
       {/* Logo */}
-      {form.logo && (
-        <div className='mb-8'>
+      {form.logo && form.logo.src && (
+        <div className='mb-8 w-full'>
           <FormLogo />
         </div>
       )}

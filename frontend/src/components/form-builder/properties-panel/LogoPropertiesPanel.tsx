@@ -482,19 +482,28 @@ export default function LogoPropertiesPanel({
               <div className='relative'>
                 <div className='bg-gray-800 p-4 rounded-md'>
                   <div
-                    className={`p-2 flex ${
+                    className={`flex w-full ${
                       logoAlignment === 'LEFT'
                         ? 'justify-start'
                         : logoAlignment === 'RIGHT'
                         ? 'justify-end'
                         : 'justify-center'
                     }`}
+                    style={{ minHeight: '60px' }}
                   >
-                    <div style={{ maxWidth: `${logoSize}%` }}>
+                    <div
+                      style={{
+                        width:
+                          logoSize >= 100
+                            ? '100%'
+                            : `${Math.max(5, logoSize)}%`,
+                        minHeight: '40px',
+                      }}
+                    >
                       <img
                         src={logo.src}
                         alt='Logo'
-                        className='max-w-full object-contain'
+                        className='w-full object-contain'
                         style={{
                           maxHeight: '100px',
                           width: 'auto',

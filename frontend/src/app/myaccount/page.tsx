@@ -535,7 +535,7 @@ export default function AccountPage() {
               {editMode.phoneNumber ? (
                 <div className='flex-grow'>
                   <input
-                    type='tel'
+                    type='number'
                     name='phoneNumber'
                     value={formData.phoneNumber}
                     onChange={handleInputChange}

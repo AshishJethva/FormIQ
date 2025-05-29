@@ -1,4 +1,4 @@
-// src/routes/submissions.ts - Submissions Routes
+// src/routes/submissions.ts - Enhanced Final Production Version
 import express from 'express';
 import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';
@@ -11,6 +11,407 @@ import { submitFormSchema } from '../validation/submissionValidation';
 import mongoose from 'mongoose';
 
 const router = express.Router();
+
+// ===== HELPER FUNCTIONS =====
+
+// Helper function to create field labels map from form structure
+const createFieldLabelsMap = (formData: any): Record<string, string> => {
+  const labelsMap: Record<string, string> = {};
+
+  if (formData?.pages && Array.isArray(formData.pages)) {
+    formData.pages.forEach((page: any) => {
+      if (page.fields && Array.isArray(page.fields)) {
+        page.fields.forEach((field: any) => {
+          if (field.id && field.label && field.type !== 'heading') {
+            labelsMap[field.id] = field.label;
+          }
+        });
+      }
+    });
+  }
+
+  return labelsMap;
+};
+
+// Helper function to get all searchable field IDs from form
+const getSearchableFieldIds = (formData: any): string[] => {
+  const fieldIds: string[] = [];
+
+  if (formData?.pages && Array.isArray(formData.pages)) {
+    formData.pages.forEach((page: any) => {
+      if (page.fields && Array.isArray(page.fields)) {
+        page.fields.forEach((field: any) => {
+          // Include all fields except headings for search
+          if (field.id && field.type !== 'heading') {
+            fieldIds.push(field.id);
+          }
+        });
+      }
+    });
+  }
+
+  return fieldIds;
+};
+
+// Helper function to get a user-friendly field label
+const getFieldDisplayLabel = (
+  fieldId: string,
+  fieldLabelsMap: Record<string, string>
+): string => {
+  // First check if we have a label from the form structure
+  if (fieldLabelsMap[fieldId]) {
+    return fieldLabelsMap[fieldId];
+  }
+
+  // Fallback to common field patterns
+  const commonFields: Record<string, string> = {
+    name: 'Name',
+    fullName: 'Full Name',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    email: 'Email',
+    emailAddress: 'Email Address',
+    phone: 'Phone Number',
+    phoneNumber: 'Phone Number',
+    address: 'Address',
+    message: 'Message',
+    subject: 'Subject',
+    company: 'Company',
+    website: 'Website',
+    city: 'City',
+    state: 'State',
+    zipCode: 'Zip Code',
+    country: 'Country',
+    dateOfBirth: 'Date of Birth',
+    age: 'Age',
+    gender: 'Gender',
+    occupation: 'Occupation',
+    comments: 'Comments',
+    feedback: 'Feedback',
+  };
+
+  if (commonFields[fieldId]) {
+    return commonFields[fieldId];
+  }
+
+  // If it looks like a UUID, show a user-friendly fallback
+  if (
+    fieldId.match(
+      /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
+    )
+  ) {
+    return 'Custom Field';
+  }
+
+  // Convert camelCase or snake_case to readable format
+  return fieldId
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .replace(/^\w/, c => c.toUpperCase())
+    .trim();
+};
+
+// Helper function to format submission value for CSV
+const formatSubmissionValue = (value: any): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  // Handle objects (like fullName: {firstName, lastName})
+  if (typeof value === 'object' && value !== null) {
+    if (value.firstName && value.lastName) {
+      return `${value.firstName} ${value.lastName}`.trim();
+    } else if (value.street && value.city) {
+      const parts = [
+        value.street,
+        value.city,
+        value.state,
+        value.zipCode,
+      ].filter(Boolean);
+      return parts.join(', ');
+    } else if (Array.isArray(value)) {
+      return value.filter(v => v !== null && v !== undefined).join(', ');
+    } else {
+      // For other objects, try to extract meaningful values
+      const objectValues = Object.values(value).filter(
+        v => v !== null && v !== undefined && v !== ''
+      );
+      return objectValues.length > 0 ? objectValues.join(' ') : '';
+    }
+  }
+
+  return String(value).trim();
+};
+
+// Helper function to format date for CSV
+const formatSubmissionDate = (dateString: string): string => {
+  if (!dateString) return '';
+
+  try {
+    const date = new Date(dateString);
+    // Ensure we have a valid date
+    if (isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+};
+
+// Helper function to escape CSV values
+const escapeCSVValue = (value: string): string => {
+  if (!value && value !== '0') return ''; // Handle '0' as valid value
+
+  let escapedValue = String(value).trim();
+
+  // If the value contains comma, quote, newline, or starts/ends with whitespace, wrap it in quotes
+  if (
+    escapedValue.includes(',') ||
+    escapedValue.includes('"') ||
+    escapedValue.includes('\n') ||
+    escapedValue.includes('\r') ||
+    escapedValue !== escapedValue.trim()
+  ) {
+    // Escape existing quotes by doubling them
+    escapedValue = escapedValue.replace(/"/g, '""');
+    // Wrap in quotes
+    escapedValue = `"${escapedValue}"`;
+  }
+
+  return escapedValue;
+};
+
+// Helper function to validate submission data against form structure
+const validateSubmissionData = (
+  submissionData: any,
+  pages: any[]
+): string[] => {
+  const errors: string[] = [];
+
+  if (!pages || !Array.isArray(pages)) {
+    return errors;
+  }
+
+  pages.forEach((page: any) => {
+    if (page.fields && Array.isArray(page.fields)) {
+      page.fields.forEach((field: any) => {
+        if (field.type === 'heading') return; // Skip headings
+
+        const fieldValue = submissionData[field.id];
+
+        // Check required fields
+        if (
+          field.required &&
+          (!fieldValue || fieldValue.toString().trim() === '')
+        ) {
+          errors.push(`Field "${field.label || field.id}" is required`);
+          return;
+        }
+
+        // Skip validation if field is empty and not required
+        if (!fieldValue || fieldValue.toString().trim() === '') {
+          return;
+        }
+
+        // Type-specific validation
+        switch (field.type) {
+          case 'email':
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(fieldValue.toString())) {
+              errors.push(
+                `Field "${field.label || field.id}" must be a valid email address`
+              );
+            }
+            break;
+
+          case 'phone':
+            const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+            const cleanPhone = fieldValue.toString().replace(/[\s\-\(\)]/g, '');
+            if (!phoneRegex.test(cleanPhone)) {
+              errors.push(
+                `Field "${field.label || field.id}" must be a valid phone number`
+              );
+            }
+            break;
+
+          case 'number':
+            if (isNaN(Number(fieldValue))) {
+              errors.push(
+                `Field "${field.label || field.id}" must be a valid number`
+              );
+            }
+            break;
+
+          case 'url':
+            try {
+              new URL(fieldValue.toString());
+            } catch {
+              errors.push(
+                `Field "${field.label || field.id}" must be a valid URL`
+              );
+            }
+            break;
+
+          case 'checkbox':
+            if (field.required && !fieldValue) {
+              errors.push(`Field "${field.label || field.id}" must be checked`);
+            }
+            break;
+
+          case 'select':
+          case 'radio':
+            if (field.options && Array.isArray(field.options)) {
+              const validOptions = field.options.map(
+                (opt: any) => opt.value || opt
+              );
+              if (!validOptions.includes(fieldValue)) {
+                errors.push(
+                  `Field "${field.label || field.id}" contains an invalid option`
+                );
+              }
+            }
+            break;
+
+          case 'file':
+            // File validation would be handled separately in file upload middleware
+            break;
+
+          default:
+            // Text fields - check min/max length if specified
+            if (
+              field.minLength &&
+              fieldValue.toString().length < field.minLength
+            ) {
+              errors.push(
+                `Field "${field.label || field.id}" must be at least ${field.minLength} characters long`
+              );
+            }
+            if (
+              field.maxLength &&
+              fieldValue.toString().length > field.maxLength
+            ) {
+              errors.push(
+                `Field "${field.label || field.id}" must be no more than ${field.maxLength} characters long`
+              );
+            }
+            break;
+        }
+      });
+    }
+  });
+
+  return errors;
+};
+
+// Enhanced CSV export function with proper formatting
+const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
+  if (!submissions || submissions.length === 0) {
+    return 'No submissions found\n';
+  }
+
+  console.log('📊 Generating CSV for', submissions.length, 'submissions');
+
+  // Create field labels map from form structure
+  const fieldLabelsMap = createFieldLabelsMap(form);
+
+  // Get all unique field keys from submissions (excluding system fields)
+  const allFieldKeys = new Set<string>();
+  submissions.forEach(submission => {
+    if (submission.data && typeof submission.data === 'object') {
+      Object.keys(submission.data).forEach(key => {
+        // Only include actual form fields (exclude metadata, system fields, etc.)
+        if (key && typeof key === 'string' && key.trim().length > 0) {
+          allFieldKeys.add(key);
+        }
+      });
+    }
+  });
+
+  console.log('📋 Found form fields:', Array.from(allFieldKeys));
+
+  // Convert to array and sort for consistent column order
+  const sortedFieldKeys = Array.from(allFieldKeys).sort((a, b) => {
+    // Prioritize common fields first
+    const commonFieldOrder = [
+      'name',
+      'fullName',
+      'firstName',
+      'lastName',
+      'email',
+      'emailAddress',
+      'phone',
+      'phoneNumber',
+    ];
+    const aIndex = commonFieldOrder.indexOf(a);
+    const bIndex = commonFieldOrder.indexOf(b);
+
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    } else if (aIndex !== -1) {
+      return -1;
+    } else if (bIndex !== -1) {
+      return 1;
+    } else {
+      return a.localeCompare(b);
+    }
+  });
+
+  // Define CSV headers - Submission Date first, then all form fields
+  const headers = [
+    'Submission Date',
+    ...sortedFieldKeys.map(key => getFieldDisplayLabel(key, fieldLabelsMap)),
+  ];
+
+  console.log('📝 CSV Headers:', headers);
+
+  // Generate CSV content
+  let csvContent = '';
+
+  // Add headers
+  csvContent += headers.map(header => escapeCSVValue(header)).join(',') + '\n';
+
+  // Add data rows
+  submissions.forEach((submission, index) => {
+    const rowData = [];
+
+    // First column: Submission Date (properly formatted and escaped)
+    const formattedDate = formatSubmissionDate(
+      submission.submittedAt || submission.createdAt || ''
+    );
+    rowData.push(escapeCSVValue(formattedDate));
+
+    // Remaining columns: All form field values
+    sortedFieldKeys.forEach(fieldKey => {
+      const value = submission.data?.[fieldKey];
+      const formattedValue = formatSubmissionValue(value);
+      rowData.push(escapeCSVValue(formattedValue));
+    });
+
+    // Add the complete row to CSV
+    csvContent += rowData.join(',') + '\n';
+
+    // Log first few rows for debugging
+    if (index < 3) {
+      console.log(`📄 Row ${index + 1}:`, {
+        date: formattedDate,
+        fields: sortedFieldKeys.slice(0, 3).map(key => ({
+          key,
+          value: submission.data?.[key],
+          formatted: formatSubmissionValue(submission.data?.[key]),
+        })),
+      });
+    }
+  });
+
+  console.log('✅ CSV generation completed');
+  return csvContent;
+};
+
+// ===== ROUTE HANDLERS =====
 
 // @desc    Get all submissions for a form
 // @route   GET /api/submissions/form/:formId
@@ -32,12 +433,14 @@ router.get(
       isRead,
     } = req.query;
 
+    console.log('📡 Getting submissions with search:', { formId, search });
+
     // Validate formId
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
     }
 
-    // Verify form belongs to user
+    // Verify form belongs to user and get form structure for dynamic search
     const form = await Form.findOne({ _id: formId, userId: req.user.id });
     if (!form) {
       throw new ApiError('Form not found', 404);
@@ -72,15 +475,66 @@ router.get(
       query.isRead = isRead === 'true';
     }
 
-    // Search filter (search in submission data)
-    if (search) {
-      query.$or = [
-        { 'data.email': { $regex: search, $options: 'i' } },
-        { 'data.name': { $regex: search, $options: 'i' } },
-        { 'data.fullName.firstName': { $regex: search, $options: 'i' } },
-        { 'data.fullName.lastName': { $regex: search, $options: 'i' } },
-        { 'data.phone': { $regex: search, $options: 'i' } },
-      ];
+    // ✅ ENHANCED: Dynamic search across all form fields
+    if (search && search.toString().trim()) {
+      const searchTerm = search.toString().trim();
+      console.log('🔍 Building dynamic search for term:', searchTerm);
+
+      const searchFields = [];
+
+      // Add default/common searchable fields
+      searchFields.push(
+        { 'data.email': { $regex: searchTerm, $options: 'i' } },
+        { 'data.name': { $regex: searchTerm, $options: 'i' } },
+        { 'data.fullName.firstName': { $regex: searchTerm, $options: 'i' } },
+        { 'data.fullName.lastName': { $regex: searchTerm, $options: 'i' } },
+        { 'data.phone': { $regex: searchTerm, $options: 'i' } },
+        { 'data.phoneNumber': { $regex: searchTerm, $options: 'i' } },
+        { 'data.emailAddress': { $regex: searchTerm, $options: 'i' } },
+        { 'data.firstName': { $regex: searchTerm, $options: 'i' } },
+        { 'data.lastName': { $regex: searchTerm, $options: 'i' } },
+        { 'data.company': { $regex: searchTerm, $options: 'i' } },
+        { 'data.message': { $regex: searchTerm, $options: 'i' } },
+        { 'data.subject': { $regex: searchTerm, $options: 'i' } }
+      );
+
+      // Add ALL dynamic form fields to search
+      const dynamicFieldIds = getSearchableFieldIds(form);
+      console.log(
+        '🏷️ Adding dynamic fields to search:',
+        dynamicFieldIds.length
+      );
+
+      dynamicFieldIds.forEach(fieldId => {
+        // Search in simple string fields
+        searchFields.push({
+          [`data.${fieldId}`]: { $regex: searchTerm, $options: 'i' },
+        });
+
+        // Search in complex object fields (like fullName: {firstName, lastName})
+        searchFields.push({
+          [`data.${fieldId}.firstName`]: { $regex: searchTerm, $options: 'i' },
+        });
+        searchFields.push({
+          [`data.${fieldId}.lastName`]: { $regex: searchTerm, $options: 'i' },
+        });
+        searchFields.push({
+          [`data.${fieldId}.street`]: { $regex: searchTerm, $options: 'i' },
+        });
+        searchFields.push({
+          [`data.${fieldId}.city`]: { $regex: searchTerm, $options: 'i' },
+        });
+        searchFields.push({
+          [`data.${fieldId}.state`]: { $regex: searchTerm, $options: 'i' },
+        });
+      });
+
+      query.$or = searchFields;
+      console.log(
+        '🔍 Created search query with',
+        searchFields.length,
+        'searchable fields'
+      );
     }
 
     // Pagination
@@ -100,6 +554,11 @@ router.get(
       Submission.find(query).sort(sortObj).skip(skip).limit(limitNum).lean(),
       Submission.countDocuments(query),
     ]);
+
+    console.log(
+      `📊 Found ${submissions.length} submissions (${total} total) for search:`,
+      search
+    );
 
     // Get submission statistics
     const stats = await Submission.aggregate([
@@ -336,25 +795,6 @@ router.post(
         message: 'Form submitted successfully',
       });
       return;
-    }
-
-    // Check if multiple submissions are allowed
-    if (!form.settings?.allowMultipleSubmissions) {
-      const clientIp = req.ip || req.connection.remoteAddress;
-      if (clientIp) {
-        const existingSubmission = await Submission.findOne({
-          formId,
-          ipAddress: clientIp,
-          submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // Last 24 hours
-        });
-
-        if (existingSubmission) {
-          throw new ApiError(
-            'You have already submitted this form recently',
-            429
-          );
-        }
-      }
     }
 
     // Validate submission data against form structure
@@ -700,6 +1140,26 @@ router.patch(
           message: 'Tag added to submissions',
         });
         return;
+      case 'delete':
+        // Delete multiple submissions
+        const deleteResult = await Submission.deleteMany({
+          _id: { $in: submissionIds },
+        });
+
+        // Update form submission counts
+        const formUpdates = formIds.map(formId =>
+          Form.findByIdAndUpdate(formId, {
+            $inc: { submissions: -deleteResult.deletedCount },
+          })
+        );
+        await Promise.all(formUpdates);
+
+        res.status(200).json({
+          success: true,
+          message: `${deleteResult.deletedCount} submissions deleted successfully`,
+          deleted: deleteResult.deletedCount,
+        });
+        return;
       default:
         throw new ApiError('Invalid action', 400);
     }
@@ -717,6 +1177,7 @@ router.patch(
   })
 );
 
+// ✅ ENHANCED: Export submissions with proper field labels and clean CSV format
 // @desc    Export submissions
 // @route   GET /api/submissions/form/:formId/export
 // @access  Private
@@ -725,20 +1186,22 @@ router.get(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const { formId } = req.params;
-    const { format = 'csv', dateFrom, dateTo } = req.query;
+    const { format = 'csv', dateFrom, dateTo, status, isRead } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
     }
 
-    // Verify form belongs to user
+    // Verify form belongs to user and get form structure for field labels
     const form = await Form.findOne({ _id: formId, userId: req.user.id });
     if (!form) {
       throw new ApiError('Form not found', 404);
     }
 
-    // Build query for date range
+    // Build query for filtering
     const query: any = { formId };
+
+    // Date range filter
     if (dateFrom || dateTo) {
       query.submittedAt = {};
       if (dateFrom) query.submittedAt.$gte = new Date(dateFrom as string);
@@ -749,12 +1212,25 @@ router.get(
       }
     }
 
+    // Status filter
+    if (
+      status &&
+      ['pending', 'processed', 'failed'].includes(status as string)
+    ) {
+      query.status = status;
+    }
+
+    // Read status filter
+    if (isRead !== undefined) {
+      query.isRead = isRead === 'true';
+    }
+
     const submissions = await Submission.find(query)
       .sort({ submittedAt: -1 })
       .lean();
 
     if (format === 'csv') {
-      const csvData = generateCSVExport(submissions, form);
+      const csvData = generateEnhancedCSVExport(submissions, form);
       const filename = `${form.title.replace(/[^a-zA-Z0-9]/g, '_')}-submissions-${new Date().toISOString().split('T')[0]}.csv`;
 
       res.set({
@@ -792,160 +1268,278 @@ router.get(
   })
 );
 
-// Helper function to validate submission data
-function validateSubmissionData(data: any, pages: any[]): string[] {
-  const errors: string[] = [];
+// @desc    Get submission analytics/statistics
+// @route   GET /api/submissions/form/:formId/analytics
+// @access  Private
+router.get(
+  '/form/:formId/analytics',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { formId } = req.params;
+    const { period = '30d' } = req.query;
 
-  // Handle case where no pages exist
-  if (!pages || !Array.isArray(pages) || pages.length === 0) {
-    console.log('⚠️ No pages found in form');
-    return []; // Allow submission if no pages (empty form)
-  }
-
-  for (const page of pages) {
-    // Handle case where page has no fields
-    if (
-      !page.fields ||
-      !Array.isArray(page.fields) ||
-      page.fields.length === 0
-    ) {
-      console.log('⚠️ Page has no fields:', page.id);
-      continue; // Skip pages with no fields
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
     }
 
-    for (const field of page.fields || []) {
-      // Skip validation for heading fields (they don't collect data)
-      if (field.type === 'heading') {
-        console.log('⏭️ Skipping heading field:', field.label);
-        continue;
-      }
-
-      const value = data[field.id];
-
-      // Required field validation
-      if (field.required) {
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
-          errors.push(`${field.label} is required`);
-          continue;
-        }
-
-        // Special validation for complex field types
-        if (field.type === 'fullName' && typeof value === 'object') {
-          if (!value.firstName || !value.lastName) {
-            errors.push(`${field.label} requires both first and last name`);
-            continue;
-          }
-        }
-
-        if (field.type === 'address' && typeof value === 'object') {
-          if (!value.street || !value.city || !value.state) {
-            errors.push(`${field.label} requires street, city, and state`);
-            continue;
-          }
-        }
-
-        if (field.type === 'appointment' && typeof value === 'object') {
-          if (!value.date || !value.time) {
-            errors.push(`${field.label} requires both date and time`);
-            continue;
-          }
-        }
-      }
-
-      if (!value) continue;
-
-      // Type-specific validation
-      switch (field.type) {
-        case 'email':
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-            errors.push(`${field.label} must be a valid email address`);
-          }
-          break;
-
-        case 'phone':
-          if (!/^\+?[\d\s\-\(\)]{10,}$/.test(value.replace(/\s/g, ''))) {
-            errors.push(`${field.label} must be a valid phone number`);
-          }
-          break;
-
-        case 'fullName':
-          if (typeof value === 'string' && value.trim().length < 2) {
-            errors.push(`${field.label} must be at least 2 characters long`);
-          }
-          break;
-
-        case 'datePicker':
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-            errors.push(`${field.label} must be a valid date (YYYY-MM-DD)`);
-          }
-          break;
-      }
-    }
-  }
-
-  return errors;
-}
-
-// Helper function to generate CSV export
-function generateCSVExport(submissions: any[], form: any): string {
-  if (submissions.length === 0) {
-    return 'No submissions found';
-  }
-
-  // Get all unique field names from all submissions
-  const allFields = new Set<string>();
-  submissions.forEach(submission => {
-    Object.keys(submission.data).forEach(field => allFields.add(field));
-  });
-
-  // Create headers
-  const headers = [
-    'Submission ID',
-    'Submitted At',
-    'Status',
-    'Is Read',
-    'IP Address',
-    'User Agent',
-    ...Array.from(allFields),
-  ];
-
-  // Helper function to escape CSV values
-  const escapeCSVValue = (value: any): string => {
-    if (value === null || value === undefined) return '';
-
-    let str = String(value);
-    if (typeof value === 'object') {
-      str = JSON.stringify(value);
+    // Verify form belongs to user
+    const form = await Form.findOne({ _id: formId, userId: req.user.id });
+    if (!form) {
+      throw new ApiError('Form not found', 404);
     }
 
-    // Escape quotes and wrap in quotes if necessary
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      str = `"${str.replace(/"/g, '""')}"`;
+    // Calculate date range based on period
+    let startDate: Date;
+    const endDate = new Date();
+
+    switch (period) {
+      case '7d':
+        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '1y':
+        startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    return str;
-  };
+    // Get overall statistics
+    const [totalStats, periodStats, dailyStats] = await Promise.all([
+      // Total statistics (all time)
+      Submission.aggregate([
+        { $match: { formId: new mongoose.Types.ObjectId(formId) } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            unread: { $sum: { $cond: [{ $eq: ['$isRead', false] }, 1, 0] } },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+            },
+            processed: {
+              $sum: { $cond: [{ $eq: ['$status', 'processed'] }, 1, 0] },
+            },
+            failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+            firstSubmission: { $min: '$submittedAt' },
+            lastSubmission: { $max: '$submittedAt' },
+          },
+        },
+      ]),
 
-  const csvRows = [
-    headers.join(','),
-    ...submissions.map(submission => {
-      const row = [
-        submission._id.toString(),
-        new Date(submission.submittedAt).toISOString(),
-        submission.status || 'processed',
-        submission.isRead ? 'Yes' : 'No',
-        submission.ipAddress || '',
-        submission.userAgent || '',
-        ...Array.from(allFields).map(field => {
-          const value = submission.data[field];
-          return escapeCSVValue(value);
-        }),
-      ];
-      return row.join(',');
-    }),
-  ];
+      // Period statistics
+      Submission.aggregate([
+        {
+          $match: {
+            formId: new mongoose.Types.ObjectId(formId),
+            submittedAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            unread: { $sum: { $cond: [{ $eq: ['$isRead', false] }, 1, 0] } },
+            pending: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+            },
+            processed: {
+              $sum: { $cond: [{ $eq: ['$status', 'processed'] }, 1, 0] },
+            },
+            failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+          },
+        },
+      ]),
 
-  return csvRows.join('\n');
-}
+      // Daily breakdown
+      Submission.aggregate([
+        {
+          $match: {
+            formId: new mongoose.Types.ObjectId(formId),
+            submittedAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$submittedAt',
+              },
+            },
+            count: { $sum: 1 },
+            processed: {
+              $sum: { $cond: [{ $eq: ['$status', 'processed'] }, 1, 0] },
+            },
+            failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        period,
+        startDate,
+        endDate,
+        total: totalStats[0] || {
+          total: 0,
+          unread: 0,
+          pending: 0,
+          processed: 0,
+          failed: 0,
+          firstSubmission: null,
+          lastSubmission: null,
+        },
+        periodStats: periodStats[0] || {
+          total: 0,
+          unread: 0,
+          pending: 0,
+          processed: 0,
+          failed: 0,
+        },
+        dailyBreakdown: dailyStats,
+      },
+    });
+  })
+);
+
+// @desc    Get recent submissions activity
+// @route   GET /api/submissions/recent
+// @access  Private
+router.get(
+  '/recent',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { limit = '10' } = req.query;
+    const limitNum = Math.min(parseInt(limit as string, 10) || 10, 50);
+
+    // Get user's forms first
+    const userForms = await Form.find({ userId: req.user.id }).select(
+      '_id title'
+    );
+    const formIds = userForms.map(form => form._id);
+
+    if (formIds.length === 0) {
+      res.status(200).json({
+        success: true,
+        data: {
+          submissions: [],
+          total: 0,
+        },
+      });
+      return;
+    }
+
+    // Get recent submissions across all user's forms
+    const submissions = await Submission.find({
+      formId: { $in: formIds },
+    })
+      .populate('formId', 'title')
+      .sort({ submittedAt: -1 })
+      .limit(limitNum)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        submissions,
+        total: submissions.length,
+      },
+    });
+  })
+);
+
+// @desc    Search submissions across all forms
+// @route   GET /api/submissions/search
+// @access  Private
+router.get(
+  '/search',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { q, limit = '20', page = '1' } = req.query;
+
+    if (!q || typeof q !== 'string' || q.trim().length === 0) {
+      throw new ApiError('Search query is required', 400);
+    }
+
+    const searchTerm = q.toString().trim();
+    const limitNum = Math.min(parseInt(limit as string, 10) || 20, 100);
+    const pageNum = parseInt(page as string, 10) || 1;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get user's forms first
+    const userForms = await Form.find({ userId: req.user.id }).select(
+      '_id title'
+    );
+    const formIds = userForms.map(form => form._id);
+
+    if (formIds.length === 0) {
+      res.status(200).json({
+        success: true,
+        data: {
+          submissions: [],
+          total: 0,
+          pagination: {
+            current: pageNum,
+            pages: 0,
+            total: 0,
+            limit: limitNum,
+          },
+        },
+      });
+      return;
+    }
+
+    // Build search query
+    const searchFields = [
+      { 'data.email': { $regex: searchTerm, $options: 'i' } },
+      { 'data.name': { $regex: searchTerm, $options: 'i' } },
+      { 'data.firstName': { $regex: searchTerm, $options: 'i' } },
+      { 'data.lastName': { $regex: searchTerm, $options: 'i' } },
+      { 'data.phone': { $regex: searchTerm, $options: 'i' } },
+      { 'data.company': { $regex: searchTerm, $options: 'i' } },
+      { 'data.message': { $regex: searchTerm, $options: 'i' } },
+      { 'data.subject': { $regex: searchTerm, $options: 'i' } },
+    ];
+
+    const query = {
+      formId: { $in: formIds },
+      $or: searchFields,
+    };
+
+    const [submissions, total] = await Promise.all([
+      Submission.find(query)
+        .populate('formId', 'title')
+        .sort({ submittedAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Submission.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        submissions,
+        total,
+        searchTerm,
+        pagination: {
+          current: pageNum,
+          pages: Math.ceil(total / limitNum),
+          total,
+          limit: limitNum,
+        },
+      },
+    });
+  })
+);
 
 export default router;

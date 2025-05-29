@@ -1,4 +1,4 @@
-// src/types/form.ts - UPDATED Frontend Types
+// src/types/form.ts - Frontend Types
 export interface Form {
   id: string;
   title: string;
@@ -27,7 +27,6 @@ export interface FormPage {
   fields: Field[];
 }
 
-// ✅ UPDATED: Field interface with conditional properties
 export interface Field {
   id: string;
   type: FieldType;
@@ -70,9 +69,10 @@ export interface FormSettings {
   isEnabled?: boolean;
   allowMultipleEmailSubmissions?: boolean;
   allowMultipleSubmissions?: boolean;
+  collectIpAddress?: boolean;
+  enableCaptcha?: boolean;
 }
 
-// ✅ UPDATED: Added CENTER alignment
 export type LabelAlignment = 'LEFT' | 'RIGHT';
 
 export interface DragItem {
@@ -82,7 +82,6 @@ export interface DragItem {
   fieldType?: FieldType;
 }
 
-// ✅ ADDED: Helper type for creating clean heading fields
 export type HeadingField = Omit<Field, 'required' | 'helpText'> & {
   type: FieldType.HEADING;
 };

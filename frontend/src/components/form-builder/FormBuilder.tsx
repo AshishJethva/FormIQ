@@ -1,9 +1,9 @@
-// src/components/form-builder/FormBuilder.tsx - Enhanced with Debug Logging
+// src/components/form-builder/FormBuilder.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { usePathname, useParams } from 'next/navigation';
+import { usePathname, useParams, useRouter } from 'next/navigation';
 import { RootState } from '@/redux/store';
 import {
   setPreviewMode,
@@ -24,25 +24,30 @@ import { AnimatePresence } from 'framer-motion';
 import DragProvider from '@/providers/DragProvider';
 import { AppDispatch } from '@/redux/store';
 import useAutoSave from '@/hooks/useAutoSave';
+import FormSubmissionsPage from './submissions/FormSubmissionsPage';
 
 export default function FormBuilder() {
   const dispatch = useDispatch<AppDispatch>();
   const pathname = usePathname();
   const params = useParams();
+  const router = useRouter();
 
   const formState = useSelector((state: RootState) => state.formBuilder);
   const formId = params.formId as string;
 
   const isPublishedForm = formState.form?.isPublished;
 
-  const [isPreviewEnabled, setIsPreviewEnabled] = useState<boolean>(false);
+  const isPreviewEnabled = useSelector(
+    (state: RootState) => state.formBuilder.isPreviewMode
+  );
   const [elementsVisible, setElementsVisible] = useState<boolean>(true);
 
-  // Determine current page based on pathname
+  // Determine current page based on pathname and preview state
   const getCurrentPage = () => {
+    if (isPreviewEnabled) return 'PREVIEW';
     if (pathname.includes('/settings')) return 'SETTINGS';
     if (pathname.includes('/publish')) return 'PUBLISH';
-    if (pathname.includes('#preview') || isPreviewEnabled) return 'PREVIEW';
+    if (pathname.includes('/submissions')) return 'SUBMISSIONS';
     return 'BUILD';
   };
 
@@ -70,14 +75,41 @@ export default function FormBuilder() {
     }
   );
 
-  // Sync preview mode with URL hash
   useEffect(() => {
-    const isPreview = window.location.hash === '#preview';
-    setIsPreviewEnabled(isPreview);
-    dispatch(setPreviewMode(isPreview));
-  }, [dispatch, pathname]);
+    const handleHashChange = () => {
+      const isPreviewFromHash = window.location.hash === '#preview';
+      console.log('🔄 Hash changed, preview mode:', isPreviewFromHash);
 
-  // Load form from backend when component mounts or formId changes
+      if (isPreviewFromHash !== isPreviewEnabled) {
+        dispatch(setPreviewMode(isPreviewFromHash));
+      }
+    };
+
+    // Initial check
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [dispatch, isPreviewEnabled]);
+
+  useEffect(() => {
+    // If we're navigating to a different section (settings/publish) and preview is enabled, disable it
+    if (
+      isPreviewEnabled &&
+      (pathname.includes('/settings') ||
+        pathname.includes('/publish') ||
+        pathname.includes('/submissions'))
+    ) {
+      console.log('📴 Disabling preview mode due to navigation');
+      dispatch(setPreviewMode(false));
+      window.location.hash = '';
+    }
+  }, [pathname, isPreviewEnabled, dispatch]);
+
   useEffect(() => {
     const loadForm = async () => {
       if (formId) {
@@ -117,11 +149,10 @@ export default function FormBuilder() {
       }
     };
 
-    // Only load if we don't already have form data or if formId changed
     if (!formState.form || (formId && formState.form.id !== formId)) {
       loadForm();
     }
-  }, [dispatch, formId, formState.form?.id]);
+  }, [dispatch, formId, formState.form]);
 
   // Handle visibility of elements panel
   useEffect(() => {
@@ -134,18 +165,32 @@ export default function FormBuilder() {
   }, [currentPage, isPreviewEnabled, dispatch]);
 
   const handlePreviewToggle = (enabled: boolean) => {
-    setIsPreviewEnabled(enabled);
+    console.log('🔄 Preview toggle requested:', {
+      enabled,
+      current: isPreviewEnabled,
+    });
+
     dispatch(setPreviewMode(enabled));
 
     if (enabled) {
       setElementsVisible(false);
       dispatch(clearSelectedField());
       window.location.hash = '#preview';
+
+      // Ensure we're on the build page
+      if (!pathname.endsWith(`/build/${formId}`)) {
+        router.push(`/build/${formId}#preview`);
+      }
     } else {
       if (currentPage === 'BUILD') {
         setElementsVisible(true);
       }
       window.location.hash = '';
+
+      // Navigate to build page if we're not already there
+      if (!pathname.endsWith(`/build/${formId}`)) {
+        router.push(`/build/${formId}`);
+      }
     }
   };
 
@@ -227,20 +272,7 @@ export default function FormBuilder() {
     return formState.form?.lastSaved || '00:00';
   };
 
-  // Debug info for form pages
-  console.log('📄 Form Pages Debug:', {
-    totalPages: formState.form.pages?.length || 0,
-    currentPageIndex: formState.form.currentPageIndex,
-    pages:
-      formState.form.pages?.map((page, index) => ({
-        index,
-        id: page?.id,
-        fieldsCount: page?.fields?.length || 0,
-      })) || [],
-  });
-
-  // Render preview page
-  if (currentPage === 'PREVIEW' || isPreviewEnabled) {
+  if (currentPage === 'PREVIEW' && isPreviewEnabled) {
     return <PreviewPage formId={formId} />;
   }
 
@@ -286,10 +318,31 @@ export default function FormBuilder() {
     );
   }
 
+  // Render submissions page
+  if (currentPage === 'SUBMISSIONS') {
+    return (
+      <div className='flex flex-col h-screen bg-gray-100 overflow-hidden'>
+        <FormBuilderHeader
+          title={formState.form.title || 'My Form'}
+          lastSaved={getLastSavedDisplay()}
+          isSaving={isSaving}
+          saveError={saveError}
+        />
+        <MainNavigation
+          isPreviewEnabled={isPreviewEnabled}
+          onPreviewToggle={handlePreviewToggle}
+        />
+        <div className='flex-1 overflow-y-auto'>
+          <FormSubmissionsPage />
+        </div>
+      </div>
+    );
+  }
+
   // Render build page (default)
   return (
     <DragProvider>
-      <div className='flex flex-col h-screen bg-gray-100 overflow-hidden'>
+      <div className='flex flex-col h-screen bg-[#F3F3FE] overflow-hidden'>
         {/* Header */}
         <FormBuilderHeader
           title={formState.form.title || 'My Form'}

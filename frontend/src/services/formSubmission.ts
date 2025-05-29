@@ -128,8 +128,6 @@ export const getPublicForm = async (formId: string) => {
 
     return response.data;
   } catch (error: any) {
-    console.error('❌ Error fetching public form:', error);
-
     if (error.response?.status === 404) {
       throw new Error('Form not found or no longer available');
     } else if (error.response?.status === 403) {

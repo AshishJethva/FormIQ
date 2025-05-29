@@ -82,7 +82,7 @@ export default function FormCanvas() {
         dispatch(setSelectedPageId(currentPage.id));
       }
     }
-  }, [form?.currentPageIndex, form?.pages, form?.selectedPageId, dispatch]);
+  }, [form, dispatch]);
 
   // Handle clicks outside the form fields to deselect
   useEffect(() => {
@@ -537,8 +537,8 @@ export default function FormCanvas() {
             <div>
               {renderEditableLabel()}
               <Input
-                type='tel'
-                placeholder='(000) 000-0000'
+                type='number'
+                placeholder='99999 00000'
                 disabled
                 className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
@@ -745,12 +745,12 @@ export default function FormCanvas() {
     return (
       <div
         ref={logoAreaRef}
-        className={`max-w-3xl mx-auto mt-4 text-center pt-1 border-dashed border-2 rounded transition-colors cursor-pointer overflow-visible ${
+        className={`max-w-3xl mx-auto my-8 transition-colors cursor-pointer overflow-visible ${
           form.logo
-            ? 'border-transparent '
+            ? 'border-transparent'
             : isLogoHovered
-            ? 'border-blue-400 text-blue-500 bg-blue-50/30'
-            : 'border-gray-300 text-gray-400 hover:border-blue-300 hover:text-blue-500'
+            ? 'border-blue-400 text-blue-500 bg-blue-50/30 border-dashed border-2 rounded pt-1 text-center'
+            : 'border-gray-300 text-gray-400 hover:border-blue-300 hover:text-blue-500 border-dashed border-2 rounded pt-1 text-center'
         }`}
         style={{
           minHeight:
@@ -830,7 +830,7 @@ export default function FormCanvas() {
   const isLastPage = currentPageIndex === form.pages.length - 1;
 
   return (
-    <div className='w-full h-full overflow-y-auto bg-gray-100'>
+    <div className='w-full h-full overflow-y-auto bg-[#F3F3FE]'>
       {/* Logo Area - Outside the form */}
       {renderLogoArea()}
 
@@ -872,9 +872,14 @@ export default function FormCanvas() {
         className={`max-w-3xl mx-auto bg-white shadow-sm my-4 ${
           isOver && canDrop ? 'ring-2 ring-blue-400 ring-opacity-70' : ''
         }`}
-        ref={dropRef}
+        ref={(node) => {
+          dropRef(node);
+          if (formCanvasRef.current !== node) {
+            formCanvasRef.current = node;
+          }
+        }}
       >
-        <div ref={formCanvasRef}>
+        <div>
           {/* Drop zone before any fields - PASS CURRENT PAGE ID */}
           {!isPreviewMode && (
             <DropZone

@@ -157,8 +157,19 @@ export const formsService = {
   },
 
   async getForm(id: string) {
-    const response = await api.get(`/forms/${id}`);
-    return response.data;
+    try {
+      console.log('📋 Fetching form structure for ID:', id);
+      const response = await api.get(`/forms/${id}`);
+      console.log('✅ Form structure fetched successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error fetching form structure:', error);
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to fetch form structure'
+      );
+    }
   },
 
   async createForm(data: CreateFormData) {

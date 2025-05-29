@@ -42,7 +42,6 @@ export default function PublicFormPage() {
       const response = await getPublicForm(formId);
       setForm(response.data);
     } catch (error: any) {
-      console.error('❌ Error loading form:', error);
       setSubmitError(error.message);
       toast.error(error.message);
     } finally {
@@ -182,7 +181,6 @@ export default function PublicFormPage() {
       // Reset retry count on success
       setRetryCount(0);
     } catch (error: any) {
-      console.error('❌ Submission error:', error);
       setSubmitError(error.message);
 
       // Show user-friendly error message
@@ -271,7 +269,6 @@ export default function PublicFormPage() {
                       : 'focus:border-blue-500 focus:ring-blue-500'
                   }`}
                 />
-                <span className='text-sm text-gray-500 mt-1'>First Name</span>
               </div>
               <div>
                 <Input
@@ -289,7 +286,6 @@ export default function PublicFormPage() {
                       : 'focus:border-blue-500 focus:ring-blue-500'
                   }`}
                 />
-                <span className='text-sm text-gray-500 mt-1'>Last Name</span>
               </div>
             </div>
             {field.helpText && (
@@ -307,13 +303,16 @@ export default function PublicFormPage() {
             </label>
             <Input
               type='email'
+              placeholder='Enter your email address'
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
+              className={`w-full transition-all duration-200 ${
                 error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 focus:ring-2 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 focus:ring-2 hover:border-gray-400'
               }`}
+              autoComplete='email'
+              aria-describedby={error ? `${field.id}-error` : undefined}
             />
             {field.helpText && (
               <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
@@ -330,8 +329,26 @@ export default function PublicFormPage() {
             </label>
             <Input
               type='tel'
+              placeholder='9876543210'
               value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
+              onChange={e => {
+                const input = e.target.value;
+                // Remove all non-digit characters
+                const digitsOnly = input.replace(/\D/g, '');
+                // Limit to 10 digits
+                const limitedDigits = digitsOnly.slice(0, 10);
+                handleInputChange(field.id, limitedDigits);
+              }}
+              onKeyPress={e => {
+                // Only allow digits
+                if (
+                  !/[0-9]/.test(e.key) &&
+                  !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              maxLength={10}
               className={`w-full ${
                 error
                   ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
@@ -691,44 +708,68 @@ export default function PublicFormPage() {
   const totalPages = form.pages.length;
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen bg-[#F3F3FE]'>
       <div className='max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8'>
         {/* Logo */}
+
         {form.logo && form.logo.src && (
           <motion.div
-            className={`text-center mb-8 ${
-              form.logo.alignment === 'LEFT'
-                ? 'text-left'
-                : form.logo.alignment === 'RIGHT'
-                ? 'text-right'
-                : 'text-center'
-            }`}
+            className='mb-8 w-full'
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <img
-              src={form.logo.src}
-              alt='Form Logo'
-              className='object-contain'
+            <div
+              className={`flex w-full ${
+                form.logo.alignment === 'LEFT'
+                  ? 'justify-start'
+                  : form.logo.alignment === 'RIGHT'
+                  ? 'justify-end'
+                  : 'justify-center'
+              }`}
               style={{
-                maxHeight: '120px',
-                width: `${form.logo.size || 50}%`,
-                maxWidth: '400px',
-                margin:
-                  form.logo.alignment === 'CENTER'
-                    ? '0 auto'
-                    : form.logo.alignment === 'RIGHT'
-                    ? '0 0 0 auto'
-                    : '0 auto 0 0',
+                minHeight: '80px',
+                padding: '8px 0',
               }}
-            />
+            >
+              <div
+                style={{
+                  width:
+                    form.logo.size >= 100
+                      ? '100%'
+                      : `${Math.max(5, form.logo.size || 50)}%`,
+                  minHeight: '60px',
+                }}
+              >
+                <img
+                  src={form.logo.src}
+                  alt='Form Logo'
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight:
+                      form.logo.size >= 100
+                        ? '300px'
+                        : form.logo.size > 90
+                        ? '220px'
+                        : form.logo.size > 70
+                        ? '180px'
+                        : form.logo.size > 50
+                        ? '150px'
+                        : '120px',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    transition: 'all 0.3s ease',
+                  }}
+                />
+              </div>
+            </div>
           </motion.div>
         )}
 
         {/* Form Container */}
         <motion.div
-          className='bg-white rounded-xl shadow-lg overflow-hidden'
+          className='bg-white rounded-sm shadow-lg overflow-hidden'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}

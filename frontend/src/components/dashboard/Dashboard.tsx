@@ -117,21 +117,6 @@ export default function DashboardPage() {
         }
     }
 
-    console.log('🎯 Final filters about to dispatch:', filters);
-
-    // DEBUG: Check the filters right before dispatching
-    if (filters.labels) {
-      console.log('🏷️ Labels in final filters:', {
-        labels: filters.labels,
-        type: typeof filters.labels,
-        isArray: Array.isArray(filters.labels),
-        firstItem: filters.labels[0],
-        length: filters.labels.length,
-      });
-    }
-
-    console.log('📤 Dispatching fetchForms with filters:', filters);
-
     dispatch(fetchForms(filters) as any);
   }, [activeSection, dispatch]);
 
@@ -147,13 +132,11 @@ export default function DashboardPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showCreateModal, router]);
 
-  // FIXED: Only one useEffect for initial load
   useEffect(() => {
     dispatch(fetchLabels() as any);
     dispatch(fetchForms({}) as any);
   }, [dispatch]);
 
-  // FIXED: Only one useEffect for section changes
   useEffect(() => {
     fetchFormsForCurrentSection();
   }, [activeSection, dispatch, fetchFormsForCurrentSection]);
@@ -164,7 +147,6 @@ export default function DashboardPage() {
     setActiveSectionData(data || null);
   };
 
-  // Handle form creation
   const handleCreateForm = async () => {
     if (!formName.trim()) {
       toast.error('Form name is required');
@@ -250,9 +232,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Render different content based on active section
   const renderContent = () => {
-    // Create form section
     if (activeSection === 'CreateForm') {
       return (
         <>

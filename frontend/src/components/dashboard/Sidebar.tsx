@@ -268,9 +268,9 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
   };
 
   return (
-    <div className='w-64 bg-[#F6F8FA] border-r border-gray-200 overflow-y-auto'>
+    <div className='w-70 bg-[#F3F3FE] border-r border-gray-200 overflow-y-auto'>
       {/* Create button */}
-      <div className='p-4' id='create-button'>
+      <div className='p-4 bg-white' id='create-button'>
         <div className='relative'>
           <Button
             className='w-full bg-[#ff6100] hover:bg-[#E65700] text-white shadow-sm hover:shadow-md transition-all duration-200'
@@ -282,6 +282,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         </div>
       </div>
 
+      <div className='border-t border-gray-200'></div>
+
       {/* My Workspace section */}
       <div className='px-4 py-2'>
         <div className='flex justify-between items-center mb-2'>
@@ -291,13 +293,15 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         <div
           className={cn(
             `flex items-center p-3 rounded-md cursor-pointer transition-colors`,
-            activeTab === 'All' ? 'bg-blue-100' : 'hover:bg-gray-100'
+            activeTab === 'All' ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
           )}
           onClick={() => handleTabChange('All')}
         >
           <LayoutGrid className='mr-3 h-4 w-4' />
           <span className='text-sm'>All</span>
         </div>
+
+        <div className='border-t border-gray-200 mt-6'></div>
 
         {/* Labels section with toggle */}
         <div className='mt-4'>
@@ -410,8 +414,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                       className={cn(
                         'group flex items-center justify-between p-3 rounded-md cursor-pointer transition-all my-0.5',
                         activeTab === `label-${label.id}`
-                          ? 'bg-blue-100'
-                          : 'hover:bg-gray-100'
+                          ? 'bg-[#C8CEED]'
+                          : 'hover:bg-[#DADEF3]'
                       )}
                       onClick={() =>
                         handleTabChange(`label-${label.id}`, label)
@@ -474,14 +478,14 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         </div>
       </div>
 
-      <div className='border-t border-gray-200 my-2'></div>
+      <div className='border-t border-gray-200 my-2 mx-4'></div>
 
       {/* Essential options */}
       <div className='px-4 py-2 space-y-1'>
         <div
           className={cn(
             'flex items-center p-3 rounded-md cursor-pointer transition-colors',
-            activeTab === 'Favorites' ? 'bg-blue-100' : 'hover:bg-gray-100'
+            activeTab === 'Favorites' ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
           )}
           onClick={() => handleTabChange('Favorites')}
         >
@@ -492,7 +496,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         <div
           className={cn(
             'flex items-center p-3 rounded-md cursor-pointer transition-colors',
-            activeTab === 'Drafts' ? 'bg-blue-100' : 'hover:bg-gray-100'
+            activeTab === 'Drafts' ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
           )}
           onClick={() => handleTabChange('Drafts')}
         >
@@ -503,7 +507,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         <div
           className={cn(
             'flex items-center p-3 rounded-md cursor-pointer transition-colors',
-            activeTab === 'Archive' ? 'bg-blue-100' : 'hover:bg-gray-100'
+            activeTab === 'Archive' ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
           )}
           onClick={() => handleTabChange('Archive')}
         >
@@ -514,7 +518,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         <div
           className={cn(
             'flex items-center p-3 rounded-md cursor-pointer transition-colors',
-            activeTab === 'Trash' ? 'bg-blue-100' : 'hover:bg-gray-100'
+            activeTab === 'Trash' ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
           )}
           onClick={() => handleTabChange('Trash')}
         >
