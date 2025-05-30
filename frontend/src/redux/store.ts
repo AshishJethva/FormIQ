@@ -3,6 +3,7 @@ import userReducer from './slices/auth/userSlice';
 import appReducer from '@/redux/slices/appSlice';
 import formReducer from '@/redux/slices/dashboard/formsSlice';
 import formBuilderReducer from './slices/formBuilderSlice';
+import aiFormReducer from './slices/aiFormSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
@@ -36,6 +37,7 @@ const rootReducer = combineReducers({
   app: appReducer,
   user: persistReducer(userPersistConfig, userReducer),
   formBuilder: formBuilderReducer,
+  aiForm: aiFormReducer,
 });
 
 // Create the store without persisting formBuilder

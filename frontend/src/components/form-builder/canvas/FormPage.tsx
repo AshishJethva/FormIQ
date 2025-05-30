@@ -24,12 +24,7 @@ interface FormPageProps {
   moveField: (dragIndex: number, hoverIndex: number, pageId: string) => void;
 }
 
-const FormPage: React.FC<FormPageProps> = ({
-  page,
-  pageIndex,
-  isActive,
-  renderField,
-}) => {
+const FormPage: React.FC<FormPageProps> = ({ page, isActive, renderField }) => {
   const isPreviewMode = useSelector(
     (state: RootState) => state.formBuilder.isPreviewMode
   );
@@ -37,11 +32,11 @@ const FormPage: React.FC<FormPageProps> = ({
   // Set up drop target for empty pages with proper canDrop function
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ItemTypes.FORM_ELEMENT,
-    drop: (item, monitor) => {
+    drop: () => {
       // Your drop handling logic here
       return undefined;
     },
-    canDrop: (item, monitor) => {
+    canDrop: () => {
       // Add your logic to determine if dropping is allowed
       // For example, you might only allow dropping certain item types
       return true; // Allow all drops by default

@@ -66,6 +66,11 @@ export default function CreateFormModal() {
     }
   };
 
+  // Navigate to AI form builder
+  const handleAIFormGenerator = () => {
+    router.push('/ai/form-builder/');
+  };
+
   // Navigate to templates page
   const handleUseTemplate = () => {
     router.push('/templates/form');
@@ -123,7 +128,7 @@ export default function CreateFormModal() {
             </p>
           </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-lg'>
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-3xl'>
             {/* Start from scratch card */}
             <div onClick={isCreating ? undefined : handleStartFromScratch}>
               <div
@@ -160,6 +165,70 @@ export default function CreateFormModal() {
                     {isCreating
                       ? 'Please wait while we create your form'
                       : 'A blank slate is all you need'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Form Generator card */}
+            <div onClick={isCreating ? undefined : handleAIFormGenerator}>
+              <div
+                className={`bg-white rounded-lg shadow-md hover:shadow-xl hover:border-purple-500 transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full relative ${
+                  isCreating
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:scale-[1.02]'
+                }`}
+              >
+                {/* Professional Hot Badge */}
+                <div className='absolute -top-1 -right-1 z-10'>
+                  <div className='bg-gradient-to-r from-purple-600 to-purple-700 text-white text-xs font-medium px-2 py-0.5 rounded-full shadow-sm border border-purple-500'>
+                    NEW
+                  </div>
+                </div>
+
+                <div className='bg-gradient-to-br from-[#FAFAFF] via-[#F8FAFF] to-[#F3F4FF] p-12 flex items-center justify-center relative'>
+                  {/* Subtle background pattern */}
+                  <div className='absolute inset-0 opacity-5'>
+                    <div className='absolute top-4 left-4 w-8 h-8 border border-purple-200 rounded transform rotate-45'></div>
+                    <div className='absolute bottom-4 right-4 w-6 h-6 border border-purple-200 rounded-full'></div>
+                    <div className='absolute top-1/2 right-6 w-4 h-4 border border-purple-200 rounded transform rotate-12'></div>
+                  </div>
+
+                  {/* Professional AI Icon */}
+                  <div className='relative'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='48'
+                      height='48'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='#7C3AED'
+                      strokeWidth='1.5'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      className='drop-shadow-sm'
+                    >
+                      <path d='M16 18a4 4 0 0 0-8 0' />
+                      <circle cx='12' cy='11' r='1' />
+                      <path d='M12 2v2' />
+                      <path d='M12 20v2' />
+                      <path d='m4.93 4.93 1.41 1.41' />
+                      <path d='m17.66 17.66 1.41 1.41' />
+                      <path d='M2 12h2' />
+                      <path d='M20 12h2' />
+                      <path d='m6.34 17.66-1.41 1.41' />
+                      <path d='m19.07 4.93-1.41 1.41' />
+                      <path d='M9 12h6' />
+                      <path d='M12 9v6' />
+                    </svg>
+                  </div>
+                </div>
+                <div className='p-5 flex flex-col flex-grow'>
+                  <h2 className='text-xl font-semibold text-center text-[#102035] mb-2'>
+                    AI Form Generator
+                  </h2>
+                  <p className='text-sm text-gray-700 text-center'>
+                    Let AI create your form from description
                   </p>
                 </div>
               </div>

@@ -40,10 +40,6 @@ export default function AddNewPageButton({
     return (
       <motion.div
         className={`text-center py-3 border-dashed border-2 border-gray-300 rounded text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors cursor-pointer ${className}`}
-        // whileHover={{
-        //   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-        //   scale: 1.01,
-        // }}
         whileTap={{ scale: 0.99 }}
         onClick={handleAddPage}
       >

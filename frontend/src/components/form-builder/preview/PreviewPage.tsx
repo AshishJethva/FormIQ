@@ -204,10 +204,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     setErrors(allErrors);
 
     if (!isValid) {
-      toast.error('Please fix all form errors before submitting', {
-        description:
-          'Check all pages for required fields and validation errors',
-      });
+      toast.error('Please check all pages for required fields and validation errors');
       return;
     }
 

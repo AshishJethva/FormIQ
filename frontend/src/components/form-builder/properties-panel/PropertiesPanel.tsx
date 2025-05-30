@@ -16,6 +16,7 @@ import { X, Trash, Copy, Settings as SettingsIcon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { FieldType } from '@/types/form';
 
 // Include CENTER alignment to match your backend
 type LabelAlignmentType = 'LEFT' | 'RIGHT';
@@ -24,6 +25,18 @@ export default function PropertiesPanel() {
   const dispatch = useDispatch();
   const form = useSelector((state: RootState) => state.formBuilder.form);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // ✅ FIXED: Move ALL useState hooks to the top, before any conditional logic
+  const [labelAlignment, setLabelAlignment] =
+    useState<LabelAlignmentType>('LEFT');
+  const [isRequired, setIsRequired] = useState(false);
+  const [helpText, setHelpText] = useState('');
+  const [useAsDefault, setUseAsDefault] = useState(false);
+  const [options, setOptions] = useState([
+    { label: 'Option 1', value: 'option1' },
+    { label: 'Option 2', value: 'option2' },
+    { label: 'Option 3', value: 'option3' },
+  ]);
 
   // Find the selected field from the correct page
   const getSelectedField = () => {
@@ -48,16 +61,11 @@ export default function PropertiesPanel() {
   const field = selectedFieldData?.field;
   const pageId = selectedFieldData?.pageId;
 
-  // ✅ FIXED: Proper heading field detection using lowercase 'heading'
   const isHeadingField = field?.type === 'heading';
-
-  // Local state for field properties
-  const [labelAlignment, setLabelAlignment] = useState<LabelAlignmentType>(
-    (field?.labelAlignment as LabelAlignmentType) || 'LEFT'
-  );
-  const [isRequired, setIsRequired] = useState(field?.required || false);
-  const [helpText, setHelpText] = useState(field?.helpText || '');
-  const [useAsDefault, setUseAsDefault] = useState(false);
+  const isChoiceField =
+    field?.type === FieldType.DROPDOWN ||
+    field?.type === FieldType.SINGLE_CHOICE ||
+    field?.type === FieldType.MULTIPLE_CHOICE;
 
   // Update local state when selected field changes
   useEffect(() => {
@@ -65,8 +73,21 @@ export default function PropertiesPanel() {
       setLabelAlignment((field.labelAlignment as LabelAlignmentType) || 'LEFT');
       setIsRequired(field.required || false);
       setHelpText(field.helpText || '');
+
+      // Update options for choice fields
+      if (isChoiceField && field.options) {
+        setOptions(field.options);
+      } else if (isChoiceField && !field.options) {
+        // Set default options for choice fields without options
+        const defaultOptions = [
+          { label: 'Option 1', value: 'option1' },
+          { label: 'Option 2', value: 'option2' },
+          { label: 'Option 3', value: 'option3' },
+        ];
+        setOptions(defaultOptions);
+      }
     }
-  }, [field, isHeadingField]);
+  }, [field, isHeadingField, isChoiceField]);
 
   // Prevent panel from closing when clicking inside it
   useEffect(() => {
@@ -82,6 +103,7 @@ export default function PropertiesPanel() {
     };
   }, []);
 
+  // ✅ FIXED: Early return AFTER all hooks
   if (!form || !field || !form.propertiesPanelOpen) return null;
 
   const handleClosePanel = () => {
@@ -166,12 +188,96 @@ export default function PropertiesPanel() {
     toast.info(`${field.label} field removed`);
   };
 
-  const fieldTitle =
-    field.type.charAt(0).toUpperCase() +
-    field.type
-      .slice(1)
-      .replace(/([A-Z])/g, ' $1')
-      .trim();
+  // ✅ ENHANCED: Option management functions (now properly after hooks)
+  const addOption = () => {
+    const newOption = {
+      label: `Option ${options.length + 1}`,
+      value: `option${options.length + 1}`,
+    };
+    const updatedOptions = [...options, newOption];
+    setOptions(updatedOptions);
+
+    if (pageId) {
+      dispatch(
+        updateField({
+          id: field.id,
+          updates: { options: updatedOptions },
+          pageId,
+        })
+      );
+    }
+  };
+
+  const removeOption = (index: number) => {
+    if (options.length <= 1) return; // Keep at least one option
+
+    const updatedOptions = options.filter((_, i) => i !== index);
+    setOptions(updatedOptions);
+
+    if (pageId) {
+      dispatch(
+        updateField({
+          id: field.id,
+          updates: { options: updatedOptions },
+          pageId,
+        })
+      );
+    }
+  };
+
+  const updateOption = (
+    index: number,
+    key: 'label' | 'value',
+    value: string
+  ) => {
+    const updatedOptions = options.map((option, i) =>
+      i === index ? { ...option, [key]: value } : option
+    );
+    setOptions(updatedOptions);
+
+    if (pageId) {
+      dispatch(
+        updateField({
+          id: field.id,
+          updates: { options: updatedOptions },
+          pageId,
+        })
+      );
+    }
+  };
+
+  // ✅ ENHANCED: Better field title formatting
+  const getFieldTitle = (fieldType: string): string => {
+    const fieldTitles: Record<string, string> = {
+      shortText: 'Short Text',
+      longText: 'Long Text',
+      paragraph: 'Paragraph',
+      dropdown: 'Dropdown',
+      singleChoice: 'Single Choice',
+      multipleChoice: 'Multiple Choice',
+      number: 'Number',
+      image: 'Image',
+      fileUpload: 'File Upload',
+      time: 'Time',
+      heading: 'Heading',
+      fullName: 'Full Name',
+      email: 'Email',
+      address: 'Address',
+      phone: 'Phone',
+      datePicker: 'Date Picker',
+      appointment: 'Appointment',
+      signature: 'Signature',
+      fillBlank: 'Fill in the Blank',
+      productList: 'Product List',
+    };
+
+    return (
+      fieldTitles[fieldType] ||
+      fieldType.charAt(0).toUpperCase() + fieldType.slice(1)
+    );
+  };
+
+  const fieldTitle = getFieldTitle(field.type);
 
   // Panel animation variants
   const panelVariants = {
@@ -201,7 +307,7 @@ export default function PropertiesPanel() {
       {form.propertiesPanelOpen && (
         <motion.div
           ref={panelRef}
-          className='properties-panel w-[335px] h-[90%] mt-29 fixed right-0 top-0 bg-gray-800 text-white overflow-y-auto shadow-lg z-30 border-l border-gray-700'
+          className='properties-panel pb-20 w-[335px] h-[90%] mt-29 fixed right-0 top-0 bg-gray-800 text-white overflow-y-auto shadow-lg z-30 border-l border-gray-700'
           initial='hidden'
           animate='visible'
           exit='exit'
@@ -340,10 +446,126 @@ export default function PropertiesPanel() {
                   value={helpText}
                   onChange={handleHelpTextChange}
                   className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 transition-all'
+                  placeholder='Add helpful instructions or examples'
                 />
                 <p className='text-xs text-gray-400 mt-1'>
                   Add a short description below the field
                 </p>
+              </div>
+            )}
+
+            {/* Options - Only show for choice fields */}
+            {isChoiceField && (
+              <div className='group pt-6 border-t border-gray-700 mt-6'>
+                <div className='flex justify-between items-center mb-3'>
+                  <Label className='text-sm text-gray-300 group-hover:text-white transition-colors'>
+                    Options
+                  </Label>
+                  <button
+                    onClick={addOption}
+                    className='text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors'
+                  >
+                    + Add Option
+                  </button>
+                </div>
+
+                <div className='space-y-2 max-h-48 overflow-y-auto'>
+                  {options.map((option, index) => (
+                    <div key={index} className='flex items-center space-x-2'>
+                      <Input
+                        value={option.label}
+                        onChange={e =>
+                          updateOption(index, 'label', e.target.value)
+                        }
+                        placeholder={`Option ${index + 1}`}
+                        className='flex-1 bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 text-sm'
+                      />
+                      {options.length > 1 && (
+                        <button
+                          onClick={() => removeOption(index)}
+                          className='text-red-400 hover:text-red-300 p-1 hover:bg-red-900/20 rounded transition-colors'
+                          title='Remove option'
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <p className='text-xs text-gray-400 mt-2'>
+                  Add options for users to choose from. At least one option is
+                  required.
+                </p>
+              </div>
+            )}
+
+            {/* Additional Field Properties */}
+            {field.type === FieldType.NUMBER && (
+              <div className='group pt-6 border-t border-gray-700 mt-6'>
+                <Label className='text-sm text-gray-300 mb-3 block group-hover:text-white transition-colors'>
+                  Number Constraints
+                </Label>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <Label
+                      htmlFor='field-min'
+                      className='text-xs text-gray-400 mb-1 block'
+                    >
+                      Minimum
+                    </Label>
+                    <Input
+                      id='field-min'
+                      type='number'
+                      placeholder='Min value'
+                      className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 text-sm'
+                      onChange={e => {
+                        if (pageId) {
+                          dispatch(
+                            updateField({
+                              id: field.id,
+                              updates: {
+                                min: e.target.value
+                                  ? Number(e.target.value)
+                                  : undefined,
+                              },
+                              pageId,
+                            })
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor='field-max'
+                      className='text-xs text-gray-400 mb-1 block'
+                    >
+                      Maximum
+                    </Label>
+                    <Input
+                      id='field-max'
+                      type='number'
+                      placeholder='Max value'
+                      className='bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500 text-sm'
+                      onChange={e => {
+                        if (pageId) {
+                          dispatch(
+                            updateField({
+                              id: field.id,
+                              updates: {
+                                max: e.target.value
+                                  ? Number(e.target.value)
+                                  : undefined,
+                              },
+                              pageId,
+                            })
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -353,9 +575,7 @@ export default function PropertiesPanel() {
                 className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600'
                 onClick={handleDuplicateField}
               >
-                <span className='mr-1.5'>
-                  <Copy size={14} />
-                </span>
+                <Copy size={14} className='mr-1.5' />
                 Duplicate
               </button>
 
@@ -363,9 +583,7 @@ export default function PropertiesPanel() {
                 className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-red-900/40 text-red-400 hover:bg-red-900/60'
                 onClick={handleDeleteField}
               >
-                <span className='mr-1.5'>
-                  <Trash size={14} />
-                </span>
+                <Trash size={14} className='mr-1.5' />
                 Delete
               </button>
             </div>

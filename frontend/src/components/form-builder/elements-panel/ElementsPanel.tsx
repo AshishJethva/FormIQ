@@ -16,6 +16,16 @@ import {
   PenTool,
   AlignLeft,
   ShoppingCart,
+  FileText,
+  AlignJustify,
+  MessageSquare,
+  ChevronDown,
+  Circle,
+  CheckSquare,
+  Hash,
+  Upload,
+  Clock3,
+  Image,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DraggableElement from './DraggableElement';
@@ -61,7 +71,7 @@ export default function ElementsPanel() {
 
           {/* Elements List */}
           <div className='flex-1 overflow-y-auto bg-[#434A60] w-[96%]'>
-            <>
+            <div className='mb-16'>
               <DraggableElement
                 icon={<Type size={20} />}
                 label='Heading'
@@ -112,7 +122,67 @@ export default function ElementsPanel() {
                 label='Product List'
                 type={FieldType.PRODUCT_LIST}
               />
-            </>
+
+              <DraggableElement
+                icon={<FileText size={20} />}
+                label='Short Text'
+                type={FieldType.SHORT_TEXT}
+              />
+              <DraggableElement
+                icon={<AlignJustify size={20} />}
+                label='Long Text'
+                type={FieldType.LONG_TEXT}
+              />
+              <DraggableElement
+                icon={<MessageSquare size={20} />}
+                label='Paragraph'
+                type={FieldType.PARAGRAPH}
+              />
+
+              {/* Choice Fields */}
+              <DraggableElement
+                icon={<ChevronDown size={20} />}
+                label='Dropdown'
+                type={FieldType.DROPDOWN}
+              />
+              <DraggableElement
+                icon={<Circle size={20} />}
+                label='Single Choice'
+                type={FieldType.SINGLE_CHOICE}
+              />
+              <DraggableElement
+                icon={<CheckSquare size={20} />}
+                label='Multiple Choice'
+                type={FieldType.MULTIPLE_CHOICE}
+              />
+
+              {/* Number & Data Fields */}
+              <DraggableElement
+                icon={<Hash size={20} />}
+                label='Number'
+                type={FieldType.NUMBER}
+              />
+
+              {/* Media Fields */}
+              <DraggableElement
+                // eslint-disable-next-line jsx-a11y/alt-text
+                icon={<Image size={20} />}
+                label='Image'
+                type={FieldType.IMAGE}
+              />
+              <DraggableElement
+                icon={<Upload size={20} />}
+                label='File Upload'
+                type={FieldType.FILE_UPLOAD}
+              />
+
+              {/* Date & Time */}
+              <DraggableElement
+                icon={<Clock3 size={20} />}
+                label='Time'
+                type={FieldType.TIME}
+              />
+            </div>
           </div>
         </div>
       )}

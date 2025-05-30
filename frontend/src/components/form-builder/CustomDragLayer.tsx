@@ -15,6 +15,16 @@ import {
   PenTool,
   AlignLeft,
   ShoppingCart,
+  FileText,
+  AlignJustify,
+  MessageSquare,
+  ChevronDown,
+  Circle,
+  CheckSquare,
+  Hash,
+  Image,
+  Upload,
+  Clock3,
 } from 'lucide-react';
 
 export default function CustomDragLayer() {
@@ -69,6 +79,28 @@ export default function CustomDragLayer() {
         return <AlignLeft size={16} />;
       case FieldType.PRODUCT_LIST:
         return <ShoppingCart size={16} />;
+
+      case FieldType.SHORT_TEXT:
+        return <FileText size={16} />;
+      case FieldType.LONG_TEXT:
+        return <AlignJustify size={16} />;
+      case FieldType.PARAGRAPH:
+        return <MessageSquare size={16} />;
+      case FieldType.DROPDOWN:
+        return <ChevronDown size={16} />;
+      case FieldType.SINGLE_CHOICE:
+        return <Circle size={16} />;
+      case FieldType.MULTIPLE_CHOICE:
+        return <CheckSquare size={16} />;
+      case FieldType.NUMBER:
+        return <Hash size={16} />;
+      case FieldType.IMAGE:
+        // eslint-disable-next-line jsx-a11y/alt-text
+        return <Image size={16} />;
+      case FieldType.FILE_UPLOAD:
+        return <Upload size={16} />;
+      case FieldType.TIME:
+        return <Clock3 size={16} />;
       default:
         return <Type size={16} />;
     }

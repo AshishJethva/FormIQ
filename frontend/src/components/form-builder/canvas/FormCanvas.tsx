@@ -19,7 +19,7 @@ import {
 } from '@/redux/slices/formBuilderSlice';
 import { FieldType, Field } from '@/types/form';
 import { Input } from '@/components/ui/input';
-import { Upload } from 'lucide-react';
+import { Image, Upload } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDrop } from 'react-dnd';
@@ -461,6 +461,294 @@ export default function FormCanvas() {
     // Field content based on its type
     const renderFieldContent = () => {
       switch (field.type) {
+        case FieldType.SHORT_TEXT:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <Input
+                placeholder='Enter your answer'
+                disabled
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.LONG_TEXT:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <textarea
+                placeholder='Enter your detailed response...'
+                disabled
+                rows={3}
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none'
+              />
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.PARAGRAPH:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <textarea
+                placeholder='Share your thoughts, feedback, or detailed information...'
+                disabled
+                rows={5}
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none'
+              />
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.DROPDOWN:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <select
+                disabled
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
+              >
+                <option value=''>Select an option...</option>
+                {field.options && field.options.length > 0 ? (
+                  field.options.map((option, index) => (
+                    <option key={index} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value='option1'>Option 1</option>
+                    <option value='option2'>Option 2</option>
+                    <option value='option3'>Option 3</option>
+                  </>
+                )}
+              </select>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.SINGLE_CHOICE:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='space-y-2 my-2'>
+                {field.options && field.options.length > 0 ? (
+                  field.options.map((option, index) => (
+                    <label
+                      key={index}
+                      className='flex items-center space-x-2 cursor-pointer'
+                    >
+                      <input
+                        type='radio'
+                        name={field.id}
+                        value={option.value}
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))
+                ) : (
+                  <>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name={field.id}
+                        value='option1'
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>Option 1</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name={field.id}
+                        value='option2'
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>Option 2</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name={field.id}
+                        value='option3'
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>Option 3</span>
+                    </label>
+                  </>
+                )}
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.MULTIPLE_CHOICE:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='space-y-2 my-2'>
+                {field.options && field.options.length > 0 ? (
+                  field.options.map((option, index) => (
+                    <label
+                      key={index}
+                      className='flex items-center space-x-2 cursor-pointer'
+                    >
+                      <input
+                        type='checkbox'
+                        value={option.value}
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))
+                ) : (
+                  <>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='checkbox'
+                        value='option1'
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>Option 1</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='checkbox'
+                        value='option2'
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>Option 2</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='checkbox'
+                        value='option3'
+                        disabled
+                        className='text-blue-500'
+                      />
+                      <span>Option 3</span>
+                    </label>
+                  </>
+                )}
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.NUMBER:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <Input
+                type='number'
+                placeholder='Enter a number'
+                disabled
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                min={field.min}
+                max={field.max}
+                step={field.step}
+              />
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.IMAGE:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
+                <Image className='w-12 h-12 mx-auto text-gray-400 mb-2' />
+                <p className='text-gray-500 text-sm'>
+                  Click to upload an image
+                </p>
+                <p className='text-gray-400 text-xs mt-1'>
+                  PNG, JPG, GIF up to 10MB
+                </p>
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.FILE_UPLOAD:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
+                <Upload className='w-12 h-12 mx-auto text-gray-400 mb-2' />
+                <p className='text-gray-500 text-sm'>Click to upload files</p>
+                <p className='text-gray-400 text-xs mt-1'>
+                  {field.accept
+                    ? `Accepted: ${field.accept}`
+                    : 'Any file type up to 25MB'}
+                </p>
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.TIME:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <Input
+                type='time'
+                disabled
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
         case FieldType.HEADING:
           return (
             <div>
@@ -872,7 +1160,7 @@ export default function FormCanvas() {
         className={`max-w-3xl mx-auto bg-white shadow-sm my-4 ${
           isOver && canDrop ? 'ring-2 ring-blue-400 ring-opacity-70' : ''
         }`}
-        ref={(node) => {
+        ref={node => {
           dropRef(node);
           if (formCanvasRef.current !== node) {
             formCanvasRef.current = node;

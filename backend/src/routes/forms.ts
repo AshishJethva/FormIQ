@@ -565,7 +565,6 @@ router.put(
 
       console.log('✅ Form updated successfully');
     } catch (saveError) {
-      console.error('❌ Error saving form:', saveError);
       throw new ApiError('Failed to save form', 500);
     }
 

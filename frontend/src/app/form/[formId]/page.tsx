@@ -558,6 +558,321 @@ export default function PublicFormPage() {
           </div>
         );
 
+      case FieldType.SHORT_TEXT:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              placeholder='Enter your answer'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'focus:border-blue-500 focus:ring-blue-500'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.LONG_TEXT:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <textarea
+              placeholder='Enter your detailed response...'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              rows={3}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.PARAGRAPH:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <textarea
+              placeholder='Share your thoughts, feedback, or detailed information...'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              rows={5}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.DROPDOWN:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <select
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 bg-white ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              }`}
+            >
+              <option value=''>Select an option...</option>
+              {field.options?.map((option, index) => (
+                <option key={index} value={option.value}>
+                  {option.label}
+                </option>
+              )) || (
+                <>
+                  <option value='option1'>Option 1</option>
+                  <option value='option2'>Option 2</option>
+                  <option value='option3'>Option 3</option>
+                </>
+              )}
+            </select>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.SINGLE_CHOICE:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <div className='space-y-2'>
+              {(
+                field.options || [
+                  { label: 'Option 1', value: 'option1' },
+                  { label: 'Option 2', value: 'option2' },
+                  { label: 'Option 3', value: 'option3' },
+                ]
+              ).map((option, index) => (
+                <label
+                  key={index}
+                  className='flex items-center space-x-2 cursor-pointer'
+                >
+                  <input
+                    type='radio'
+                    name={field.id}
+                    value={option.value}
+                    checked={value === option.value}
+                    onChange={e => handleInputChange(field.id, e.target.value)}
+                    className='text-blue-500 focus:ring-blue-500'
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.MULTIPLE_CHOICE:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <div className='space-y-2'>
+              {(
+                field.options || [
+                  { label: 'Option 1', value: 'option1' },
+                  { label: 'Option 2', value: 'option2' },
+                  { label: 'Option 3', value: 'option3' },
+                ]
+              ).map((option, index) => (
+                <label
+                  key={index}
+                  className='flex items-center space-x-2 cursor-pointer'
+                >
+                  <input
+                    type='checkbox'
+                    value={option.value}
+                    checked={
+                      Array.isArray(value) && value.includes(option.value)
+                    }
+                    onChange={e => {
+                      const currentValues = Array.isArray(value) ? value : [];
+                      if (e.target.checked) {
+                        handleInputChange(field.id, [
+                          ...currentValues,
+                          option.value,
+                        ]);
+                      } else {
+                        handleInputChange(
+                          field.id,
+                          currentValues.filter(v => v !== option.value)
+                        );
+                      }
+                    }}
+                    className='text-blue-500 focus:ring-blue-500'
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.NUMBER:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='number'
+              placeholder='Enter a number'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'focus:border-blue-500 focus:ring-blue-500'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.IMAGE:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <div
+              className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:border-gray-400 transition-colors ${
+                error
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-gray-300 bg-gray-50'
+              }`}
+            >
+              {value ? (
+                <div className='flex items-center justify-center'>
+                  <span className='text-green-600 font-medium'>
+                    ✓ Image uploaded
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className='w-12 h-12 mx-auto text-gray-400 mb-2'>📷</div>
+                  <p className='text-gray-500 text-sm'>
+                    Click to upload an image
+                  </p>
+                  <p className='text-gray-400 text-xs mt-1'>
+                    PNG, JPG, GIF up to 10MB
+                  </p>
+                </>
+              )}
+            </div>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.FILE_UPLOAD:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <div
+              className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:border-gray-400 transition-colors ${
+                error
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-gray-300 bg-gray-50'
+              }`}
+            >
+              {value ? (
+                <div className='flex items-center justify-center'>
+                  <span className='text-green-600 font-medium'>
+                    ✓ File uploaded
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className='w-12 h-12 mx-auto text-gray-400 mb-2'>📄</div>
+                  <p className='text-gray-500 text-sm'>Click to upload files</p>
+                  <p className='text-gray-400 text-xs mt-1'>
+                    Any file type up to 25MB
+                  </p>
+                </>
+              )}
+            </div>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.TIME:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='time'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                  : 'focus:border-blue-500 focus:ring-blue-500'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
       default:
         return fieldWrapper(
           <div>

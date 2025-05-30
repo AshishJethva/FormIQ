@@ -1,5 +1,19 @@
-// src/models/Submission.ts - Submission Model
+// src/models/Submission.ts - Enhanced Submission Model with File Support
 import mongoose, { Schema, Document } from 'mongoose';
+
+// File upload schema for storing file information
+const FileUploadSchema = new Schema(
+  {
+    originalName: { type: String, required: true },
+    fileName: { type: String, required: true },
+    url: { type: String, required: true },
+    publicId: { type: String, required: true }, // Cloudinary public ID
+    size: { type: Number, required: true },
+    mimeType: { type: String, required: true },
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 interface ISubmission extends Document {
   formId: mongoose.Types.ObjectId;
@@ -12,6 +26,17 @@ interface ISubmission extends Document {
   isRead: boolean;
   tags: string[];
   metadata?: Record<string, any>;
+  // New: File attachments array
+  files?: Array<{
+    fieldId: string;
+    originalName: string;
+    fileName: string;
+    url: string;
+    publicId: string;
+    size: number;
+    mimeType: string;
+    uploadedAt: Date;
+  }>;
 }
 
 const submissionSchema = new Schema<ISubmission>(
@@ -54,13 +79,29 @@ const submissionSchema = new Schema<ISubmission>(
     },
     ipAddress: {
       type: String,
-      index: true, // For duplicate submission checks
+      index: true,
     },
     userAgent: { type: String },
     referrer: { type: String },
     metadata: {
       type: Schema.Types.Mixed,
       default: {},
+    },
+    // ✅ NEW: Array to store file upload information
+    files: {
+      type: [
+        {
+          fieldId: { type: String, required: true },
+          originalName: { type: String, required: true },
+          fileName: { type: String, required: true },
+          url: { type: String, required: true },
+          publicId: { type: String, required: true },
+          size: { type: Number, required: true },
+          mimeType: { type: String, required: true },
+          uploadedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
     },
   },
   {
@@ -82,6 +123,29 @@ submissionSchema.index({ formId: 1, submittedAt: -1 });
 submissionSchema.index({ formId: 1, createdAt: -1 });
 submissionSchema.index({ formId: 1, isRead: 1 });
 submissionSchema.index({ formId: 1, status: 1 });
-submissionSchema.index({ ipAddress: 1, submittedAt: -1 }); // For duplicate checks
+submissionSchema.index({ ipAddress: 1, submittedAt: -1 });
+
+// Virtual for total file size
+submissionSchema.virtual('totalFileSize').get(function (this: ISubmission) {
+  if (!this.files || this.files.length === 0) return 0;
+  return this.files.reduce((total, file) => total + file.size, 0);
+});
+
+// Virtual for file count
+submissionSchema.virtual('fileCount').get(function (this: ISubmission) {
+  return this.files ? this.files.length : 0;
+});
+
+// Pre-save middleware to update file metadata
+submissionSchema.pre<ISubmission>('save', function (next) {
+  if (this.files && this.files.length > 0) {
+    this.files.forEach(file => {
+      if (!file.uploadedAt) {
+        file.uploadedAt = new Date();
+      }
+    });
+  }
+  next();
+});
 
 export default mongoose.model<ISubmission>('Submission', submissionSchema);

@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import formRoutes from './routes/forms';
 import labelRoutes from './routes/labels';
+import aiRoutes from './routes/ai';
 import { globalErrorHandler } from './utils/errorHandler';
 import { AppError } from './utils/appError';
 import uploadRoutes from './routes/upload';
@@ -62,6 +63,7 @@ app.use('/api/labels', labelRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

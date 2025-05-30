@@ -1,5 +1,112 @@
 @import 'tailwindcss';
 
+/* Modern browsers (Chrome, Safari, Edge) - Space reserved, content invisible */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #33384a;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+  border-radius: 6px;
+}
+
+/* Show scrollbar colors on hover or when scrolling */
+*:hover::-webkit-scrollbar-track {
+  background: #808080;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: #33384A;
+}
+
+*:active::-webkit-scrollbar-track {
+  background: #808080;
+}
+
+*:active::-webkit-scrollbar-thumb {
+  background: #33384A;
+}
+
+/* Firefox - Space reserved, content invisible */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+/* Show scrollbar on hover for Firefox */
+*:hover {
+  scrollbar-width: thin;
+  scrollbar-color: #33384A #808080;
+}
+
+/* For older Firefox versions */
+html {
+  scrollbar-face-color: #000000;
+  scrollbar-track-color: #808080;
+  scrollbar-arrow-color: #000000;
+  scrollbar-shadow-color: #808080;
+  scrollbar-highlight-color: #000000;
+  scrollbar-3dlight-color: #808080;
+  scrollbar-darkshadow-color: #808080;
+  scrollbar-base-color: #808080;
+}
+
+/* For specific elements if needed */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.custom-scroll:hover {
+  scrollbar-color: #000000 #808080;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+.custom-scroll:hover::-webkit-scrollbar-track {
+  background: #808080;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  background: #000000;
+}
+
 :root {
   --radius: 0.5rem;
   --background: oklch(1 0 0);
