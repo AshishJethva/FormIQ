@@ -1,4 +1,4 @@
-// src/pages/FormSubmissionsPage.tsx
+// src/components/form-builder/submissions/FormSubmissionsPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
@@ -48,14 +48,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import {
-  submissionsService,
-  type Submission,
-  type SubmissionStats,
-  type PaginationInfo,
-} from '@/services/submissions';
-import { formsService } from '@/services/forms';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -66,8 +58,18 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import {
+  submissionsService,
+  type Submission,
+  type SubmissionStats,
+  type PaginationInfo,
+} from '@/services/submissions';
+import { formsService } from '@/services/forms';
+import { deleteFormFile } from '@/services/fileUploadService';
+import FileManager from '@/components/form-builder/FileManager';
 
-// ===== INLINE UTILITY FUNCTIONS =====
+// ===== UTILITY FUNCTIONS =====
 const formatDateTime = (dateString: string): string => {
   if (!dateString) return 'Unknown';
   try {
@@ -103,6 +105,14 @@ const formatTimeAgo = (dateString: string): string => {
   } catch {
     return 'Invalid Date';
   }
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 // ===== MAIN COMPONENT =====
@@ -179,7 +189,6 @@ const FormSubmissionsPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('❌ Error fetching form structure:', error);
-      // Continue without form structure - we'll show field IDs as fallback
     }
   }, [formId]);
 
@@ -213,10 +222,8 @@ const FormSubmissionsPage: React.FC = () => {
         );
 
         if (response.success) {
-          // Process submissions to ensure proper ID format
           const processedSubmissions = (response.data.submissions || []).map(
             (submission: any) => {
-              // Ensure we have a proper ID field
               const id = submission.id || submission._id;
               if (!id) {
                 console.warn('⚠️ Submission missing ID:', submission);
@@ -224,18 +231,14 @@ const FormSubmissionsPage: React.FC = () => {
 
               return {
                 ...submission,
-                id: id ? String(id) : '', // Ensure ID is a string
+                id: id ? String(id) : '',
               };
             }
           );
 
           console.log(
             '🔍 Processed submissions sample:',
-            processedSubmissions.slice(0, 2).map((s: any) => ({
-              id: s.id,
-              hasValidId: !!s.id && s.id.length > 0,
-              idLength: s.id?.length,
-            }))
+            processedSubmissions.slice(0, 2)
           );
 
           setSubmissions(processedSubmissions);
@@ -282,7 +285,6 @@ const FormSubmissionsPage: React.FC = () => {
 
       const blob = await submissionsService.exportCSV(formId);
 
-      // Create blob URL and download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -307,29 +309,24 @@ const FormSubmissionsPage: React.FC = () => {
   // Mark submission as read/unread
   const handleToggleRead = async (submissionId: string, isRead: boolean) => {
     try {
-      // Validate submission ID
       if (!submissionId || submissionId.trim() === '') {
         throw new Error('Invalid submission ID');
       }
 
       console.log('🔄 Toggling read status:', {
-        submissionId: submissionId,
-        submissionIdType: typeof submissionId,
+        submissionId,
         currentStatus: isRead,
         newStatus: !isRead,
-        formId: formId,
       });
 
       await submissionsService.updateReadStatus(submissionId, !isRead);
 
-      // Update local state immediately for better UX
       setSubmissions(prev =>
         prev.map(sub =>
           sub.id === submissionId ? { ...sub, isRead: !isRead } : sub
         )
       );
 
-      // Update stats locally
       setStats(prev => ({
         ...prev,
         unread: !isRead ? prev.unread - 1 : prev.unread + 1,
@@ -339,18 +336,16 @@ const FormSubmissionsPage: React.FC = () => {
       console.log('✅ Read status updated successfully');
     } catch (error: any) {
       console.error('❌ Error updating read status:', error);
-
-      // Revert local state on error
       setSubmissions(prev =>
         prev.map(sub =>
           sub.id === submissionId ? { ...sub, isRead: isRead } : sub
         )
       );
-
       toast.error(error.message || 'Failed to update read status');
     }
   };
 
+  // Delete submission
   const handleDeleteSubmission = async (submissionId: string) => {
     try {
       if (!submissionId || submissionId.trim() === '') {
@@ -362,14 +357,11 @@ const FormSubmissionsPage: React.FC = () => {
 
       await submissionsService.deleteSubmission(submissionId);
 
-      // Update local state immediately
       setSubmissions(prev => prev.filter(sub => sub.id !== submissionId));
 
-      // Update stats locally
       setStats(prev => ({
         ...prev,
         total: prev.total - 1,
-        // Also decrease unread count if the deleted submission was unread
         unread:
           submissions.find(s => s.id === submissionId)?.isRead === false
             ? prev.unread - 1
@@ -388,7 +380,85 @@ const FormSubmissionsPage: React.FC = () => {
     }
   };
 
-  // ✅ NEW: Confirm delete function
+  // ✅ NEW: Delete individual file with enhanced error handling
+  const handleDeleteFile = async (
+    file: any,
+    submissionId: string,
+    fieldId: string
+  ) => {
+    try {
+      if (!file?.publicId) {
+        throw new Error('Invalid file data');
+      }
+
+      console.log('🗑️ Deleting file:', {
+        publicId: file.publicId,
+        submissionId,
+        fieldId,
+        fileName: file.originalName,
+      });
+
+      // Delete from cloud storage
+      const resourceType = file.mimeType?.startsWith('image/')
+        ? 'image'
+        : 'raw';
+      await deleteFormFile(file.publicId, resourceType);
+
+      // Update local state - remove file from submission data
+      setSubmissions(prev =>
+        prev.map(sub => {
+          if (sub.id === submissionId) {
+            const updatedData = { ...sub.data };
+            const fieldFiles = updatedData[fieldId];
+
+            if (Array.isArray(fieldFiles)) {
+              // Multiple files - remove the specific file
+              updatedData[fieldId] = fieldFiles.filter(
+                f => f.publicId !== file.publicId
+              );
+              if (updatedData[fieldId].length === 0) {
+                delete updatedData[fieldId]; // Remove field if no files left
+              }
+            } else if (fieldFiles?.publicId === file.publicId) {
+              // Single file - remove the field
+              delete updatedData[fieldId];
+            }
+
+            return { ...sub, data: updatedData };
+          }
+          return sub;
+        })
+      );
+
+      // Also update selectedSubmission if it's currently displayed
+      if (selectedSubmission?.id === submissionId) {
+        const updatedData = { ...selectedSubmission.data };
+        const fieldFiles = updatedData[fieldId];
+
+        if (Array.isArray(fieldFiles)) {
+          updatedData[fieldId] = fieldFiles.filter(
+            f => f.publicId !== file.publicId
+          );
+          if (updatedData[fieldId].length === 0) {
+            delete updatedData[fieldId];
+          }
+        } else if (fieldFiles?.publicId === file.publicId) {
+          delete updatedData[fieldId];
+        }
+
+        setSelectedSubmission({ ...selectedSubmission, data: updatedData });
+      }
+
+      // toast.success('File deleted successfully');
+      console.log('✅ File deleted successfully');
+    } catch (error: any) {
+      console.error('❌ Error deleting file:', error);
+      toast.error(error.message || 'Failed to delete file');
+      throw error; // Re-throw for FileManager error handling
+    }
+  };
+
+  // Confirm delete functions
   const confirmDelete = (submissionId: string) => {
     setSubmissionToDelete(submissionId);
     setShowDeleteDialog(true);
@@ -406,9 +476,7 @@ const FormSubmissionsPage: React.FC = () => {
       setSelectedSubmission(submission);
       setShowSubmissionModal(true);
 
-      // Mark as read if not already (but don't block the modal)
       if (!submission.isRead) {
-        // Don't await this to avoid blocking the modal
         handleToggleRead(submission.id, submission.isRead).catch(error => {
           console.warn(
             '⚠️ Failed to mark submission as read when viewing:',
@@ -428,11 +496,20 @@ const FormSubmissionsPage: React.FC = () => {
 
     Object.entries(data).forEach(([key, value]) => {
       if (value && typeof value === 'object') {
-        // Handle complex objects like fullName, address
         if (value.firstName && value.lastName) {
           extracted[key] = `${value.firstName} ${value.lastName}`;
         } else if (value.street && value.city) {
           extracted[key] = `${value.street}, ${value.city}`;
+        } else if (
+          Array.isArray(value) &&
+          value.length > 0 &&
+          value[0]?.originalName
+        ) {
+          // Handle file arrays
+          extracted[key] = `📎 ${value.length} file(s)`;
+        } else if (value.originalName && value.url) {
+          // Single file
+          extracted[key] = `📎 ${value.originalName}`;
         } else {
           extracted[key] = JSON.stringify(value);
         }
@@ -455,12 +532,10 @@ const FormSubmissionsPage: React.FC = () => {
 
   // Get field display name using the labels map
   const getFieldLabel = (fieldId: string): string => {
-    // First check if we have a label from the form structure
     if (fieldLabelsMap[fieldId]) {
       return fieldLabelsMap[fieldId];
     }
 
-    // Fallback to the original function for common field patterns
     const commonFields: Record<string, string> = {
       name: 'Name',
       fullName: 'Full Name',
@@ -481,7 +556,6 @@ const FormSubmissionsPage: React.FC = () => {
       return commonFields[fieldId];
     }
 
-    // If it looks like a UUID, show a user-friendly fallback
     if (
       fieldId.match(
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
@@ -490,7 +564,6 @@ const FormSubmissionsPage: React.FC = () => {
       return 'Custom Field';
     }
 
-    // Convert camelCase or snake_case to readable format
     return fieldId
       .replace(/([A-Z])/g, ' $1')
       .replace(/_/g, ' ')
@@ -527,11 +600,9 @@ const FormSubmissionsPage: React.FC = () => {
     }
   };
 
-  // Get common field display names and icons - updated to use field labels map
+  // Get common field display names and icons
   const getFieldDisplayInfo = (fieldId: string) => {
     const label = getFieldLabel(fieldId);
-
-    // Determine icon based on label content
     const labelLower = label.toLowerCase();
     let icon = null;
 
@@ -544,6 +615,94 @@ const FormSubmissionsPage: React.FC = () => {
     }
 
     return { label, icon };
+  };
+
+  // ✅ ENHANCED: Check if value is a file field
+  const isFileField = (value: any): boolean => {
+    if (!value || typeof value !== 'object') return false;
+
+    // Single file
+    if (value.originalName && value.url && value.publicId) return true;
+
+    // Array of files
+    if (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      value[0]?.originalName &&
+      value[0]?.url
+    )
+      return true;
+
+    return false;
+  };
+
+  // ✅ NEW: Render field value with FileManager for files
+  const renderFieldValue = (fieldId: string, value: any) => {
+    const { label } = getFieldDisplayInfo(fieldId);
+
+    // Check if this is a file field
+    if (isFileField(value)) {
+      return (
+        <div className='space-y-2'>
+          <label className='text-sm font-medium text-gray-600'>{label}</label>
+          <FileManager
+            files={value}
+            fieldLabel={undefined} // We already show the label above
+            fieldId={fieldId}
+            submissionId={selectedSubmission!.id}
+            onFileDelete={async file => {
+              await handleDeleteFile(file, selectedSubmission!.id, fieldId);
+            }}
+            onFileDownload={async file => {
+              // Custom download with analytics tracking
+              try {
+                const response = await fetch(file.url);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.originalName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                toast.success('File downloaded successfully');
+              } catch (error) {
+                toast.error('Failed to download file');
+                throw error;
+              }
+            }}
+            showActions={true}
+            compact={true}
+            readOnly={false}
+          />
+        </div>
+      );
+    }
+
+    // Handle other object types
+    if (value && typeof value === 'object') {
+      return (
+        <div className='border-b border-gray-200 pb-3'>
+          <label className='text-sm font-medium text-gray-600'>{label}</label>
+          <div className='mt-1'>
+            <pre className='text-sm bg-gray-100 p-2 rounded overflow-x-auto'>
+              {JSON.stringify(value, null, 2)}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+
+    // Regular text field
+    return (
+      <div className='border-b border-gray-200 pb-3'>
+        <label className='text-sm font-medium text-gray-600'>{label}</label>
+        <div className='mt-1'>
+          <p className='text-sm'>{String(value) || 'N/A'}</p>
+        </div>
+      </div>
+    );
   };
 
   // Initialize data on component mount
@@ -563,7 +722,6 @@ const FormSubmissionsPage: React.FC = () => {
     }
   }, [formId, fetchFormStructure, fetchSubmissions]);
 
-  // Separate useEffect for search/filter changes (don't refetch form structure)
   useEffect(() => {
     if (formId && formStructure) {
       fetchSubmissions();
@@ -803,7 +961,6 @@ const FormSubmissionsPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <div className='flex items-center gap-1'>
-                            {/* Direct Delete Button */}
                             <Button
                               variant='ghost'
                               size='sm'
@@ -902,9 +1059,14 @@ const FormSubmissionsPage: React.FC = () => {
 
       {/* Submission Details Modal */}
       <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
-        <DialogContent className='max-w-4xl max-h-[80vh] overflow-y-auto bg-white'>
+        <DialogContent className='max-w-6xl max-h-[85vh] overflow-y-auto bg-white'>
           <DialogHeader>
-            <DialogTitle>Submission Details</DialogTitle>
+            <DialogTitle className='flex items-center justify-between'>
+              <span>Submission Details</span>
+              <Badge variant='outline' className='ml-2'>
+                ID: {selectedSubmission?.id}
+              </Badge>
+            </DialogTitle>
           </DialogHeader>
           {selectedSubmission && (
             <div className='space-y-6'>
@@ -947,39 +1109,70 @@ const FormSubmissionsPage: React.FC = () => {
               {/* Submission Data */}
               <div>
                 <h3 className='text-lg font-semibold mb-4'>Submission Data</h3>
-                <div className='space-y-4'>
+                <div className='space-y-6'>
                   {Object.entries(selectedSubmission.data).length === 0 ? (
                     <p className='text-gray-500 italic'>No data submitted</p>
                   ) : (
                     Object.entries(selectedSubmission.data).map(
-                      ([fieldId, value], index) => {
-                        const { label } = getFieldDisplayInfo(fieldId);
-                        return (
-                          <div
-                            key={`detail-${fieldId}-${index}`}
-                            className='border-b border-gray-200 pb-3'
-                          >
-                            <label className='text-sm font-medium text-gray-600'>
-                              {label}
-                            </label>
-                            <div className='mt-1'>
-                              {typeof value === 'object' ? (
-                                <pre className='text-sm bg-gray-100 p-2 rounded overflow-x-auto'>
-                                  {JSON.stringify(value, null, 2)}
-                                </pre>
-                              ) : (
-                                <p className='text-sm'>
-                                  {String(value) || 'N/A'}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      }
+                      ([fieldId, value], index) => (
+                        <div key={`field-${fieldId}-${index}`}>
+                          {renderFieldValue(fieldId, value)}
+                        </div>
+                      )
                     )
                   )}
                 </div>
               </div>
+
+              {/* File Statistics */}
+              {Object.values(selectedSubmission.data).some(value =>
+                isFileField(value)
+              ) && (
+                <div className='bg-blue-50 rounded-lg p-4'>
+                  <h4 className='font-medium text-blue-900 mb-2'>
+                    File Summary
+                  </h4>
+                  <div className='grid grid-cols-2 gap-4 text-sm'>
+                    <div>
+                      <span className='text-blue-700'>Total Files:</span>
+                      <span className='ml-2 font-medium'>
+                        {Object.values(selectedSubmission.data).reduce(
+                          (count, value) => {
+                            if (!isFileField(value)) return count;
+                            return (
+                              count + (Array.isArray(value) ? value.length : 1)
+                            );
+                          },
+                          0
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className='text-blue-700'>Total Size:</span>
+                      <span className='ml-2 font-medium'>
+                        {formatFileSize(
+                          Object.values(selectedSubmission.data).reduce(
+                            (size, value) => {
+                              if (!isFileField(value)) return size;
+                              if (Array.isArray(value)) {
+                                return (
+                                  size +
+                                  value.reduce(
+                                    (s, file) => s + (file.size || 0),
+                                    0
+                                  )
+                                );
+                              }
+                              return size + (value.size || 0);
+                            },
+                            0
+                          )
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons in Modal */}
               <div className='flex justify-between items-center pt-4 border-t'>
@@ -995,6 +1188,59 @@ const FormSubmissionsPage: React.FC = () => {
                   >
                     Mark as {selectedSubmission.isRead ? 'Unread' : 'Read'}
                   </Button>
+
+                  {/* Download All Files Button */}
+                  {Object.values(selectedSubmission.data).some(value =>
+                    isFileField(value)
+                  ) && (
+                    <Button
+                      variant='outline'
+                      onClick={async () => {
+                        try {
+                          // Collect all files from submission
+                          const allFiles: any[] = [];
+                          Object.values(selectedSubmission.data).forEach(
+                            value => {
+                              if (isFileField(value)) {
+                                if (Array.isArray(value)) {
+                                  allFiles.push(...value);
+                                } else {
+                                  allFiles.push(value);
+                                }
+                              }
+                            }
+                          );
+
+                          // Download each file
+                          for (const file of allFiles) {
+                            const response = await fetch(file.url);
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = file.originalName;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+
+                            // Small delay between downloads
+                            await new Promise(resolve =>
+                              setTimeout(resolve, 500)
+                            );
+                          }
+
+                          toast.success(`Downloaded ${allFiles.length} files`);
+                        } catch {
+                          toast.error('Failed to download files');
+                        }
+                      }}
+                      className='bg-blue-500 hover:bg-blue-600 text-white'
+                    >
+                      <Download className='w-4 h-4 mr-2' />
+                      Download All Files
+                    </Button>
+                  )}
                 </div>
                 <Button
                   variant='destructive'
@@ -1002,7 +1248,7 @@ const FormSubmissionsPage: React.FC = () => {
                   className='bg-red-600 hover:bg-red-700'
                 >
                   <Trash2 className='w-4 h-4 mr-2' />
-                  Delete
+                  Delete Submission
                 </Button>
               </div>
             </div>
@@ -1010,15 +1256,15 @@ const FormSubmissionsPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Submission Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className='bg-white text-gray-900'>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Submission</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this submission? This action
-              cannot be undone. The submission data will be permanently removed
-              from the database.
+              cannot be undone. The submission data and all associated files
+              will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1048,7 +1294,7 @@ const FormSubmissionsPage: React.FC = () => {
               ) : (
                 <>
                   <Trash2 className='w-4 h-4 mr-2' />
-                  Delete
+                  Delete Submission
                 </>
               )}
             </AlertDialogAction>

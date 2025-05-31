@@ -1,3 +1,5 @@
+// src/config/api.ts
+
 export type ApiConfig = typeof apiConfig;
 
 export const apiConfig = {

@@ -1,20 +1,6 @@
 // src/models/Submission.ts - Enhanced Submission Model with File Support
 import mongoose, { Schema, Document } from 'mongoose';
 
-// File upload schema for storing file information
-const FileUploadSchema = new Schema(
-  {
-    originalName: { type: String, required: true },
-    fileName: { type: String, required: true },
-    url: { type: String, required: true },
-    publicId: { type: String, required: true }, // Cloudinary public ID
-    size: { type: Number, required: true },
-    mimeType: { type: String, required: true },
-    uploadedAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
 interface ISubmission extends Document {
   formId: mongoose.Types.ObjectId;
   data: Record<string, any>;

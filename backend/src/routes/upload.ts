@@ -297,38 +297,40 @@ router.delete(
 );
 
 // Error handling middleware for multer errors
-router.use((error: any, req: Request, res: Response, next: NextFunction): void => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
+router.use(
+  (error: any, req: Request, res: Response, next: NextFunction): void => {
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({
+          success: false,
+          message: 'File too large. Maximum size is 25MB.',
+        });
+        return;
+      } else if (error.code === 'LIMIT_FILE_COUNT') {
+        res.status(400).json({
+          success: false,
+          message: 'Too many files. Maximum is 10 files.',
+        });
+        return;
+      } else if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        res.status(400).json({
+          success: false,
+          message: 'Unexpected file field.',
+        });
+        return;
+      }
+    }
+
+    if (error.message) {
       res.status(400).json({
         success: false,
-        message: 'File too large. Maximum size is 25MB.',
-      });
-      return;
-    } else if (error.code === 'LIMIT_FILE_COUNT') {
-      res.status(400).json({
-        success: false,
-        message: 'Too many files. Maximum is 10 files.',
-      });
-      return;
-    } else if (error.code === 'LIMIT_UNEXPECTED_FILE') {
-      res.status(400).json({
-        success: false,
-        message: 'Unexpected file field.',
+        message: error.message,
       });
       return;
     }
-  }
 
-  if (error.message) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-    return;
+    next(error);
   }
-
-  next(error);
-});
+);
 
 export default router;

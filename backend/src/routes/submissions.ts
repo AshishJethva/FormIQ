@@ -7,8 +7,17 @@ import Form from '../models/Form';
 import { validate } from '../middleware/validation';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/ApiError';
-import { submitFormSchema } from '../validation/submissionValidation';
+import {
+  submitFormSchema,
+  submitFormSchemaSimple,
+} from '../validation/submissionValidation';
 import mongoose from 'mongoose';
+import {
+  debugFormSubmission,
+  validateFormSubmissionRequest,
+  handleFormSubmissionError,
+  monitorFormSubmissionPerformance,
+} from '../middleware/debugMiddleware';
 
 const router = express.Router();
 
@@ -288,159 +297,369 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
 };
 
 // Helper function to validate submission data with file support
-const validateSubmissionData = (
+function validateSubmissionData(
   submissionData: any,
   pages: any[],
   files: any[]
-): string[] => {
+): string[] {
   const errors: string[] = [];
 
   if (!pages || !Array.isArray(pages)) {
     return errors;
   }
 
-  pages.forEach((page: any) => {
-    if (page.fields && Array.isArray(page.fields)) {
-      page.fields.forEach((field: any) => {
-        if (field.type === 'heading') return; // Skip headings
+  console.log('🔍 Starting comprehensive validation:', {
+    pagesCount: pages.length,
+    submissionFields: Object.keys(submissionData || {}),
+    filesCount: files.length,
+  });
 
-        const fieldValue = submissionData[field.id];
-        const fieldFiles = files.filter(file => file.fieldId === field.id);
+  pages.forEach((page, pageIndex) => {
+    if (!page?.fields || !Array.isArray(page.fields)) return;
 
-        // Check required fields
-        if (field.required) {
-          // For file/image fields, check if files were uploaded
-          if (field.type === 'fileUpload' || field.type === 'image') {
-            if (fieldFiles.length === 0) {
+    page.fields.forEach((field, fieldIndex) => {
+      if (!field?.id || !field?.type) return;
+
+      // Skip heading fields completely
+      if (field.type === 'heading') {
+        console.log(`⏭️ Skipping heading field: ${field.label}`);
+        return;
+      }
+
+      const fieldValue = submissionData[field.id];
+      const fieldFiles = files.filter(file => file.fieldId === field.id);
+
+      console.log(`🔍 Validating field "${field.label}" (${field.type}):`, {
+        fieldId: field.id,
+        required: field.required,
+        hasValue:
+          fieldValue !== undefined && fieldValue !== null && fieldValue !== '',
+        hasFiles: fieldFiles.length > 0,
+        valueType: typeof fieldValue,
+        value:
+          typeof fieldValue === 'string' && fieldValue.length > 50
+            ? fieldValue.substring(0, 50) + '...'
+            : fieldValue,
+      });
+
+      // ✅ Required field validation
+      if (field.required === true) {
+        if (field.type === 'fileUpload' || field.type === 'image') {
+          if (fieldFiles.length === 0) {
+            errors.push(
+              `${field.label || field.id} requires a file to be uploaded`
+            );
+            return;
+          }
+        } else {
+          const isEmpty =
+            fieldValue === undefined ||
+            fieldValue === null ||
+            fieldValue === '' ||
+            (Array.isArray(fieldValue) && fieldValue.length === 0);
+
+          if (isEmpty) {
+            errors.push(`${field.label || field.id} is required`);
+            return;
+          }
+
+          // Special validation for complex required fields
+          if (field.type === 'fullName' && typeof fieldValue === 'object') {
+            if (!fieldValue.firstName?.trim() || !fieldValue.lastName?.trim()) {
               errors.push(
-                `Field "${field.label || field.id}" requires a file to be uploaded`
+                `${field.label || field.id} requires both first and last name`
               );
               return;
             }
-          } else {
-            // For other fields, check regular value
-            if (!fieldValue || fieldValue.toString().trim() === '') {
-              errors.push(`Field "${field.label || field.id}" is required`);
+          }
+
+          if (field.type === 'address' && typeof fieldValue === 'object') {
+            if (
+              !fieldValue.street?.trim() ||
+              !fieldValue.city?.trim() ||
+              !fieldValue.state?.trim()
+            ) {
+              errors.push(
+                `${field.label || field.id} requires street address, city, and state`
+              );
+              return;
+            }
+          }
+
+          if (field.type === 'appointment' && typeof fieldValue === 'object') {
+            if (!fieldValue.date || !fieldValue.time) {
+              errors.push(
+                `${field.label || field.id} requires both date and time`
+              );
               return;
             }
           }
         }
+      }
 
-        // Skip validation if field is empty and not required
-        if (!fieldValue || fieldValue.toString().trim() === '') {
-          return;
-        }
+      // Skip further validation if field is empty and not required
+      const isEmpty =
+        fieldValue === undefined ||
+        fieldValue === null ||
+        fieldValue === '' ||
+        (Array.isArray(fieldValue) && fieldValue.length === 0);
 
-        // Field-specific validation (existing logic)
+      if (isEmpty && field.required !== true) {
+        console.log(
+          `⏭️ Skipping validation for empty non-required field: ${field.label}`
+        );
+        return;
+      }
+
+      // ✅ Field-specific validation for all 19+ field types
+      try {
         switch (field.type) {
           case 'shortText':
           case 'longText':
           case 'paragraph':
-            if (
-              field.minLength &&
-              fieldValue.toString().length < field.minLength
-            ) {
-              errors.push(
-                `Field "${field.label || field.id}" must be at least ${field.minLength} characters long`
-              );
-            }
-            if (
-              field.maxLength &&
-              fieldValue.toString().length > field.maxLength
-            ) {
-              errors.push(
-                `Field "${field.label || field.id}" must be no more than ${field.maxLength} characters long`
-              );
+            if (fieldValue && typeof fieldValue === 'string') {
+              const textValue = fieldValue.trim();
+              if (field.minLength && textValue.length < field.minLength) {
+                errors.push(
+                  `${field.label || field.id} must be at least ${field.minLength} characters long`
+                );
+              }
+              if (field.maxLength && textValue.length > field.maxLength) {
+                errors.push(
+                  `${field.label || field.id} must be no more than ${field.maxLength} characters long`
+                );
+              }
             }
             break;
 
           case 'number':
-            const numValue = Number(fieldValue);
-            if (isNaN(numValue)) {
-              errors.push(
-                `Field "${field.label || field.id}" must be a valid number`
-              );
-            } else {
-              if (field.min !== undefined && numValue < field.min) {
+            if (
+              fieldValue !== undefined &&
+              fieldValue !== null &&
+              fieldValue !== ''
+            ) {
+              const numValue = Number(fieldValue);
+              if (isNaN(numValue)) {
                 errors.push(
-                  `Field "${field.label || field.id}" must be at least ${field.min}`
+                  `${field.label || field.id} must be a valid number`
                 );
-              }
-              if (field.max !== undefined && numValue > field.max) {
-                errors.push(
-                  `Field "${field.label || field.id}" must be no more than ${field.max}`
-                );
+              } else {
+                if (field.min !== undefined && numValue < field.min) {
+                  errors.push(
+                    `${field.label || field.id} must be at least ${field.min}`
+                  );
+                }
+                if (field.max !== undefined && numValue > field.max) {
+                  errors.push(
+                    `${field.label || field.id} must be no more than ${field.max}`
+                  );
+                }
               }
             }
             break;
 
           case 'dropdown':
           case 'singleChoice':
-            if (field.options && Array.isArray(field.options)) {
+            if (fieldValue && field.options && Array.isArray(field.options)) {
               const validOptions = field.options.map(
                 (opt: any) => opt.value || opt
               );
               if (!validOptions.includes(fieldValue)) {
                 errors.push(
-                  `Field "${field.label || field.id}" contains an invalid option`
+                  `${field.label || field.id} contains an invalid option`
                 );
               }
             }
             break;
 
           case 'multipleChoice':
-            if (Array.isArray(fieldValue)) {
-              if (field.options && Array.isArray(field.options)) {
-                const validOptions = field.options.map(
-                  (opt: any) => opt.value || opt
+            if (fieldValue) {
+              if (Array.isArray(fieldValue)) {
+                if (field.options && Array.isArray(field.options)) {
+                  const validOptions = field.options.map(
+                    (opt: any) => opt.value || opt
+                  );
+                  const invalidOptions = fieldValue.filter(
+                    (val: any) => !validOptions.includes(val)
+                  );
+                  if (invalidOptions.length > 0) {
+                    errors.push(
+                      `${field.label || field.id} contains invalid options: ${invalidOptions.join(', ')}`
+                    );
+                  }
+                }
+              } else {
+                errors.push(
+                  `${field.label || field.id} must be an array for multiple choice`
                 );
-                const invalidOptions = fieldValue.filter(
-                  (val: any) => !validOptions.includes(val)
+              }
+            }
+            break;
+
+          case 'email':
+            if (fieldValue && typeof fieldValue === 'string') {
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(fieldValue.trim())) {
+                errors.push(
+                  `${field.label || field.id} must be a valid email address`
                 );
-                if (invalidOptions.length > 0) {
+              }
+            }
+            break;
+
+          case 'phone':
+            if (fieldValue && typeof fieldValue === 'string') {
+              const cleanPhone = fieldValue.replace(/\D/g, '');
+              let phoneDigits = cleanPhone;
+
+              // Handle Indian country code
+              if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
+                phoneDigits = phoneDigits.substring(2);
+              }
+
+              // Flexible phone validation - accept 10 digits starting with common prefixes
+              if (phoneDigits.length !== 10) {
+                errors.push(
+                  `${field.label || field.id} must be a valid 10-digit phone number`
+                );
+              } else {
+                const firstDigit = phoneDigits.charAt(0);
+                if (
+                  !['6', '7', '8', '9', '2', '3', '4', '5'].includes(firstDigit)
+                ) {
                   errors.push(
-                    `Field "${field.label || field.id}" contains invalid options: ${invalidOptions.join(', ')}`
+                    `${field.label || field.id} must start with a valid digit (2-9)`
                   );
                 }
               }
-            } else if (fieldValue) {
-              errors.push(
-                `Field "${field.label || field.id}" must be an array for multiple choice`
-              );
             }
             break;
 
           case 'time':
-            const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-            if (!timeRegex.test(fieldValue.toString())) {
-              errors.push(
-                `Field "${field.label || field.id}" must be a valid time format (HH:MM)`
-              );
+            if (fieldValue && typeof fieldValue === 'string') {
+              const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+              if (!timeRegex.test(fieldValue)) {
+                errors.push(
+                  `${field.label || field.id} must be a valid time format (HH:MM)`
+                );
+              }
             }
             break;
 
-          // ✅ ENHANCED: File field validations
+          case 'datePicker':
+            if (fieldValue && typeof fieldValue === 'string') {
+              const date = new Date(fieldValue);
+              if (isNaN(date.getTime())) {
+                errors.push(`${field.label || field.id} must be a valid date`);
+              }
+            }
+            break;
+
+          case 'fullName':
+            if (fieldValue) {
+              if (typeof fieldValue === 'object') {
+                if (
+                  !fieldValue.firstName?.trim() ||
+                  !fieldValue.lastName?.trim()
+                ) {
+                  errors.push(
+                    `${field.label || field.id} requires both first and last name`
+                  );
+                }
+              } else if (
+                typeof fieldValue === 'string' &&
+                fieldValue.trim().length < 2
+              ) {
+                errors.push(
+                  `${field.label || field.id} must be at least 2 characters long`
+                );
+              }
+            }
+            break;
+
+          case 'address':
+            if (fieldValue && typeof fieldValue === 'object') {
+              if (
+                !fieldValue.street?.trim() ||
+                !fieldValue.city?.trim() ||
+                !fieldValue.state?.trim()
+              ) {
+                errors.push(
+                  `${field.label || field.id} requires street address, city, and state`
+                );
+              }
+            }
+            break;
+
+          case 'appointment':
+            if (fieldValue && typeof fieldValue === 'object') {
+              if (!fieldValue.date || !fieldValue.time) {
+                errors.push(
+                  `${field.label || field.id} requires both date and time`
+                );
+              } else {
+                // Validate date format
+                const date = new Date(fieldValue.date);
+                if (isNaN(date.getTime())) {
+                  errors.push(`${field.label || field.id} has invalid date`);
+                }
+                // Validate time format
+                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                if (!timeRegex.test(fieldValue.time)) {
+                  errors.push(
+                    `${field.label || field.id} has invalid time format`
+                  );
+                }
+              }
+            }
+            break;
+
+          case 'signature':
+            if (fieldValue && typeof fieldValue === 'string') {
+              if (fieldValue.trim().length === 0) {
+                errors.push(
+                  `${field.label || field.id} signature cannot be empty`
+                );
+              }
+            }
+            break;
+
+          case 'fillBlank':
+            if (fieldValue && typeof fieldValue === 'string') {
+              if (fieldValue.trim().length === 0) {
+                errors.push(`${field.label || field.id} cannot be empty`);
+              }
+            }
+            break;
+
+          case 'productList':
+            if (fieldValue) {
+              if (typeof fieldValue !== 'object') {
+                errors.push(
+                  `${field.label || field.id} must be a valid product selection`
+                );
+              }
+            }
+            break;
+
+          // File upload validations
           case 'image':
             if (fieldFiles.length > 0) {
               fieldFiles.forEach((file: any) => {
-                if (!file.mimeType.startsWith('image/')) {
+                if (!file.mimeType || !file.mimeType.startsWith('image/')) {
                   errors.push(
-                    `Field "${field.label || field.id}" only accepts image files`
+                    `${field.label || field.id} only accepts image files`
                   );
                 }
-                // Check image size (10MB max for images)
-                if (file.size > 10 * 1024 * 1024) {
+                if (file.size && file.size > 10 * 1024 * 1024) {
                   errors.push(
-                    `Image in field "${field.label || field.id}" exceeds 10MB limit`
+                    `Image in ${field.label || field.id} exceeds 10MB limit`
                   );
                 }
               });
 
-              // Check multiple files if not allowed
               if (!field.multiple && fieldFiles.length > 1) {
-                errors.push(
-                  `Field "${field.label || field.id}" only allows one image`
-                );
+                errors.push(`${field.label || field.id} only allows one image`);
               }
             }
             break;
@@ -448,171 +667,292 @@ const validateSubmissionData = (
           case 'fileUpload':
             if (fieldFiles.length > 0) {
               fieldFiles.forEach((file: any) => {
-                // Check file type if accept attribute is specified
                 if (field.accept && field.accept !== '*/*') {
                   const allowedTypes = field.accept
                     .split(',')
                     .map((type: string) => type.trim());
                   const isTypeAllowed = allowedTypes.some((type: string) => {
                     if (type.startsWith('.')) {
-                      // File extension check
-                      return file.originalName
-                        .toLowerCase()
-                        .endsWith(type.toLowerCase());
+                      return (
+                        file.originalName &&
+                        file.originalName
+                          .toLowerCase()
+                          .endsWith(type.toLowerCase())
+                      );
                     } else if (type.endsWith('/*')) {
-                      // MIME type wildcard check
                       const baseType = type.slice(0, -2);
-                      return file.mimeType.startsWith(baseType);
+                      return (
+                        file.mimeType && file.mimeType.startsWith(baseType)
+                      );
                     } else {
-                      // Exact MIME type check
                       return file.mimeType === type;
                     }
                   });
 
                   if (!isTypeAllowed) {
                     errors.push(
-                      `File "${file.originalName}" in field "${field.label || field.id}" is not an allowed file type`
+                      `File "${file.originalName}" in ${field.label || field.id} is not an allowed file type`
                     );
                   }
                 }
 
-                // Check file size (25MB max for general files)
-                if (file.size > 25 * 1024 * 1024) {
+                if (file.size && file.size > 25 * 1024 * 1024) {
                   errors.push(
-                    `File "${file.originalName}" in field "${field.label || field.id}" exceeds 25MB limit`
+                    `File "${file.originalName}" in ${field.label || field.id} exceeds 25MB limit`
                   );
                 }
               });
 
-              // Check multiple files if not allowed
               if (!field.multiple && fieldFiles.length > 1) {
-                errors.push(
-                  `Field "${field.label || field.id}" only allows one file`
-                );
+                errors.push(`${field.label || field.id} only allows one file`);
               }
             }
             break;
 
-          // Existing validations for other field types...
+          default:
+            console.log(
+              `⚠️ Unknown field type: ${field.type} for field: ${field.label}`
+            );
+            break;
+        }
+      } catch (validationError: any) {
+        console.error(
+          `❌ Validation error for field ${field.id}:`,
+          validationError
+        );
+        errors.push(
+          `${field.label || field.id} validation failed: ${validationError.message}`
+        );
+      }
+    });
+  });
+
+  console.log('✅ Validation completed:', {
+    totalErrors: errors.length,
+    errors: errors.slice(0, 5), // Log first 5 errors
+  });
+
+  return errors;
+}
+
+// Enhanced validation function
+function validateFormData(
+  submissionData: any,
+  pages: any[],
+  files: any[]
+): string[] {
+  const errors: string[] = [];
+
+  if (!pages || !Array.isArray(pages)) {
+    return errors; // No validation needed if no pages
+  }
+
+  console.log('🔍 Validating form data:', {
+    pages: pages.length,
+    submissionKeys: Object.keys(submissionData || {}),
+    filesCount: files.length,
+  });
+
+  pages.forEach((page: any, pageIndex: number) => {
+    if (!page || !page.fields || !Array.isArray(page.fields)) {
+      return;
+    }
+
+    page.fields.forEach((field: any) => {
+      if (!field || !field.id || !field.type) {
+        return;
+      }
+
+      // Skip heading fields
+      if (field.type === 'heading') {
+        return;
+      }
+
+      const fieldValue = submissionData[field.id];
+      const fieldFiles = files.filter(file => file.fieldId === field.id);
+
+      console.log(`🔍 Validating field "${field.label}" (${field.type}):`, {
+        fieldId: field.id,
+        required: field.required,
+        hasValue:
+          fieldValue !== undefined && fieldValue !== null && fieldValue !== '',
+        hasFiles: fieldFiles.length > 0,
+        valueType: typeof fieldValue,
+      });
+
+      // Required field validation
+      if (field.required === true) {
+        // For file/image fields, check if files were uploaded
+        if (field.type === 'fileUpload' || field.type === 'image') {
+          if (fieldFiles.length === 0) {
+            errors.push(
+              `${field.label || field.id} requires a file to be uploaded`
+            );
+          }
+        } else {
+          // For other fields, check regular value
+          const isEmpty =
+            fieldValue === undefined ||
+            fieldValue === null ||
+            fieldValue === '' ||
+            (Array.isArray(fieldValue) && fieldValue.length === 0);
+
+          if (isEmpty) {
+            errors.push(`${field.label || field.id} is required`);
+          } else {
+            // Enhanced validation for complex required fields
+            if (field.type === 'fullName' && typeof fieldValue === 'object') {
+              if (
+                !fieldValue.firstName?.trim() ||
+                !fieldValue.lastName?.trim()
+              ) {
+                errors.push(
+                  `${field.label || field.id} requires both first and last name`
+                );
+              }
+            }
+
+            if (field.type === 'address' && typeof fieldValue === 'object') {
+              if (
+                !fieldValue.street?.trim() ||
+                !fieldValue.city?.trim() ||
+                !fieldValue.state?.trim()
+              ) {
+                errors.push(
+                  `${field.label || field.id} requires street address, city, and state`
+                );
+              }
+            }
+
+            if (
+              field.type === 'appointment' &&
+              typeof fieldValue === 'object'
+            ) {
+              if (!fieldValue.date || !fieldValue.time) {
+                errors.push(
+                  `${field.label || field.id} requires both date and time`
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // Skip further validation if field is empty and not required
+      const isEmpty =
+        fieldValue === undefined ||
+        fieldValue === null ||
+        fieldValue === '' ||
+        (Array.isArray(fieldValue) && fieldValue.length === 0);
+
+      if (isEmpty && field.required !== true) {
+        return;
+      }
+
+      // Field-specific validation for non-empty values
+      try {
+        switch (field.type) {
           case 'email':
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(fieldValue.toString())) {
-              errors.push(
-                `Field "${field.label || field.id}" must be a valid email address`
-              );
+            if (fieldValue && typeof fieldValue === 'string') {
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(fieldValue.trim())) {
+                errors.push(
+                  `${field.label || field.id} must be a valid email address`
+                );
+              }
             }
             break;
 
           case 'phone':
-            const phoneRegex = /^[6-9]\d{9}$/;
-            const cleanPhone = fieldValue.toString().replace(/\D/g, '');
-            let phoneDigits = cleanPhone;
-            if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
-              phoneDigits = phoneDigits.substring(2);
-            }
-            if (!phoneRegex.test(phoneDigits)) {
-              errors.push(
-                `Field "${field.label || field.id}" must be a valid 10-digit Indian phone number starting with 6, 7, 8, or 9`
-              );
-            }
-            break;
+            if (fieldValue && typeof fieldValue === 'string') {
+              const cleanPhone = fieldValue.replace(/\D/g, '');
+              let phoneDigits = cleanPhone;
 
-          case 'fullName':
-            if (typeof fieldValue === 'object') {
-              if (!fieldValue.firstName || !fieldValue.lastName) {
-                errors.push(
-                  `Field "${field.label || field.id}" requires both first and last name`
-                );
+              // Handle Indian country code
+              if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
+                phoneDigits = phoneDigits.substring(2);
               }
-            } else if (
-              typeof fieldValue === 'string' &&
-              fieldValue.trim().length < 2
-            ) {
-              errors.push(
-                `Field "${field.label || field.id}" must be at least 2 characters long`
-              );
-            }
-            break;
 
-          case 'address':
-            if (typeof fieldValue === 'object') {
-              if (!fieldValue.street || !fieldValue.city || !fieldValue.state) {
+              // Flexible phone validation
+              if (phoneDigits.length !== 10) {
                 errors.push(
-                  `Field "${field.label || field.id}" requires street address, city, and state`
-                );
-              }
-            }
-            break;
-
-          case 'appointment':
-            if (typeof fieldValue === 'object') {
-              if (!fieldValue.date || !fieldValue.time) {
-                errors.push(
-                  `Field "${field.label || field.id}" requires both date and time`
+                  `${field.label || field.id} must be a valid 10-digit phone number`
                 );
               } else {
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (!dateRegex.test(fieldValue.date)) {
+                const firstDigit = phoneDigits.charAt(0);
+                if (
+                  !['6', '7', '8', '9', '2', '3', '4', '5'].includes(firstDigit)
+                ) {
                   errors.push(
-                    `Field "${field.label || field.id}" has invalid date format`
+                    `${field.label || field.id} must start with a valid digit`
                   );
                 }
-                const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-                if (!timeRegex.test(fieldValue.time)) {
+              }
+            }
+            break;
+
+          case 'number':
+            if (
+              fieldValue !== undefined &&
+              fieldValue !== null &&
+              fieldValue !== ''
+            ) {
+              const numValue = Number(fieldValue);
+              if (isNaN(numValue)) {
+                errors.push(
+                  `${field.label || field.id} must be a valid number`
+                );
+              } else {
+                if (field.min !== undefined && numValue < field.min) {
                   errors.push(
-                    `Field "${field.label || field.id}" has invalid time format`
+                    `${field.label || field.id} must be at least ${field.min}`
                   );
                 }
+                if (field.max !== undefined && numValue > field.max) {
+                  errors.push(
+                    `${field.label || field.id} must be no more than ${field.max}`
+                  );
+                }
+              }
+            }
+            break;
+
+          case 'time':
+            if (fieldValue && typeof fieldValue === 'string') {
+              const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+              if (!timeRegex.test(fieldValue)) {
+                errors.push(
+                  `${field.label || field.id} must be a valid time format (HH:MM)`
+                );
               }
             }
             break;
 
           case 'datePicker':
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(fieldValue.toString())) {
-              errors.push(
-                `Field "${field.label || field.id}" must be a valid date format (YYYY-MM-DD)`
-              );
+            if (fieldValue && typeof fieldValue === 'string') {
+              const date = new Date(fieldValue);
+              if (isNaN(date.getTime())) {
+                errors.push(`${field.label || field.id} must be a valid date`);
+              }
             }
             break;
 
-          case 'signature':
-            if (
-              field.required &&
-              (!fieldValue || fieldValue.toString().trim() === '')
-            ) {
-              errors.push(
-                `Field "${field.label || field.id}" requires a signature`
-              );
-            }
-            break;
-
-          default:
-            // Generic text validation for unknown field types
-            if (
-              field.minLength &&
-              fieldValue.toString().length < field.minLength
-            ) {
-              errors.push(
-                `Field "${field.label || field.id}" must be at least ${field.minLength} characters long`
-              );
-            }
-            if (
-              field.maxLength &&
-              fieldValue.toString().length > field.maxLength
-            ) {
-              errors.push(
-                `Field "${field.label || field.id}" must be no more than ${field.maxLength} characters long`
-              );
-            }
-            break;
+          // Add more field validations as needed
         }
-      });
-    }
+      } catch (fieldError: any) {
+        console.error(`❌ Validation error for field ${field.id}:`, fieldError);
+        errors.push(`${field.label || field.id} validation failed`);
+      }
+    });
+  });
+
+  console.log('✅ Validation completed:', {
+    totalErrors: errors.length,
+    errors: errors.slice(0, 3), // Log first 3 errors
   });
 
   return errors;
-};
+}
 
 // ===== ROUTE HANDLERS =====
 
@@ -842,102 +1182,87 @@ router.get(
   })
 );
 
-// @desc    Submit form data (public endpoint)
+// @desc    Submit form data (public endpoint) - COMPLETE FIXED VERSION
 // @route   POST /api/submissions/:formId/submit
 // @access  Public
 router.post(
   '/:formId/submit',
-  validate(submitFormSchema),
+  monitorFormSubmissionPerformance,
+  debugFormSubmission,
   asyncHandler(async (req: Request, res: Response) => {
     const { formId } = req.params;
-    const { data: submissionData, files: fileData } = req.body;
+    const requestBody = req.body;
 
-    // Validate formId
+    console.log('🎯 STARTING FORM SUBMISSION PROCESSING');
+
+    // ✅ STEP 1: Validate Form ID
     if (!mongoose.Types.ObjectId.isValid(formId)) {
-      throw new ApiError('Invalid form ID format', 400);
+      console.error('❌ Invalid form ID format:', formId);
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_FORM_ID',
+        message: 'Invalid form ID format',
+        details: { formId },
+      });
     }
 
-    // Check if form exists and is published
+    // ✅ STEP 2: Find and validate form
     const form = await Form.findById(formId);
     if (!form) {
-      throw new ApiError('Form not found', 404);
+      console.error('❌ Form not found:', formId);
+      return res.status(404).json({
+        success: false,
+        error: 'FORM_NOT_FOUND',
+        message: 'Form not found',
+      });
     }
 
+    console.log('📋 Form found:', {
+      id: form._id,
+      title: form.title,
+      isPublished: form.isPublished,
+      isEnabled: form.settings?.isEnabled,
+      isTrashed: form.isTrashed,
+      isArchived: form.isArchived,
+    });
+
+    // ✅ STEP 3: Check form availability
     if (!form.isPublished) {
-      throw new ApiError('Form is not published', 400);
+      return res.status(403).json({
+        success: false,
+        error: 'FORM_NOT_PUBLISHED',
+        message: 'This form is not currently accepting submissions',
+      });
+    }
+
+    if (form.settings?.isEnabled === false) {
+      return res.status(403).json({
+        success: false,
+        error: 'FORM_DISABLED',
+        message: 'This form is currently disabled',
+      });
     }
 
     if (form.isTrashed || form.isArchived) {
-      throw new ApiError('Form is not available', 400);
+      return res.status(403).json({
+        success: false,
+        error: 'FORM_UNAVAILABLE',
+        message: 'This form is no longer available',
+      });
     }
 
-    // Check if form is enabled
-    if (form.settings?.isEnabled === false) {
-      throw new ApiError(
-        'Form is currently disabled and not accepting submissions',
-        403
-      );
-    }
+    // ✅ STEP 4: Extract and validate request data
+    const submissionData = requestBody.data || {};
+    const fileData = requestBody.files || {};
 
-    // ✅ ENHANCED: Multiple submission checks (existing logic)
-    if (!form.settings?.allowMultipleSubmissions) {
-      const clientIp = req.ip || req.connection.remoteAddress;
-      if (clientIp) {
-        const existingSubmission = await Submission.findOne({
-          formId,
-          ipAddress: clientIp,
-          submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        });
+    console.log('📊 Extracted submission data:', {
+      dataFields: Object.keys(submissionData).length,
+      fileFields: Object.keys(fileData).length,
+      dataFieldIds: Object.keys(submissionData),
+      fileFieldIds: Object.keys(fileData),
+    });
 
-        if (existingSubmission) {
-          throw new ApiError(
-            'You have already submitted this form recently',
-            429
-          );
-        }
-      }
-    }
-
-    // ✅ ENHANCED: Email-based multiple submission restrictions (existing logic)
-    if (
-      form.settings?.allowMultipleSubmissions &&
-      !form.settings?.allowMultipleEmailSubmissions
-    ) {
-      let submittedEmail = null;
-
-      for (const [fieldId, value] of Object.entries(submissionData || {})) {
-        if (
-          typeof value === 'string' &&
-          value.includes('@') &&
-          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-        ) {
-          submittedEmail = value.toLowerCase().trim();
-          break;
-        }
-      }
-
-      if (submittedEmail) {
-        const existingEmailSubmission = await Submission.findOne({
-          formId,
-          $or: [
-            { 'data.email': submittedEmail },
-            { 'data.emailAddress': submittedEmail },
-            ...Object.keys(submissionData || {}).map(fieldId => ({
-              [`data.${fieldId}`]: submittedEmail,
-            })),
-          ],
-          submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        });
-
-        if (existingEmailSubmission) {
-          throw new ApiError(
-            'This email address has already been used to submit this form recently',
-            429
-          );
-        }
-      }
-    }
-
+    // ✅ STEP 5: Process files
     const processedFiles: Array<{
       fieldId: string;
       originalName: string;
@@ -950,10 +1275,12 @@ router.post(
     }> = [];
 
     if (fileData && typeof fileData === 'object') {
-      for (const [fieldId, fileInfo] of Object.entries(fileData)) {
-        if (Array.isArray(fileInfo)) {
-          // Multiple files for one field
-          fileInfo.forEach((file: any) => {
+      for (const [fieldId, fieldFiles] of Object.entries(fileData)) {
+        if (!fieldFiles) continue;
+
+        if (Array.isArray(fieldFiles)) {
+          // Multiple files
+          fieldFiles.forEach((file: any) => {
             if (file && file.url && file.publicId) {
               processedFiles.push({
                 fieldId,
@@ -969,20 +1296,21 @@ router.post(
               });
             }
           });
-        } else if (fileInfo && typeof fileInfo === 'object') {
-          // Single file for one field
-          if ((fileInfo as any).url && (fileInfo as any).publicId) {
+        } else if (fieldFiles && typeof fieldFiles === 'object') {
+          // Single file
+          const fileObj = fieldFiles as any;
+          if (fileObj.url && fileObj.publicId) {
             processedFiles.push({
               fieldId,
-              originalName: (fileInfo as any).originalName || 'uploaded_file',
+              originalName: fileObj.originalName || 'uploaded_file',
               fileName:
-                (fileInfo as any).fileName || (fileInfo as any).originalName || 'uploaded_file',
-              url: (fileInfo as any).url,
-              publicId: (fileInfo as any).publicId,
-              size: (fileInfo as any).size || 0,
-              mimeType: (fileInfo as any).mimeType || 'application/octet-stream',
-              uploadedAt: (fileInfo as any).uploadedAt
-                ? new Date((fileInfo as any).uploadedAt)
+                fileObj.fileName || fileObj.originalName || 'uploaded_file',
+              url: fileObj.url,
+              publicId: fileObj.publicId,
+              size: fileObj.size || 0,
+              mimeType: fileObj.mimeType || 'application/octet-stream',
+              uploadedAt: fileObj.uploadedAt
+                ? new Date(fileObj.uploadedAt)
                 : new Date(),
             });
           }
@@ -991,49 +1319,119 @@ router.post(
     }
 
     console.log('📎 Processed files:', {
-      count: processedFiles.length,
+      totalFiles: processedFiles.length,
       totalSize: processedFiles.reduce((sum, file) => sum + file.size, 0),
+      filesByField: processedFiles.reduce(
+        (acc, file) => {
+          acc[file.fieldId] = (acc[file.fieldId] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      ),
     });
 
-    const hasAnyFields = form.pages?.some(
+    // ✅ STEP 6: Validate form structure and data
+    const hasFormFields = form.pages?.some(
       page =>
         page.fields && Array.isArray(page.fields) && page.fields.length > 0
     );
 
-    if (!hasAnyFields) {
-      console.log('⚠️ Form has no fields, allowing empty submission');
+    if (!hasFormFields) {
+      console.log('ℹ️ Form has no fields - allowing submission');
+    } else {
+      console.log('🔍 Validating submission against form structure');
 
-      const submissionPayload: any = {
-        formId,
-        data: submissionData || {},
+      const validationErrors = validateSubmissionData(
+        submissionData,
+        form.pages || [],
+        processedFiles
+      );
+
+      if (validationErrors.length > 0) {
+        console.error('❌ Validation errors:', validationErrors);
+        return res.status(400).json({
+          success: false,
+          error: 'VALIDATION_FAILED',
+          message: `Validation failed: ${validationErrors.join('; ')}`,
+          errors: validationErrors,
+        });
+      }
+
+      console.log('✅ Validation passed');
+    }
+
+    // ✅ STEP 7: Check for duplicate submissions (if configured)
+    if (!form.settings?.allowMultipleSubmissions) {
+      const clientIp = req.ip || req.connection.remoteAddress;
+      if (clientIp) {
+        const recentSubmission = await Submission.findOne({
+          formId,
+          ipAddress: clientIp,
+          submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        });
+
+        if (recentSubmission) {
+          return res.status(429).json({
+            success: false,
+            error: 'DUPLICATE_SUBMISSION',
+            message: 'You have already submitted this form recently',
+          });
+        }
+      }
+    }
+
+    // ✅ STEP 8: Create submission record
+    try {
+      const submissionPayload = {
+        formId: new mongoose.Types.ObjectId(formId),
+        data: submissionData,
         files: processedFiles,
         submittedAt: new Date(),
-        status: 'processed',
+        status: 'processed' as const,
+        ipAddress:
+          form.settings?.collectIpAddress !== false
+            ? req.ip || req.connection.remoteAddress
+            : undefined,
+        userAgent: req.get('User-Agent'),
+        referrer: req.get('Referer'),
         metadata: {
           timestamp: new Date().toISOString(),
           formVersion: form.updatedAt,
-          note: 'Form submitted with no fields',
           fileCount: processedFiles.length,
+          totalFileSize: processedFiles.reduce(
+            (sum, file) => sum + file.size,
+            0
+          ),
+          fieldCount: Object.keys(submissionData).length,
+          hasFiles: processedFiles.length > 0,
         },
       };
 
-      if (form.settings?.collectIpAddress !== false) {
-        submissionPayload.ipAddress = req.ip || req.connection.remoteAddress;
-      }
-
-      submissionPayload.userAgent = req.get('User-Agent');
-      submissionPayload.referrer = req.get('Referer');
+      console.log('💾 Creating submission with payload:', {
+        formId: submissionPayload.formId,
+        dataFieldCount: Object.keys(submissionPayload.data).length,
+        fileCount: submissionPayload.files.length,
+        hasMetadata: !!submissionPayload.metadata,
+      });
 
       const submission = await Submission.create(submissionPayload);
 
+      // ✅ STEP 9: Update form submission counter
       await Form.findByIdAndUpdate(formId, {
         $inc: { submissions: 1 },
         $set: { updatedAt: new Date() },
       });
 
-      console.log('✅ Empty form submission with files processed successfully');
+      console.log('✅ FORM SUBMISSION COMPLETED SUCCESSFULLY:', {
+        submissionId: submission._id,
+        formId,
+        formTitle: form.title,
+        fileCount: processedFiles.length,
+        dataFieldCount: Object.keys(submissionData).length,
+      });
 
-      res.status(201).json({
+      // ✅ STEP 10: Return success response
+      return res.status(201).json({
         success: true,
         data: {
           submissionId: submission._id,
@@ -1044,72 +1442,22 @@ router.post(
         },
         message: 'Form submitted successfully',
       });
-      return;
+    } catch (saveError: any) {
+      console.error('❌ Failed to save submission:', {
+        error: saveError.message,
+        stack: saveError.stack,
+        formId,
+      });
+
+      return res.status(500).json({
+        success: false,
+        error: 'DATABASE_ERROR',
+        message: 'Failed to save form submission. Please try again.',
+        ...(process.env.NODE_ENV === 'development' && {
+          details: saveError.message,
+        }),
+      });
     }
-
-    // Validate submission data against form structure
-    const validationErrors = validateSubmissionData(
-      submissionData || {},
-      form.pages || [],
-      processedFiles
-    );
-
-    if (validationErrors.length > 0) {
-      console.log('❌ Validation errors found:', validationErrors);
-      throw new ApiError(
-        `Validation failed: ${validationErrors.join('; ')}`,
-        400
-      );
-    }
-
-    // Create submission record
-    const submissionPayload: any = {
-      formId,
-      data: submissionData || {},
-      files: processedFiles,
-      submittedAt: new Date(),
-      status: 'processed',
-      metadata: {
-        timestamp: new Date().toISOString(),
-        formVersion: form.updatedAt,
-        fileCount: processedFiles.length,
-        totalFileSize: processedFiles.reduce((sum, file) => sum + file.size, 0),
-      },
-    };
-
-    // Add IP address if collection is enabled
-    if (form.settings?.collectIpAddress !== false) {
-      submissionPayload.ipAddress = req.ip || req.connection.remoteAddress;
-    }
-
-    // Add user agent and referrer
-    submissionPayload.userAgent = req.get('User-Agent');
-    submissionPayload.referrer = req.get('Referer');
-
-    const submission = await Submission.create(submissionPayload);
-
-    // Update form submission count
-    await Form.findByIdAndUpdate(formId, {
-      $inc: { submissions: 1 },
-      $set: { updatedAt: new Date() },
-    });
-
-    console.log('✅ Form submission with files processed successfully:', {
-      submissionId: submission._id,
-      fileCount: processedFiles.length,
-    });
-
-    res.status(201).json({
-      success: true,
-      data: {
-        submissionId: submission._id,
-        message:
-          form.settings?.thankyouMessage || 'Thank you for your submission!',
-        submittedAt: submission.submittedAt,
-        fileCount: processedFiles.length,
-      },
-      message: 'Form submitted successfully',
-    });
   })
 );
 
@@ -1801,5 +2149,8 @@ router.get(
     });
   })
 );
+
+// Add error handling middleware
+router.use(handleFormSubmissionError);
 
 export default router;

@@ -1,4 +1,7 @@
 // src/types/form.ts - Complete Frontend Types with All Field Types
+
+import { Submission } from '@/services/submissions';
+
 export interface Form {
   id: string;
   title: string;
@@ -20,6 +23,20 @@ export interface Form {
   isFavorite?: boolean;
   isArchived?: boolean;
   isTrashed?: boolean;
+}
+export interface FileData {
+  originalName: string;
+  fileName: string;
+  url: string;
+  publicId: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: string;
+  dimensions?: { width: number; height: number };
+}
+
+export interface SubmissionWithFiles extends Submission {
+  files?: Record<string, FileData | FileData[]>;
 }
 
 export interface FormPage {

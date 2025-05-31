@@ -15,6 +15,8 @@ import rateLimit from 'express-rate-limit';
 import submissionRoutes from './routes/submissions';
 import publicRoutes from './routes/public';
 import { errorHandler } from './utils/errorHandler';
+import setupLocatorUI from "@locator/runtime";
+
 
 const app = express();
 

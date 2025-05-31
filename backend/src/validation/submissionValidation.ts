@@ -2,98 +2,208 @@
 
 import { z } from 'zod';
 
-export const submitFormSchema = z.object({
-  data: z
-    .record(z.any())
-    .refine(
-      data => {
-        // Allow empty submissions for forms with no required fields
-        return true;
-      },
-      {
-        message: 'Form data validation failed',
+// Enhanced file data schema
+const FileDataSchema = z.object({
+  originalName: z.string(),
+  fileName: z.string(),
+  url: z.string().url(),
+  publicId: z.string(),
+  size: z.number().positive(),
+  mimeType: z.string(),
+  uploadedAt: z.string().optional(),
+});
+
+// Schema for form data (flexible for all field types)
+const FormDataSchema = z
+  .record(
+    z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.string()),
+      z
+        .object({
+          firstName: z.string().optional(),
+          lastName: z.string().optional(),
+          street: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          zipCode: z.string().optional(),
+          date: z.string().optional(),
+          time: z.string().optional(),
+        })
+        .passthrough(), // Allow additional properties
+      z.null(),
+      z.undefined(),
+    ])
+  )
+  .optional();
+
+// Schema for file data
+const FilesDataSchema = z
+  .record(z.union([FileDataSchema, z.array(FileDataSchema)]))
+  .optional();
+
+// Main submission schema with enhanced validation
+export const submitFormSchema = z
+  .object({
+    data: FormDataSchema,
+    files: FilesDataSchema,
+  })
+  .refine(
+    submission => {
+      // Only validate if there's actual data to validate
+      if (!submission.data && !submission.files) {
+        return true; // Allow empty submissions
       }
-    )
-    .refine(
-      data => {
-        // Enhanced validation for all field types
-        for (const [key, value] of Object.entries(data)) {
-          if (typeof value === 'string') {
-            // Phone number validation
-            const hasPhonePattern =
-              /[\d\(\)\-\s\.\+]/.test(value) && value.length >= 10;
-            if (hasPhonePattern) {
-              let phoneDigits = value.replace(/\D/g, '');
 
-              // Remove Indian country code (91) if present
-              if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
-                phoneDigits = phoneDigits.substring(2);
-              }
+      // If data exists, validate specific field types
+      if (submission.data) {
+        for (const [fieldId, value] of Object.entries(submission.data)) {
+          // Skip null/undefined values
+          if (value === null || value === undefined) continue;
 
-              // Must be exactly 10 digits for Indian mobile numbers
-              if (phoneDigits.length !== 10) {
-                return false;
-              }
-
-              // Indian mobile numbers start with 6, 7, 8, or 9
-              const firstDigit = phoneDigits.charAt(0);
-              if (!['6', '7', '8', '9'].includes(firstDigit)) {
-                return false;
-              }
-
-              if (!/^\d{10}$/.test(phoneDigits)) {
-                return false;
-              }
-            }
-
-            // Email validation
-            if (value.includes('@')) {
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              if (!emailRegex.test(value)) {
-                return false;
-              }
-            }
-
-            // Time validation
-            if (/^\d{2}:\d{2}$/.test(value)) {
-              const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-              if (!timeRegex.test(value)) {
-                return false;
-              }
-            }
-
-            // Date validation
-            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-              const date = new Date(value);
-              if (isNaN(date.getTime())) {
-                return false;
-              }
-            }
-          }
-
-          // Number validation
-          if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
-            const numValue = Number(value);
-            if (isNaN(numValue)) {
+          // Email validation (more permissive)
+          if (
+            typeof value === 'string' &&
+            value.includes('@') &&
+            value.length > 5
+          ) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value.trim())) {
+              console.warn(`Invalid email format for field ${fieldId}:`, value);
               return false;
             }
           }
 
-          // Array validation for multiple choice
+          // Phone number validation (more flexible)
+          if (
+            typeof value === 'string' &&
+            /^[\d\+\-\s\(\)\.]+$/.test(value) &&
+            value.replace(/\D/g, '').length >= 10
+          ) {
+            let phoneDigits = value.replace(/\D/g, '');
+
+            // Handle country codes
+            if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
+              phoneDigits = phoneDigits.substring(2);
+            }
+            if (phoneDigits.startsWith('1') && phoneDigits.length === 11) {
+              phoneDigits = phoneDigits.substring(1);
+            }
+
+            // Validate 10-digit numbers
+            if (phoneDigits.length === 10) {
+              // For Indian numbers, check first digit
+              const firstDigit = phoneDigits.charAt(0);
+              if (
+                !['6', '7', '8', '9', '2', '3', '4', '5'].includes(firstDigit)
+              ) {
+                console.warn(
+                  `Invalid phone number format for field ${fieldId}:`,
+                  value
+                );
+                return false;
+              }
+            }
+          }
+
+          // Time validation
+          if (typeof value === 'string' && /^\d{1,2}:\d{2}/.test(value)) {
+            const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+            if (!timeRegex.test(value)) {
+              console.warn(`Invalid time format for field ${fieldId}:`, value);
+              return false;
+            }
+          }
+
+          // Date validation (flexible)
+          if (
+            typeof value === 'string' &&
+            /^\d{4}-\d{1,2}-\d{1,2}$/.test(value)
+          ) {
+            const date = new Date(value);
+            if (isNaN(date.getTime())) {
+              console.warn(`Invalid date format for field ${fieldId}:`, value);
+              return false;
+            }
+          }
+
+          // Array validation
           if (Array.isArray(value)) {
-            // Ensure all array items are valid strings
             const hasInvalidItems = value.some(
-              item => typeof item !== 'string' || item.trim() === ''
+              item =>
+                typeof item !== 'string' ||
+                (typeof item === 'string' && item.trim() === '')
             );
             if (hasInvalidItems) {
+              console.warn(`Invalid array items for field ${fieldId}:`, value);
+              return false;
+            }
+          }
+
+          // Object validation (for complex fields like fullName, address)
+          if (
+            typeof value === 'object' &&
+            value !== null &&
+            !Array.isArray(value)
+          ) {
+            // Allow objects but ensure they have at least one non-empty value
+            const hasValidValue = Object.values(value).some(
+              v => v !== null && v !== undefined && v !== ''
+            );
+            if (!hasValidValue) {
+              console.warn(`Empty object for field ${fieldId}:`, value);
               return false;
             }
           }
         }
-        return true;
-      },
-      {
-        message: 'Invalid field data format',
       }
-    ),
+
+      return true;
+    },
+    {
+      message: 'Form validation failed - please check your input data',
+    }
+  );
+
+// Alternative simpler schema for troubleshooting
+export const submitFormSchemaSimple = z.object({
+  data: z.record(z.any()).optional().default({}),
+  files: z.record(z.any()).optional().default({}),
 });
+
+// Validation helper functions
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
+
+export const validatePhoneNumber = (phone: string): boolean => {
+  let phoneDigits = phone.replace(/\D/g, '');
+
+  // Handle country codes
+  if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
+    phoneDigits = phoneDigits.substring(2);
+  }
+  if (phoneDigits.startsWith('1') && phoneDigits.length === 11) {
+    phoneDigits = phoneDigits.substring(1);
+  }
+
+  // Must be 10 digits
+  if (phoneDigits.length !== 10) return false;
+
+  // First digit should be valid
+  const firstDigit = phoneDigits.charAt(0);
+  return ['6', '7', '8', '9', '2', '3', '4', '5'].includes(firstDigit);
+};
+
+export const validateTime = (time: string): boolean => {
+  const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  return timeRegex.test(time);
+};
+
+export const validateDate = (date: string): boolean => {
+  const parsedDate = new Date(date);
+  return !isNaN(parsedDate.getTime());
+};

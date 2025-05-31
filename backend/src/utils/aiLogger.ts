@@ -24,9 +24,6 @@ export class AILogger {
     } else {
       console.error('❌ AI Generation Failed:', logEntry);
     }
-
-    // In production, you might want to send this to a logging service
-    // like Winston, DataDog, or CloudWatch
   }
 
   static logUsage(userId: string, action: string, metadata?: any) {

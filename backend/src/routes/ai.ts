@@ -1,4 +1,4 @@
-// Backend: src/routes/ai.ts
+// Backend: src/routes/ai.ts - Enhanced with Logo Generation
 import express from 'express';
 import Form from '../models/Form';
 import { protect } from '../middleware/protect';
@@ -7,13 +7,14 @@ import mongoose from 'mongoose';
 import { aiGenerationLimiter } from '../middleware/aiRateLimit';
 import AIFormGeneratorService from '../services/aiFormGeneratorService';
 import { AILogger } from '../utils/aiLogger';
+import { AIPromptValidator } from '../utils/aiPromptValidator';
 
 const router = express.Router();
 
 // Initialize AI service
 const aiService = new AIFormGeneratorService();
 
-// AI Form Generator endpoint
+// ✅ Enhanced AI Form Generator endpoint with Logo Generation
 router.post(
   '/generate-form',
   protect,
@@ -23,14 +24,45 @@ router.post(
       const { prompt } = req.body;
       const userId = req.user.id;
 
+      // ✅ Enhanced validation
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Prompt is required and must be a string',
+        });
+      }
+
+      // Validate and sanitize prompt
+      const validation = AIPromptValidator.validate(prompt);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.error,
+        });
+      }
+
+      const sanitizedPrompt = AIPromptValidator.sanitize(prompt);
+
       AILogger.logUsage(userId, 'FORM_GENERATION_REQUESTED', {
-        promptLength: prompt?.length,
+        promptLength: sanitizedPrompt.length,
+        originalPromptLength: prompt.length,
       });
 
-      // Generate form using AI service
-      const result = await aiService.generateForm(prompt, userId);
+      console.log('🤖 Starting AI form generation with logo:', {
+        userId,
+        promptLength: sanitizedPrompt.length,
+        timestamp: new Date().toISOString(),
+      });
+
+      // ✅ Generate form using enhanced AI service (includes logo generation)
+      const result = await aiService.generateForm(sanitizedPrompt, userId);
 
       if (!result.success) {
+        AILogger.logUsage(userId, 'FORM_GENERATION_FAILED', {
+          error: result.error,
+          generationTime: result.generationTime,
+        });
+
         return res.status(400).json({
           success: false,
           message: result.error || 'Failed to generate form',
@@ -40,12 +72,28 @@ router.post(
 
       const formConfig = result.data;
 
-      // Create form in database
+      console.log('✅ AI generation successful, creating form in database:', {
+        title: formConfig.title,
+        hasLogo: !!formConfig.logo,
+        logoUrl: formConfig.logo?.src?.substring(0, 50) + '...',
+        logoSize: formConfig.logo?.size,
+        fieldCount: formConfig.pages.reduce(
+          (total: number, page: any) => total + (page.fields?.length || 0),
+          0
+        ),
+      });
+
+      // ✅ Create form in database with enhanced configuration
       const newForm = new Form({
         title: formConfig.title,
         description: formConfig.description || '',
         pages: formConfig.pages,
         settings: formConfig.settings,
+
+        // ✅ Logo configuration
+        logo: formConfig.logo || null,
+
+        // Form metadata
         userId,
         isPublished: false,
         submissions: 0,
@@ -58,20 +106,24 @@ router.post(
         propertiesPanelOpen: false,
         selectedFieldId: null,
 
-        // AI generation metadata
+        // ✅ AI generation metadata
         isAIGenerated: true,
-        aiPrompt: prompt.trim(),
+        aiPrompt: sanitizedPrompt,
         aiModel: 'gemini-2.0-flash-exp',
         aiGenerationMetadata: {
           generationTime: result.generationTime,
-          version: '1.0',
-          promptTokens: prompt.length,
+          version: '2.0', // Enhanced version with logo
+          promptTokens: sanitizedPrompt.length,
           responseTokens: JSON.stringify(formConfig).length,
+          hasLogo: !!formConfig.logo,
+          logoSource: formConfig.logo?.src || null,
+          logoType: formConfig.logo?.type || null,
         },
       });
 
       const savedForm = await newForm.save();
 
+      // ✅ Enhanced success logging
       AILogger.logUsage(userId, 'FORM_GENERATION_SUCCESS', {
         formId: savedForm._id,
         fieldCount: savedForm.pages.reduce(
@@ -79,23 +131,51 @@ router.post(
           0
         ),
         generationTime: result.generationTime,
+        hasLogo: !!savedForm.logo,
+        logoSize: savedForm.logo?.size,
+        allowMultipleSubmissions: savedForm.settings?.allowMultipleSubmissions,
+        allowMultipleEmailSubmissions:
+          savedForm.settings?.allowMultipleEmailSubmissions,
       });
 
+      console.log('🎉 Form created successfully with AI generation:', {
+        formId: savedForm._id,
+        title: savedForm.title,
+        hasLogo: !!savedForm.logo,
+        logoAlignment: savedForm.logo?.alignment,
+        logoSize: savedForm.logo?.size,
+        showLogo: savedForm.settings?.showLogo,
+        allowMultipleSubmissions: savedForm.settings?.allowMultipleSubmissions,
+        allowMultipleEmailSubmissions:
+          savedForm.settings?.allowMultipleEmailSubmissions,
+      });
+
+      // ✅ Enhanced response with logo information
       res.status(201).json({
         success: true,
-        message: 'Form generated successfully',
+        message: 'Form generated successfully with logo',
         data: {
           id: savedForm._id,
           title: savedForm.title,
           description: savedForm.description,
           pages: savedForm.pages,
           settings: savedForm.settings,
+
+          // ✅ Include logo in response
+          logo: savedForm.logo,
+
+          // Form metadata
           userId: savedForm.userId,
           isPublished: savedForm.isPublished,
           submissions: savedForm.submissions,
           selectedPageId: savedForm.selectedPageId,
           currentPageIndex: savedForm.currentPageIndex,
+
+          // AI metadata
           isAIGenerated: savedForm.isAIGenerated,
+          aiPrompt: savedForm.aiPrompt,
+
+          // Stats
           createdAt: savedForm.createdAt,
           updatedAt: savedForm.updatedAt,
           fieldCount: savedForm.pages.reduce(
@@ -103,6 +183,12 @@ router.post(
             0
           ),
           generationTime: result.generationTime,
+
+          // ✅ Logo stats
+          hasLogo: !!savedForm.logo,
+          logoUrl: savedForm.logo?.src,
+          logoSize: savedForm.logo?.size,
+          logoAlignment: savedForm.logo?.alignment,
         },
       });
     } catch (error: any) {
@@ -110,11 +196,12 @@ router.post(
 
       AILogger.logUsage(req.user?.id, 'FORM_GENERATION_ERROR', {
         error: error.message,
+        stack: error.stack,
       });
 
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
+        message: 'Internal server error during form generation',
         error:
           process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
@@ -122,7 +209,7 @@ router.post(
   })
 );
 
-// Get AI generation statistics
+// ✅ Enhanced AI generation statistics including logo metrics
 router.get('/stats', protect, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -135,6 +222,22 @@ router.get('/stats', protect, async (req, res) => {
           totalForms: { $sum: 1 },
           aiForms: { $sum: { $cond: ['$isAIGenerated', 1, 0] } },
           manualForms: { $sum: { $cond: ['$isAIGenerated', 0, 1] } },
+
+          // ✅ Logo statistics
+          aiFormsWithLogo: {
+            $sum: {
+              $cond: [
+                { $and: ['$isAIGenerated', { $ne: ['$logo', null] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          totalFormsWithLogo: {
+            $sum: { $cond: [{ $ne: ['$logo', null] }, 1, 0] },
+          },
+
+          // Field and generation metrics
           avgFieldsPerAIForm: {
             $avg: {
               $cond: [
@@ -161,19 +264,72 @@ router.get('/stats', protect, async (req, res) => {
               ],
             },
           },
+
+          // ✅ Settings statistics
+          aiFormsWithMultipleSubmissions: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    '$isAIGenerated',
+                    { $eq: ['$settings.allowMultipleSubmissions', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          aiFormsWithMultipleEmails: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    '$isAIGenerated',
+                    { $eq: ['$settings.allowMultipleEmailSubmissions', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
         },
       },
     ]);
 
+    const result = stats[0] || {
+      totalForms: 0,
+      aiForms: 0,
+      manualForms: 0,
+      aiFormsWithLogo: 0,
+      totalFormsWithLogo: 0,
+      avgFieldsPerAIForm: 0,
+      avgGenerationTime: 0,
+      aiFormsWithMultipleSubmissions: 0,
+      aiFormsWithMultipleEmails: 0,
+    };
+
+    // ✅ Calculate additional metrics
+    const enhancedStats = {
+      ...result,
+      logoSuccessRate:
+        result.aiForms > 0
+          ? (result.aiFormsWithLogo / result.aiForms) * 100
+          : 0,
+      multipleSubmissionRate:
+        result.aiForms > 0
+          ? (result.aiFormsWithMultipleSubmissions / result.aiForms) * 100
+          : 0,
+      multipleEmailRate:
+        result.aiForms > 0
+          ? (result.aiFormsWithMultipleEmails / result.aiForms) * 100
+          : 0,
+    };
+
     res.json({
       success: true,
-      data: stats[0] || {
-        totalForms: 0,
-        aiForms: 0,
-        manualForms: 0,
-        avgFieldsPerAIForm: 0,
-        avgGenerationTime: 0,
-      },
+      data: enhancedStats,
     });
   } catch (error) {
     console.error('❌ Stats Error:', error);
@@ -184,7 +340,7 @@ router.get('/stats', protect, async (req, res) => {
   }
 });
 
-// Get recent AI-generated forms
+// ✅ Enhanced recent AI-generated forms with logo information
 router.get('/recent-forms', protect, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -195,13 +351,37 @@ router.get('/recent-forms', protect, async (req, res) => {
       isAIGenerated: true,
       isTrashed: false,
     })
-      .select('title description createdAt aiPrompt aiGenerationMetadata')
+      .select(
+        'title description createdAt aiPrompt aiGenerationMetadata logo settings'
+      )
       .sort({ createdAt: -1 })
       .limit(limit);
 
+    // ✅ Enhance response with logo and settings info
+    const enhancedForms = recentAIForms.map(form => ({
+      _id: form._id,
+      title: form.title,
+      description: form.description,
+      createdAt: form.createdAt,
+      aiPrompt: form.aiPrompt,
+      aiGenerationMetadata: form.aiGenerationMetadata,
+
+      // ✅ Logo information
+      hasLogo: !!form.logo,
+      logoUrl: form.logo?.src,
+      logoSize: form.logo?.size,
+      logoAlignment: form.logo?.alignment,
+
+      // ✅ Settings information
+      allowMultipleSubmissions: form.settings?.allowMultipleSubmissions,
+      allowMultipleEmailSubmissions:
+        form.settings?.allowMultipleEmailSubmissions,
+      showLogo: form.settings?.showLogo,
+    }));
+
     res.json({
       success: true,
-      data: recentAIForms,
+      data: enhancedForms,
     });
   } catch (error) {
     console.error('❌ Recent Forms Error:', error);
@@ -211,5 +391,125 @@ router.get('/recent-forms', protect, async (req, res) => {
     });
   }
 });
+
+// ✅ New endpoint: Regenerate logo for existing form
+router.post(
+  '/regenerate-logo/:formId',
+  protect,
+  asyncHandler(async (req, res) => {
+    try {
+      const { formId } = req.params;
+      const userId = req.user.id;
+
+      // Validate form ID
+      if (!mongoose.Types.ObjectId.isValid(formId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid form ID format',
+        });
+      }
+
+      // Find and verify form ownership
+      const form = await Form.findOne({ _id: formId, userId });
+      if (!form) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found',
+        });
+      }
+
+      console.log('🔄 Regenerating logo for form:', {
+        formId,
+        title: form.title,
+        currentLogo: !!form.logo,
+      });
+
+      // Generate new logo
+      const logoResult = await aiService.generateFormLogoPublic(
+        form.title,
+        form.description || ''
+      );
+
+      if (!logoResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to generate logo',
+          error: logoResult.error,
+        });
+      }
+
+      // Update form with new logo
+      const updatedForm = await Form.findByIdAndUpdate(
+        formId,
+        {
+          logo: {
+            src: logoResult.logoUrl,
+            type: 'url',
+            alignment: 'CENTER',
+            size: 100, // Maximum size
+            publicId: logoResult.publicId || null,
+          },
+          'settings.showLogo': true,
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      AILogger.logUsage(userId, 'LOGO_REGENERATED', {
+        formId,
+        logoUrl: logoResult.logoUrl,
+      });
+
+      res.json({
+        success: true,
+        message: 'Logo regenerated successfully',
+        data: {
+          logo: updatedForm?.logo,
+          logoUrl: logoResult.logoUrl,
+        },
+      });
+    } catch (error: any) {
+      console.error('❌ Logo regeneration error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to regenerate logo',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  })
+);
+
+// ✅ New endpoint: Get logo suggestions for a form type
+router.post('/logo-suggestions', protect, asyncHandler(async (req, res) => {
+  try {
+    const { formType, title, description } = req.body;
+    const userId = req.user.id;
+
+    if (!formType && !title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Form type or title is required',
+      });
+    }
+
+    const suggestions = await aiService.getLogoSuggestions(
+      formType,
+      title,
+      description
+    );
+
+    res.json({
+      success: true,
+      data: suggestions,
+    });
+  } catch (error: any) {
+    console.error('❌ Logo suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get logo suggestions',
+    });
+  }
+}));
 
 export default router;

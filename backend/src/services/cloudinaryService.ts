@@ -136,7 +136,9 @@ export const uploadFormFile = async (
     };
   } catch (error) {
     console.error('File upload error:', error);
-    throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to upload file: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 };
 

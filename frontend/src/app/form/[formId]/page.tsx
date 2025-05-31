@@ -15,7 +15,12 @@ import {
   ExternalLink,
   RefreshCw,
 } from 'lucide-react';
-import { getPublicForm, submitForm } from '@/services/formSubmission';
+import {
+  getPublicForm,
+  submitForm,
+  prepareFileDataForSubmission,
+} from '@/services/formSubmission';
+import FileUploadField from '@/components/form-builder/canvas/FileUploadField';
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -25,6 +30,7 @@ export default function PublicFormPage() {
   const [loading, setLoading] = useState(true);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [fileData, setFileData] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,38 +55,51 @@ export default function PublicFormPage() {
     }
   };
 
-  const validateField = (field: Field, value: any): string => {
+  const validateField = (field: Field, value: any, files?: any): string => {
     if (field.type === FieldType.HEADING) {
       return '';
     }
 
     if (field.required) {
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
-        return `${field.label} is required`;
-      }
-
-      if (field.type === FieldType.FULL_NAME) {
-        if (typeof value === 'object') {
-          if (!value.firstName || !value.lastName) {
-            return 'Both first and last name are required';
-          }
-        } else if (typeof value === 'string' && value.trim().length < 2) {
-          return 'Full name must be at least 2 characters';
+      // For file/image fields, check if files were uploaded
+      if (
+        field.type === FieldType.FILE_UPLOAD ||
+        field.type === FieldType.IMAGE
+      ) {
+        const hasFiles =
+          files && (Array.isArray(files) ? files.length > 0 : !!files);
+        if (!hasFiles) {
+          return `${field.label} is required`;
         }
-      }
+      } else {
+        // For other fields, check regular value
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return `${field.label} is required`;
+        }
 
-      if (field.type === FieldType.ADDRESS) {
-        if (typeof value === 'object') {
-          if (!value.street || !value.city || !value.state) {
-            return 'Street address, city, and state are required';
+        if (field.type === FieldType.FULL_NAME) {
+          if (typeof value === 'object') {
+            if (!value.firstName || !value.lastName) {
+              return 'Both first and last name are required';
+            }
+          } else if (typeof value === 'string' && value.trim().length < 2) {
+            return 'Full name must be at least 2 characters';
           }
         }
-      }
 
-      if (field.type === FieldType.APPOINTMENT) {
-        if (typeof value === 'object') {
-          if (!value.date || !value.time) {
-            return 'Both date and time are required';
+        if (field.type === FieldType.ADDRESS) {
+          if (typeof value === 'object') {
+            if (!value.street || !value.city || !value.state) {
+              return 'Street address, city, and state are required';
+            }
+          }
+        }
+
+        if (field.type === FieldType.APPOINTMENT) {
+          if (typeof value === 'object') {
+            if (!value.date || !value.time) {
+              return 'Both date and time are required';
+            }
           }
         }
       }
@@ -100,6 +119,68 @@ export default function PublicFormPage() {
       }
     }
 
+    // ✅ NEW: File validation
+    if (
+      (field.type === FieldType.FILE_UPLOAD ||
+        field.type === FieldType.IMAGE) &&
+      files
+    ) {
+      const fileArray = Array.isArray(files) ? files : [files];
+
+      // Check multiple files constraint
+      if (!field.multiple && fileArray.length > 1) {
+        return `${field.label} only allows one file`;
+      }
+
+      // Check file types for image fields
+      if (field.type === FieldType.IMAGE) {
+        for (const file of fileArray) {
+          if (!file.mimeType?.startsWith('image/')) {
+            return `${field.label} only accepts image files`;
+          }
+          if (file.size > 10 * 1024 * 1024) {
+            // 10MB
+            return `Image files must be smaller than 10MB`;
+          }
+        }
+      }
+
+      // Check accept attribute
+      if (field.accept && field.accept !== '*/*') {
+        const allowedTypes = field.accept
+          .split(',')
+          .map((type: string) => type.trim());
+        for (const file of fileArray) {
+          const isTypeAllowed = allowedTypes.some((type: string) => {
+            if (type.startsWith('.')) {
+              return file.originalName
+                ?.toLowerCase()
+                .endsWith(type.toLowerCase());
+            } else if (type.endsWith('/*')) {
+              const baseType = type.slice(0, -2);
+              return file.mimeType?.startsWith(baseType);
+            } else {
+              return file.mimeType === type;
+            }
+          });
+
+          if (!isTypeAllowed) {
+            return `File "${file.originalName}" is not an allowed file type`;
+          }
+        }
+      }
+
+      // Check file size for general files
+      if (field.type === FieldType.FILE_UPLOAD) {
+        for (const file of fileArray) {
+          if (file.size > 25 * 1024 * 1024) {
+            // 25MB
+            return `Files must be smaller than 25MB`;
+          }
+        }
+      }
+    }
+
     return '';
   };
 
@@ -114,7 +195,8 @@ export default function PublicFormPage() {
 
     currentPage.fields?.forEach(field => {
       const value = formData[field.id];
-      const error = validateField(field, value);
+      const files = fileData[field.id];
+      const error = validateField(field, value, files);
 
       if (error) {
         newErrors[field.id] = error;
@@ -133,6 +215,22 @@ export default function PublicFormPage() {
     }));
 
     // Clear error when user starts typing
+    if (errors[fieldId]) {
+      setErrors(prev => ({
+        ...prev,
+        [fieldId]: '',
+      }));
+    }
+  };
+
+  // ✅ NEW: Handle file upload changes
+  const handleFileChange = (fieldId: string, value: any) => {
+    setFileData(prev => ({
+      ...prev,
+      [fieldId]: value,
+    }));
+
+    // Clear error when user uploads file
     if (errors[fieldId]) {
       setErrors(prev => ({
         ...prev,
@@ -172,10 +270,30 @@ export default function PublicFormPage() {
     setSubmitError('');
 
     try {
-      const result = await submitForm(formId, formData);
+      // Prepare file data for submission
+      const preparedFileData = prepareFileDataForSubmission(fileData);
+
+      console.log('🚀 Public form submitting with files:', {
+        formData,
+        fileData: preparedFileData,
+        totalFiles: Object.values(preparedFileData).reduce(
+          (total: number, files: any) => {
+            if (Array.isArray(files)) return total + files.length;
+            return total + (files ? 1 : 0);
+          },
+          0
+        ),
+      });
+
+      // Submit form with both regular data and file data
+      const result = await submitForm(formId, formData, preparedFileData);
 
       setIsSubmitted(true);
-      toast.success(result.data.message || 'Form submitted successfully!');
+      toast.success(result.data.message || 'Form submitted successfully!', {
+        description: result.data.fileCount
+          ? `${result.data.fileCount} files uploaded`
+          : undefined,
+      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       // Reset retry count on success
@@ -209,8 +327,12 @@ export default function PublicFormPage() {
     }
   };
 
+  // Frontend: src/app/form/[formId]/page.tsx - ENHANCED renderField function
+  // Replace your renderField function with this enhanced version
+
   const renderField = (field: Field) => {
     const value = formData[field.id] || '';
+    const files = fileData[field.id];
     const error = errors[field.id];
 
     const fieldWrapper = (content: React.ReactNode) => (
@@ -245,6 +367,342 @@ export default function PublicFormPage() {
           </div>
         );
 
+      case FieldType.SHORT_TEXT:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              placeholder={field.placeholder || 'Enter your answer'}
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full transition-all duration-200 ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 focus:ring-2 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 focus:ring-2 hover:border-gray-400'
+              }`}
+              maxLength={field.maxLength}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+            {field.maxLength && (
+              <div className='text-xs text-gray-400 mt-1'>
+                {value.length}/{field.maxLength} characters
+              </div>
+            )}
+          </div>
+        );
+
+      case FieldType.LONG_TEXT:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <textarea
+              placeholder={
+                field.placeholder || 'Enter your detailed response...'
+              }
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              rows={field.rows || 3}
+              maxLength={field.maxLength}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+            {field.maxLength && (
+              <div className='text-xs text-gray-400 mt-1'>
+                {value.length}/{field.maxLength} characters
+              </div>
+            )}
+          </div>
+        );
+
+      case FieldType.PARAGRAPH:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <textarea
+              placeholder={
+                field.placeholder ||
+                'Share your thoughts, feedback, or detailed information...'
+              }
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              rows={field.rows || 5}
+              maxLength={field.maxLength}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+            {field.maxLength && (
+              <div className='text-xs text-gray-400 mt-1'>
+                {value.length}/{field.maxLength} characters
+              </div>
+            )}
+          </div>
+        );
+
+      case FieldType.NUMBER:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='number'
+              placeholder={field.placeholder || 'Enter a number'}
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              min={field.min}
+              max={field.max}
+              step={field.step || 1}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+            {(field.min !== undefined || field.max !== undefined) && (
+              <div className='text-xs text-gray-400 mt-1'>
+                {field.min !== undefined && field.max !== undefined
+                  ? `Range: ${field.min} - ${field.max}`
+                  : field.min !== undefined
+                  ? `Minimum: ${field.min}`
+                  : `Maximum: ${field.max}`}
+              </div>
+            )}
+          </div>
+        );
+
+      case FieldType.EMAIL:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='email'
+              placeholder={field.placeholder || 'your.email@example.com'}
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full transition-all duration-200 ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 focus:ring-2 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 focus:ring-2 hover:border-gray-400'
+              }`}
+              autoComplete='email'
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.PHONE:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='tel'
+              placeholder={field.placeholder || '9876543210'}
+              value={value}
+              onChange={e => {
+                const input = e.target.value;
+                const digitsOnly = input.replace(/\D/g, '');
+                const limitedDigits = digitsOnly.slice(0, 10);
+                handleInputChange(field.id, limitedDigits);
+              }}
+              maxLength={10}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.TIME:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='time'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.DROPDOWN:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <select
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 bg-white ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            >
+              <option value=''>Select an option...</option>
+              {(field.options || []).map((option, index) => (
+                <option key={index} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.SINGLE_CHOICE:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <div className='space-y-2'>
+              {(field.options || []).map((option, index) => (
+                <label
+                  key={index}
+                  className='flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded'
+                >
+                  <input
+                    type='radio'
+                    name={field.id}
+                    value={option.value}
+                    checked={value === option.value}
+                    onChange={e => handleInputChange(field.id, e.target.value)}
+                    className='text-blue-500 focus:ring-blue-500'
+                  />
+                  <span className='text-gray-700'>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.MULTIPLE_CHOICE:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <div className='space-y-2'>
+              {(field.options || []).map((option, index) => (
+                <label
+                  key={index}
+                  className='flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded'
+                >
+                  <input
+                    type='checkbox'
+                    value={option.value}
+                    checked={
+                      Array.isArray(value) && value.includes(option.value)
+                    }
+                    onChange={e => {
+                      const currentValues = Array.isArray(value) ? value : [];
+                      if (e.target.checked) {
+                        handleInputChange(field.id, [
+                          ...currentValues,
+                          option.value,
+                        ]);
+                      } else {
+                        handleInputChange(
+                          field.id,
+                          currentValues.filter(v => v !== option.value)
+                        );
+                      }
+                    }}
+                    className='text-blue-500 focus:ring-blue-500'
+                  />
+                  <span className='text-gray-700'>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
+      case FieldType.DATE_PICKER:
+        return fieldWrapper(
+          <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+            <Input
+              type='date'
+              value={value}
+              onChange={e => handleInputChange(field.id, e.target.value)}
+              className={`w-full ${
+                error
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
+              }`}
+            />
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+
       case FieldType.FULL_NAME:
         return fieldWrapper(
           <div>
@@ -265,8 +723,8 @@ export default function PublicFormPage() {
                   }
                   className={`w-full ${
                     error
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'focus:border-blue-500 focus:ring-blue-500'
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
                 />
               </div>
@@ -282,79 +740,12 @@ export default function PublicFormPage() {
                   }
                   className={`w-full ${
                     error
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'focus:border-blue-500 focus:ring-blue-500'
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
                 />
               </div>
             </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.EMAIL:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <Input
-              type='email'
-              placeholder='Enter your email address'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full transition-all duration-200 ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 focus:ring-2 bg-red-50'
-                  : 'focus:border-blue-500 focus:ring-blue-500 focus:ring-2 hover:border-gray-400'
-              }`}
-              autoComplete='email'
-              aria-describedby={error ? `${field.id}-error` : undefined}
-            />
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.PHONE:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <Input
-              type='tel'
-              placeholder='9876543210'
-              value={value}
-              onChange={e => {
-                const input = e.target.value;
-                // Remove all non-digit characters
-                const digitsOnly = input.replace(/\D/g, '');
-                // Limit to 10 digits
-                const limitedDigits = digitsOnly.slice(0, 10);
-                handleInputChange(field.id, limitedDigits);
-              }}
-              onKeyPress={e => {
-                // Only allow digits
-                if (
-                  !/[0-9]/.test(e.key) &&
-                  !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)
-                ) {
-                  e.preventDefault();
-                }
-              }}
-              maxLength={10}
-              className={`w-full ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
             {field.helpText && (
               <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
             )}
@@ -380,8 +771,8 @@ export default function PublicFormPage() {
                 }
                 className={`w-full ${
                   error
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'focus:border-blue-500 focus:ring-blue-500'
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                    : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                 }`}
               />
               <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
@@ -396,8 +787,8 @@ export default function PublicFormPage() {
                   }
                   className={`w-full ${
                     error
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'focus:border-blue-500 focus:ring-blue-500'
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
                 />
                 <Input
@@ -411,8 +802,8 @@ export default function PublicFormPage() {
                   }
                   className={`w-full ${
                     error
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'focus:border-blue-500 focus:ring-blue-500'
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
                 />
               </div>
@@ -425,32 +816,9 @@ export default function PublicFormPage() {
                     zipCode: e.target.value,
                   })
                 }
-                className='w-full focus:border-blue-500 focus:ring-blue-500'
+                className='w-full focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
               />
             </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.DATE_PICKER:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <Input
-              type='date'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
             {field.helpText && (
               <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
             )}
@@ -477,8 +845,8 @@ export default function PublicFormPage() {
                   }
                   className={`w-full ${
                     error
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'focus:border-blue-500 focus:ring-blue-500'
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
                 />
                 <span className='text-sm text-gray-500 mt-1'>Date</span>
@@ -495,8 +863,8 @@ export default function PublicFormPage() {
                   }
                   className={`w-full ${
                     error
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'focus:border-blue-500 focus:ring-blue-500'
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
                 />
                 <span className='text-sm text-gray-500 mt-1'>Time</span>
@@ -517,7 +885,7 @@ export default function PublicFormPage() {
             </label>
             <div
               className={`h-32 border-2 border-dashed rounded-md bg-gray-50 flex items-center justify-center text-gray-500 cursor-pointer hover:border-gray-400 transition-colors ${
-                error ? 'border-red-500' : 'border-gray-300'
+                error ? 'border-red-500 bg-red-50' : 'border-gray-300'
               }`}
               onClick={() => handleInputChange(field.id, 'Signature added')}
             >
@@ -538,13 +906,17 @@ export default function PublicFormPage() {
       case FieldType.FILL_BLANK:
         return fieldWrapper(
           <div>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
             <div className='flex items-center flex-wrap gap-2 text-gray-700'>
               <span>I agree to the</span>
               <Input
                 className={`w-32 inline-block ${
                   error
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'focus:border-blue-500 focus:ring-blue-500'
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                    : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                 }`}
                 placeholder='terms'
                 value={value}
@@ -558,218 +930,49 @@ export default function PublicFormPage() {
           </div>
         );
 
-      case FieldType.SHORT_TEXT:
+      case FieldType.PRODUCT_LIST:
         return fieldWrapper(
           <div>
             <label className='block text-gray-700 mb-2 font-medium'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
-            <Input
-              placeholder='Enter your answer'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.LONG_TEXT:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <textarea
-              placeholder='Enter your detailed response...'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              rows={3}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.PARAGRAPH:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <textarea
-              placeholder='Share your thoughts, feedback, or detailed information...'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              rows={5}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.DROPDOWN:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <select
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 bg-white ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            >
-              <option value=''>Select an option...</option>
-              {field.options?.map((option, index) => (
-                <option key={index} value={option.value}>
-                  {option.label}
-                </option>
-              )) || (
-                <>
-                  <option value='option1'>Option 1</option>
-                  <option value='option2'>Option 2</option>
-                  <option value='option3'>Option 3</option>
-                </>
-              )}
-            </select>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.SINGLE_CHOICE:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div className='space-y-2'>
-              {(
-                field.options || [
-                  { label: 'Option 1', value: 'option1' },
-                  { label: 'Option 2', value: 'option2' },
-                  { label: 'Option 3', value: 'option3' },
-                ]
-              ).map((option, index) => (
-                <label
-                  key={index}
-                  className='flex items-center space-x-2 cursor-pointer'
-                >
-                  <input
-                    type='radio'
-                    name={field.id}
-                    value={option.value}
-                    checked={value === option.value}
-                    onChange={e => handleInputChange(field.id, e.target.value)}
-                    className='text-blue-500 focus:ring-blue-500'
-                  />
-                  <span>{option.label}</span>
-                </label>
-              ))}
+            <div className='border rounded-md p-4 bg-gray-50'>
+              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                {[
+                  'Product A - $19.99',
+                  'Product B - $29.99',
+                  'Product C - $39.99',
+                ].map((product, index) => (
+                  <label
+                    key={index}
+                    className='flex items-center space-x-2 cursor-pointer bg-white p-3 rounded border hover:bg-gray-50'
+                  >
+                    <input
+                      type='checkbox'
+                      value={product}
+                      checked={Array.isArray(value) && value.includes(product)}
+                      onChange={e => {
+                        const currentValues = Array.isArray(value) ? value : [];
+                        if (e.target.checked) {
+                          handleInputChange(field.id, [
+                            ...currentValues,
+                            product,
+                          ]);
+                        } else {
+                          handleInputChange(
+                            field.id,
+                            currentValues.filter(v => v !== product)
+                          );
+                        }
+                      }}
+                      className='text-blue-500 focus:ring-blue-500'
+                    />
+                    <span className='text-sm'>{product}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.MULTIPLE_CHOICE:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div className='space-y-2'>
-              {(
-                field.options || [
-                  { label: 'Option 1', value: 'option1' },
-                  { label: 'Option 2', value: 'option2' },
-                  { label: 'Option 3', value: 'option3' },
-                ]
-              ).map((option, index) => (
-                <label
-                  key={index}
-                  className='flex items-center space-x-2 cursor-pointer'
-                >
-                  <input
-                    type='checkbox'
-                    value={option.value}
-                    checked={
-                      Array.isArray(value) && value.includes(option.value)
-                    }
-                    onChange={e => {
-                      const currentValues = Array.isArray(value) ? value : [];
-                      if (e.target.checked) {
-                        handleInputChange(field.id, [
-                          ...currentValues,
-                          option.value,
-                        ]);
-                      } else {
-                        handleInputChange(
-                          field.id,
-                          currentValues.filter(v => v !== option.value)
-                        );
-                      }
-                    }}
-                    className='text-blue-500 focus:ring-blue-500'
-                  />
-                  <span>{option.label}</span>
-                </label>
-              ))}
-            </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.NUMBER:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <Input
-              type='number'
-              placeholder='Enter a number'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
             {field.helpText && (
               <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
             )}
@@ -778,102 +981,40 @@ export default function PublicFormPage() {
 
       case FieldType.IMAGE:
         return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div
-              className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:border-gray-400 transition-colors ${
-                error
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-300 bg-gray-50'
-              }`}
-            >
-              {value ? (
-                <div className='flex items-center justify-center'>
-                  <span className='text-green-600 font-medium'>
-                    ✓ Image uploaded
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <div className='w-12 h-12 mx-auto text-gray-400 mb-2'>📷</div>
-                  <p className='text-gray-500 text-sm'>
-                    Click to upload an image
-                  </p>
-                  <p className='text-gray-400 text-xs mt-1'>
-                    PNG, JPG, GIF up to 10MB
-                  </p>
-                </>
-              )}
-            </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
+          <FileUploadField
+            fieldId={field.id}
+            formId={formId}
+            label={field.label}
+            required={field.required}
+            helpText={field.helpText}
+            accept={field.accept || 'image/*'}
+            multiple={field.multiple || false}
+            fieldType='image'
+            value={files}
+            onChange={value => handleFileChange(field.id, value)}
+            error={error}
+          />
         );
 
       case FieldType.FILE_UPLOAD:
         return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div
-              className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:border-gray-400 transition-colors ${
-                error
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-300 bg-gray-50'
-              }`}
-            >
-              {value ? (
-                <div className='flex items-center justify-center'>
-                  <span className='text-green-600 font-medium'>
-                    ✓ File uploaded
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <div className='w-12 h-12 mx-auto text-gray-400 mb-2'>📄</div>
-                  <p className='text-gray-500 text-sm'>Click to upload files</p>
-                  <p className='text-gray-400 text-xs mt-1'>
-                    Any file type up to 25MB
-                  </p>
-                </>
-              )}
-            </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.TIME:
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <Input
-              type='time'
-              value={value}
-              onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            />
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
+          <FileUploadField
+            fieldId={field.id}
+            formId={formId}
+            label={field.label}
+            required={field.required}
+            helpText={field.helpText}
+            accept={field.accept || '*/*'}
+            multiple={field.multiple || false}
+            fieldType='fileUpload'
+            value={files}
+            onChange={value => handleFileChange(field.id, value)}
+            error={error}
+          />
         );
 
       default:
+        console.warn(`⚠️ Unknown field type: ${field.type}`);
         return fieldWrapper(
           <div>
             <label className='block text-gray-700 mb-2 font-medium'>
@@ -881,13 +1022,13 @@ export default function PublicFormPage() {
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <Input
-              placeholder={field.label}
+              placeholder={field.placeholder || field.label}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               className={`w-full ${
                 error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                  : 'focus:border-blue-500 focus:ring-blue-500'
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
               }`}
             />
             {field.helpText && (
@@ -1005,6 +1146,7 @@ export default function PublicFormPage() {
               setIsSubmitted(false);
               setCurrentPageIndex(0);
               setFormData({});
+              setFileData({});
               setErrors({});
               setSubmitError('');
             }}
@@ -1059,6 +1201,8 @@ export default function PublicFormPage() {
                 <img
                   src={form.logo.src}
                   alt='Form Logo'
+                  width='auto'
+                  height='auto'
                   style={{
                     maxWidth: '100%',
                     maxHeight:
@@ -1071,8 +1215,6 @@ export default function PublicFormPage() {
                         : form.logo.size > 50
                         ? '150px'
                         : '120px',
-                    width: 'auto',
-                    height: 'auto',
                     objectFit: 'contain',
                     transition: 'all 0.3s ease',
                   }}
