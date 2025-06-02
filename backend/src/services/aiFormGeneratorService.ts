@@ -1,536 +1,4 @@
-// // Backend: src/services/aiFormGeneratorService.ts
-// import { GoogleGenerativeAI } from '@google/generative-ai';
-// import { v4 as uuidv4 } from 'uuid';
-
-// export class AIFormGeneratorService {
-//   private genAI: GoogleGenerativeAI;
-//   private model: any;
-
-//   constructor() {
-//     if (!process.env.GEMINI_API_KEY) {
-//       throw new Error('GEMINI_API_KEY environment variable is required');
-//     }
-
-//     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-//     this.model = this.genAI.getGenerativeModel({
-//       model: 'gemini-2.0-flash-exp',
-//       generationConfig: {
-//         temperature: 0.3,
-//         topK: 40,
-//         topP: 0.8,
-//         maxOutputTokens: 4096,
-//       },
-//     });
-//   }
-
-//   async generateForm(
-//     prompt: string,
-//     userId: string
-//   ): Promise<{
-//     success: boolean;
-//     data?: any;
-//     error?: string;
-//     generationTime: number;
-//   }> {
-//     const startTime = Date.now();
-
-//     try {
-//       // Validate prompt
-//       if (!prompt || prompt.trim().length < 10) {
-//         return {
-//           success: false,
-//           error: 'Prompt must be at least 10 characters long',
-//           generationTime: Date.now() - startTime,
-//         };
-//       }
-
-//       if (prompt.trim().length > 1000) {
-//         return {
-//           success: false,
-//           error: 'Prompt must not exceed 1000 characters',
-//           generationTime: Date.now() - startTime,
-//         };
-//       }
-
-//       // Generate form config
-//       const systemPrompt = this.buildSystemPrompt(prompt.trim());
-//       const result = await this.model.generateContent(systemPrompt);
-//       const response = await result.response;
-//       const generatedText = response.text();
-
-//       // Parse response
-//       const parseResult = this.parseFormConfig(generatedText);
-//       if (!parseResult.success) {
-//         return {
-//           success: false,
-//           error: parseResult.error,
-//           generationTime: Date.now() - startTime,
-//         };
-//       }
-
-//       // Enhance and finalize config
-//       let formConfig = this.enhanceFormConfig(parseResult.data);
-//       formConfig = this.addUniqueIds(formConfig);
-
-//       const generationTime = Date.now() - startTime;
-
-//       console.log('✅ AI Generation Success:', {
-//         userId,
-//         prompt: prompt.substring(0, 50) + '...',
-//         generationTime,
-//         fieldCount: this.countFields(formConfig),
-//       });
-
-//       return {
-//         success: true,
-//         data: formConfig,
-//         generationTime,
-//       };
-//     } catch (error: any) {
-//       const generationTime = Date.now() - startTime;
-
-//       console.error('❌ AI Generation Error:', {
-//         userId,
-//         error: error.message,
-//         generationTime,
-//       });
-
-//       return {
-//         success: false,
-//         error: error.message,
-//         generationTime,
-//       };
-//     }
-//   }
-
-//   private buildSystemPrompt(userPrompt: string): string {
-//     return `
-// You are an expert form builder AI assistant. Create a professional form configuration based on the user's requirements.
-
-// CRITICAL INSTRUCTIONS:
-// 1. Return ONLY valid JSON - no explanations, markdown, or extra text
-// 2. Follow the exact structure and field types provided
-// 3. Generate logical, user-friendly field labels
-// 4. Use appropriate field types for the requested data
-// 5. Include helpful helpText for complex fields
-
-// AVAILABLE FIELD TYPES (use exact values):
-// - "heading": Section headers and titles (NO required or helpText properties)
-// - "shortText": Short single-line text input
-// - "longText": Multi-line text input (3-4 lines)
-// - "paragraph": Large text area for detailed responses
-// - "dropdown": Select from predefined options (must include options array)
-// - "singleChoice": Radio buttons for single selection (must include options array)
-// - "multipleChoice": Checkboxes for multiple selections (must include options array)
-// - "number": Numeric input with validation (can include min/max)
-// - "image": Image upload field
-// - "fileUpload": General file upload
-// - "time": Time picker
-// - "fullName": Complete name collection
-// - "email": Email address with validation
-// - "phone": Phone number collection
-// - "address": Complete address with street, city, state
-// - "datePicker": Date selection
-// - "appointment": Date and time booking
-// - "signature": Digital signature capture
-// - "fillBlank": Fill-in-the-blank text inputs
-// - "productList": Product catalog with pricing
-
-// FORM STRUCTURE (EXACT FORMAT REQUIRED):
-// {
-//   "title": "Professional Form Title",
-//   "description": "Clear description of form purpose",
-//   "pages": [
-//     {
-//       "id": "auto-generated",
-//       "fields": [
-//         {
-//           "id": "auto-generated",
-//           "type": "heading",
-//           "label": "Section Title",
-//           "labelAlignment": "LEFT"
-//         },
-//         {
-//           "id": "auto-generated",
-//           "type": "shortText",
-//           "label": "Your Answer",
-//           "labelAlignment": "LEFT",
-//           "required": true,
-//           "helpText": "Enter your response here"
-//         },
-//         {
-//           "id": "auto-generated",
-//           "type": "dropdown",
-//           "label": "Select Option",
-//           "labelAlignment": "LEFT",
-//           "required": false,
-//           "helpText": "Choose from the available options",
-//           "options": [
-//             {"label": "Option 1", "value": "option1"},
-//             {"label": "Option 2", "value": "option2"},
-//             {"label": "Option 3", "value": "option3"}
-//           ]
-//         },
-//         {
-//           "id": "auto-generated",
-//           "type": "number",
-//           "label": "Age",
-//           "labelAlignment": "LEFT",
-//           "required": true,
-//           "helpText": "Enter your age in years",
-//           "min": 0,
-//           "max": 120
-//         },
-//         {
-//           "id": "auto-generated",
-//           "type": "email",
-//           "label": "Email Address",
-//           "labelAlignment": "LEFT",
-//           "required": true,
-//           "helpText": "example@example.com"
-//         }
-//       ]
-//     }
-//   ],
-//   "settings": {
-//     "submitButtonText": "Submit Form",
-//     "showLogo": false,
-//     "thankyouMessage": "Thank you for your submission!",
-//     "defaultLabelAlignment": "LEFT",
-//     "defaultRequiredField": false,
-//     "isEnabled": true,
-//     "allowMultipleSubmissions": true,
-//     "allowMultipleEmailSubmissions": true,
-//     "collectIpAddress": true,
-//     "enableCaptcha": false
-//   }
-// }
-
-// IMPORTANT RULES:
-// - "heading" fields should NOT have "required" or "helpText" properties
-// - All other field types should have "required" and "helpText" properties
-// - Choice fields (dropdown, singleChoice, multipleChoice) MUST include "options" array
-// - Number fields can include "min" and "max" properties
-// - Text fields (longText, paragraph) can include "rows" property
-// - Use "email" type for email fields and set helpText to "example@example.com"
-// - Group related fields logically
-// - Start sections with "heading" fields
-// - Mark essential fields as required: true
-// - Generate realistic options for choice fields
-
-// USER REQUEST: "${userPrompt}"
-
-// Generate the form configuration now:`;
-//   }
-
-//   private parseFormConfig(rawResponse: string): {
-//     success: boolean;
-//     data?: any;
-//     error?: string;
-//   } {
-//     try {
-//       // Clean the response
-//       let cleanedResponse = rawResponse
-//         .replace(/```json\s*/g, '')
-//         .replace(/```\s*/g, '')
-//         .trim();
-
-//       // Find JSON boundaries
-//       const jsonStart = cleanedResponse.indexOf('{');
-//       const jsonEnd = cleanedResponse.lastIndexOf('}') + 1;
-
-//       if (jsonStart === -1 || jsonEnd <= jsonStart) {
-//         return { success: false, error: 'No valid JSON found in AI response' };
-//       }
-
-//       cleanedResponse = cleanedResponse.substring(jsonStart, jsonEnd);
-
-//       // Parse JSON
-//       const formConfig = JSON.parse(cleanedResponse);
-
-//       // Validate structure
-//       const validation = this.validateFormConfig(formConfig);
-//       if (!validation.isValid) {
-//         return { success: false, error: validation.error };
-//       }
-
-//       return { success: true, data: formConfig };
-//     } catch (error: any) {
-//       return {
-//         success: false,
-//         error: `Failed to parse AI response: ${error.message}`,
-//       };
-//     }
-//   }
-
-//   private validateFormConfig(config: any): {
-//     isValid: boolean;
-//     error?: string;
-//   } {
-//     // Required fields validation
-//     if (!config.title || typeof config.title !== 'string') {
-//       return { isValid: false, error: 'Missing or invalid form title' };
-//     }
-
-//     if (
-//       !config.pages ||
-//       !Array.isArray(config.pages) ||
-//       config.pages.length === 0
-//     ) {
-//       return { isValid: false, error: 'Missing or invalid pages array' };
-//     }
-
-//     // Validate each page
-//     for (let i = 0; i < config.pages.length; i++) {
-//       const page = config.pages[i];
-
-//       if (!page.fields || !Array.isArray(page.fields)) {
-//         return {
-//           isValid: false,
-//           error: `Page ${i + 1} has invalid fields array`,
-//         };
-//       }
-
-//       // Validate each field
-//       for (let j = 0; j < page.fields.length; j++) {
-//         const field = page.fields[j];
-
-//         if (!field.type || !field.label) {
-//           return {
-//             isValid: false,
-//             error: `Field ${j + 1} in page ${i + 1} is missing type or label`,
-//           };
-//         }
-
-//         // ✅ FIXED: Updated to include all 20 field types
-//         const validTypes = [
-//           // Basic Elements
-//           'shortText',
-//           'longText',
-//           'paragraph',
-//           'dropdown',
-//           'singleChoice',
-//           'multipleChoice',
-//           'number',
-//           'image',
-//           'fileUpload',
-//           'time',
-//           // Advanced Elements
-//           'heading',
-//           'fullName',
-//           'email',
-//           'phone',
-//           'address',
-//           'datePicker',
-//           'appointment',
-//           'signature',
-//           'fillBlank',
-//           'productList',
-//         ];
-
-//         if (!validTypes.includes(field.type)) {
-//           return { isValid: false, error: `Invalid field type: ${field.type}` };
-//         }
-
-//         // ✅ NEW: Validate choice fields have options
-//         const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
-//         if (choiceFields.includes(field.type)) {
-//           if (
-//             !field.options ||
-//             !Array.isArray(field.options) ||
-//             field.options.length === 0
-//           ) {
-//             return {
-//               isValid: false,
-//               error: `Field "${field.label}" of type "${field.type}" must have options array`,
-//             };
-//           }
-
-//           // Validate option structure
-//           for (const option of field.options) {
-//             if (!option.label || !option.value) {
-//               return {
-//                 isValid: false,
-//                 error: `Field "${field.label}" has invalid option structure. Each option must have label and value`,
-//               };
-//             }
-//           }
-//         }
-
-//         // ✅ NEW: Validate number fields
-//         if (field.type === 'number') {
-//           if (field.min !== undefined && typeof field.min !== 'number') {
-//             return {
-//               isValid: false,
-//               error: `Field "${field.label}" min value must be a number`,
-//             };
-//           }
-//           if (field.max !== undefined && typeof field.max !== 'number') {
-//             return {
-//               isValid: false,
-//               error: `Field "${field.label}" max value must be a number`,
-//             };
-//           }
-//           if (
-//             field.min !== undefined &&
-//             field.max !== undefined &&
-//             field.min > field.max
-//           ) {
-//             return {
-//               isValid: false,
-//               error: `Field "${field.label}" min value cannot be greater than max value`,
-//             };
-//           }
-//         }
-//       }
-//     }
-
-//     return { isValid: true };
-//   }
-
-//   private enhanceFormConfig(config: any): any {
-//     // Add default settings if missing
-//     config.settings = {
-//       submitButtonText: 'Submit',
-//       showLogo: false,
-//       thankyouMessage: 'Thank you for your submission!',
-//       defaultLabelAlignment: 'LEFT',
-//       defaultRequiredField: false,
-//       isEnabled: true,
-//       allowMultipleSubmissions: true,
-//       allowMultipleEmailSubmissions: true,
-//       collectIpAddress: true,
-//       enableCaptcha: false,
-//       ...config.settings,
-//     };
-
-//     // Enhance each page and field
-//     config.pages = config.pages.map((page: any) => ({
-//       ...page,
-//       fields: (page.fields || []).map((field: any) => {
-//         const enhancedField = {
-//           ...field,
-//           labelAlignment: field.labelAlignment || 'LEFT',
-//         };
-
-//         // Add required and helpText for non-heading fields
-//         if (field.type !== 'heading') {
-//           enhancedField.required =
-//             field.required !== undefined ? field.required : false;
-//           enhancedField.helpText = field.helpText || '';
-
-//           // ✅ ENHANCED: Set default helpText based on field type
-//           if (!enhancedField.helpText) {
-//             switch (field.type) {
-//               case 'email':
-//                 enhancedField.helpText = 'example@example.com';
-//                 break;
-//               case 'phone':
-//                 enhancedField.helpText = 'Enter your 10-digit mobile number';
-//                 break;
-//               case 'shortText':
-//                 enhancedField.helpText = 'Enter your answer';
-//                 break;
-//               case 'longText':
-//                 enhancedField.helpText = 'Enter your detailed response';
-//                 break;
-//               case 'paragraph':
-//                 enhancedField.helpText = 'Share your thoughts or feedback';
-//                 break;
-//               case 'number':
-//                 enhancedField.helpText = 'Enter a valid number';
-//                 break;
-//               case 'time':
-//                 enhancedField.helpText = 'Select time in HH:MM format';
-//                 break;
-//               case 'datePicker':
-//                 enhancedField.helpText = 'Select a date';
-//                 break;
-//               case 'dropdown':
-//               case 'singleChoice':
-//                 enhancedField.helpText = 'Choose one option';
-//                 break;
-//               case 'multipleChoice':
-//                 enhancedField.helpText = 'Select all that apply';
-//                 break;
-//               case 'image':
-//                 enhancedField.helpText = 'Upload an image file (PNG, JPG, GIF)';
-//                 break;
-//               case 'fileUpload':
-//                 enhancedField.helpText = 'Upload your file';
-//                 break;
-//               default:
-//                 enhancedField.helpText = 'Please fill out this field';
-//             }
-//           }
-
-//           // ✅ NEW: Add default options for choice fields if missing
-//           const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
-//           if (
-//             choiceFields.includes(field.type) &&
-//             (!field.options || field.options.length === 0)
-//           ) {
-//             enhancedField.options = [
-//               { label: 'Option 1', value: 'option1' },
-//               { label: 'Option 2', value: 'option2' },
-//               { label: 'Option 3', value: 'option3' },
-//             ];
-//           }
-
-//           // ✅ NEW: Add default properties for specific field types
-//           if (field.type === 'longText' && !field.rows) {
-//             enhancedField.rows = 3;
-//           }
-
-//           if (field.type === 'paragraph' && !field.rows) {
-//             enhancedField.rows = 5;
-//           }
-
-//           if (field.type === 'number') {
-//             if (field.min === undefined && field.max === undefined) {
-//               // Add reasonable defaults for common number fields
-//               if (field.label.toLowerCase().includes('age')) {
-//                 enhancedField.min = 0;
-//                 enhancedField.max = 120;
-//               } else if (field.label.toLowerCase().includes('year')) {
-//                 enhancedField.min = 1900;
-//                 enhancedField.max = new Date().getFullYear() + 10;
-//               }
-//             }
-//           }
-//         }
-
-//         return enhancedField;
-//       }),
-//     }));
-
-//     return config;
-//   }
-
-//   private addUniqueIds(config: any): any {
-//     config.pages = config.pages.map((page: any) => ({
-//       ...page,
-//       id: uuidv4(),
-//       fields: (page.fields || []).map((field: any) => ({
-//         ...field,
-//         id: uuidv4(),
-//       })),
-//     }));
-
-//     return config;
-//   }
-
-//   private countFields(config: any): number {
-//     return config.pages.reduce(
-//       (total: number, page: any) => total + (page.fields?.length || 0),
-//       0
-//     );
-//   }
-// }
-
-// export default AIFormGeneratorService;
-
-// Backend: src/services/aiFormGeneratorService.ts - Complete Working Code
+// src/services/aiFormGeneratorService.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -612,27 +80,27 @@ export class AIFormGeneratorService {
 
       // Enhance form config with logo and settings
       let formConfig = this.enhanceFormConfig(parseResult.data, prompt);
+      formConfig = this.cleanFormConfigForMongoDB(formConfig);
 
-      // Generate appropriate logo
-      console.log('🎨 Generating logo for form...');
+      console.log('🎨 Generating 900x265 logo for form...');
       const logoResult = await this.generateFormLogo(
         formConfig.title,
-        formConfig.description
+        formConfig.description,
+        prompt
       );
+
       if (logoResult.success && logoResult.logoUrl) {
         formConfig.logo = {
           src: logoResult.logoUrl,
           type: 'url',
           alignment: 'CENTER',
-          size: 100, // Maximum size as requested
+          size: 100, // Maximum size (100%)
           publicId: logoResult.publicId || null,
         };
         console.log('✅ Logo generated successfully:', logoResult.logoUrl);
       } else {
-        console.log(
-          '⚠️ Logo generation failed, proceeding without logo:',
-          logoResult.error
-        );
+        console.log('⚠️ No appropriate logo found, proceeding without logo');
+        formConfig.logo = null; // Don't set logo if not appropriate
       }
 
       // Add unique IDs
@@ -640,13 +108,15 @@ export class AIFormGeneratorService {
 
       const generationTime = Date.now() - startTime;
 
-      console.log('✅ AI Generation Success with Logo:', {
+      console.log('✅ AI Generation Success:', {
         userId,
         prompt: prompt.substring(0, 50) + '...',
         generationTime,
         fieldCount: this.countFields(formConfig),
         hasLogo: !!formConfig.logo,
-        logoUrl: formConfig.logo?.src?.substring(0, 50) + '...',
+        logoUrl: formConfig.logo?.src
+          ? formConfig.logo.src.substring(0, 50) + '...'
+          : 'None',
       });
 
       return {
@@ -656,13 +126,6 @@ export class AIFormGeneratorService {
       };
     } catch (error: any) {
       const generationTime = Date.now() - startTime;
-
-      console.error('❌ AI Generation Error:', {
-        userId,
-        error: error.message,
-        stack: error.stack,
-        generationTime,
-      });
 
       return {
         success: false,
@@ -740,24 +203,6 @@ FORM STRUCTURE (EXACT FORMAT REQUIRED):
             {"label": "Option 2", "value": "option2"},
             {"label": "Option 3", "value": "option3"}
           ]
-        },
-        {
-          "id": "auto-generated",
-          "type": "number",
-          "label": "Age",
-          "labelAlignment": "LEFT",
-          "required": true,
-          "helpText": "Enter your age in years",
-          "min": 0,
-          "max": 120
-        },
-        {
-          "id": "auto-generated",
-          "type": "email",
-          "label": "Email Address", 
-          "labelAlignment": "LEFT",
-          "required": true,
-          "helpText": "example@example.com"
         }
       ]
     }
@@ -780,25 +225,123 @@ IMPORTANT RULES:
 - "heading" fields should NOT have "required" or "helpText" properties
 - All other field types should have "required" and "helpText" properties
 - Choice fields (dropdown, singleChoice, multipleChoice) MUST include "options" array
-- Number fields can include "min" and "max" properties
-- Text fields (longText, paragraph) can include "rows" property
-- Use "email" type for email fields and set helpText to "example@example.com"
-- Group related fields logically
-- Start sections with "heading" fields
-- Mark essential fields as required: true
-- Generate realistic options for choice fields
-- Create engaging, descriptive titles and descriptions
-- Set showLogo to true and allowMultipleSubmissions/allowMultipleEmailSubmissions to true
-- Include appropriate thank you messages
+- Each option must have both "label" and "value" properties
+- Set showLogo to true and allowMultipleSubmissions/allowMultipleEmailSubmissions to true by default
+- Generate realistic, contextual field options
 
 USER REQUEST: "${userPrompt}"
 
 Generate the form configuration now:`;
   }
 
+  private cleanFormConfigForMongoDB(config: any): any {
+    console.log('🧹 Cleaning form config for MongoDB compatibility...');
+
+    // Clean pages and fields
+    if (config.pages && Array.isArray(config.pages)) {
+      config.pages = config.pages.map((page: any) => ({
+        ...page,
+        fields: (page.fields || []).map((field: any) => {
+          const cleanField: any = {
+            id: field.id,
+            type: field.type,
+            label: field.label,
+            labelAlignment: field.labelAlignment || 'LEFT',
+          };
+
+          // ✅ FIXED: Only add properties that exist for non-heading fields
+          if (field.type !== 'heading') {
+            cleanField.required = Boolean(field.required);
+            cleanField.helpText = field.helpText || '';
+
+            // ✅ FIXED: Handle options array properly for choice fields
+            const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
+            if (choiceFields.includes(field.type)) {
+              if (
+                field.options &&
+                Array.isArray(field.options) &&
+                field.options.length > 0
+              ) {
+                // Ensure each option has proper structure
+                cleanField.options = field.options
+                  .map((option: any) => ({
+                    label: String(option.label || option),
+                    value: String(option.value || option.label || option),
+                    type: option.type || undefined,
+                  }))
+                  .filter((option: any) => option.label && option.value);
+
+                // If no valid options, create defaults
+                if (cleanField.options.length === 0) {
+                  cleanField.options = this.generateDefaultOptions(
+                    field.label,
+                    field.type
+                  );
+                }
+              } else {
+                // Generate default options if missing
+                cleanField.options = this.generateDefaultOptions(
+                  field.label,
+                  field.type
+                );
+              }
+            }
+
+            // ✅ FIXED: Handle other field-specific properties
+            if (field.type === 'number') {
+              if (field.min !== undefined) cleanField.min = Number(field.min);
+              if (field.max !== undefined) cleanField.max = Number(field.max);
+              if (field.step !== undefined)
+                cleanField.step = Number(field.step);
+            }
+
+            if (field.type === 'longText' || field.type === 'paragraph') {
+              if (field.rows !== undefined)
+                cleanField.rows = Number(field.rows);
+            }
+
+            if (
+              field.type === 'shortText' ||
+              field.type === 'longText' ||
+              field.type === 'paragraph'
+            ) {
+              if (field.placeholder)
+                cleanField.placeholder = String(field.placeholder);
+              if (field.minLength !== undefined)
+                cleanField.minLength = Number(field.minLength);
+              if (field.maxLength !== undefined)
+                cleanField.maxLength = Number(field.maxLength);
+            }
+
+            if (field.type === 'fileUpload') {
+              if (field.multiple !== undefined)
+                cleanField.multiple = Boolean(field.multiple);
+              if (field.accept) cleanField.accept = String(field.accept);
+            }
+
+            if (field.defaultValue !== undefined) {
+              cleanField.defaultValue = field.defaultValue;
+            }
+          }
+
+          console.log(`🔧 Cleaned field: ${field.type} - ${field.label}`, {
+            hasOptions: !!cleanField.options,
+            optionsCount: cleanField.options?.length || 0,
+          });
+
+          return cleanField;
+        }),
+      }));
+    }
+
+    console.log('✅ Form config cleaned for MongoDB compatibility');
+    return config;
+  }
+
   private async generateFormLogo(
     title: string,
-    description: string = ''
+    description: string = '',
+    originalPrompt: string = ''
   ): Promise<{
     success: boolean;
     logoUrl?: string;
@@ -806,110 +349,29 @@ Generate the form configuration now:`;
     error?: string;
   }> {
     try {
-      // Extract key concepts from title and description for logo generation
-      const logoPrompt = this.createLogoPrompt(title, description);
-
-      console.log('🎨 Logo prompt created:', logoPrompt);
-
-      // Use predefined professional logos based on form type
-      const logoResult = await this.generateLogoFromPrompt(logoPrompt);
-
-      return logoResult;
-    } catch (error: any) {
-      console.error('❌ Logo generation failed:', error.message);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  }
-
-  private createLogoPrompt(title: string, description: string): string {
-    // Extract key words and concepts
-    const formContext = (title + ' ' + description).toLowerCase();
-
-    // Determine form category and style
-    let logoStyle = 'modern, professional, minimalist';
-    let logoElements = 'clean, corporate';
-    let colors = 'blue and white';
-
-    // Customize based on form type
-    if (formContext.includes('contact') || formContext.includes('inquiry')) {
-      logoElements = 'communication, envelope, speech bubble';
-      colors = 'blue and gray';
-    } else if (
-      formContext.includes('registration') ||
-      formContext.includes('signup')
-    ) {
-      logoElements = 'checkmark, user profile, document';
-      colors = 'green and blue';
-    } else if (
-      formContext.includes('application') ||
-      formContext.includes('job')
-    ) {
-      logoElements = 'briefcase, document, professional';
-      colors = 'navy blue and gray';
-    } else if (
-      formContext.includes('feedback') ||
-      formContext.includes('survey')
-    ) {
-      logoElements = 'star, thumbs up, chart';
-      colors = 'orange and blue';
-    } else if (
-      formContext.includes('booking') ||
-      formContext.includes('appointment')
-    ) {
-      logoElements = 'calendar, clock, schedule';
-      colors = 'purple and white';
-    } else if (
-      formContext.includes('order') ||
-      formContext.includes('purchase')
-    ) {
-      logoElements = 'shopping cart, package, commerce';
-      colors = 'green and blue';
-    } else if (formContext.includes('event') || formContext.includes('rsvp')) {
-      logoElements = 'event, celebration, ticket';
-      colors = 'purple and gold';
-    } else if (
-      formContext.includes('support') ||
-      formContext.includes('help')
-    ) {
-      logoElements = 'help, support, question mark';
-      colors = 'blue and white';
-    }
-
-    return `Create a ${logoStyle} logo with ${logoElements} in ${colors} colors, suitable for a business form titled "${title}"`;
-  }
-
-  private async generateLogoFromPrompt(prompt: string): Promise<{
-    success: boolean;
-    logoUrl?: string;
-    publicId?: string;
-    error?: string;
-  }> {
-    try {
-      // Use predefined professional logos based on form type
-      const logoCategories = this.getPredefinedLogos();
-      const selectedLogo = this.selectAppropriateLogoFromPrompt(
-        prompt,
-        logoCategories
+      // ✅ Enhanced logo selection logic for professional web app forms
+      const logoResult = this.selectAppropriateLogoForWebApp(
+        title,
+        description,
+        originalPrompt
       );
 
-      if (selectedLogo) {
+      if (logoResult.isAppropriate) {
         return {
           success: true,
-          logoUrl: selectedLogo.url,
-          publicId: selectedLogo.publicId,
+          logoUrl: logoResult.logoUrl,
+          publicId: logoResult.publicId,
+        };
+      } else {
+        console.log(
+          '⚠️ No appropriate professional logo found for this form type'
+        );
+        return {
+          success: false,
+          error:
+            'No appropriate professional logo available for this form type',
         };
       }
-
-      // Fallback to default logo
-      return {
-        success: true,
-        logoUrl:
-          'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=200&fit=crop&crop=center',
-        publicId: 'default_form_logo',
-      };
     } catch (error: any) {
       return {
         success: false,
@@ -918,139 +380,270 @@ Generate the form configuration now:`;
     }
   }
 
-  private getPredefinedLogos() {
-    return {
-      contact: [
-        {
-          url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&h=200&fit=crop&crop=center',
-          publicId: 'contact_logo_1',
-          keywords: ['contact', 'communication', 'inquiry', 'message'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=200&h=200&fit=crop&crop=center',
-          publicId: 'contact_logo_2',
-          keywords: ['contact', 'envelope', 'mail'],
-        },
-      ],
-      registration: [
-        {
-          url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=200&h=200&fit=crop&crop=center',
-          publicId: 'registration_logo_1',
-          keywords: ['registration', 'signup', 'account', 'user'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=center',
-          publicId: 'registration_logo_2',
-          keywords: ['registration', 'form', 'document'],
-        },
-      ],
-      application: [
-        {
-          url: 'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?w=200&h=200&fit=crop&crop=center',
-          publicId: 'application_logo_1',
-          keywords: ['application', 'job', 'career', 'professional'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1554774853-719586f82d77?w=200&h=200&fit=crop&crop=center',
-          publicId: 'application_logo_2',
-          keywords: ['application', 'business', 'work'],
-        },
-      ],
-      feedback: [
-        {
-          url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=200&h=200&fit=crop&crop=center',
-          publicId: 'feedback_logo_1',
-          keywords: ['feedback', 'survey', 'review', 'rating'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&h=200&fit=crop&crop=center',
-          publicId: 'feedback_logo_2',
-          keywords: ['feedback', 'analytics', 'chart'],
-        },
-      ],
-      booking: [
-        {
-          url: 'https://images.unsplash.com/photo-1564979045531-fa386a275b27?w=200&h=200&fit=crop&crop=center',
-          publicId: 'booking_logo_1',
-          keywords: ['booking', 'appointment', 'schedule', 'calendar'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop&crop=center',
-          publicId: 'booking_logo_2',
-          keywords: ['booking', 'time', 'clock'],
-        },
-      ],
-      order: [
-        {
-          url: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200&h=200&fit=crop&crop=center',
-          publicId: 'order_logo_1',
-          keywords: ['order', 'purchase', 'shopping', 'ecommerce'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=200&h=200&fit=crop&crop=center',
-          publicId: 'order_logo_2',
-          keywords: ['order', 'package', 'delivery'],
-        },
-      ],
-      event: [
-        {
-          url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=200&h=200&fit=crop&crop=center',
-          publicId: 'event_logo_1',
-          keywords: ['event', 'celebration', 'party', 'rsvp'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=200&h=200&fit=crop&crop=center',
-          publicId: 'event_logo_2',
-          keywords: ['event', 'gathering', 'meeting'],
-        },
-      ],
-      support: [
-        {
-          url: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=200&fit=crop&crop=center',
-          publicId: 'support_logo_1',
-          keywords: ['support', 'help', 'assistance', 'customer service'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&h=200&fit=crop&crop=center',
-          publicId: 'support_logo_2',
-          keywords: ['support', 'headset', 'communication'],
-        },
-      ],
-      default: [
-        {
-          url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=center',
-          publicId: 'default_logo_1',
-          keywords: ['form', 'document', 'paper', 'professional'],
-        },
-        {
-          url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=200&h=200&fit=crop&crop=center',
-          publicId: 'default_logo_2',
-          keywords: ['business', 'professional', 'clean'],
-        },
-      ],
+  // Enhanced logo selection for professional web apps with 900x265 images
+  private selectAppropriateLogoForWebApp(
+    title: string,
+    description: string,
+    prompt: string
+  ): {
+    isAppropriate: boolean;
+    logoUrl?: string;
+    publicId?: string;
+    category?: string;
+  } {
+    const content = (title + ' ' + description + ' ' + prompt).toLowerCase();
+
+    // ✅ Professional 900x265 logos for different form categories
+    const professionalLogos = {
+      contact: {
+        keywords: [
+          'contact',
+          'inquiry',
+          'get in touch',
+          'reach out',
+          'message',
+          'support',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=900&h=265&fit=crop&crop=center',
+            publicId: 'contact_form_900x265_1',
+            description: 'Professional contact form header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=900&h=265&fit=crop&crop=center',
+            publicId: 'contact_form_900x265_2',
+            description: 'Business communication header',
+          },
+        ],
+      },
+      registration: {
+        keywords: [
+          'registration',
+          'signup',
+          'sign up',
+          'register',
+          'account',
+          'join',
+          'membership',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=900&h=265&fit=crop&crop=center',
+            publicId: 'registration_900x265_1',
+            description: 'Professional registration header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=900&h=265&fit=crop&crop=center',
+            publicId: 'registration_900x265_2',
+            description: 'Account signup header',
+          },
+        ],
+      },
+      application: {
+        keywords: [
+          'application',
+          'apply',
+          'job',
+          'career',
+          'hiring',
+          'recruitment',
+          'position',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?w=900&h=265&fit=crop&crop=center',
+            publicId: 'application_900x265_1',
+            description: 'Job application header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1554774853-719586f82d77?w=900&h=265&fit=crop&crop=center',
+            publicId: 'application_900x265_2',
+            description: 'Career opportunity header',
+          },
+        ],
+      },
+      feedback: {
+        keywords: [
+          'feedback',
+          'survey',
+          'review',
+          'rating',
+          'opinion',
+          'evaluation',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=900&h=265&fit=crop&crop=center',
+            publicId: 'feedback_900x265_1',
+            description: 'Feedback collection header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&h=265&fit=crop&crop=center',
+            publicId: 'feedback_900x265_2',
+            description: 'Survey analytics header',
+          },
+        ],
+      },
+      booking: {
+        keywords: [
+          'booking',
+          'appointment',
+          'schedule',
+          'reservation',
+          'book',
+          'meeting',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1564979045531-fa386a275b27?w=900&h=265&fit=crop&crop=center',
+            publicId: 'booking_900x265_1',
+            description: 'Appointment booking header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=900&h=265&fit=crop&crop=center',
+            publicId: 'booking_900x265_2',
+            description: 'Schedule management header',
+          },
+        ],
+      },
+      ecommerce: {
+        keywords: [
+          'order',
+          'purchase',
+          'buy',
+          'shopping',
+          'product',
+          'checkout',
+          'payment',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=900&h=265&fit=crop&crop=center',
+            publicId: 'ecommerce_900x265_1',
+            description: 'E-commerce order header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900&h=265&fit=crop&crop=center',
+            publicId: 'ecommerce_900x265_2',
+            description: 'Online shopping header',
+          },
+        ],
+      },
+      event: {
+        keywords: [
+          'event',
+          'rsvp',
+          'conference',
+          'workshop',
+          'seminar',
+          'celebration',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=900&h=265&fit=crop&crop=center',
+            publicId: 'event_900x265_1',
+            description: 'Event management header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=900&h=265&fit=crop&crop=center',
+            publicId: 'event_900x265_2',
+            description: 'Conference registration header',
+          },
+        ],
+      },
+      business: {
+        keywords: [
+          'business',
+          'corporate',
+          'company',
+          'professional',
+          'service',
+          'consultation',
+        ],
+        logos: [
+          {
+            url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&h=265&fit=crop&crop=center',
+            publicId: 'business_900x265_1',
+            description: 'Professional business header',
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=900&h=265&fit=crop&crop=center',
+            publicId: 'business_900x265_2',
+            description: 'Corporate form header',
+          },
+        ],
+      },
     };
-  }
 
-  private selectAppropriateLogoFromPrompt(prompt: string, logoCategories: any) {
-    const lowerPrompt = prompt.toLowerCase();
+    // ✅ Find the most appropriate category
+    let bestMatch = { category: '', score: 0 };
 
-    // Find the best matching category
-    for (const [category, logos] of Object.entries(logoCategories)) {
-      if (category === 'default') continue;
-
-      const categoryLogos = logos as any[];
-      const matchingLogo = categoryLogos.find(logo =>
-        logo.keywords.some((keyword: string) => lowerPrompt.includes(keyword))
+    for (const [category, data] of Object.entries(professionalLogos)) {
+      const matchingKeywords = data.keywords.filter(keyword =>
+        content.includes(keyword)
       );
 
-      if (matchingLogo) {
-        return matchingLogo;
+      if (matchingKeywords.length > bestMatch.score) {
+        bestMatch = { category, score: matchingKeywords.length };
       }
     }
 
-    // Return random default logo if no match found
-    const defaultLogos = logoCategories.default;
-    return defaultLogos[Math.floor(Math.random() * defaultLogos.length)];
+    // ✅ Only return logo if we have a strong match (at least 1 keyword match)
+    if (bestMatch.score > 0 && bestMatch.category) {
+      const categoryData =
+        professionalLogos[bestMatch.category as keyof typeof professionalLogos];
+      const selectedLogo =
+        categoryData.logos[
+          Math.floor(Math.random() * categoryData.logos.length)
+        ];
+
+      console.log('✅ Found appropriate professional logo:', {
+        category: bestMatch.category,
+        matchScore: bestMatch.score,
+        logoUrl: selectedLogo.url,
+        description: selectedLogo.description,
+      });
+
+      return {
+        isAppropriate: true,
+        logoUrl: selectedLogo.url,
+        publicId: selectedLogo.publicId,
+        category: bestMatch.category,
+      };
+    }
+
+    // ✅ Fallback: Only use generic business logo for clearly business-related forms
+    const businessTerms = [
+      'form',
+      'submit',
+      'application',
+      'request',
+      'information',
+    ];
+    const hasBusinessContext = businessTerms.some(term =>
+      content.includes(term)
+    );
+
+    if (
+      hasBusinessContext &&
+      (content.includes('business') || content.includes('professional'))
+    ) {
+      const businessLogo = professionalLogos.business.logos[0];
+      console.log('✅ Using fallback business logo for professional context');
+
+      return {
+        isAppropriate: true,
+        logoUrl: businessLogo.url,
+        publicId: businessLogo.publicId,
+        category: 'business-fallback',
+      };
+    }
+
+    console.log(
+      '❌ No appropriate professional logo found - will proceed without logo'
+    );
+    return { isAppropriate: false };
   }
 
   private parseFormConfig(rawResponse: string): {
@@ -1132,7 +725,7 @@ Generate the form configuration now:`;
           };
         }
 
-        // Updated to include all 20 field types
+        // All 20 field types
         const validTypes = [
           'shortText',
           'longText',
@@ -1168,46 +761,19 @@ Generate the form configuration now:`;
             !Array.isArray(field.options) ||
             field.options.length === 0
           ) {
-            return {
-              isValid: false,
-              error: `Field "${field.label}" of type "${field.type}" must have options array`,
-            };
-          }
-
-          // Validate option structure
-          for (const option of field.options) {
-            if (!option.label || !option.value) {
-              return {
-                isValid: false,
-                error: `Field "${field.label}" has invalid option structure. Each option must have label and value`,
-              };
+            // Will be fixed in cleanFormConfigForMongoDB
+            console.log(
+              `⚠️ Field "${field.label}" missing options - will be generated`
+            );
+          } else {
+            // Validate option structure
+            for (const option of field.options) {
+              if (!option.label || !option.value) {
+                console.log(
+                  `⚠️ Field "${field.label}" has invalid option structure - will be fixed`
+                );
+              }
             }
-          }
-        }
-
-        // Validate number fields
-        if (field.type === 'number') {
-          if (field.min !== undefined && typeof field.min !== 'number') {
-            return {
-              isValid: false,
-              error: `Field "${field.label}" min value must be a number`,
-            };
-          }
-          if (field.max !== undefined && typeof field.max !== 'number') {
-            return {
-              isValid: false,
-              error: `Field "${field.label}" max value must be a number`,
-            };
-          }
-          if (
-            field.min !== undefined &&
-            field.max !== undefined &&
-            field.min > field.max
-          ) {
-            return {
-              isValid: false,
-              error: `Field "${field.label}" min value cannot be greater than max value`,
-            };
           }
         }
       }
@@ -1217,7 +783,7 @@ Generate the form configuration now:`;
   }
 
   private enhanceFormConfig(config: any, originalPrompt: string): any {
-    // Enhanced default settings with your requirements
+    // ✅ Enhanced default settings with required configurations
     config.settings = {
       submitButtonText: 'Submit Form',
       showLogo: true, // Enable logo by default
@@ -1228,8 +794,8 @@ Generate the form configuration now:`;
       defaultLabelAlignment: 'LEFT',
       defaultRequiredField: false,
       isEnabled: true,
-      allowMultipleSubmissions: true, // Enable multiple submissions
-      allowMultipleEmailSubmissions: true, // Enable multiple email submissions
+      allowMultipleSubmissions: true,
+      allowMultipleEmailSubmissions: true,
       collectIpAddress: true,
       enableCaptcha: false,
       ...config.settings,
@@ -1253,31 +819,16 @@ Generate the form configuration now:`;
 
           // Add default options for choice fields if missing
           const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
-          if (
-            choiceFields.includes(field.type) &&
-            (!field.options || field.options.length === 0)
-          ) {
-            enhancedField.options = this.generateDefaultOptions(
-              field.label,
-              field.type
-            );
-          }
-
-          // Add default properties for specific field types
-          if (field.type === 'longText' && !field.rows) {
-            enhancedField.rows = 3;
-          }
-
-          if (field.type === 'paragraph' && !field.rows) {
-            enhancedField.rows = 5;
-          }
-
-          // Smart number field defaults
-          if (field.type === 'number') {
-            if (field.min === undefined && field.max === undefined) {
-              const defaults = this.getNumberFieldDefaults(field.label);
-              if (defaults.min !== undefined) enhancedField.min = defaults.min;
-              if (defaults.max !== undefined) enhancedField.max = defaults.max;
+          if (choiceFields.includes(field.type)) {
+            if (
+              !field.options ||
+              !Array.isArray(field.options) ||
+              field.options.length === 0
+            ) {
+              enhancedField.options = this.generateDefaultOptions(
+                field.label,
+                field.type
+              );
             }
           }
         }
@@ -1308,8 +859,6 @@ Generate the form configuration now:`;
       formType.includes('appointment')
     ) {
       return "Your booking has been confirmed! You'll receive a confirmation email with all the details.";
-    } else if (formType.includes('support') || formType.includes('help')) {
-      return "Thank you for contacting support! We've received your request and will assist you shortly.";
     }
 
     return "Thank you for your submission! We've received your information and will be in touch soon.";
@@ -1333,23 +882,12 @@ Generate the form configuration now:`;
         return 'Share your thoughts, experiences, or detailed feedback';
       case 'number':
         if (lowerLabel.includes('age')) return 'Enter your age in years';
-        if (lowerLabel.includes('year')) return 'Enter the year (YYYY)';
-        if (lowerLabel.includes('experience'))
-          return 'Number of years of experience';
         return 'Enter a valid number';
-      case 'datePicker':
-        return 'Select a date from the calendar';
-      case 'time':
-        return 'Select time in HH:MM format';
       case 'dropdown':
       case 'singleChoice':
         return 'Choose one option from the list';
       case 'multipleChoice':
         return 'Select all options that apply';
-      case 'image':
-        return 'Upload an image (PNG, JPG, GIF up to 10MB)';
-      case 'fileUpload':
-        return 'Upload your files (up to 25MB each)';
       default:
         return 'Please complete this field';
     }
@@ -1361,7 +899,6 @@ Generate the form configuration now:`;
   ): Array<{ label: string; value: string }> {
     const lowerLabel = label.toLowerCase();
 
-    // Context-specific options
     if (lowerLabel.includes('experience') || lowerLabel.includes('level')) {
       return [
         { label: 'Beginner (0-2 years)', value: 'beginner' },
@@ -1379,7 +916,6 @@ Generate the form configuration now:`;
         { label: 'Poor', value: 'poor' },
       ];
     }
-
     if (lowerLabel.includes('size') || lowerLabel.includes('company')) {
       return [
         { label: 'Small (1-50 employees)', value: 'small' },
@@ -1402,15 +938,6 @@ Generate the form configuration now:`;
         { label: 'Weekly', value: 'weekly' },
         { label: 'Monthly', value: 'monthly' },
         { label: 'Rarely', value: 'rarely' },
-      ];
-    }
-
-    if (lowerLabel.includes('budget') || lowerLabel.includes('price')) {
-      return [
-        { label: 'Under ₹50,000', value: 'under_50k' },
-        { label: '₹50,000 - ₹2,00,000', value: '50k_200k' },
-        { label: '₹2,00,000 - ₹5,00,000', value: '200k_500k' },
-        { label: 'Above ₹5,00,000', value: 'above_500k' },
       ];
     }
 
@@ -1463,50 +990,6 @@ Generate the form configuration now:`;
     ];
   }
 
-  private getNumberFieldDefaults(label: string): {
-    min?: number;
-    max?: number;
-  } {
-    const lowerLabel = label.toLowerCase();
-
-    if (lowerLabel.includes('age')) {
-      return { min: 0, max: 120 };
-    }
-
-    if (
-      lowerLabel.includes('year') &&
-      (lowerLabel.includes('passing') || lowerLabel.includes('graduation'))
-    ) {
-      return { min: 1950, max: new Date().getFullYear() };
-    }
-
-    if (lowerLabel.includes('year') && lowerLabel.includes('experience')) {
-      return { min: 0, max: 50 };
-    }
-
-    if (lowerLabel.includes('rating') || lowerLabel.includes('score')) {
-      return { min: 1, max: 10 };
-    }
-
-    if (lowerLabel.includes('percentage') || lowerLabel.includes('marks')) {
-      return { min: 0, max: 100 };
-    }
-
-    if (lowerLabel.includes('salary') || lowerLabel.includes('income')) {
-      return { min: 0, max: 10000000 }; // 1 crore max
-    }
-
-    if (lowerLabel.includes('phone') || lowerLabel.includes('mobile')) {
-      return { min: 1000000000, max: 9999999999 }; // 10-digit phone numbers
-    }
-
-    if (lowerLabel.includes('zip') || lowerLabel.includes('pin')) {
-      return { min: 100000, max: 999999 }; // 6-digit PIN codes
-    }
-
-    return {};
-  }
-
   private addUniqueIds(config: any): any {
     config.pages = config.pages.map((page: any) => ({
       ...page,
@@ -1527,83 +1010,7 @@ Generate the form configuration now:`;
     );
   }
 
-  // ✅ New method: Get logo suggestions for different form types
-  async getLogoSuggestions(
-    formType?: string,
-    title?: string,
-    description?: string
-  ): Promise<{
-    suggestions: Array<{
-      category: string;
-      logos: Array<{
-        url: string;
-        publicId: string;
-        description: string;
-      }>;
-    }>;
-  }> {
-    try {
-      const logoCategories = this.getPredefinedLogos();
-      const suggestions = [];
-
-      // If form type is specified, prioritize that category
-      if (formType && logoCategories[formType]) {
-        suggestions.push({
-          category: formType,
-          logos: logoCategories[formType].map((logo: any) => ({
-            url: logo.url,
-            publicId: logo.publicId,
-            description: `${formType} themed logo`,
-          })),
-        });
-      }
-
-      // If title/description provided, find matching categories
-      if (title || description) {
-        const content = (title + ' ' + description).toLowerCase();
-
-        for (const [category, logos] of Object.entries(logoCategories)) {
-          if (category === 'default' || (formType && category === formType))
-            continue;
-
-          const categoryLogos = logos as any[];
-          const isMatch = categoryLogos.some(logo =>
-            logo.keywords.some((keyword: string) => content.includes(keyword))
-          );
-
-          if (isMatch) {
-            suggestions.push({
-              category,
-              logos: categoryLogos.map(logo => ({
-                url: logo.url,
-                publicId: logo.publicId,
-                description: `${category} style logo`,
-              })),
-            });
-          }
-        }
-      }
-
-      // Always include some default options
-      if (suggestions.length === 0 || suggestions.length < 3) {
-        suggestions.push({
-          category: 'professional',
-          logos: logoCategories.default.map((logo: any) => ({
-            url: logo.url,
-            publicId: logo.publicId,
-            description: 'Professional business logo',
-          })),
-        });
-      }
-
-      return { suggestions: suggestions.slice(0, 5) }; // Limit to 5 categories
-    } catch (error) {
-      console.error('❌ Error getting logo suggestions:', error);
-      return { suggestions: [] };
-    }
-  }
-
-  // ✅ Public method to generate logos for existing forms
+  // Public method to generate logos for existing forms
   async generateFormLogoPublic(
     title: string,
     description: string = ''
@@ -1616,17 +1023,51 @@ Generate the form configuration now:`;
     return this.generateFormLogo(title, description);
   }
 
-  // ✅ Method to validate form configuration
+  // Method to validate form configuration
   validateFormConfigPublic(config: any): { isValid: boolean; error?: string } {
     return this.validateFormConfig(config);
   }
 
-  // ✅ Method to enhance existing form configurations
+  // Method to enhance existing form configurations
   enhanceFormConfigPublic(config: any, prompt: string = ''): any {
     return this.enhanceFormConfig(config, prompt);
   }
 
-  // ✅ Method to get available field types
+  // Method to get form generation statistics
+  getGenerationStats(): {
+    supportedFieldTypes: number;
+    logoCategories: number;
+    defaultOptions: string[];
+  } {
+    return {
+      supportedFieldTypes: this.getAvailableFieldTypes().length,
+      logoCategories: 8, // contact, registration, application, feedback, booking, ecommerce, event, business
+      defaultOptions: [
+        'Multiple submissions enabled by default',
+        'Logo generation included when appropriate',
+        'Smart field validation and cleanup',
+        'Context-aware help text generation',
+        'Professional 900x265 logo sizing',
+        'MongoDB-compatible field structures',
+      ],
+    };
+  }
+
+  // Method to validate environment setup
+  validateEnvironment(): { isValid: boolean; missing: string[] } {
+    const missing = [];
+
+    if (!process.env.GEMINI_API_KEY) {
+      missing.push('GEMINI_API_KEY');
+    }
+
+    return {
+      isValid: missing.length === 0,
+      missing,
+    };
+  }
+
+  // Method to get available field types
   getAvailableFieldTypes(): string[] {
     return [
       'shortText',
@@ -1650,69 +1091,6 @@ Generate the form configuration now:`;
       'fillBlank',
       'productList',
     ];
-  }
-
-  // ✅ Method to get form generation statistics
-  getGenerationStats(): {
-    supportedFieldTypes: number;
-    logoCategories: number;
-    defaultOptions: string[];
-  } {
-    const logoCategories = this.getPredefinedLogos();
-    return {
-      supportedFieldTypes: this.getAvailableFieldTypes().length,
-      logoCategories: Object.keys(logoCategories).length,
-      defaultOptions: [
-        'Multiple submissions enabled',
-        'Logo generation included',
-        'Smart field validation',
-        'Context-aware help text',
-        'Professional styling',
-      ],
-    };
-  }
-
-  // ✅ Method to cleanup and format AI responses
-  private cleanAIResponse(response: string): string {
-    return response
-      .replace(/```json\s*/g, '')
-      .replace(/```\s*/g, '')
-      .replace(/^\s*[\r\n]/gm, '') // Remove empty lines
-      .trim();
-  }
-
-  // ✅ Method to handle AI generation errors gracefully
-  private handleGenerationError(error: any, context: string): string {
-    console.error(`❌ ${context} Error:`, error);
-
-    if (error.message.includes('quota')) {
-      return 'API quota exceeded. Please try again later.';
-    } else if (error.message.includes('network')) {
-      return 'Network error. Please check your connection and try again.';
-    } else if (error.message.includes('timeout')) {
-      return 'Request timed out. Please try again with a shorter prompt.';
-    } else if (error.message.includes('invalid')) {
-      return 'Invalid request. Please check your input and try again.';
-    }
-
-    return 'An unexpected error occurred during generation.';
-  }
-
-  // ✅ Method to validate environment setup
-  validateEnvironment(): { isValid: boolean; missing: string[] } {
-    const missing = [];
-
-    if (!process.env.GEMINI_API_KEY) {
-      missing.push('GEMINI_API_KEY');
-    }
-
-    // Add other required environment variables here
-    // if (!process.env.LOGO_API_KEY) missing.push('LOGO_API_KEY');
-
-    return {
-      isValid: missing.length === 0,
-      missing,
-    };
   }
 }
 

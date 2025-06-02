@@ -3,11 +3,27 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 const OptionSchema = new Schema(
   {
-    label: { type: String, required: true },
-    value: { type: String, required: true },
-    type: { type: String }, // Optional type field
+    label: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200,
+    },
+    value: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200,
+    },
+    type: {
+      type: String,
+      maxlength: 50,
+    },
   },
-  { _id: false } // Don't create _id for options
+  {
+    _id: false,
+    strict: true, // Enforce schema structure
+  }
 );
 
 const FieldSchema = new Schema(
@@ -17,7 +33,6 @@ const FieldSchema = new Schema(
       type: String,
       required: true,
       enum: [
-        // Original fields
         'heading',
         'fullName',
         'email',
@@ -28,7 +43,6 @@ const FieldSchema = new Schema(
         'signature',
         'fillBlank',
         'productList',
-        // NEW: Added 10 new field types
         'shortText',
         'longText',
         'paragraph',
@@ -41,7 +55,7 @@ const FieldSchema = new Schema(
         'time',
       ],
     },
-    label: { type: String, required: true },
+    label: { type: String, required: true, trim: true, maxlength: 200 },
     required: {
       type: Boolean,
       default: function () {
@@ -61,33 +75,60 @@ const FieldSchema = new Schema(
       enum: ['LEFT', 'RIGHT'],
       default: 'LEFT',
     },
-    // ✅ FIXED: Correct options array definition
     options: {
       type: [OptionSchema],
       default: undefined, // Don't set default empty array
+      validate: {
+        validator: function (options: any[]) {
+          // Only validate if options array exists
+          if (!options) return true;
+
+          // Check for choice fields that require options
+          const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
+          if (choiceFields.includes((this as any).type)) {
+            if (!Array.isArray(options) || options.length === 0) {
+              return false;
+            }
+            // Validate each option has required fields
+            return options.every(
+              option =>
+                option &&
+                typeof option === 'object' &&
+                option.label &&
+                option.value &&
+                typeof option.label === 'string' &&
+                typeof option.value === 'string'
+            );
+          }
+          return true;
+        },
+        message:
+          'Choice fields must have at least one valid option with label and value',
+      },
     },
     defaultValue: Schema.Types.Mixed,
 
-    // NEW: Text field properties
-    placeholder: { type: String },
-    minLength: { type: Number, min: 0 },
-    maxLength: { type: Number, min: 1 },
+    // Text field properties
+    placeholder: { type: String, maxlength: 100 },
+    minLength: { type: Number, min: 0, max: 1000 },
+    maxLength: { type: Number, min: 1, max: 10000 },
 
-    // NEW: Number field properties
+    // Number field properties
     min: { type: Number },
     max: { type: Number },
-    step: { type: Number, default: 1 },
+    step: { type: Number, default: 1, min: 0.01 },
 
-    // NEW: Textarea properties
+    // Textarea properties
     rows: { type: Number, min: 1, max: 20, default: 3 },
 
-    // NEW: File upload properties
+    // File upload properties
     multiple: { type: Boolean, default: false },
-    accept: { type: String }, // MIME types or file extensions
+    accept: { type: String, maxlength: 200 }, // MIME types or file extensions
     propertiesPanelOpen: { type: Boolean, default: false },
   },
   {
     _id: false,
+    strict: true,
     transform: function (doc, ret) {
       // Remove required and helpText from heading fields
       if (ret.type === 'heading') {
@@ -104,7 +145,26 @@ FieldSchema.pre('save', function (next) {
   if (this.type === 'heading') {
     this.required = undefined;
     this.helpText = undefined;
+    this.options = undefined; // Headings don't need options
   }
+
+  // Validate choice fields have options
+  const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
+  if (choiceFields.includes(this.type)) {
+    if (
+      !this.options ||
+      !Array.isArray(this.options) ||
+      this.options.length === 0
+    ) {
+      // Auto-generate default options if missing
+      this.options = [
+        { label: 'Option 1', value: 'option1' },
+        { label: 'Option 2', value: 'option2' },
+        { label: 'Option 3', value: 'option3' },
+      ] as any;
+    }
+  }
+
   next();
 });
 
@@ -114,7 +174,7 @@ const PageSchema = new Schema(
     id: { type: String, required: true },
     fields: [FieldSchema],
   },
-  { _id: false }
+  { _id: false, strict: true }
 );
 
 // Logo Schema
@@ -145,14 +205,14 @@ const LogoSchema = new Schema(
       type: Number,
       min: 10,
       max: 100,
-      default: 100, // ✅ Default to maximum size as requested
+      default: 100,
     },
     publicId: {
       type: String,
       required: false,
     },
   },
-  { _id: false }
+  { _id: false, strict: true }
 );
 
 // Settings Schema
@@ -161,6 +221,7 @@ const SettingsSchema = new Schema(
     submitButtonText: {
       type: String,
       default: 'Submit',
+      maxlength: 50,
     },
     showLogo: {
       type: Boolean,
@@ -169,6 +230,7 @@ const SettingsSchema = new Schema(
     thankyouMessage: {
       type: String,
       default: 'Thank you for your submission!',
+      maxlength: 1000,
     },
     defaultLabelAlignment: {
       type: String,
@@ -218,16 +280,21 @@ const SettingsSchema = new Schema(
       default: null,
     },
   },
-  { _id: false }
+  { _id: false, strict: true }
 );
 
 // Pre-save middleware to ensure defaults
 SettingsSchema.pre('save', function (next) {
+  // Ensure multiple submissions defaults
   if (this.allowMultipleSubmissions === undefined) {
     this.allowMultipleSubmissions = true;
   }
   if (this.allowMultipleEmailSubmissions === undefined) {
     this.allowMultipleEmailSubmissions = true;
+  }
+  // Ensure logo is shown by default
+  if (this.showLogo === undefined) {
+    this.showLogo = true;
   }
   next();
 });
@@ -315,7 +382,22 @@ const FormSchema = new Schema<IForm>(
     },
     settings: {
       type: SettingsSchema,
-      default: () => ({}),
+      default: () => ({
+        submitButtonText: 'Submit',
+        showLogo: true,
+        thankyouMessage: 'Thank you for your submission!',
+        defaultLabelAlignment: 'LEFT',
+        defaultRequiredField: false,
+        isEnabled: true,
+        allowMultipleSubmissions: true,
+        allowMultipleEmailSubmissions: true,
+        collectIpAddress: true,
+        enableCaptcha: false,
+        requireEmailVerification: false,
+        sendSubmissionEmails: true,
+        submissionLimit: null,
+        submissionDeadline: null,
+      }),
     },
     isPublished: {
       type: Boolean,
@@ -376,13 +458,16 @@ const FormSchema = new Schema<IForm>(
     },
     // AI Generation metadata
     isAIGenerated: { type: Boolean, default: false, index: true },
-    aiPrompt: { type: String },
-    aiModel: { type: String },
+    aiPrompt: { type: String, maxlength: 2000 },
+    aiModel: { type: String, maxlength: 100 },
     aiGenerationMetadata: {
       promptTokens: { type: Number },
       responseTokens: { type: Number },
       generationTime: { type: Number },
-      version: { type: String },
+      version: { type: String, maxlength: 50 },
+      hasLogo: { type: Boolean },
+      logoSource: { type: String, maxlength: 500 },
+      logoType: { type: String, maxlength: 50 },
     },
   },
   {
@@ -402,6 +487,7 @@ const FormSchema = new Schema<IForm>(
                 if (field.type === 'heading') {
                   delete field.required;
                   delete field.helpText;
+                  delete field.options;
                 }
               });
             }
@@ -448,6 +534,67 @@ FormSchema.pre<IForm>('save', function (next) {
     this.selectedPageId = this.pages[0].id;
   }
 
+  if (!this.settings) {
+    this.settings = {
+      submitButtonText: 'Submit',
+      showLogo: true,
+      thankyouMessage: 'Thank you for your submission!',
+      defaultLabelAlignment: 'LEFT',
+      defaultRequiredField: false,
+      isEnabled: true,
+      allowMultipleSubmissions: true,
+      allowMultipleEmailSubmissions: true,
+      collectIpAddress: true,
+      enableCaptcha: false,
+      requireEmailVerification: false,
+      sendSubmissionEmails: true,
+      submissionLimit: null,
+      submissionDeadline: null,
+    };
+  } else {
+    if (this.settings.allowMultipleSubmissions === undefined) {
+      this.settings.allowMultipleSubmissions = true;
+    }
+    if (this.settings.allowMultipleEmailSubmissions === undefined) {
+      this.settings.allowMultipleEmailSubmissions = true;
+    }
+    if (this.settings.showLogo === undefined) {
+      this.settings.showLogo = true;
+    }
+    if (this.settings.isEnabled === undefined) {
+      this.settings.isEnabled = true;
+    }
+  }
+
+  // Auto-enable logo display if logo is present
+  if (this.logo && this.settings) {
+    this.settings.showLogo = true;
+  }
+
+  // Update lastSaved timestamp
+  this.lastSaved = new Date().toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // Handle publish state changes
+  if (this.isModified('isPublished')) {
+    if (this.isPublished && !this.publishedAt) {
+      this.publishedAt = new Date();
+    } else if (!this.isPublished) {
+      this.publishedAt = null;
+    }
+  }
+
+  // Handle trash state changes
+  if (this.isModified('isTrashed')) {
+    if (this.isTrashed && !this.trashedAt) {
+      this.trashedAt = new Date();
+    } else if (!this.isTrashed) {
+      this.trashedAt = null;
+    }
+  }
+
   next();
 });
 
@@ -465,15 +612,6 @@ FormSchema.methods.getRequiredFieldCount = function () {
       (page.fields ? page.fields.filter(field => field.required).length : 0)
     );
   }, 0);
-};
-
-// Static method to find AI generated forms
-FormSchema.statics.findAIGenerated = function (userId) {
-  return this.find({
-    userId: userId,
-    isAIGenerated: true,
-    isTrashed: false,
-  }).sort({ createdAt: -1 });
 };
 
 // Virtual for days remaining in trash
@@ -542,25 +680,25 @@ FormSchema.pre<IForm>('save', function (next) {
   next();
 });
 
-// ✅ Pre-save middleware
+// Pre-save middleware
 FormSchema.pre<IForm>('save', function (next) {
   this.lastSaved = new Date().toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  // ✅ Auto-enable logo display if logo is present
+  // Auto-enable logo display if logo is present
   if (this.logo && this.settings) {
     this.settings.showLogo = true;
   }
 
-  // ✅ Ensure proper AI metadata
+  // Ensure proper AI metadata
   if (this.isAIGenerated && this.aiGenerationMetadata) {
     this.aiGenerationMetadata.totalFields = this.totalFields;
     this.aiGenerationMetadata.hasLogo = this.hasLogo;
   }
 
-  // ✅ Set trash date when moving to trash
+  // Set trash date when moving to trash
   if (this.isTrashed && !this.trashedAt) {
     this.trashedAt = new Date();
   } else if (!this.isTrashed) {
@@ -570,20 +708,36 @@ FormSchema.pre<IForm>('save', function (next) {
   next();
 });
 
-// ✅ Pre-findOneAndUpdate middleware
+// Pre-findOneAndUpdate middleware
 FormSchema.pre('findOneAndUpdate', function (next) {
   const update = this.getUpdate() as any;
 
   if (update) {
-    update.lastSaved = new Date();
+    update.lastSaved = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
-    // ✅ Handle logo updates
+    // Handle logo updates
     if (update.logo) {
       if (!update.settings) update.settings = {};
       update['settings.showLogo'] = true;
     }
 
-    // ✅ Handle trash operations
+    // Ensure defaults for submission controls in updates
+    if (update.settings) {
+      if (update.settings.allowMultipleSubmissions === undefined) {
+        update.settings.allowMultipleSubmissions = true;
+      }
+      if (update.settings.allowMultipleEmailSubmissions === undefined) {
+        update.settings.allowMultipleEmailSubmissions = true;
+      }
+      if (update.settings.showLogo === undefined) {
+        update.settings.showLogo = true;
+      }
+    }
+
+    // Handle trash operations
     if (update.isTrashed && !update.trashedAt) {
       update.trashedAt = new Date();
     } else if (update.isTrashed === false) {
@@ -609,9 +763,26 @@ FormSchema.methods.addLogo = function (logoData: {
     publicId: logoData.publicId,
   };
 
-  if (!this.settings) this.settings = {};
-  this.settings.showLogo = true;
+  if (!this.settings) {
+    this.settings = {
+      submitButtonText: 'Submit',
+      showLogo: true,
+      thankyouMessage: 'Thank you for your submission!',
+      defaultLabelAlignment: 'LEFT',
+      defaultRequiredField: false,
+      isEnabled: true,
+      allowMultipleSubmissions: true,
+      allowMultipleEmailSubmissions: true,
+      collectIpAddress: true,
+      enableCaptcha: false,
+      requireEmailVerification: false,
+      sendSubmissionEmails: true,
+      submissionLimit: null,
+      submissionDeadline: null,
+    };
+  }
 
+  this.settings.showLogo = true;
   return this.save();
 };
 
@@ -624,7 +795,29 @@ FormSchema.methods.removeLogo = function () {
 };
 
 FormSchema.methods.updateSettings = function (newSettings: any) {
-  this.settings = { ...this.settings, ...newSettings };
+  const defaultSettings = {
+    submitButtonText: 'Submit',
+    showLogo: true,
+    thankyouMessage: 'Thank you for your submission!',
+    defaultLabelAlignment: 'LEFT',
+    defaultRequiredField: false,
+    isEnabled: true,
+    allowMultipleSubmissions: true,
+    allowMultipleEmailSubmissions: true,
+    collectIpAddress: true,
+    enableCaptcha: false,
+    requireEmailVerification: false,
+    sendSubmissionEmails: true,
+    submissionLimit: null,
+    submissionDeadline: null,
+  };
+
+  this.settings = {
+    ...defaultSettings,
+    ...this.settings,
+    ...newSettings,
+  };
+
   return this.save();
 };
 
@@ -683,7 +876,6 @@ FormSchema.methods.unpublish = function () {
   return this.save();
 };
 
-// ✅ Static methods for enhanced queries
 FormSchema.statics.findAIGenerated = function (
   userId: string,
   options: any = {}
@@ -695,6 +887,36 @@ FormSchema.statics.findAIGenerated = function (
     ...options,
   };
   return this.find(query).sort({ createdAt: -1 });
+};
+
+// Static method for creating forms with proper defaults
+FormSchema.statics.createWithDefaults = function (formData: any) {
+  const defaultSettings = {
+    submitButtonText: 'Submit',
+    showLogo: true,
+    thankyouMessage: 'Thank you for your submission!',
+    defaultLabelAlignment: 'LEFT',
+    defaultRequiredField: false,
+    isEnabled: true,
+    allowMultipleSubmissions: true,
+    allowMultipleEmailSubmissions: true,
+    collectIpAddress: true,
+    enableCaptcha: false,
+    requireEmailVerification: false,
+    sendSubmissionEmails: true,
+    submissionLimit: null,
+    submissionDeadline: null,
+  };
+
+  const formWithDefaults = {
+    ...formData,
+    settings: {
+      ...defaultSettings,
+      ...(formData.settings || {}),
+    },
+  };
+
+  return this.create(formWithDefaults);
 };
 
 FormSchema.statics.findWithLogo = function (userId: string) {

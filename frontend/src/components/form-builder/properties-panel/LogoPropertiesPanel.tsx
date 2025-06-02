@@ -92,7 +92,7 @@ export default function LogoPropertiesPanel({
   onClose,
 }: LogoPropertiesPanelProps) {
   const dispatch = useDispatch();
-  // Get logo and other data from Redux
+
   const logo = useSelector((state: RootState) => state.formBuilder.form?.logo);
 
   const [selectedTab, setSelectedTab] = useState(0);
@@ -103,8 +103,9 @@ export default function LogoPropertiesPanel({
   const [logoAlignment, setLogoAlignment] = useState<
     'LEFT' | 'CENTER' | 'RIGHT'
   >(logo?.alignment || 'CENTER');
+
   const [savedImages, setSavedImages] = useState<
-    { src: string; type: string }[]
+    { src: string; type: string; publicId?: string }[]
   >([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,13 +143,13 @@ export default function LogoPropertiesPanel({
   };
 
   // Save image to localStorage
-  const saveImageToStorage = (src: string, type: string) => {
+  const saveImageToStorage = (src: string, type: string, publicId?: string) => {
     try {
       // Check if image already exists
       const exists = savedImages.some(img => img.src === src);
       if (exists) return;
 
-      const newSavedImages = [...savedImages, { src, type }];
+      const newSavedImages = [...savedImages, { src, type, publicId }];
       setSavedImages(newSavedImages);
       localStorage.setItem('savedLogos', JSON.stringify(newSavedImages));
     } catch (error) {
@@ -172,27 +173,89 @@ export default function LogoPropertiesPanel({
     }
   };
 
+  // Validate file before upload
+  const validateFile = (file: File): { isValid: boolean; error?: string } => {
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      return { isValid: false, error: 'Please select an image file' };
+    }
+
+    // Check file size (5MB limit for logos)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return {
+        isValid: false,
+        error: 'Image size must be less than 5MB',
+      };
+    }
+
+    // Check for supported formats
+    const supportedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+    ];
+
+    if (!supportedTypes.includes(file.type)) {
+      return {
+        isValid: false,
+        error: 'Supported formats: JPG, PNG, GIF, WebP, SVG',
+      };
+    }
+
+    return { isValid: true };
+  };
+
   // Handle file upload to Cloudinary via our backend
   const uploadToCloudinary = async (file: File) => {
+    // Validate file first
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.error);
+      return;
+    }
+
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append('logo', file);
 
     try {
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      // Get auth token
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'multipart/form-data',
+      };
+
+      // Add auth header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await axios.post(
         `${apiConfig.url}/upload/logo`,
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
+          headers,
+          timeout: 60000, // 60 second timeout
+          onUploadProgress: progressEvent => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              console.log(`Upload progress: ${percentCompleted}%`);
+            }
           },
         }
       );
 
-      const { url } = response.data;
+      const { url, publicId } = response.data;
 
       // Save to localStorage
-      saveImageToStorage(url, 'uploaded');
+      saveImageToStorage(url, 'uploaded', publicId);
 
       // Update Redux state
       dispatch(
@@ -201,6 +264,7 @@ export default function LogoPropertiesPanel({
           type: 'uploaded',
           alignment: logoAlignment,
           size: logoSize,
+          publicId: publicId,
         })
       );
 
@@ -208,32 +272,49 @@ export default function LogoPropertiesPanel({
 
       // Switch to My Images tab
       setSelectedTab(1);
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      toast.error('Failed to upload logo');
+    } catch (error: any) {
+      console.error('❌ Logo upload failed:', error);
+
+      let errorMessage = 'Failed to upload logo';
+
+      if (error.response?.status === 400) {
+        errorMessage =
+          error.response.data?.message || 'Invalid file or request';
+      } else if (error.response?.status === 413) {
+        errorMessage = 'File is too large. Maximum size is 5MB';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication required. Please log in again';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. Check your permissions';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Upload timeout. Please try with a smaller file';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Handle file upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check if file is an image
-    if (!file.type.match('image.*')) {
-      toast.error('Please upload an image file');
-      return;
-    }
-
     uploadToCloudinary(file);
+
+    // Reset input
+    e.target.value = '';
   };
 
   // Handle URL input
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!logoUrl) return;
+    if (!logoUrl.trim()) {
+      toast.error('Please enter a valid image URL');
+      return;
+    }
 
     try {
       // Verify if image URL is valid by trying to load it
@@ -260,7 +341,9 @@ export default function LogoPropertiesPanel({
       };
 
       img.onerror = () => {
-        toast.error('Unable to load image from this URL');
+        toast.error(
+          'Unable to load image from this URL. Please check the URL and try again.'
+        );
       };
 
       // Start loading the image
@@ -273,49 +356,54 @@ export default function LogoPropertiesPanel({
   // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files?.[0];
+    const files = e.dataTransfer.files;
+    const file = files?.[0];
     if (!file) return;
-
-    // Check if file is an image
-    if (!file.type.match('image.*')) {
-      toast.error('Please upload an image file');
-      return;
-    }
 
     uploadToCloudinary(file);
   };
 
   // Trigger file input click
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   // Handle logo removal
   const handleRemoveLogo = () => {
-    // Update Redux
     dispatch(removeLogo());
     toast.success('Logo removed');
   };
 
   // Handle selecting a saved image
-  const handleSelectSavedImage = (src: string) => {
+  const handleSelectSavedImage = (
+    src: string,
+    type: string,
+    publicId?: string
+  ) => {
     dispatch(
       updateLogo({
         src,
-        type: 'url',
+        type: type as 'uploaded' | 'url',
         alignment: logoAlignment,
         size: logoSize,
+        publicId,
       })
     );
     toast.success('Logo selected');
@@ -562,6 +650,7 @@ export default function LogoPropertiesPanel({
                         className='hidden'
                         accept='image/*'
                         onChange={handleFileChange}
+                        disabled={isUploading}
                       />
                       <motion.button
                         whileHover={{ scale: 1.05 }}
@@ -582,6 +671,9 @@ export default function LogoPropertiesPanel({
                       <p className='text-xs text-gray-400'>
                         OR DRAG AND DROP HERE
                       </p>
+                      <p className='text-xs text-gray-500 mt-2'>
+                        Supported: JPG, PNG, GIF, WebP, SVG (Max 5MB)
+                      </p>
                     </div>
                   )}
 
@@ -593,7 +685,13 @@ export default function LogoPropertiesPanel({
                             <SavedImage
                               key={index}
                               src={image.src}
-                              onSelect={() => handleSelectSavedImage(image.src)}
+                              onSelect={() =>
+                                handleSelectSavedImage(
+                                  image.src,
+                                  image.type,
+                                  image.publicId
+                                )
+                              }
                               onDelete={() => handleDeleteSavedImage(image.src)}
                               isSelected={logo?.src === image.src}
                             />
@@ -624,6 +722,7 @@ export default function LogoPropertiesPanel({
                             onChange={e => setLogoUrl(e.target.value)}
                             className='flex-1 px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-l-md focus:outline-none focus:ring-1 focus:ring-blue-500'
                             placeholder='https://example.com/logo.png'
+                            required
                           />
                           <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -654,7 +753,7 @@ export default function LogoPropertiesPanel({
                 </h4>
 
                 <div
-                  className='relative my-6 mx-2 h-2 bg-gray-700 rounded-full'
+                  className='relative my-6 mx-2 h-2 bg-gray-700 rounded-full cursor-pointer'
                   ref={sliderTrackRef}
                   onMouseDown={handleSliderMouseDown}
                 >

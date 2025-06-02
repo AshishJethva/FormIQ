@@ -1,4 +1,4 @@
-// src/models/Submission.ts - Enhanced Submission Model with File Support
+// src/models/Submission.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 interface ISubmission extends Document {
@@ -73,7 +73,7 @@ const submissionSchema = new Schema<ISubmission>(
       type: Schema.Types.Mixed,
       default: {},
     },
-    // ✅ NEW: Array to store file upload information
+    // Array to store file upload information
     files: {
       type: [
         {

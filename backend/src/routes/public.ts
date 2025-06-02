@@ -95,7 +95,7 @@ router.get(
       publishedAt: form.publishedAt,
     };
 
-    console.log(`✅ Successfully retrieved public form:`, {
+    console.log(`Successfully retrieved public form:`, {
       id: form.id,
       title: form.title,
       pagesCount: publicFormData.pages.length,
@@ -162,7 +162,7 @@ router.post(
       throw new ApiError('Form has no fields to submit', 400);
     }
 
-    // ✅ Basic validation of required fields
+    // Basic validation of required fields
     const requiredFields = [];
     form.pages?.forEach((page: any) => {
       page.fields?.forEach((field: any) => {
@@ -190,23 +190,11 @@ router.post(
       await Form.findByIdAndUpdate(id, { $inc: { submissions: 1 } });
       console.log(`📊 Incremented submission count for form: ${id}`);
 
-      // TODO: Save submission data to your Submission model
-      // const submission = await Submission.create({
-      //   formId: form._id,
-      //   data: submissionData,
-      //   submittedAt: new Date(),
-      //   ipAddress: req.ip,
-      //   userAgent: req.get('User-Agent'),
-      // });
-
-      console.log(`✅ Form submission successful: ${id}`);
-
       res.status(200).json({
         success: true,
         message:
           form.settings?.thankyouMessage || 'Thank you for your submission!',
         submittedAt: new Date(),
-        // submissionId: submission._id,
       });
     } catch (error) {
       throw new ApiError('Failed to process form submission', 500);

@@ -1,4 +1,4 @@
-// server/routes/uploadRoutes.ts
+// src/routes/upload.ts
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
@@ -23,17 +23,17 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure storage
-const storage = new CloudinaryStorage({
+// Configure storage for logo uploads specifically
+const logoStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'form-logos', // The folder in Cloudinary where images will be stored
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'svg'], // Allowed file formats
+    folder: 'form-logos', // The folder in Cloudinary where logos will be stored
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'], // Allowed file formats
     transformation: [{ width: 1000, crop: 'limit' }], // Optional transformations
   } as Options['params'],
 });
 
-// Configure multer for memory storage
+// Configure multer for memory storage (for form files)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -53,6 +53,46 @@ const upload = multer({
     } else {
       cb(null, true);
     }
+  },
+});
+
+// Configure multer for logo uploads specifically
+const logoUpload = multer({
+  storage: logoStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max for logos
+  },
+  fileFilter: (req, file, cb) => {
+    console.log('🔍 Logo file filter:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+
+    // Check if it's an image
+    if (!file.mimetype.startsWith('image/')) {
+      console.log('❌ Invalid file type:', file.mimetype);
+      return cb(new Error('Only image files are allowed for logos'));
+    }
+
+    // Check allowed formats
+    const allowedFormats = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+    ];
+
+    if (!allowedFormats.includes(file.mimetype)) {
+      console.log('❌ Unsupported format:', file.mimetype);
+      return cb(new Error('Supported formats: JPG, PNG, GIF, WebP, SVG'));
+    }
+
+    console.log('✅ Logo file validation passed');
+    cb(null, true);
   },
 });
 
@@ -175,27 +215,70 @@ router.post(
   })
 );
 
-// Route to handle logo uploads
-router.post('/logo', upload.single('logo'), (req: Request, res: Response) => {
-  try {
-    // multer-storage-cloudinary automatically uploads to Cloudinary
-    // The file information is available in req.file
-    if (!req.file) {
-      res.status(400).json({ error: 'No file uploaded' });
-      return;
-    }
+// @desc    Upload logo specifically
+// @route   POST /api/upload/logo
+// @access  Public (or Protected - add middleware if needed)
+router.post(
+  '/logo',
+  logoUpload.single('logo'),
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      console.log('📎 Logo upload request received:', {
+        hasFile: !!req.file,
+        fieldname: req.file?.fieldname,
+        originalname: req.file?.originalname,
+        mimetype: req.file?.mimetype,
+        size: req.file?.size,
+      });
 
-    // Return the Cloudinary URL and other info
-    res.status(200).json({
-      url: req.file.path, // This is the URL of the uploaded image
-      publicId: req.file.filename, // Cloudinary public ID
-      message: 'Logo uploaded successfully',
-    });
-  } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
-    res.status(500).json({ error: 'Failed to upload image' });
-  }
-});
+      // Check if file was uploaded
+      if (!req.file) {
+        console.log('❌ No file uploaded');
+        res.status(400).json({
+          success: false,
+          error: 'No logo file uploaded',
+        });
+        return;
+      }
+
+      // Validate file size
+      if (req.file.size > 5 * 1024 * 1024) {
+        console.log('❌ File too large:', req.file.size);
+        res.status(400).json({
+          success: false,
+          error: 'Logo file size must be less than 5MB',
+        });
+        return;
+      }
+
+      console.log('✅ Logo uploaded successfully:', {
+        url: req.file.path,
+        publicId: req.file.filename,
+        size: req.file.size,
+      });
+
+      // Return the Cloudinary URL and other info
+      res.status(200).json({
+        success: true,
+        url: req.file.path, // This is the URL of the uploaded image
+        publicId: req.file.filename, // Cloudinary public ID
+        message: 'Logo uploaded successfully',
+        data: {
+          originalName: req.file.originalname,
+          fileName: req.file.filename,
+          url: req.file.path,
+          publicId: req.file.filename,
+          size: req.file.size,
+          mimeType: req.file.mimetype,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error('❌ Logo upload error:', error);
+      next(error);
+    }
+  })
+);
 
 // @desc    Upload image with specific validation
 // @route   POST /api/upload/form/:formId/field/:fieldId/image
@@ -296,26 +379,36 @@ router.delete(
   })
 );
 
-// Error handling middleware for multer errors
 router.use(
   (error: any, req: Request, res: Response, next: NextFunction): void => {
+    console.error('🚨 Upload route error:', {
+      message: error.message,
+      code: error.code,
+      field: error.field,
+      stack: error.stack,
+    });
+
     if (error instanceof multer.MulterError) {
       if (error.code === 'LIMIT_FILE_SIZE') {
         res.status(400).json({
           success: false,
-          message: 'File too large. Maximum size is 25MB.',
+          message:
+            'File too large. Maximum size is 25MB for files, 5MB for logos.',
+          error: 'FILE_TOO_LARGE',
         });
         return;
       } else if (error.code === 'LIMIT_FILE_COUNT') {
         res.status(400).json({
           success: false,
           message: 'Too many files. Maximum is 10 files.',
+          error: 'TOO_MANY_FILES',
         });
         return;
       } else if (error.code === 'LIMIT_UNEXPECTED_FILE') {
         res.status(400).json({
           success: false,
           message: 'Unexpected file field.',
+          error: 'UNEXPECTED_FILE',
         });
         return;
       }
@@ -325,6 +418,7 @@ router.use(
       res.status(400).json({
         success: false,
         message: error.message,
+        error: 'UPLOAD_ERROR',
       });
       return;
     }

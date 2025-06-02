@@ -187,8 +187,8 @@ const FormSubmissionsPage: React.FC = () => {
         setFieldLabelsMap(labelsMap);
         console.log('✅ Form structure fetched and labels mapped');
       }
-    } catch (error: any) {
-      console.error('❌ Error fetching form structure:', error);
+    } catch {
+      // console.error('❌ Error fetching form structure:', error);
     }
   }, [formId]);
 
@@ -196,7 +196,7 @@ const FormSubmissionsPage: React.FC = () => {
   const fetchSubmissions = useCallback(
     async (page = 1, limit = 20) => {
       if (!formId) {
-        console.error('❌ No formId provided');
+        // console.error('❌ No formId provided');
         setLoading(false);
         return;
       }
@@ -265,7 +265,7 @@ const FormSubmissionsPage: React.FC = () => {
           );
         }
       } catch (error: any) {
-        console.error('❌ Error fetching submissions:', error);
+        // console.error('❌ Error fetching submissions:', error);
         toast.error(error.message || 'Failed to fetch submissions');
         setSubmissions([]);
       } finally {
@@ -296,10 +296,9 @@ const FormSubmissionsPage: React.FC = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast.success('CSV file downloaded successfully');
       console.log('✅ CSV download completed');
     } catch (error: any) {
-      console.error('❌ Error downloading CSV:', error);
+      // console.error('❌ Error downloading CSV:', error);
       toast.error(error.message || 'Failed to download CSV');
     } finally {
       setDownloadingCsv(false);
@@ -335,7 +334,7 @@ const FormSubmissionsPage: React.FC = () => {
       toast.success(`Submission marked as ${!isRead ? 'read' : 'unread'}`);
       console.log('✅ Read status updated successfully');
     } catch (error: any) {
-      console.error('❌ Error updating read status:', error);
+      // console.error('❌ Error updating read status:', error);
       setSubmissions(prev =>
         prev.map(sub =>
           sub.id === submissionId ? { ...sub, isRead: isRead } : sub
@@ -371,7 +370,7 @@ const FormSubmissionsPage: React.FC = () => {
       toast.success('Submission deleted successfully');
       console.log('✅ Submission deleted successfully');
     } catch (error: any) {
-      console.error('❌ Error deleting submission:', error);
+      // console.error('❌ Error deleting submission:', error);
       toast.error(error.message || 'Failed to delete submission');
     } finally {
       setDeleting(false);
@@ -452,7 +451,7 @@ const FormSubmissionsPage: React.FC = () => {
       // toast.success('File deleted successfully');
       console.log('✅ File deleted successfully');
     } catch (error: any) {
-      console.error('❌ Error deleting file:', error);
+      // console.error('❌ Error deleting file:', error);
       toast.error(error.message || 'Failed to delete file');
       throw error; // Re-throw for FileManager error handling
     }
@@ -484,8 +483,8 @@ const FormSubmissionsPage: React.FC = () => {
           );
         });
       }
-    } catch (error: any) {
-      console.error('❌ Error viewing submission:', error);
+    } catch {
+      // console.error('❌ Error viewing submission:', error);
       toast.error('Failed to view submission details');
     }
   };
@@ -666,7 +665,6 @@ const FormSubmissionsPage: React.FC = () => {
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                toast.success('File downloaded successfully');
               } catch (error) {
                 toast.error('Failed to download file');
                 throw error;

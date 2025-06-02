@@ -664,7 +664,6 @@ export const downloadFileEnhanced = async (
         window.URL.revokeObjectURL(downloadBlobUrl);
       }, 100);
 
-      console.log('✅ File downloaded successfully via authenticated fetch');
       return { success: true, method: 'authenticated-fetch' };
     } catch (fetchError) {
       console.warn('⚠️ Authenticated fetch failed:', fetchError);

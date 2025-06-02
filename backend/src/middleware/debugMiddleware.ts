@@ -95,7 +95,7 @@ export const debugFormSubmission = (
         error: typeof data === 'string' ? data : JSON.stringify(data),
       });
     } else {
-      console.log('✅ FORM SUBMISSION SUCCESS');
+      console.log('FORM SUBMISSION SUCCESS');
     }
 
     return originalSend.call(this, data);
@@ -147,7 +147,7 @@ export const validateFormSubmissionRequest = (
     });
   }
 
-  console.log('✅ Request validation passed');
+  console.log('Request validation passed');
   next();
 };
 

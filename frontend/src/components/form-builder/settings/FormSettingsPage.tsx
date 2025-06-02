@@ -44,6 +44,8 @@ export default function FormSettingsPage() {
     'Thank you for your submission!'
   );
   const [isFormEnabled, setIsFormEnabled] = useState(true);
+
+  // DEFAULT TO TRUE - Multiple Submissions Controls
   const [allowMultipleSubmissions, setAllowMultipleSubmissions] =
     useState(true);
   const [allowMultipleEmailSubmissions, setAllowMultipleEmailSubmissions] =
@@ -63,11 +65,15 @@ export default function FormSettingsPage() {
     enableToast: false,
   });
 
+  // Initialize with proper defaults and ensure both settings are ON by default
   useEffect(() => {
     if (form && form.settings) {
       console.log('📄 Form data updated:', {
         title: form.title,
         isEnabled: form.settings?.isEnabled,
+        allowMultipleSubmissions: form.settings?.allowMultipleSubmissions,
+        allowMultipleEmailSubmissions:
+          form.settings?.allowMultipleEmailSubmissions,
         settings: form.settings,
       });
 
@@ -79,25 +85,52 @@ export default function FormSettingsPage() {
       setIsFormEnabled(
         form.settings?.isEnabled !== undefined ? form.settings.isEnabled : true
       );
-      setAllowMultipleSubmissions(
+
+      // Default to TRUE if not explicitly set
+      const multipleSubmissions =
         form.settings?.allowMultipleSubmissions !== undefined
           ? form.settings.allowMultipleSubmissions
-          : true
-      );
-      setAllowMultipleEmailSubmissions(
+          : true; // Default to true
+
+      const multipleEmailSubmissions =
         form.settings?.allowMultipleEmailSubmissions !== undefined
           ? form.settings.allowMultipleEmailSubmissions
-          : true
-      );
+          : true; // Default to true
 
-      const enabledStatus =
-        form.settings?.isEnabled !== undefined ? form.settings.isEnabled : true;
+      setAllowMultipleSubmissions(multipleSubmissions);
+      setAllowMultipleEmailSubmissions(multipleEmailSubmissions);
 
-      console.log('🔄 Setting form enabled status:', enabledStatus);
-      setIsFormEnabled(enabledStatus);
+      console.log('🔄 Setting submission controls:', {
+        allowMultipleSubmissions: multipleSubmissions,
+        allowMultipleEmailSubmissions: multipleEmailSubmissions,
+      });
+
+      // If these settings are undefined in the backend, update them to true
+      if (
+        form.settings?.allowMultipleSubmissions === undefined ||
+        form.settings?.allowMultipleEmailSubmissions === undefined
+      ) {
+        console.log(
+          '🔧 Updating undefined submission settings to default true values'
+        );
+
+        const settingsUpdate: Partial<FormSettings> = {};
+
+        if (form.settings?.allowMultipleSubmissions === undefined) {
+          settingsUpdate.allowMultipleSubmissions = true;
+        }
+        if (form.settings?.allowMultipleEmailSubmissions === undefined) {
+          settingsUpdate.allowMultipleEmailSubmissions = true;
+        }
+
+        if (Object.keys(settingsUpdate).length > 0) {
+          dispatch(updateFormSettings(settingsUpdate));
+        }
+      }
+
       setIsInitialized(true);
     }
-  }, [form, form?.settings?.isEnabled, form?.settings]); // Add dependency on isEnabled
+  }, [form, form?.settings?.isEnabled, form?.settings, dispatch]);
 
   const handleMultipleSubmissionsToggle = () => {
     const newValue = !allowMultipleSubmissions;
@@ -122,8 +155,6 @@ export default function FormSettingsPage() {
     }
 
     dispatch(updateFormSettings(settingsUpdate));
-
-    console.log('✅ Multiple submissions setting updated:', settingsUpdate);
   };
 
   const handleMultipleEmailSubmissionsToggle = () => {
@@ -148,8 +179,6 @@ export default function FormSettingsPage() {
         allowMultipleEmailSubmissions: newValue,
       })
     );
-
-    console.log('✅ Multiple email submissions setting updated:', newValue);
   };
 
   // Manual save function for title
@@ -221,10 +250,19 @@ export default function FormSettingsPage() {
         throw new Error('Authentication token not found');
       }
 
-      // ✅ FIXED: Properly merge settings
+      // Properly merge settings and ensure defaults
       const updatedSettings = {
         ...form?.settings,
         isEnabled: enabled,
+        // Ensure these are preserved as true if not explicitly set
+        allowMultipleSubmissions:
+          form?.settings?.allowMultipleSubmissions !== undefined
+            ? form.settings.allowMultipleSubmissions
+            : true,
+        allowMultipleEmailSubmissions:
+          form?.settings?.allowMultipleEmailSubmissions !== undefined
+            ? form.settings.allowMultipleEmailSubmissions
+            : true,
       };
 
       // Update form status in backend
@@ -502,7 +540,7 @@ export default function FormSettingsPage() {
             )}
           </motion.div>
 
-          {/* ✅ NEW: Submission Controls */}
+          {/* Submission Controls with Better UX and Default ON State */}
           <motion.div
             className='bg-white rounded-lg p-6'
             initial={{ opacity: 0, y: 20 }}
@@ -515,24 +553,27 @@ export default function FormSettingsPage() {
                 Submission Controls
               </Label>
               <p className='text-sm text-gray-600 mt-1'>
-                Control how users can submit your form
+                Control how users can submit your form (both enabled by default
+                for maximum flexibility)
               </p>
             </div>
 
             <div className='space-y-4'>
-              {/* Allow Multiple Submissions (IP-based) */}
+              {/* Allow Multiple Submissions (IP-based) - DEFAULT ON */}
               <div
                 className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
                   allowMultipleSubmissions
                     ? 'border-green-200 bg-green-50 hover:border-green-300'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    : 'border-orange-200 bg-orange-50 hover:border-orange-300'
                 }`}
                 onClick={handleMultipleSubmissionsToggle}
               >
                 <div className='flex items-center'>
                   <div
                     className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
-                      allowMultipleSubmissions ? 'bg-green-500' : 'bg-gray-400'
+                      allowMultipleSubmissions
+                        ? 'bg-green-500'
+                        : 'bg-orange-500'
                     }`}
                   >
                     {allowMultipleSubmissions ? (
@@ -545,27 +586,36 @@ export default function FormSettingsPage() {
                     <h4 className='font-medium text-gray-900 flex items-center'>
                       <Users className='w-4 h-4 mr-2' />
                       Allow Multiple Submissions
+                      <span className='ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full'>
+                        RECOMMENDED
+                      </span>
                     </h4>
                     <p className='text-sm text-gray-600'>
                       {allowMultipleSubmissions
-                        ? 'Users can submit multiple times from the same device/IP'
-                        : 'Users can only submit once per device/IP (24 hours)'}
+                        ? 'Users can submit multiple times from the same device/IP - provides maximum flexibility'
+                        : 'Users limited to one submission per device/IP (24 hours) - may reduce submissions'}
                     </p>
                   </div>
                 </div>
-                <div className='text-sm font-mono text-gray-500'>
+                <div
+                  className={`text-sm font-mono px-3 py-1 rounded-full ${
+                    allowMultipleSubmissions
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}
+                >
                   {allowMultipleSubmissions ? 'ON' : 'OFF'}
                 </div>
               </div>
 
-              {/* Allow Multiple Email Submissions */}
+              {/* Allow Multiple Email Submissions - DEFAULT ON */}
               <div
                 className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
                   !allowMultipleSubmissions
                     ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-100'
                     : allowMultipleEmailSubmissions
                     ? 'border-blue-200 bg-blue-50 hover:border-blue-300'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    : 'border-orange-200 bg-orange-50 hover:border-orange-300'
                 }`}
                 onClick={
                   allowMultipleSubmissions
@@ -580,7 +630,7 @@ export default function FormSettingsPage() {
                         ? 'bg-gray-300'
                         : allowMultipleEmailSubmissions
                         ? 'bg-blue-500'
-                        : 'bg-gray-400'
+                        : 'bg-orange-500'
                     }`}
                   >
                     {allowMultipleEmailSubmissions &&
@@ -594,17 +644,30 @@ export default function FormSettingsPage() {
                     <h4 className='font-medium text-gray-900 flex items-center'>
                       <Mail className='w-4 h-4 mr-2' />
                       Allow Multiple Submissions from Same Email
+                      {allowMultipleSubmissions && (
+                        <span className='ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full'>
+                          FLEXIBLE
+                        </span>
+                      )}
                     </h4>
                     <p className='text-sm text-gray-600'>
                       {!allowMultipleSubmissions
-                        ? 'Enable multiple submissions first to use this option'
+                        ? 'Enable "Allow Multiple Submissions" first to use this option'
                         : allowMultipleEmailSubmissions
-                        ? 'Same email address can submit multiple times'
-                        : 'Each email address can only submit once (24 hours)'}
+                        ? 'Same email address can submit multiple times - ideal for forms requiring updates'
+                        : 'Each email address limited to one submission (24 hours) - may limit legitimate use cases'}
                     </p>
                   </div>
                 </div>
-                <div className='text-sm font-mono text-gray-500'>
+                <div
+                  className={`text-sm font-mono px-3 py-1 rounded-full ${
+                    !allowMultipleSubmissions
+                      ? 'bg-gray-100 text-gray-500'
+                      : allowMultipleEmailSubmissions
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}
+                >
                   {!allowMultipleSubmissions
                     ? 'DISABLED'
                     : allowMultipleEmailSubmissions
@@ -613,33 +676,96 @@ export default function FormSettingsPage() {
                 </div>
               </div>
 
-              {/* Status Info */}
-              <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+              {/* Status Info with Better Explanation */}
+              <div
+                className={`border rounded-lg p-4 ${
+                  allowMultipleSubmissions && allowMultipleEmailSubmissions
+                    ? 'bg-green-50 border-green-200'
+                    : allowMultipleSubmissions
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-orange-50 border-orange-200'
+                }`}
+              >
                 <div className='flex items-start'>
-                  <Eye className='w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0' />
-                  <div className='text-sm text-blue-800'>
-                    <p className='font-medium mb-1'>Current Configuration:</p>
-                    <ul className='space-y-1'>
-                      <li>
-                        <strong>Multiple Submissions:</strong>{' '}
-                        {allowMultipleSubmissions ? 'Enabled' : 'Disabled'}
-                      </li>
-                      <li>
-                        <strong>Same Email:</strong>{' '}
-                        {allowMultipleEmailSubmissions &&
-                        allowMultipleSubmissions
-                          ? 'Enabled'
-                          : 'Disabled'}
-                      </li>
-                      <li>
-                        <strong>Result:</strong>{' '}
-                        {!allowMultipleSubmissions
-                          ? 'One submission per device/IP'
-                          : !allowMultipleEmailSubmissions
-                          ? 'Multiple submissions allowed, but each email only once'
-                          : 'Unlimited submissions allowed'}
-                      </li>
-                    </ul>
+                  <Eye
+                    className={`w-5 h-5 mr-2 mt-0.5 flex-shrink-0 ${
+                      allowMultipleSubmissions && allowMultipleEmailSubmissions
+                        ? 'text-green-600'
+                        : allowMultipleSubmissions
+                        ? 'text-blue-600'
+                        : 'text-orange-600'
+                    }`}
+                  />
+                  <div
+                    className={`text-sm ${
+                      allowMultipleSubmissions && allowMultipleEmailSubmissions
+                        ? 'text-green-800'
+                        : allowMultipleSubmissions
+                        ? 'text-blue-800'
+                        : 'text-orange-800'
+                    }`}
+                  >
+                    <p className='font-medium mb-2'>
+                      Current Configuration Status:
+                    </p>
+                    <div className='space-y-2'>
+                      <div className='flex items-center'>
+                        <div
+                          className={`w-2 h-2 rounded-full mr-2 ${
+                            allowMultipleSubmissions
+                              ? 'bg-green-500'
+                              : 'bg-orange-500'
+                          }`}
+                        ></div>
+                        <span className='font-medium'>
+                          Multiple Submissions:
+                        </span>
+                        <span className='ml-1'>
+                          {allowMultipleSubmissions ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      <div className='flex items-center'>
+                        <div
+                          className={`w-2 h-2 rounded-full mr-2 ${
+                            allowMultipleEmailSubmissions &&
+                            allowMultipleSubmissions
+                              ? 'bg-green-500'
+                              : allowMultipleSubmissions
+                              ? 'bg-orange-500'
+                              : 'bg-gray-400'
+                          }`}
+                        ></div>
+                        <span className='font-medium'>
+                          Same Email Multiple Times:
+                        </span>
+                        <span className='ml-1'>
+                          {allowMultipleEmailSubmissions &&
+                          allowMultipleSubmissions
+                            ? 'Enabled'
+                            : allowMultipleSubmissions
+                            ? 'Disabled'
+                            : 'Disabled (Parent setting off)'}
+                        </span>
+                      </div>
+                      <div className='mt-3 p-3 bg-white bg-opacity-50 rounded border-l-4 border-current'>
+                        <p className='font-medium text-sm'>
+                          Result:{' '}
+                          {!allowMultipleSubmissions
+                            ? '🔒 Strict mode - One submission per device/IP address (24 hours)'
+                            : !allowMultipleEmailSubmissions
+                            ? 'Flexible mode - Multiple submissions allowed, but each email only once (24 hours)'
+                            : 'Maximum flexibility - Unlimited submissions allowed from any user'}
+                        </p>
+                        <p className='text-xs mt-1 opacity-75'>
+                          {allowMultipleSubmissions &&
+                          allowMultipleEmailSubmissions
+                            ? 'Best for: Feedback forms, surveys, applications requiring updates, general contact forms'
+                            : allowMultipleSubmissions
+                            ? 'Best for: Registration forms, newsletter signups, one-per-person submissions'
+                            : 'Best for: Voting, contests, limited-entry forms, preventing spam'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

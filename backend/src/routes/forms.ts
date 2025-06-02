@@ -30,7 +30,7 @@ router.get(
 
     console.log('🌐 Public form request:', { formId });
 
-    // ✅ Always fetch fresh data from database (no caching)
+    // Always fetch fresh data from database (no caching)
     const form = await Form.findOne({
       _id: formId,
       isPublished: true,
@@ -69,7 +69,7 @@ router.get(
           form.settings?.allowMultipleSubmissions !== false,
         collectIpAddress: form.settings?.collectIpAddress !== false,
       },
-      updatedAt: form.updatedAt, // ✅ Include update timestamp for debugging
+      updatedAt: form.updatedAt, 
       publishedAt: form.publishedAt,
     };
 
@@ -314,7 +314,33 @@ router.get(
           ? form.settings.collectIpAddress
           : true,
       enableCaptcha: form.settings?.enableCaptcha || false,
+      requireEmailVerification:
+        form.settings?.requireEmailVerification || false,
+      sendSubmissionEmails:
+        form.settings?.sendSubmissionEmails !== undefined
+          ? form.settings.sendSubmissionEmails
+          : true,
+      submissionLimit: form.settings?.submissionLimit || null,
+      submissionDeadline: form.settings?.submissionDeadline || null,
     };
+
+    if (
+      form.settings?.allowMultipleSubmissions === undefined ||
+      form.settings?.allowMultipleEmailSubmissions === undefined ||
+      form.settings?.showLogo === undefined
+    ) {
+      console.log('🔧 Updating form with missing default settings');
+
+      await Form.findByIdAndUpdate(formId, {
+        $set: {
+          'settings.allowMultipleSubmissions':
+            settings.allowMultipleSubmissions,
+          'settings.allowMultipleEmailSubmissions':
+            settings.allowMultipleEmailSubmissions,
+          'settings.showLogo': settings.showLogo,
+        },
+      });
+    }
 
     // Ensure pages are properly structured
     let pages = form.pages || [];
@@ -434,8 +460,16 @@ router.post(
         defaultLabelAlignment: 'LEFT',
         thankyouMessage: 'Thank you for your submission!',
         defaultRequiredField: false,
-        showLogo: false,
+        showLogo: true,
         isEnabled: true,
+        allowMultipleSubmissions: true,
+        allowMultipleEmailSubmissions: true,
+        collectIpAddress: true,
+        enableCaptcha: false,
+        requireEmailVerification: false,
+        sendSubmissionEmails: true,
+        submissionLimit: null,
+        submissionDeadline: null,
       },
       lastSaved: new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -523,6 +557,40 @@ router.put(
       }
     }
 
+    if (req.body.settings) {
+      const currentSettings = form.settings || {};
+
+      // Merge with defaults to ensure no undefined values
+      const updatedSettings = {
+        submitButtonText: 'Submit',
+        defaultLabelAlignment: 'LEFT',
+        thankyouMessage: 'Thank you for your submission!',
+        defaultRequiredField: false,
+        showLogo: true,
+        isEnabled: true,
+        allowMultipleSubmissions: true,
+        allowMultipleEmailSubmissions: true,
+        collectIpAddress: true,
+        enableCaptcha: false,
+        requireEmailVerification: false,
+        sendSubmissionEmails: true,
+        submissionLimit: null,
+        submissionDeadline: null,
+        ...currentSettings, // Current values
+        ...req.body.settings, // New values from request
+      };
+
+      req.body.settings = updatedSettings;
+
+      console.log('🔧 Enhanced settings update:', {
+        allowMultipleSubmissions: updatedSettings.allowMultipleSubmissions,
+        allowMultipleEmailSubmissions:
+          updatedSettings.allowMultipleEmailSubmissions,
+        showLogo: updatedSettings.showLogo,
+        isEnabled: updatedSettings.isEnabled,
+      });
+    }
+
     // Update form fields with validation
     const allowedUpdates = [
       'title',
@@ -552,18 +620,20 @@ router.put(
     try {
       await form.save();
 
-      // ✅ NEW: Log published form updates
       if (wasPublished || form.isPublished) {
         console.log('🌐 PUBLISHED FORM UPDATED:', {
           id: form.id,
           title: form.title,
           pagesCount: form.pages?.length || 0,
           isEnabled: form.settings?.isEnabled,
+          allowMultipleSubmissions: form.settings?.allowMultipleSubmissions,
+          allowMultipleEmailSubmissions:
+            form.settings?.allowMultipleEmailSubmissions,
           updatedAt: form.updatedAt,
         });
       }
 
-      console.log('✅ Form updated successfully');
+      console.log('Form updated successfully');
     } catch (saveError) {
       throw new ApiError('Failed to save form', 500);
     }
@@ -1143,6 +1213,25 @@ router.post(
       throw new ApiError('Form not found', 404);
     }
 
+    // Ensure duplicated form has proper default settings
+    const enhancedSettings = {
+      submitButtonText: 'Submit',
+      defaultLabelAlignment: 'LEFT',
+      thankyouMessage: 'Thank you for your submission!',
+      defaultRequiredField: false,
+      showLogo: true,
+      isEnabled: true,
+      allowMultipleSubmissions: true,
+      allowMultipleEmailSubmissions: true,
+      collectIpAddress: true,
+      enableCaptcha: false,
+      requireEmailVerification: false,
+      sendSubmissionEmails: true,
+      submissionLimit: null,
+      submissionDeadline: null,
+      ...(originalForm.settings || {}), // Preserve original settings
+    };
+
     // Create a new form with copied data
     const duplicatedForm = new Form({
       title: `${originalForm.title} (Copy)`,
@@ -1161,8 +1250,8 @@ router.post(
       currentPageIndex: 0,
       propertiesPanelOpen: false,
       logo: originalForm.logo,
-      settings: originalForm.settings,
-      isPublished: false, // New forms start as drafts
+      settings: enhancedSettings,
+      isPublished: false,
       submissions: 0,
       labels: originalForm.labels,
       isFavorite: false,

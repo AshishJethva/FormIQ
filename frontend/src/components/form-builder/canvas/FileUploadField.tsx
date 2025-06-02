@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { downloadFileEnhanced, uploadFormFile, uploadFormImage } from '@/services/fileUploadService';
+import { uploadFormFile, uploadFormImage } from '@/services/fileUploadService';
 import FileManager from '@/components/form-builder/FileManager';
 
 interface FileUploadFieldProps {
@@ -49,6 +49,11 @@ export default function FileUploadField({
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [downloadingFileId, setDownloadingFileId] = useState<string | null>(
+    null
+  );
+  const downloadInProgress = useRef<Set<string>>(new Set());
 
   // Initialize uploadedFiles from value prop
   useEffect(() => {
@@ -174,14 +179,38 @@ export default function FileUploadField({
   };
 
   const handleDownloadFile = async (file: UploadedFile) => {
+    // Prevent duplicate downloads
+    if (downloadInProgress.current.has(file.publicId)) {
+      console.log('Download already in progress for:', file.originalName);
+      return;
+    }
+
     try {
-      await downloadFileEnhanced(file, {
-        addAuthHeaders: true, // Add if your files require authentication
-        useProxy: false, // Set to true if you have a proxy endpoint
-      });
-      toast.success('File downloaded successfully');
+      downloadInProgress.current.add(file.publicId);
+      setDownloadingFileId(file.publicId);
+
+      console.log('Starting download for:', file.originalName);
+
+      // SINGLE download method - direct link
+      const a = document.createElement('a');
+      a.href = file.url;
+      a.download = file.originalName || 'download';
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'none';
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to download file');
+      console.error('Download failed:', error);
+      toast.error('Download failed', {
+        description: `Failed to download ${file.originalName}`,
+        duration: 5000,
+      });
+    } finally {
+      downloadInProgress.current.delete(file.publicId);
+      setDownloadingFileId(null);
     }
   };
 
@@ -253,6 +282,7 @@ export default function FileUploadField({
             showActions={true}
             compact={true}
             readOnly={readOnly}
+            downloadingFileId={downloadingFileId}
           />
         </div>
       )}

@@ -1,4 +1,4 @@
-// Backend: src/routes/ai.ts - Enhanced with Logo Generation
+// Backend: src/routes/ai.ts
 import express from 'express';
 import Form from '../models/Form';
 import { protect } from '../middleware/protect';
@@ -14,7 +14,6 @@ const router = express.Router();
 // Initialize AI service
 const aiService = new AIFormGeneratorService();
 
-// ✅ Enhanced AI Form Generator endpoint with Logo Generation
 router.post(
   '/generate-form',
   protect,
@@ -24,7 +23,6 @@ router.post(
       const { prompt } = req.body;
       const userId = req.user.id;
 
-      // ✅ Enhanced validation
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({
           success: false,
@@ -54,7 +52,6 @@ router.post(
         timestamp: new Date().toISOString(),
       });
 
-      // ✅ Generate form using enhanced AI service (includes logo generation)
       const result = await aiService.generateForm(sanitizedPrompt, userId);
 
       if (!result.success) {
@@ -72,7 +69,7 @@ router.post(
 
       const formConfig = result.data;
 
-      console.log('✅ AI generation successful, creating form in database:', {
+      console.log('AI generation successful, creating form in database:', {
         title: formConfig.title,
         hasLogo: !!formConfig.logo,
         logoUrl: formConfig.logo?.src?.substring(0, 50) + '...',
@@ -83,14 +80,12 @@ router.post(
         ),
       });
 
-      // ✅ Create form in database with enhanced configuration
       const newForm = new Form({
         title: formConfig.title,
         description: formConfig.description || '',
         pages: formConfig.pages,
         settings: formConfig.settings,
 
-        // ✅ Logo configuration
         logo: formConfig.logo || null,
 
         // Form metadata
@@ -106,7 +101,6 @@ router.post(
         propertiesPanelOpen: false,
         selectedFieldId: null,
 
-        // ✅ AI generation metadata
         isAIGenerated: true,
         aiPrompt: sanitizedPrompt,
         aiModel: 'gemini-2.0-flash-exp',
@@ -123,7 +117,6 @@ router.post(
 
       const savedForm = await newForm.save();
 
-      // ✅ Enhanced success logging
       AILogger.logUsage(userId, 'FORM_GENERATION_SUCCESS', {
         formId: savedForm._id,
         fieldCount: savedForm.pages.reduce(
@@ -150,7 +143,6 @@ router.post(
           savedForm.settings?.allowMultipleEmailSubmissions,
       });
 
-      // ✅ Enhanced response with logo information
       res.status(201).json({
         success: true,
         message: 'Form generated successfully with logo',
@@ -161,7 +153,6 @@ router.post(
           pages: savedForm.pages,
           settings: savedForm.settings,
 
-          // ✅ Include logo in response
           logo: savedForm.logo,
 
           // Form metadata
@@ -184,7 +175,6 @@ router.post(
           ),
           generationTime: result.generationTime,
 
-          // ✅ Logo stats
           hasLogo: !!savedForm.logo,
           logoUrl: savedForm.logo?.src,
           logoSize: savedForm.logo?.size,
@@ -192,8 +182,6 @@ router.post(
         },
       });
     } catch (error: any) {
-      console.error('❌ AI Form Generation Route Error:', error);
-
       AILogger.logUsage(req.user?.id, 'FORM_GENERATION_ERROR', {
         error: error.message,
         stack: error.stack,
@@ -209,7 +197,6 @@ router.post(
   })
 );
 
-// ✅ Enhanced AI generation statistics including logo metrics
 router.get('/stats', protect, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -223,7 +210,6 @@ router.get('/stats', protect, async (req, res) => {
           aiForms: { $sum: { $cond: ['$isAIGenerated', 1, 0] } },
           manualForms: { $sum: { $cond: ['$isAIGenerated', 0, 1] } },
 
-          // ✅ Logo statistics
           aiFormsWithLogo: {
             $sum: {
               $cond: [
@@ -265,7 +251,6 @@ router.get('/stats', protect, async (req, res) => {
             },
           },
 
-          // ✅ Settings statistics
           aiFormsWithMultipleSubmissions: {
             $sum: {
               $cond: [
@@ -310,7 +295,6 @@ router.get('/stats', protect, async (req, res) => {
       aiFormsWithMultipleEmails: 0,
     };
 
-    // ✅ Calculate additional metrics
     const enhancedStats = {
       ...result,
       logoSuccessRate:
@@ -332,7 +316,6 @@ router.get('/stats', protect, async (req, res) => {
       data: enhancedStats,
     });
   } catch (error) {
-    console.error('❌ Stats Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch statistics',
@@ -340,7 +323,6 @@ router.get('/stats', protect, async (req, res) => {
   }
 });
 
-// ✅ Enhanced recent AI-generated forms with logo information
 router.get('/recent-forms', protect, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -357,7 +339,6 @@ router.get('/recent-forms', protect, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(limit);
 
-    // ✅ Enhance response with logo and settings info
     const enhancedForms = recentAIForms.map(form => ({
       _id: form._id,
       title: form.title,
@@ -366,13 +347,11 @@ router.get('/recent-forms', protect, async (req, res) => {
       aiPrompt: form.aiPrompt,
       aiGenerationMetadata: form.aiGenerationMetadata,
 
-      // ✅ Logo information
       hasLogo: !!form.logo,
       logoUrl: form.logo?.src,
       logoSize: form.logo?.size,
       logoAlignment: form.logo?.alignment,
 
-      // ✅ Settings information
       allowMultipleSubmissions: form.settings?.allowMultipleSubmissions,
       allowMultipleEmailSubmissions:
         form.settings?.allowMultipleEmailSubmissions,
@@ -384,7 +363,6 @@ router.get('/recent-forms', protect, async (req, res) => {
       data: enhancedForms,
     });
   } catch (error) {
-    console.error('❌ Recent Forms Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch recent forms',
@@ -392,7 +370,6 @@ router.get('/recent-forms', protect, async (req, res) => {
   }
 });
 
-// ✅ New endpoint: Regenerate logo for existing form
 router.post(
   '/regenerate-logo/:formId',
   protect,
@@ -469,7 +446,6 @@ router.post(
         },
       });
     } catch (error: any) {
-      console.error('❌ Logo regeneration error:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to regenerate logo',
@@ -480,36 +456,46 @@ router.post(
   })
 );
 
-// ✅ New endpoint: Get logo suggestions for a form type
-router.post('/logo-suggestions', protect, asyncHandler(async (req, res) => {
-  try {
-    const { formType, title, description } = req.body;
-    const userId = req.user.id;
+router.post(
+  '/logo-suggestions',
+  protect,
+  asyncHandler(async (req, res) => {
+    try {
+      const { formType, title, description } = req.body;
+      const userId = req.user.id;
 
-    if (!formType && !title) {
-      return res.status(400).json({
+      if (!formType && !title) {
+        return res.status(400).json({
+          success: false,
+          message: 'Form type or title is required',
+        });
+      }
+
+      // Generate basic logo suggestions based on form type and title
+      const suggestions = {
+        icons: ['📝', '📋', '📊', '📈', '💼', '🎯', '⚡', '🔥'],
+        colors: [
+          '#3B82F6',
+          '#10B981',
+          '#8B5CF6',
+          '#F59E0B',
+          '#EF4444',
+          '#06B6D4',
+        ],
+        styles: ['minimal', 'modern', 'classic', 'bold'],
+      };
+
+      res.json({
+        success: true,
+        data: suggestions,
+      });
+    } catch (error: any) {
+      res.status(500).json({
         success: false,
-        message: 'Form type or title is required',
+        message: 'Failed to get logo suggestions',
       });
     }
-
-    const suggestions = await aiService.getLogoSuggestions(
-      formType,
-      title,
-      description
-    );
-
-    res.json({
-      success: true,
-      data: suggestions,
-    });
-  } catch (error: any) {
-    console.error('❌ Logo suggestions error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get logo suggestions',
-    });
-  }
-}));
+  })
+);
 
 export default router;

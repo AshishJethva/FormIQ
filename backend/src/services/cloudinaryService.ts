@@ -114,9 +114,13 @@ export const uploadFormFile = async (
         },
         (error, result) => {
           if (error) {
-            console.error('Cloudinary upload error:', error);
             reject(error);
           } else {
+            console.log('✅ Cloudinary upload successful:', {
+              public_id: result?.public_id,
+              secure_url: result?.secure_url,
+              bytes: result?.bytes,
+            });
             resolve(result);
           }
         }
@@ -276,6 +280,81 @@ export const validateFile = (
   return { isValid: true };
 };
 
+/**
+ * Upload logo specifically with proper validation
+ * @param buffer - File buffer
+ * @param originalName - Original filename
+ * @param mimeType - File MIME type
+ * @returns Promise with upload result
+ */
+export const uploadLogo = async (
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string
+): Promise<FileUploadResult> => {
+  try {
+    // Validate it's an image
+    if (!mimeType.startsWith('image/')) {
+      throw new Error('Logo must be an image file');
+    }
+
+    // Create a unique filename for the logo
+    const timestamp = Date.now();
+    const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueFileName = `logo_${timestamp}_${sanitizedName}`;
+
+    console.log('📤 Uploading logo to Cloudinary:', {
+      fileName: uniqueFileName,
+      mimeType,
+      size: buffer.length,
+    });
+
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'form-logos',
+          resource_type: 'image',
+          public_id: uniqueFileName,
+          transformation: [
+            { width: 1000, height: 1000, crop: 'limit', quality: 'auto' },
+          ],
+          max_file_size: 5 * 1024 * 1024, // 5MB max for logos
+        },
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary logo upload error:', error);
+            reject(error);
+          } else {
+            console.log('✅ Logo upload successful:', {
+              public_id: result?.public_id,
+              secure_url: result?.secure_url,
+              bytes: result?.bytes,
+            });
+            resolve(result);
+          }
+        }
+      );
+
+      streamifier.createReadStream(buffer).pipe(uploadStream);
+    });
+
+    return {
+      originalName,
+      fileName: uploadResult.original_filename || uniqueFileName,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      size: uploadResult.bytes,
+      mimeType,
+      uploadedAt: new Date(),
+    };
+  } catch (error) {
+    console.error('Logo upload error:', error);
+    throw new Error(
+      `Failed to upload logo: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+};
+
 export default {
   uploadFormFile,
   uploadMultipleFiles,
@@ -285,4 +364,5 @@ export default {
   uploadBuffer,
   deleteImage,
   getImageUrl,
+  uploadLogo,
 };

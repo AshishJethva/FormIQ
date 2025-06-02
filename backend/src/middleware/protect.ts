@@ -1,3 +1,5 @@
+// src/middleware/protect.ts
+
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';

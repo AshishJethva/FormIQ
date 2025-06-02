@@ -1,5 +1,4 @@
 // src/services/formSubmission.ts
-
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
@@ -8,7 +7,7 @@ export interface SubmitFormData {
 }
 
 export interface FileData {
-  [fieldId: string]: any; // Can be single file object or array of file objects
+  [fieldId: string]: any;
 }
 
 export interface SubmissionResponse {
@@ -21,6 +20,157 @@ export interface SubmissionResponse {
   };
   message: string;
 }
+
+/**
+ * Enhanced error messages for better user experience
+ */
+export const getSubmissionErrorMessage = (
+  status: number,
+  responseMessage: string,
+  formTitle?: string
+) => {
+  switch (status) {
+    case 429:
+      // Check if it's a duplicate submission or rate limiting
+      if (
+        responseMessage.toLowerCase().includes('already submitted') ||
+        responseMessage.toLowerCase().includes('duplicate submission')
+      ) {
+        return {
+          title: 'Form Already Submitted',
+          description: formTitle
+            ? `You have already submitted "${formTitle}". If you need to make changes, please contact the form owner.`
+            : 'You have already submitted this form. If you need to make changes, please contact the form owner.',
+          type: 'warning' as const,
+        };
+      } else {
+        return {
+          title: 'Too Many Attempts',
+          description: 'Please wait a moment before submitting again.',
+          type: 'warning' as const,
+        };
+      }
+
+    case 400:
+      if (responseMessage.includes('Validation failed')) {
+        return {
+          title: 'Form Validation Error',
+          description: responseMessage.replace('Validation failed: ', ''),
+          type: 'error' as const,
+        };
+      } else if (responseMessage.includes('Invalid request format')) {
+        return {
+          title: 'Form Error',
+          description:
+            'The form data format is invalid. Please refresh the page and try again.',
+          type: 'error' as const,
+        };
+      } else {
+        return {
+          title: 'Submission Error',
+          description: responseMessage,
+          type: 'error' as const,
+        };
+      }
+
+    case 403:
+      const message = responseMessage.toLowerCase();
+
+      if (message.includes('disabled') || message.includes('deactivated')) {
+        return {
+          title: 'Form Disabled',
+          description:
+            'This form has been disabled by its owner and is no longer accepting submissions.',
+          type: 'warning' as const,
+          duration: 7000,
+          style: {
+            background: '#FEF3C7',
+            borderColor: '#F59E0B',
+            color: '#92400E',
+          },
+        };
+      } else if (
+        message.includes('deadline') ||
+        message.includes('expired') ||
+        message.includes('closed')
+      ) {
+        return {
+          title: 'Submission Period Ended',
+          description: 'The submission deadline for this form has passed.',
+          type: 'warning' as const,
+          duration: 7000,
+          style: {
+            background: '#FEF3C7',
+            borderColor: '#F59E0B',
+            color: '#92400E',
+          },
+        };
+      } else if (
+        message.includes('capacity') ||
+        message.includes('limit') ||
+        message.includes('maximum')
+      ) {
+        return {
+          title: 'Form at Capacity',
+          description:
+            'This form has reached its maximum number of submissions.',
+          type: 'warning' as const,
+          duration: 6000,
+          style: {
+            background: '#FEF3C7',
+            borderColor: '#F59E0B',
+            color: '#92400E',
+          },
+        };
+      } else {
+        // Default 403 message
+        return {
+          title: 'Form Temporarily Unavailable',
+          description:
+            'This form is not currently accepting new submissions. Please try again later.',
+          type: 'warning' as const,
+          duration: 6000,
+          style: {
+            background: '#FEF3C7',
+            borderColor: '#F59E0B',
+            color: '#92400E',
+          },
+        };
+      }
+
+    case 404:
+      return {
+        title: 'Form Not Found',
+        description:
+          'The form you are trying to submit could not be found. Please check the form link.',
+        type: 'error' as const,
+      };
+
+    case 413:
+      return {
+        title: 'Files Too Large',
+        description:
+          'Your uploaded files are too large. Please reduce file sizes and try again.',
+        type: 'warning' as const,
+      };
+
+    case 500:
+      return {
+        title: 'Server Error',
+        description:
+          'We encountered a server error. Please try again in a few moments.',
+        type: 'error' as const,
+      };
+
+    default:
+      return {
+        title: 'Submission Failed',
+        description:
+          responseMessage || `An error occurred (${status}). Please try again.`,
+        type: 'error' as const,
+      };
+  }
+};
 
 /**
  * Clean and validate form data
@@ -193,7 +343,20 @@ export const getPublicForm = async (formId: string) => {
     );
 
     if (response.status >= 400) {
-      throw new Error(response.data?.message || `HTTP ${response.status}`);
+      // ✅ Create structured error object, NO toasts here
+      const errorInfo = getSubmissionErrorMessage(
+        response.status,
+        response.data?.message || response.statusText
+      );
+
+      const error = new Error(errorInfo.description) as any;
+      error.title = errorInfo.title;
+      error.type = errorInfo.type;
+      error.status = response.status;
+      error.style = errorInfo.style;
+      error.duration = errorInfo.duration;
+
+      throw error;
     }
 
     console.log('✅ Public form loaded:', {
@@ -204,23 +367,34 @@ export const getPublicForm = async (formId: string) => {
 
     return response.data;
   } catch (error: any) {
-    console.error('❌ Failed to load form:', error);
-
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
       const message = error.response?.data?.message || error.message;
 
-      switch (status) {
-        case 404:
-          throw new Error('Form not found or no longer available');
-        case 403:
-          throw new Error(message || 'Form is not available');
-        default:
-          throw new Error(message || 'Failed to load form. Please try again.');
-      }
+      const errorInfo = getSubmissionErrorMessage(status || 0, message);
+
+      const enhancedError = new Error(errorInfo.description) as any;
+      enhancedError.title = errorInfo.title;
+      enhancedError.type = errorInfo.type;
+      enhancedError.status = status;
+      enhancedError.style = errorInfo.style;
+      enhancedError.duration = errorInfo.duration;
+
+      throw enhancedError;
     }
 
-    throw new Error('Failed to load form. Please check your connection.');
+    // ✅ Re-throw enhanced errors
+    if (error.title && error.type) {
+      throw error;
+    }
+
+    // ✅ Generic network error
+    const networkError = new Error(
+      'Unable to connect to the server. Please check your internet connection.'
+    ) as any;
+    networkError.title = 'Connection Error';
+    networkError.type = 'error';
+    throw networkError;
   }
 };
 
@@ -320,20 +494,23 @@ export const validateFormBeforeSubmission = (
 };
 
 /**
- * Submit form with data and files
+ * Submit form with data and files - Enhanced with better error handling
  * @param formId - Form ID
  * @param formData - Form field data
  * @param fileData - File upload data (optional)
+ * @param formTitle - Form title for better error messages (optional)
  * @returns Promise with submission response
  */
 export const submitForm = async (
   formId: string,
   formData: SubmitFormData,
-  fileData?: FileData
+  fileData?: FileData,
+  formTitle?: string
 ): Promise<SubmissionResponse> => {
   try {
     console.log('🚀 ENHANCED FORM SUBMISSION DEBUG:', {
       formId,
+      formTitle,
       dataKeys: Object.keys(formData || {}),
       fileKeys: Object.keys(fileData || {}),
       hasFiles: !!fileData && Object.keys(fileData).length > 0,
@@ -391,7 +568,7 @@ export const submitForm = async (
     // Validate payload structure
     const validationResult = validatePayload(payload);
     if (!validationResult.isValid) {
-      console.error('❌ Payload validation failed:', validationResult.errors);
+      // console.error('❌ Payload validation failed:', validationResult.errors);
       throw new Error(
         `Payload validation failed: ${validationResult.errors.join(', ')}`
       );
@@ -424,10 +601,19 @@ export const submitForm = async (
     });
 
     if (response.status >= 400) {
-      throw new Error(
-        response.data?.message ||
-          `HTTP ${response.status}: ${response.statusText}`
+      // Create enhanced error with structured message for better toast handling
+      const errorInfo = getSubmissionErrorMessage(
+        response.status,
+        response.data?.message || response.statusText,
+        formTitle
       );
+
+      const error = new Error(errorInfo.description) as any;
+      error.title = errorInfo.title;
+      error.type = errorInfo.type;
+      error.status = response.status;
+
+      throw error;
     }
 
     console.log('✅ Form submission successful:', {
@@ -438,18 +624,22 @@ export const submitForm = async (
 
     return response.data;
   } catch (error: any) {
-    console.error('❌ DETAILED FORM SUBMISSION ERROR:', {
+    console.log('❌ DETAILED FORM SUBMISSION ERROR:', {
       errorType: error.constructor.name,
       message: error.message,
+      title: error.title,
+      type: error.type,
+      status: error.status,
       stack: error.stack?.split('\n').slice(0, 5),
       formId,
+      formTitle,
       formDataKeys: Object.keys(formData || {}),
       fileDataKeys: Object.keys(fileData || {}),
     });
 
-    // Enhanced error handling
+    // Enhanced error handling with structured error info
     if (axios.isAxiosError(error)) {
-      console.error('🔍 Axios error details:', {
+      console.log('🔍 Axios error details:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
         responseData: error.response?.data,
@@ -461,70 +651,54 @@ export const submitForm = async (
         code: error.code,
       });
 
-      const status = error.response?.status;
+      const status = error.response?.status || 0;
       const responseMessage = error.response?.data?.message || error.message;
 
-      switch (status) {
-        case 400:
-          if (responseMessage.includes('Validation failed')) {
-            throw new Error(
-              `Form validation failed:\n${responseMessage.replace(
-                'Validation failed: ',
-                ''
-              )}`
-            );
-          } else if (responseMessage.includes('Invalid request format')) {
-            throw new Error(
-              'The form data format is invalid. Please try refreshing the page and submitting again.'
-            );
-          } else {
-            throw new Error(responseMessage);
-          }
+      const errorInfo = getSubmissionErrorMessage(
+        status,
+        responseMessage,
+        formTitle
+      );
 
-        case 403:
-          throw new Error('This form is not currently accepting submissions.');
+      const enhancedError = new Error(errorInfo.description) as any;
+      enhancedError.title = errorInfo.title;
+      enhancedError.type = errorInfo.type;
+      enhancedError.status = status;
 
-        case 404:
-          throw new Error('Form not found. Please check the form link.');
-
-        case 413:
-          throw new Error(
-            'Uploaded files are too large. Please reduce file sizes and try again.'
-          );
-
-        case 429:
-          throw new Error(
-            'You have already submitted this form recently. Please try again later.'
-          );
-
-        case 500:
-          throw new Error('Server error. Please try again in a few moments.');
-
-        default:
-          throw new Error(
-            responseMessage || `Server error (${status}). Please try again.`
-          );
-      }
+      throw enhancedError;
     } else if (error.request) {
       // Network error - no response received
-      throw new Error(
-        'Network error. Please check your internet connection and try again.'
-      );
+      const networkError = new Error(
+        'Please check your internet connection and try again.'
+      ) as any;
+      networkError.title = 'Network Error';
+      networkError.type = 'error';
+      throw networkError;
     } else if (error.code === 'ECONNABORTED') {
       // Timeout error
-      throw new Error('Request timeout. Please try again.');
+      const timeoutError = new Error(
+        'The request took too long. Please try again.'
+      ) as any;
+      timeoutError.title = 'Request Timeout';
+      timeoutError.type = 'warning';
+      throw timeoutError;
     } else {
-      // Other errors
-      throw new Error('An unexpected error occurred. Please try again.');
+      // Re-throw enhanced errors or create new one
+      if (error.title && error.type) {
+        throw error;
+      }
+
+      const genericError = new Error(
+        'An unexpected error occurred. Please try again.'
+      ) as any;
+      genericError.title = 'Unexpected Error';
+      genericError.type = 'error';
+      throw genericError;
     }
   }
 };
 
-/**
- * Prepare file data for submission
- * @param files - Object containing field IDs and their uploaded files
- * @returns Formatted file data for submission
- */
+// Rest of your existing functions remain the same...
 export const prepareFileDataForSubmission = (
   files: Record<string, any>
 ): FileData => {
@@ -561,282 +735,12 @@ export const prepareFileDataForSubmission = (
   return fileData;
 };
 
-/**
- * Validate form data before submission
- * @param formData - Form data to validate
- * @param formStructure - Form structure for validation
- * @param fileData - File data to validate
- * @returns Validation result
- */
-export const validateFormSubmission = (
-  formData: SubmitFormData,
-  formStructure: any,
-  fileData?: FileData
-): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  if (!formStructure?.pages || !Array.isArray(formStructure.pages)) {
-    return { isValid: true, errors: [] };
-  }
-
-  formStructure.pages.forEach((page: any) => {
-    if (page.fields && Array.isArray(page.fields)) {
-      page.fields.forEach((field: any) => {
-        if (field.type === 'heading') return; // Skip headings
-
-        const fieldValue = formData[field.id];
-        const fieldFiles = fileData?.[field.id];
-
-        // Check required fields
-        if (field.required) {
-          // For file/image fields, check if files were uploaded
-          if (field.type === 'fileUpload' || field.type === 'image') {
-            const hasFiles =
-              fieldFiles &&
-              (Array.isArray(fieldFiles)
-                ? fieldFiles.length > 0
-                : !!fieldFiles);
-            if (!hasFiles) {
-              errors.push(`${field.label || field.id} is required`);
-            }
-          } else {
-            // For other fields, check regular value
-            if (
-              !fieldValue ||
-              (typeof fieldValue === 'string' && fieldValue.trim() === '')
-            ) {
-              errors.push(`${field.label || field.id} is required`);
-            }
-          }
-        }
-
-        // Validate file constraints
-        if (
-          (field.type === 'fileUpload' || field.type === 'image') &&
-          fieldFiles
-        ) {
-          const files = Array.isArray(fieldFiles) ? fieldFiles : [fieldFiles];
-
-          // Check multiple files constraint
-          if (!field.multiple && files.length > 1) {
-            errors.push(`${field.label || field.id} only allows one file`);
-          }
-
-          // Check file types for image fields
-          if (field.type === 'image') {
-            files.forEach((file: any) => {
-              if (!file.mimeType?.startsWith('image/')) {
-                errors.push(
-                  `${field.label || field.id} only accepts image files`
-                );
-              }
-            });
-          }
-
-          // Check accept attribute
-          if (field.accept && field.accept !== '*/*') {
-            const allowedTypes = field.accept
-              .split(',')
-              .map((type: string) => type.trim());
-            files.forEach((file: any) => {
-              const isTypeAllowed = allowedTypes.some((type: string) => {
-                if (type.startsWith('.')) {
-                  return file.originalName
-                    ?.toLowerCase()
-                    .endsWith(type.toLowerCase());
-                } else if (type.endsWith('/*')) {
-                  const baseType = type.slice(0, -2);
-                  return file.mimeType?.startsWith(baseType);
-                } else {
-                  return file.mimeType === type;
-                }
-              });
-
-              if (!isTypeAllowed) {
-                errors.push(
-                  `File "${
-                    file.originalName
-                  }" is not an allowed file type for ${field.label || field.id}`
-                );
-              }
-            });
-          }
-        }
-      });
-    }
-  });
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
-
-export const validateFormSubmissionWithFiles = (
-  formData: SubmitFormData,
-  fileData: FileData,
-  formStructure: any
-): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  if (!formStructure?.pages || !Array.isArray(formStructure.pages)) {
-    return { isValid: true, errors: [] };
-  }
-
-  formStructure.pages.forEach((page: any) => {
-    if (page.fields && Array.isArray(page.fields)) {
-      page.fields.forEach((field: any) => {
-        if (field.type === 'heading') return; // Skip headings
-
-        const fieldValue = formData[field.id];
-        const fieldFiles = fileData[field.id];
-
-        // Check required fields
-        if (field.required) {
-          // For file/image fields, check if files were uploaded
-          if (field.type === 'fileUpload' || field.type === 'image') {
-            const hasFiles =
-              fieldFiles &&
-              (Array.isArray(fieldFiles)
-                ? fieldFiles.length > 0
-                : !!fieldFiles);
-            if (!hasFiles) {
-              errors.push(`${field.label || field.id} is required`);
-            }
-          } else {
-            // For other fields, check regular value
-            if (
-              !fieldValue ||
-              (typeof fieldValue === 'string' && fieldValue.trim() === '')
-            ) {
-              errors.push(`${field.label || field.id} is required`);
-            }
-
-            // Complex field validations
-            if (field.type === 'fullName' && typeof fieldValue === 'object') {
-              if (!fieldValue.firstName || !fieldValue.lastName) {
-                errors.push('Both first and last name are required');
-              }
-            }
-
-            if (field.type === 'address' && typeof fieldValue === 'object') {
-              if (!fieldValue.street || !fieldValue.city || !fieldValue.state) {
-                errors.push('Street address, city, and state are required');
-              }
-            }
-
-            if (
-              field.type === 'appointment' &&
-              typeof fieldValue === 'object'
-            ) {
-              if (!fieldValue.date || !fieldValue.time) {
-                errors.push('Both date and time are required');
-              }
-            }
-          }
-        }
-
-        // Validate file constraints
-        if (
-          (field.type === 'fileUpload' || field.type === 'image') &&
-          fieldFiles
-        ) {
-          const files = Array.isArray(fieldFiles) ? fieldFiles : [fieldFiles];
-
-          // Check multiple files constraint
-          if (!field.multiple && files.length > 1) {
-            errors.push(`${field.label || field.id} only allows one file`);
-          }
-
-          // Check file types for image fields
-          if (field.type === 'image') {
-            files.forEach((file: any) => {
-              if (!file.mimeType?.startsWith('image/')) {
-                errors.push(
-                  `${field.label || field.id} only accepts image files`
-                );
-              }
-            });
-          }
-
-          // Check file size limits
-          files.forEach((file: any) => {
-            const maxSize =
-              field.type === 'image' ? 10 * 1024 * 1024 : 25 * 1024 * 1024;
-            if (file.size > maxSize) {
-              errors.push(
-                `File "${file.originalName}" exceeds the ${
-                  field.type === 'image' ? '10MB' : '25MB'
-                } size limit`
-              );
-            }
-          });
-
-          // Check accept attribute
-          if (field.accept && field.accept !== '*/*') {
-            const allowedTypes = field.accept
-              .split(',')
-              .map((type: string) => type.trim());
-            files.forEach((file: any) => {
-              const isTypeAllowed = allowedTypes.some((type: string) => {
-                if (type.startsWith('.')) {
-                  return file.originalName
-                    ?.toLowerCase()
-                    .endsWith(type.toLowerCase());
-                } else if (type.endsWith('/*')) {
-                  const baseType = type.slice(0, -2);
-                  return file.mimeType?.startsWith(baseType);
-                } else {
-                  return file.mimeType === type;
-                }
-              });
-
-              if (!isTypeAllowed) {
-                errors.push(
-                  `File "${
-                    file.originalName
-                  }" is not an allowed file type for ${field.label || field.id}`
-                );
-              }
-            });
-          }
-        }
-
-        // Email validation
-        if (field.type === 'email' && fieldValue) {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(fieldValue)) {
-            errors.push(
-              `Please enter a valid email address for ${field.label}`
-            );
-          }
-        }
-
-        // Phone validation
-        if (field.type === 'phone' && fieldValue) {
-          const cleanPhone = fieldValue.replace(/\D/g, '');
-          if (cleanPhone.length !== 10) {
-            errors.push(
-              `Please enter a valid 10-digit phone number for ${field.label}`
-            );
-          }
-        }
-      });
-    }
-  });
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
-
 const formSubmissionService = {
   submitForm,
   getPublicForm,
   prepareFileDataForSubmission,
-  validateFormSubmission,
   validateFormBeforeSubmission,
+  getSubmissionErrorMessage,
   cleanFormData,
   cleanFileData,
 };

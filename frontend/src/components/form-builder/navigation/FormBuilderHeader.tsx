@@ -258,14 +258,14 @@ export default function FormBuilderHeader({
 
       {/* Center - Form Title and Save Status */}
       <div className='flex-1 text-center max-w-xl mr-65'>
-        <div className='flex flex-col items-center -my-2 '>
+        <div className='flex flex-col items-center -my-2'>
           <Input
             autoFocus
             value={titleValue}
             onChange={handleTitleChange}
             onBlur={handleTitleBlur}
             onKeyDown={handleTitleKeyDown}
-            className={`text-4xl font-semibold w-full max-w-xs text-center border-none bg-transparent shadow-none focus-visible:ring-0 focus:outline-none pr-8 ${
+            className={`text-4xl font-semibold w-full max-w-xl text-center border-none bg-transparent shadow-none focus-visible:ring-0 focus:outline-none pr-8 ${
               titleError ? 'text-red-600' : ''
             }`}
             style={{ fontSize: '20px' }}

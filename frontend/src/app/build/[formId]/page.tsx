@@ -72,8 +72,8 @@ export default function FormBuilderPage() {
             throw fetchError;
           }
         }
-      } catch (error) {
-        console.error('Failed to load form:', error);
+      } catch {
+        // console.error('Failed to load form:', error);
         setHasError(true);
         toast.error('Failed to load form');
       } finally {

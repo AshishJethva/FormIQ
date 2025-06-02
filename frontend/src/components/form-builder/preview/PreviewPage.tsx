@@ -942,10 +942,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         setErrors({});
       }, 100);
     } catch (error: any) {
-      console.error('❌ Form submission with files failed:', error);
-      toast.error(error.message || 'Failed to submit form', {
-        description: 'Please try again in a moment',
-      });
+      toast.error(error.message || 'Failed to submit form');
     } finally {
       setIsSubmitting(false);
     }

@@ -1,7 +1,7 @@
-// src/components/form-builder/FileManager.tsx - Comprehensive File Management Component
+// src/components/form-builder/FileManager.tsx
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   Download,
   Trash2,
@@ -66,6 +66,7 @@ export interface FileManagerProps {
   readOnly?: boolean;
   compact?: boolean;
   maxPreviewSize?: number;
+  downloadingFileId?: string | null;
 }
 
 export interface FilePreviewProps {
@@ -74,6 +75,7 @@ export interface FilePreviewProps {
   onDelete?: () => void;
   onDownload?: () => void;
   showActions?: boolean;
+  downloadingFileId?: string | null;
 }
 
 export interface FileCardProps {
@@ -84,6 +86,7 @@ export interface FileCardProps {
   showActions?: boolean;
   compact?: boolean;
   readOnly?: boolean;
+  downloadingFileId?: string | null;
 }
 
 // ===== UTILITY FUNCTIONS =====
@@ -126,6 +129,7 @@ const formatDate = (dateString: string): string => {
   }
 };
 
+// Single, robust download function
 const downloadFile = async (file: FileData): Promise<void> => {
   try {
     console.log('📥 Starting file download:', {
@@ -134,55 +138,26 @@ const downloadFile = async (file: FileData): Promise<void> => {
       mimeType: file.mimeType,
     });
 
-    // Method 1: Try direct download with fetch
-    try {
-      const response = await fetch(file.url, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
+    // Create download link immediately - most reliable method
+    const a = document.createElement('a');
+    a.href = file.url;
+    a.download = file.originalName || 'download';
+    a.target = '_blank'; // Opens in new tab
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+    // Add to DOM, click, and remove
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = file.originalName || 'download';
-      a.style.display = 'none';
-
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      // Clean up the blob URL
-      setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100);
-
-      console.log('✅ File downloaded successfully via fetch');
-      return;
-    } catch (fetchError) {
-      console.warn('⚠️ Fetch download failed, trying direct link:', fetchError);
-
-      // Method 2: Fallback to direct link download
-      const a = document.createElement('a');
-      a.href = file.url;
-      a.download = file.originalName || 'download';
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.style.display = 'none';
-
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      console.log('✅ File download initiated via direct link');
-    }
+    console.log('✅ File download initiated successfully');
   } catch (error) {
     console.error('❌ Download error:', error);
+    toast.error('Download failed', {
+      description: `Failed to download ${file.originalName}`,
+      duration: 5000,
+    });
     throw new Error(
       `Failed to download file: ${
         error instanceof Error ? error.message : 'Unknown error'
@@ -194,13 +169,11 @@ const downloadFile = async (file: FileData): Promise<void> => {
 // Enhanced PDF URL preparation
 const preparePdfUrl = (url: string): string => {
   try {
-    // Add cache busting and PDF viewing parameters
     const urlObj = new URL(url);
     urlObj.searchParams.set('_t', Date.now().toString());
-    urlObj.searchParams.set('view', 'FitH'); // PDF viewing parameter
+    urlObj.searchParams.set('view', 'FitH');
     return urlObj.toString();
   } catch {
-    // If URL parsing fails, return original with cache buster
     return `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
   }
 };
@@ -247,13 +220,14 @@ const PDFViewer: React.FC<{ url: string; fileName: string }> = ({
           restrictions or file permissions.
         </p>
         <div className='flex space-x-3'>
-          <Button onClick={handleRetry} variant='outline'>
+          <Button onClick={handleRetry} variant='outline' className='cursor-pointer'>
             <RefreshCw className='w-4 h-4 mr-2' />
             Retry Preview
           </Button>
+
           <Button
             onClick={openInNewTab}
-            className='bg-red-500 hover:bg-red-600'
+            className='bg-red-500 hover:bg-red-600 cursor-pointer'
           >
             <ExternalLink className='w-4 h-4 mr-2' />
             Open PDF
@@ -275,7 +249,7 @@ const PDFViewer: React.FC<{ url: string; fileName: string }> = ({
       )}
 
       <iframe
-        key={`pdf-${retryCount}`} // Force re-render on retry
+        key={`pdf-${retryCount}`}
         src={`${preparedUrl}#view=FitH&toolbar=1&navpanes=1&scrollbar=1`}
         className='w-full h-[70vh] border-0'
         title={`PDF Viewer - ${fileName}`}
@@ -289,7 +263,7 @@ const PDFViewer: React.FC<{ url: string; fileName: string }> = ({
           <Button
             onClick={openInNewTab}
             size='sm'
-            className='bg-red-500 hover:bg-red-600 text-white shadow-lg'
+            className='bg-red-500 hover:bg-red-600 text-white shadow-lg cursor-pointer'
           >
             <ExternalLink className='w-4 h-4 mr-1' />
             Open
@@ -300,49 +274,36 @@ const PDFViewer: React.FC<{ url: string; fileName: string }> = ({
   );
 };
 
+// File Preview Modal with single download handler
 const FilePreviewModal: React.FC<FilePreviewProps> = ({
   file,
   onClose,
   onDelete,
   onDownload,
   showActions = true,
+  downloadingFileId,
 }) => {
-  const [loading, setLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  const isDownloading = downloadingFileId === file.publicId;
   const isImage = file.mimeType.startsWith('image/');
   const isVideo = file.mimeType.startsWith('video/');
   const isAudio = file.mimeType.startsWith('audio/');
   const isPdf = file.mimeType.includes('pdf');
 
-  const handleDownload = async () => {
-    setLoading(true);
-    try {
-      if (onDownload) {
-        await onDownload();
-      } else {
-        await downloadFile(file);
-      }
-      toast.success('File downloaded successfully');
-    } catch (error: any) {
-      console.error('Download failed:', error);
-      toast.error(error.message || 'Failed to download file');
-    } finally {
-      setLoading(false);
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDownloading) return; // Prevent multiple clicks
+
+    if (onDownload) {
+      await onDownload();
     }
   };
 
   const handleDelete = async () => {
     if (onDelete) {
-      setLoading(true);
-      try {
-        await onDelete();
-        onClose();
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete file');
-      } finally {
-        setLoading(false);
-      }
+      await onDelete();
+      onClose();
     }
   };
 
@@ -396,7 +357,6 @@ const FilePreviewModal: React.FC<FilePreviewProps> = ({
       return <PDFViewer url={file.url} fileName={file.originalName} />;
     }
 
-    // Default preview for other file types
     return (
       <div className='flex items-center justify-center bg-gray-100 rounded-lg p-8'>
         <div className='text-center'>
@@ -407,6 +367,7 @@ const FilePreviewModal: React.FC<FilePreviewProps> = ({
           <Button
             onClick={() => window.open(file.url, '_blank')}
             variant='outline'
+            className='cursor-pointer'
           >
             <ExternalLink className='w-4 h-4 mr-2' />
             Open File
@@ -445,12 +406,13 @@ const FilePreviewModal: React.FC<FilePreviewProps> = ({
                 <Button
                   variant='outline'
                   onClick={handleDownload}
-                  disabled={loading}
+                  disabled={isDownloading}
+                  className='cursor-pointer'
                 >
-                  {loading ? (
+                  {isDownloading ? (
                     <Loader2 className='w-4 h-4 mr-2 animate-spin' />
                   ) : (
-                    <Download className='w-4 h-4 mr-2' />
+                    <Download className='w-4 h-4 mr-2 ' />
                   )}
                   Download
                 </Button>
@@ -458,13 +420,10 @@ const FilePreviewModal: React.FC<FilePreviewProps> = ({
                   <Button
                     variant='destructive'
                     onClick={handleDelete}
-                    disabled={loading}
+                    disabled={isDownloading}
+                    className='cursor-pointer'
                   >
-                    {loading ? (
-                      <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                    ) : (
-                      <Trash2 className='w-4 h-4 mr-2' />
-                    )}
+                    <Trash2 className='w-4 h-4 mr-2' />
                     Delete
                   </Button>
                 )}
@@ -477,7 +436,7 @@ const FilePreviewModal: React.FC<FilePreviewProps> = ({
   );
 };
 
-// ===== FILE CARD COMPONENT =====
+// File Card with centralized loading state
 const FileCard: React.FC<FileCardProps> = ({
   file,
   onView,
@@ -486,40 +445,26 @@ const FileCard: React.FC<FileCardProps> = ({
   showActions = true,
   compact = false,
   readOnly = false,
+  downloadingFileId,
 }) => {
-  const [loading, setLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  const isDownloading = downloadingFileId === file.publicId;
   const isImage = file.mimeType.startsWith('image/');
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setLoading(true);
-    try {
-      if (onDownload) {
-        await onDownload();
-      } else {
-        await downloadFile(file);
-      }
-      toast.success('File downloaded successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to download file');
-    } finally {
-      setLoading(false);
+    if (isDownloading) return; // Prevent multiple clicks
+
+    if (onDownload) {
+      await onDownload();
     }
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onDelete) {
-      setLoading(true);
-      try {
-        await onDelete();
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete file');
-      } finally {
-        setLoading(false);
-      }
+    if (onDelete && !isDownloading) {
+      await onDelete();
     }
   };
 
@@ -558,17 +503,22 @@ const FileCard: React.FC<FileCardProps> = ({
 
         {showActions && !readOnly && (
           <div className='flex items-center space-x-1 flex-shrink-0'>
-            <Button variant='ghost' size='sm' onClick={onView} className='p-1'>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={onView}
+              className='p-1 cursor-pointer'
+            >
               <Eye className='w-4 h-4' />
             </Button>
             <Button
               variant='ghost'
               size='sm'
               onClick={handleDownload}
-              className='p-1'
-              disabled={loading}
+              className='p-1 cursor-pointer'
+              disabled={isDownloading}
             >
-              {loading ? (
+              {isDownloading ? (
                 <Loader2 className='w-4 h-4 animate-spin' />
               ) : (
                 <Download className='w-4 h-4' />
@@ -579,14 +529,10 @@ const FileCard: React.FC<FileCardProps> = ({
                 variant='ghost'
                 size='sm'
                 onClick={handleDelete}
-                className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50'
-                disabled={loading}
+                className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer'
+                disabled={isDownloading}
               >
-                {loading ? (
-                  <Loader2 className='w-4 h-4 animate-spin' />
-                ) : (
-                  <Trash2 className='w-4 h-4' />
-                )}
+                <Trash2 className='w-4 h-4' />
               </Button>
             )}
           </div>
@@ -598,7 +544,6 @@ const FileCard: React.FC<FileCardProps> = ({
   return (
     <Card className='overflow-hidden hover:shadow-md transition-shadow'>
       <CardContent className='p-0'>
-        {/* Preview Section */}
         <div className='relative'>
           {isImage && !imageError ? (
             <div className='aspect-video bg-gray-100 relative overflow-hidden'>
@@ -624,7 +569,6 @@ const FileCard: React.FC<FileCardProps> = ({
           )}
         </div>
 
-        {/* Info Section */}
         <div className='p-4'>
           <div className='flex items-start justify-between'>
             <div className='flex-1 min-w-0'>
@@ -650,10 +594,14 @@ const FileCard: React.FC<FileCardProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
           {showActions && !readOnly && (
             <div className='flex items-center justify-between mt-4 pt-3 border-t border-gray-100'>
-              <Button variant='outline' size='sm' onClick={onView}>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={onView}
+                className='cursor-pointer'
+              >
                 <Eye className='w-4 h-4 mr-1' />
                 View
               </Button>
@@ -662,9 +610,10 @@ const FileCard: React.FC<FileCardProps> = ({
                   variant='outline'
                   size='sm'
                   onClick={handleDownload}
-                  disabled={loading}
+                  disabled={isDownloading}
+                  className='cursor-pointer'
                 >
-                  {loading ? (
+                  {isDownloading ? (
                     <Loader2 className='w-4 h-4 animate-spin' />
                   ) : (
                     <Download className='w-4 h-4' />
@@ -675,14 +624,10 @@ const FileCard: React.FC<FileCardProps> = ({
                     variant='outline'
                     size='sm'
                     onClick={handleDelete}
-                    disabled={loading}
-                    className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                    disabled={isDownloading}
+                    className='text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer'
                   >
-                    {loading ? (
-                      <Loader2 className='w-4 h-4 animate-spin' />
-                    ) : (
-                      <Trash2 className='w-4 h-4' />
-                    )}
+                    <Trash2 className='w-4 h-4' />
                   </Button>
                 )}
               </div>
@@ -694,7 +639,7 @@ const FileCard: React.FC<FileCardProps> = ({
   );
 };
 
-// ===== MAIN FILE MANAGER COMPONENT =====
+// Main File Manager with centralized download state
 const FileManager: React.FC<FileManagerProps> = ({
   files,
   fieldLabel,
@@ -705,11 +650,19 @@ const FileManager: React.FC<FileManagerProps> = ({
   readOnly = false,
   compact = false,
   maxPreviewSize = 4,
+  downloadingFileId: externalDownloadingFileId,
 }) => {
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
   const [deletingFile, setDeletingFile] = useState(false);
+  const [internalDownloadingFileId, setInternalDownloadingFileId] = useState<
+    string | null
+  >(null);
+  const downloadingFileId =
+    externalDownloadingFileId || internalDownloadingFileId;
+
+  const downloadInProgress = useRef<Set<string>>(new Set());
 
   const fileArray = Array.isArray(files) ? files : files ? [files] : [];
 
@@ -726,15 +679,37 @@ const FileManager: React.FC<FileManagerProps> = ({
 
   const handleFileDownload = useCallback(
     async (file: FileData) => {
-      try {
-        if (onFileDownload) {
+      // If external download handler is provided, use it
+      if (onFileDownload) {
+        try {
           await onFileDownload(file);
-        } else {
-          await downloadFile(file);
+        } catch (error: any) {
+          console.error('Download failed:', error);
+          // Error is already handled by the external handler
         }
+        return;
+      }
+
+      // Otherwise use internal download logic
+      // Prevent duplicate downloads
+      if (downloadInProgress.current.has(file.publicId)) {
+        console.log('Download already in progress for:', file.originalName);
+        return;
+      }
+
+      try {
+        downloadInProgress.current.add(file.publicId);
+        setInternalDownloadingFileId(file.publicId);
+
+        console.log('Starting download for:', file.originalName);
+
+        await downloadFile(file);
       } catch (error: any) {
         console.error('Download failed:', error);
-        throw error; // Re-throw to be handled by the calling component
+        // Error is already handled in downloadFile function
+      } finally {
+        downloadInProgress.current.delete(file.publicId);
+        setInternalDownloadingFileId(null);
       }
     },
     [onFileDownload]
@@ -754,7 +729,6 @@ const FileManager: React.FC<FileManagerProps> = ({
       setShowDeleteDialog(false);
       setFileToDelete(null);
     } catch (error) {
-      // Error handling is done in the parent component
       console.error('Delete failed:', error);
     } finally {
       setDeletingFile(false);
@@ -805,11 +779,12 @@ const FileManager: React.FC<FileManagerProps> = ({
               showActions={showActions}
               compact={true}
               readOnly={readOnly}
+              downloadingFileId={downloadingFileId}
             />
           ))}
           {fileArray.length > maxPreviewSize && (
             <div className='text-center py-2'>
-              <Button variant='outline' size='sm'>
+              <Button variant='outline' size='sm' className='cursor-pointer'>
                 Show {fileArray.length - maxPreviewSize} more files
               </Button>
             </div>
@@ -827,6 +802,7 @@ const FileManager: React.FC<FileManagerProps> = ({
               showActions={showActions}
               compact={false}
               readOnly={readOnly}
+              downloadingFileId={downloadingFileId}
             />
           ))}
         </div>
@@ -840,6 +816,7 @@ const FileManager: React.FC<FileManagerProps> = ({
           onDownload={() => handleFileDownload(previewFile)}
           onDelete={onFileDelete ? () => confirmDelete(previewFile) : undefined}
           showActions={showActions && !readOnly}
+          downloadingFileId={downloadingFileId}
         />
       )}
 
@@ -883,5 +860,3 @@ const FileManager: React.FC<FileManagerProps> = ({
 
 export default FileManager;
 export { FileCard, FilePreviewModal, PDFViewer };
-
-// Form submission with files failed: Error: Request failed with status code 400

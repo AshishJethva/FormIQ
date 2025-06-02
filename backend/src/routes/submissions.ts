@@ -4,17 +4,11 @@ import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';
 import Submission from '../models/Submission';
 import Form from '../models/Form';
-import { validate } from '../middleware/validation';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/ApiError';
-import {
-  submitFormSchema,
-  submitFormSchemaSimple,
-} from '../validation/submissionValidation';
 import mongoose from 'mongoose';
 import {
   debugFormSubmission,
-  validateFormSubmissionRequest,
   handleFormSubmissionError,
   monitorFormSubmissionPerformance,
 } from '../middleware/debugMiddleware';
@@ -292,7 +286,7 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
     }
   });
 
-  console.log('✅ CSV generation completed');
+  console.log('CSV generation completed');
   return csvContent;
 };
 
@@ -342,7 +336,7 @@ function validateSubmissionData(
             : fieldValue,
       });
 
-      // ✅ Required field validation
+      // Required field validation
       if (field.required === true) {
         if (field.type === 'fileUpload' || field.type === 'image') {
           if (fieldFiles.length === 0) {
@@ -411,7 +405,7 @@ function validateSubmissionData(
         return;
       }
 
-      // ✅ Field-specific validation for all 19+ field types
+      // Field-specific validation for all 19+ field types
       try {
         switch (field.type) {
           case 'shortText':
@@ -716,10 +710,10 @@ function validateSubmissionData(
             break;
         }
       } catch (validationError: any) {
-        console.error(
-          `❌ Validation error for field ${field.id}:`,
-          validationError
-        );
+        // console.error(
+        //   `❌ Validation error for field ${field.id}:`,
+        //   validationError
+        // );
         errors.push(
           `${field.label || field.id} validation failed: ${validationError.message}`
         );
@@ -727,7 +721,7 @@ function validateSubmissionData(
     });
   });
 
-  console.log('✅ Validation completed:', {
+  console.log('Validation completed:', {
     totalErrors: errors.length,
     errors: errors.slice(0, 5), // Log first 5 errors
   });
@@ -940,13 +934,13 @@ function validateFormData(
           // Add more field validations as needed
         }
       } catch (fieldError: any) {
-        console.error(`❌ Validation error for field ${field.id}:`, fieldError);
+        // console.error(`❌ Validation error for field ${field.id}:`, fieldError);
         errors.push(`${field.label || field.id} validation failed`);
       }
     });
   });
 
-  console.log('✅ Validation completed:', {
+  console.log('Validation completed:', {
     totalErrors: errors.length,
     errors: errors.slice(0, 3), // Log first 3 errors
   });
@@ -1018,7 +1012,7 @@ router.get(
       query.isRead = isRead === 'true';
     }
 
-    // ✅ ENHANCED: Dynamic search across all form fields
+    // Dynamic search across all form fields
     if (search && search.toString().trim()) {
       const searchTerm = search.toString().trim();
       console.log('🔍 Building dynamic search for term:', searchTerm);
@@ -1195,9 +1189,9 @@ router.post(
 
     console.log('🎯 STARTING FORM SUBMISSION PROCESSING');
 
-    // ✅ STEP 1: Validate Form ID
+    // STEP 1: Validate Form ID
     if (!mongoose.Types.ObjectId.isValid(formId)) {
-      console.error('❌ Invalid form ID format:', formId);
+      // console.error('❌ Invalid form ID format:', formId);
       return res.status(400).json({
         success: false,
         error: 'INVALID_FORM_ID',
@@ -1206,10 +1200,10 @@ router.post(
       });
     }
 
-    // ✅ STEP 2: Find and validate form
+    // STEP 2: Find and validate form
     const form = await Form.findById(formId);
     if (!form) {
-      console.error('❌ Form not found:', formId);
+      // console.error('❌ Form not found:', formId);
       return res.status(404).json({
         success: false,
         error: 'FORM_NOT_FOUND',
@@ -1226,7 +1220,7 @@ router.post(
       isArchived: form.isArchived,
     });
 
-    // ✅ STEP 3: Check form availability
+    // STEP 3: Check form availability
     if (!form.isPublished) {
       return res.status(403).json({
         success: false,
@@ -1251,7 +1245,7 @@ router.post(
       });
     }
 
-    // ✅ STEP 4: Extract and validate request data
+    // STEP 4: Extract and validate request data
     const submissionData = requestBody.data || {};
     const fileData = requestBody.files || {};
 
@@ -1262,7 +1256,7 @@ router.post(
       fileFieldIds: Object.keys(fileData),
     });
 
-    // ✅ STEP 5: Process files
+    // STEP 5: Process files
     const processedFiles: Array<{
       fieldId: string;
       originalName: string;
@@ -1330,7 +1324,7 @@ router.post(
       ),
     });
 
-    // ✅ STEP 6: Validate form structure and data
+    // STEP 6: Validate form structure and data
     const hasFormFields = form.pages?.some(
       page =>
         page.fields && Array.isArray(page.fields) && page.fields.length > 0
@@ -1348,7 +1342,7 @@ router.post(
       );
 
       if (validationErrors.length > 0) {
-        console.error('❌ Validation errors:', validationErrors);
+        // console.error('❌ Validation errors:', validationErrors);
         return res.status(400).json({
           success: false,
           error: 'VALIDATION_FAILED',
@@ -1356,11 +1350,9 @@ router.post(
           errors: validationErrors,
         });
       }
-
-      console.log('✅ Validation passed');
     }
 
-    // ✅ STEP 7: Check for duplicate submissions (if configured)
+    // STEP 7: Check for duplicate submissions (if configured)
     if (!form.settings?.allowMultipleSubmissions) {
       const clientIp = req.ip || req.connection.remoteAddress;
       if (clientIp) {
@@ -1380,7 +1372,7 @@ router.post(
       }
     }
 
-    // ✅ STEP 8: Create submission record
+    // STEP 8: Create submission record
     try {
       const submissionPayload = {
         formId: new mongoose.Types.ObjectId(formId),
@@ -1416,13 +1408,13 @@ router.post(
 
       const submission = await Submission.create(submissionPayload);
 
-      // ✅ STEP 9: Update form submission counter
+      // STEP 9: Update form submission counter
       await Form.findByIdAndUpdate(formId, {
         $inc: { submissions: 1 },
         $set: { updatedAt: new Date() },
       });
 
-      console.log('✅ FORM SUBMISSION COMPLETED SUCCESSFULLY:', {
+      console.log('FORM SUBMISSION COMPLETED SUCCESSFULLY:', {
         submissionId: submission._id,
         formId,
         formTitle: form.title,

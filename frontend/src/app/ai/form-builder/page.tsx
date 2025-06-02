@@ -31,9 +31,23 @@ export default function AIFormBuilderPage() {
     }
   };
 
+  // Handle Enter key press
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent new line
+      handleCreateForm();
+    }
+    // Allow Shift+Enter for new lines
+  };
+
   const handleCreateForm = async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a description for your form');
+      return;
+    }
+
+    // Don't proceed if already generating
+    if (isGenerating) {
       return;
     }
 
@@ -54,7 +68,6 @@ export default function AIFormBuilderPage() {
         router.push(`/build/${result.id}`);
       }, 1000);
     } catch (error: any) {
-      console.error('Failed to generate form:', error);
       toast.error('Failed to generate form', {
         description: error || 'Please try again with a different description',
       });
@@ -156,21 +169,6 @@ export default function AIFormBuilderPage() {
           </p>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className='mb-6 max-w-2xl mx-auto'>
-            <div className='bg-red-50 border border-red-200 rounded-xl p-4 flex items-start'>
-              <AlertCircle className='w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0' />
-              <div>
-                <h4 className='text-red-800 font-medium'>
-                  Failed to generate form
-                </h4>
-                <p className='text-red-700 text-sm mt-1'>{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Form Input Section */}
         <div className='bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8'>
           <div className='flex flex-col lg:flex-row gap-4'>
@@ -178,6 +176,7 @@ export default function AIFormBuilderPage() {
               <textarea
                 value={prompt}
                 onChange={handlePromptChange}
+                onKeyDown={handleKeyDown}
                 placeholder='I want to build a feedback form for my customer'
                 className='w-full h-32 lg:h-20 px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500'
                 disabled={isGenerating}
@@ -213,6 +212,21 @@ export default function AIFormBuilderPage() {
             </div>
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className='mb-6 max-w-2xl mx-auto'>
+            <div className='bg-red-50 border border-red-200 rounded-xl p-4 flex items-start'>
+              <AlertCircle className='w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0' />
+              <div>
+                <h4 className='text-red-800 font-medium'>
+                  Failed to generate form
+                </h4>
+                <p className='text-red-700 text-sm mt-1'>{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Templates */}
         <div className='text-center'>

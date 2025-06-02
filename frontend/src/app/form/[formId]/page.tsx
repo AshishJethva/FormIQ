@@ -22,6 +22,243 @@ import {
 } from '@/services/formSubmission';
 import FileUploadField from '@/components/form-builder/canvas/FileUploadField';
 
+// Beautiful Error Screen Component
+const BeautifulErrorScreen = ({
+  submitError,
+  retryCount,
+  onRetry,
+  onRefresh,
+}: {
+  submitError: string;
+  retryCount: number;
+  onRetry: () => void;
+  onRefresh: () => void;
+}) => {
+  const getErrorConfig = (error: string) => {
+    if (error.includes('not found') || error.includes('Not Found')) {
+      return {
+        icon: '🔍',
+        title: 'Form Not Found',
+        description:
+          'The form you are looking for could not be found or has been removed.',
+        color: 'red',
+        bgGradient: 'from-red-50 to-pink-50',
+        iconBg: 'bg-red-100',
+        iconColor: 'text-red-600',
+        buttonColor: 'bg-red-500 hover:bg-red-600',
+      };
+    } else if (error.includes('disabled') || error.includes('Disabled')) {
+      return {
+        icon: '🚫',
+        title: 'Form Disabled',
+        description:
+          'This form has been disabled by its owner and is no longer accepting submissions.',
+        color: 'amber',
+        bgGradient: 'from-amber-50 to-orange-50',
+        iconBg: 'bg-amber-100',
+        iconColor: 'text-amber-600',
+        buttonColor: 'bg-amber-500 hover:bg-amber-600',
+      };
+    } else if (
+      error.includes('not accepting') ||
+      error.includes('Unavailable')
+    ) {
+      return {
+        icon: '⏳',
+        title: 'Form Temporarily Unavailable',
+        description:
+          'This form is temporarily not accepting new submissions. Please try again later.',
+        color: 'blue',
+        bgGradient: 'from-blue-50 to-indigo-50',
+        iconBg: 'bg-blue-100',
+        iconColor: 'text-blue-600',
+        buttonColor: 'bg-blue-500 hover:bg-blue-600',
+      };
+    } else if (error.includes('connection') || error.includes('network')) {
+      return {
+        icon: '📡',
+        title: 'Connection Error',
+        description:
+          'Unable to connect to the server. Please check your internet connection.',
+        color: 'purple',
+        bgGradient: 'from-purple-50 to-violet-50',
+        iconBg: 'bg-purple-100',
+        iconColor: 'text-purple-600',
+        buttonColor: 'bg-purple-500 hover:bg-purple-600',
+      };
+    } else {
+      return {
+        icon: '⚠️',
+        title: 'Something Went Wrong',
+        description: 'An unexpected error occurred while loading the form.',
+        color: 'gray',
+        bgGradient: 'from-gray-50 to-slate-50',
+        iconBg: 'bg-gray-100',
+        iconColor: 'text-gray-600',
+        buttonColor: 'bg-gray-500 hover:bg-gray-600',
+      };
+    }
+  };
+
+  const config = getErrorConfig(submitError);
+
+  return (
+    <div
+      className={`min-h-screen bg-gradient-to-br ${config.bgGradient} flex items-center justify-center p-4`}
+    >
+      <motion.div
+        className='max-w-md w-full'
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className='bg-white rounded-2xl shadow-xl border border-gray-200 p-8 text-center'>
+          {/* Icon */}
+          <motion.div
+            className={`w-20 h-20 ${config.iconBg} rounded-full flex items-center justify-center mx-auto mb-6`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+          >
+            <span className='text-4xl'>{config.icon}</span>
+          </motion.div>
+
+          {/* Title */}
+          <h1 className='text-2xl font-bold text-gray-900 mb-4'>
+            {config.title}
+          </h1>
+
+          {/* Description */}
+          <p className='text-gray-600 mb-8 leading-relaxed'>
+            {config.description}
+          </p>
+
+          {/* ✅ Error Details (Instant Display - No Animation Delay) */}
+          <details className='mb-6 text-left' open>
+            <summary className='text-sm text-gray-500 cursor-pointer hover:text-gray-700 mb-2 flex items-center'>
+              <span className='mr-2'>📋</span>
+              Error Details
+            </summary>
+            <div className='bg-gray-50 rounded-lg p-3 text-sm text-gray-700 font-mono border border-gray-200 mt-2'>
+              {submitError}
+            </div>
+          </details>
+
+          {/* Action Buttons */}
+          <div className='flex flex-col sm:flex-row gap-3 justify-center'>
+            <Button
+              onClick={onRetry}
+              className={`${config.buttonColor} text-white flex items-center justify-center px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 cursor-pointer`}
+            >
+              <RefreshCw className='w-4 h-4 mr-2' />
+              Try Again
+            </Button>
+
+            {retryCount >= 2 && (
+              <Button
+                onClick={onRefresh}
+                variant='outline'
+                className='px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 cursor-pointer'
+              >
+                Refresh Page
+              </Button>
+            )}
+          </div>
+
+          {/* Retry Counter */}
+          {retryCount > 0 && (
+            <motion.p
+              className='text-gray-500 text-sm mt-4'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              Retry attempt: {retryCount}
+            </motion.p>
+          )}
+        </div>
+
+        {/* Decorative Elements */}
+        <div className='flex justify-center mt-6 space-x-2'>
+          {[...Array(3)].map((_, i) => (
+            <motion.div
+              key={i}
+              className={`w-2 h-2 ${config.iconBg} rounded-full`}
+              initial={{ opacity: 0.3 }}
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.3,
+              }}
+            />
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Form submission handler with beautiful toast messages
+const handleFormSubmissionWithToasts = async (
+  formId: string,
+  formData: any,
+  fileData: any,
+  formTitle?: string
+) => {
+  try {
+    const result = await submitForm(formId, formData, fileData, formTitle);
+
+    // Beautiful success toast
+    toast.success('Submission Successful! 🎉', {
+      description: formTitle
+        ? `Thank you for submitting "${formTitle}". We'll be in touch soon.`
+        : 'Your submission has been received successfully. Thank you!',
+      duration: 5000,
+      style: {
+        background: '#D1FAE5',
+        borderColor: '#10B981',
+        color: '#047857',
+      },
+    });
+
+    return result;
+  } catch (error: any) {
+    console.error('Form submission error:', error);
+
+    if (error.type === 'warning') {
+      // This will show the "already submitted" warning
+      toast.warning(error.title || 'Warning', {
+        description: error.message,
+        duration: error.duration || 6000,
+        style: error.style || {
+          background: '#FEF3C7',
+          borderColor: '#F59E0B',
+          color: '#92400E',
+        },
+        action: error.action
+          ? {
+              label: error.action.label,
+              onClick: error.action.onClick,
+            }
+          : undefined,
+      });
+    } else {
+      toast.error(error.title || 'Submission Failed', {
+        description: error.message,
+        duration: error.duration || 5000,
+        action: error.action
+          ? {
+              label: error.action.label,
+              onClick: error.action.onClick,
+            }
+          : undefined,
+      });
+    }
+
+    throw error;
+  }
+};
+
 export default function PublicFormPage() {
   const params = useParams();
   const formId = params.formId as string;
@@ -49,7 +286,25 @@ export default function PublicFormPage() {
       setForm(response.data);
     } catch (error: any) {
       setSubmitError(error.message);
-      toast.error(error.message);
+
+      const shouldShowToast =
+        error.status === 429 &&
+        (error.message?.toLowerCase().includes('already submitted') ||
+          error.message?.toLowerCase().includes('duplicate submission'));
+
+      if (shouldShowToast && error.type === 'warning') {
+        toast.warning(error.title || 'Warning', {
+          description: error.message,
+          duration: error.duration || 6000,
+          style: error.style || {
+            background: '#FEF3C7',
+            borderColor: '#F59E0B',
+            color: '#92400E',
+          },
+        });
+      }
+
+      console.log('Form loading error:', error.title, error.message);
     } finally {
       setLoading(false);
     }
@@ -119,7 +374,7 @@ export default function PublicFormPage() {
       }
     }
 
-    // ✅ NEW: File validation
+    // File validation
     if (
       (field.type === FieldType.FILE_UPLOAD ||
         field.type === FieldType.IMAGE) &&
@@ -223,7 +478,7 @@ export default function PublicFormPage() {
     }
   };
 
-  // ✅ NEW: Handle file upload changes
+  // Handle file upload changes
   const handleFileChange = (fieldId: string, value: any) => {
     setFileData(prev => ({
       ...prev,
@@ -249,6 +504,11 @@ export default function PublicFormPage() {
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+
+      toast.error('Please fix the errors above', {
+        description: 'Some required fields are missing or invalid.',
+        duration: 4000,
+      });
     }
   };
 
@@ -263,8 +523,19 @@ export default function PublicFormPage() {
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+      toast.error('Please fix the errors above', {
+        description: 'Some required fields are missing or invalid.',
+        duration: 4000,
+        style: {
+          background: '#FEE2E2',
+          borderColor: '#EF4444',
+          color: '#991B1B',
+        },
+      });
       return;
     }
+
+    if (isSubmitting) return; // Prevent double submission
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -286,29 +557,28 @@ export default function PublicFormPage() {
       });
 
       // Submit form with both regular data and file data
-      const result = await submitForm(formId, formData, preparedFileData);
+      await handleFormSubmissionWithToasts(
+        formId,
+        formData,
+        preparedFileData,
+        form?.title
+      );
 
       setIsSubmitted(true);
-      toast.success(result.data.message || 'Form submitted successfully!', {
-        description: result.data.fileCount
-          ? `${result.data.fileCount} files uploaded`
-          : undefined,
-      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // Reset retry count on success
       setRetryCount(0);
     } catch (error: any) {
       setSubmitError(error.message);
 
-      // Show user-friendly error message
-      if (error.message.includes('Please check your form inputs:')) {
-        toast.error('Please fix the form errors and try again');
-      } else {
-        toast.error(error.message);
+      if (error.status === 403) {
+        console.log('Form access denied - user notified via toast');
+      } else if (error.status === 429) {
+        console.log('Duplicate submission - user notified via toast');
+      } else if (error.message?.includes('Network error')) {
+        setRetryCount(prev => prev + 1);
       }
 
-      // Scroll to top to show error message
+      // Scroll to top to show any additional error messages
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
@@ -321,14 +591,11 @@ export default function PublicFormPage() {
       submitError.includes('Network error') ||
       submitError.includes('timeout')
     ) {
-      loadForm(); // Reload form if network error
+      loadForm();
     } else {
       setSubmitError('');
     }
   };
-
-  // Frontend: src/app/form/[formId]/page.tsx - ENHANCED renderField function
-  // Replace your renderField function with this enhanced version
 
   const renderField = (field: Field) => {
     const value = formData[field.id] || '';
@@ -713,7 +980,7 @@ export default function PublicFormPage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <Input
-                  placeholder='First Name'
+                  // placeholder='First Name'
                   value={value.firstName || ''}
                   onChange={e =>
                     handleInputChange(field.id, {
@@ -1059,46 +1326,15 @@ export default function PublicFormPage() {
   // Error state
   if (!form || submitError) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gray-50 px-4'>
-        <div className='text-center max-w-md'>
-          <AlertCircle className='w-16 h-16 text-red-500 mx-auto mb-4' />
-          <h1 className='text-2xl font-bold text-gray-900 mb-2'>
-            Form Unavailable
-          </h1>
-
-          <div className='bg-red-50 border border-red-200 rounded-lg p-4 mb-6'>
-            <p className='text-red-800 text-sm'>
-              {submitError ||
-                'This form may have been deleted or is no longer available.'}
-            </p>
-          </div>
-
-          <div className='flex flex-col sm:flex-row gap-3 justify-center'>
-            <Button
-              onClick={handleRetry}
-              className='bg-blue-500 hover:bg-blue-600 flex items-center'
-            >
-              <RefreshCw className='w-4 h-4 mr-2' />
-              Try Again
-            </Button>
-
-            {retryCount >= 2 && (
-              <Button
-                onClick={() => window.location.reload()}
-                variant='outline'
-              >
-                Refresh Page
-              </Button>
-            )}
-          </div>
-
-          {retryCount > 0 && (
-            <p className='text-gray-500 text-sm mt-4'>
-              Retry attempt: {retryCount}
-            </p>
-          )}
-        </div>
-      </div>
+      <BeautifulErrorScreen
+        submitError={
+          submitError ||
+          'This form may have been deleted or is no longer available.'
+        }
+        retryCount={retryCount}
+        onRetry={handleRetry}
+        onRefresh={() => window.location.reload()}
+      />
     );
   }
 
@@ -1132,7 +1368,7 @@ export default function PublicFormPage() {
               Create your own forms like this one - It&apos;s free!
             </p>
             <Button
-              className='bg-green-500 hover:bg-green-600 text-white w-full'
+              className='bg-green-500 hover:bg-green-600 text-white w-full cursor-pointer'
               onClick={() => window.open('/', '_blank')}
             >
               <ExternalLink className='w-4 h-4 mr-2' />
@@ -1150,7 +1386,7 @@ export default function PublicFormPage() {
               setErrors({});
               setSubmitError('');
             }}
-            className='w-full'
+            className='w-full cursor-pointer'
           >
             Submit Another Response
           </Button>
@@ -1286,7 +1522,7 @@ export default function PublicFormPage() {
                   <Button
                     onClick={handleBack}
                     variant='outline'
-                    className='px-6 py-2'
+                    className='px-6 py-2 cursor-pointer'
                   >
                     ← Back
                   </Button>
@@ -1297,7 +1533,7 @@ export default function PublicFormPage() {
                 {!isLastPage ? (
                   <Button
                     onClick={handleNext}
-                    className='px-8 py-2 bg-blue-500 hover:bg-blue-600 text-white'
+                    className='px-8 py-2 bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
                     size='lg'
                   >
                     Next →
@@ -1306,7 +1542,7 @@ export default function PublicFormPage() {
                   <Button
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className='px-8 py-2 bg-green-500 hover:bg-green-600 text-white'
+                    className='px-8 py-2 bg-green-500 hover:bg-green-600 text-white cursor-pointer'
                     size='lg'
                   >
                     {isSubmitting ? (
@@ -1366,7 +1602,7 @@ export default function PublicFormPage() {
             </span>
             <Button
               size='sm'
-              className='bg-green-500 hover:bg-green-600 text-white text-xs'
+              className='bg-green-500 hover:bg-green-600 text-white text-xs cursor-pointer'
               onClick={() => window.open('/', '_blank')}
             >
               Create your own

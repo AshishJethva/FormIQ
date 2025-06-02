@@ -41,7 +41,6 @@ export const generateFormWithAI = createAsyncThunk(
       console.log('✅ AI form generation successful:', response.data);
       return response.data.data;
     } catch (error: any) {
-      console.error('❌ AI form generation failed:', error);
       return rejectWithValue(
         error.response?.data?.message ||
           error.message ||
