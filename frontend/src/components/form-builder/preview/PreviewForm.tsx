@@ -5,6 +5,7 @@ import { Form, Field, FieldType } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import FormLogo from '../logo/FormLogo';
 import FileUploadField from '@/components/form-builder/canvas/FileUploadField';
+import SignatureField from '@/components/form-builder/canvas/SignatureField';
 
 interface PreviewFormProps {
   form: Form;
@@ -82,7 +83,6 @@ export default function PreviewForm({
     const fieldError = errors[field.id];
 
     switch (field.type) {
-      // ✅ ENHANCED: File upload fields with integrated FileManager
       case FieldType.IMAGE:
         return (
           <FileUploadField
@@ -121,7 +121,6 @@ export default function PreviewForm({
           />
         );
 
-      // ✅ EXISTING: All other field types with error handling
       case FieldType.SHORT_TEXT:
         return (
           <div key={field.id} className='mb-6'>
@@ -499,7 +498,6 @@ export default function PreviewForm({
           </div>
         );
 
-      // ✅ EXISTING: Advanced Elements (updated with error display)
       case FieldType.HEADING:
         return (
           <div key={field.id} className='mb-6'>
@@ -772,61 +770,6 @@ export default function PreviewForm({
           </div>
         );
 
-      case FieldType.SIGNATURE:
-        return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div
-              className={`h-32 border-2 border-dashed border-gray-300 rounded-md bg-gray-50 flex items-center justify-center text-gray-400 cursor-pointer hover:border-gray-400 transition-colors ${
-                fieldError ? 'border-red-500' : ''
-              }`}
-              onClick={() => handleInputChange(field.id, 'Signature added')}
-            >
-              {value ? (
-                <span className='text-gray-700 font-medium'>
-                  ✓ Signature added
-                </span>
-              ) : (
-                <span>Click to sign</span>
-              )}
-            </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.FILL_BLANK:
-        return (
-          <div key={field.id} className='mb-6'>
-            <div className='flex items-center flex-wrap gap-2 text-gray-700'>
-              <span>I agree to the</span>
-              <Input
-                className={`w-32 inline-block ${
-                  fieldError ? 'border-red-500 focus:ring-red-500' : ''
-                }`}
-                placeholder='terms'
-                value={value}
-                onChange={e => handleInputChange(field.id, e.target.value)}
-              />
-              <span>and conditions.</span>
-            </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-      case FieldType.PRODUCT_LIST:
         return (
           <div key={field.id} className='mb-6'>
             <label className='block text-gray-700 mb-2 font-medium'>
@@ -871,6 +814,193 @@ export default function PreviewForm({
             )}
           </div>
         );
+
+      case FieldType.SIGNATURE:
+        return (
+          <SignatureField
+            key={field.id}
+            fieldId={field.id}
+            label={field.label}
+            required={field.required}
+            helpText={field.helpText}
+            value={value}
+            onChange={value => handleInputChange(field.id, value)}
+            error={fieldError}
+            readOnly={false}
+          />
+        );
+
+      case FieldType.FILL_BLANK: {
+        // ✅ USE ACTUAL FIELD CONFIGURATION from builder
+        const beforeText =
+          field.fillBlankTemplate?.beforeText || 'I agree to the';
+        const blankPlaceholder =
+          field.fillBlankTemplate?.blankPlaceholder || 'terms';
+        const afterText =
+          field.fillBlankTemplate?.afterText || 'and conditions.';
+
+        return (
+          <div key={field.id} className='mb-6'>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+
+            {/* ✅ PREVIEW: Show the configured template with interactive blank */}
+            <div className='border border-gray-300 rounded-lg p-4 bg-gray-50'>
+              <div className='flex flex-wrap items-center gap-2 text-gray-700 mb-3'>
+                <span className='text-base'>{beforeText}</span>
+                <input
+                  type='text'
+                  placeholder={blankPlaceholder}
+                  value={value || ''}
+                  onChange={e => handleInputChange(field.id, e.target.value)}
+                  className={`px-3 py-2 border-b-2 border-blue-500 bg-blue-50 text-blue-700 min-w-[120px] focus:outline-none focus:bg-white focus:border-blue-600 text-center ${
+                    fieldError ? 'border-red-500 bg-red-50' : ''
+                  }`}
+                />
+                <span className='text-base'>{afterText}</span>
+              </div>
+
+              {/* ✅ Show what user typed */}
+              {value && (
+                <div className='text-sm text-green-600 mt-2'>
+                  ✓ Your answer: &quot;{value}&quot;
+                </div>
+              )}
+            </div>
+
+            {fieldError && (
+              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
+            )}
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+      }
+
+      case FieldType.PRODUCT_LIST: {
+        // ✅ USE ACTUAL PRODUCT CONFIGURATION from builder
+        const products = field.productListConfig?.products || [
+          { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
+        ];
+
+        // Initialize value as object if not already
+        const currentSelections = value || {};
+
+        const handleProductQuantityChange = (
+          productId: string,
+          quantity: number
+        ) => {
+          const updatedSelections = { ...currentSelections };
+          if (quantity > 0) {
+            updatedSelections[productId] = quantity;
+          } else {
+            delete updatedSelections[productId];
+          }
+          handleInputChange(field.id, updatedSelections);
+        };
+
+        // Calculate total
+        const calculateTotal = () => {
+          return products.reduce((total, product) => {
+            const quantity = currentSelections[product.id] || 0;
+            return total + product.price * quantity;
+          }, 0);
+        };
+
+        return (
+          <div key={field.id} className='mb-6'>
+            <label className='block text-gray-700 mb-2 font-medium'>
+              {field.label}
+              {field.required && <span className='text-red-500 ml-1'>*</span>}
+            </label>
+
+            {/* ✅ PREVIEW: Show configured products with quantity selectors */}
+            <div className='border border-gray-300 rounded-md overflow-hidden bg-white'>
+              {/* Header */}
+              <div className='bg-gray-100 p-3 border-b border-gray-300'>
+                <div className='grid grid-cols-12 gap-2 font-medium text-gray-700 text-sm'>
+                  <div className='col-span-6'>Product</div>
+                  <div className='col-span-3 text-center'>Price</div>
+                  <div className='col-span-3 text-center'>Quantity</div>
+                </div>
+              </div>
+
+              {/* ✅ Product List from Builder Configuration */}
+              <div className='divide-y divide-gray-200'>
+                {products.map(product => (
+                  <div key={product.id} className='p-3'>
+                    <div className='grid grid-cols-12 gap-2 items-center'>
+                      <div className='col-span-6'>
+                        <div className='text-gray-900 font-medium'>
+                          {product.name}
+                        </div>
+                      </div>
+                      <div className='col-span-3 text-center text-gray-700'>
+                        ${product.price.toFixed(2)}
+                      </div>
+                      <div className='col-span-3 text-center'>
+                        <input
+                          type='number'
+                          min='0'
+                          max='99'
+                          value={currentSelections[product.id] || 0}
+                          onChange={e =>
+                            handleProductQuantityChange(
+                              product.id,
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                          className={`w-16 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            fieldError ? 'border-red-500' : ''
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ✅ Total Section */}
+              <div className='bg-gray-50 p-3 border-t border-gray-300'>
+                <div className='flex justify-between items-center'>
+                  <span className='font-medium text-gray-700'>Total:</span>
+                  <span className='font-bold text-lg text-green-600'>
+                    ${calculateTotal().toFixed(2)}
+                  </span>
+                </div>
+
+                {/* ✅ Show selected items summary */}
+                {Object.keys(currentSelections).length > 0 && (
+                  <div className='mt-2 text-sm text-gray-600'>
+                    {Object.keys(currentSelections).map(productId => {
+                      const product = products.find(p => p.id === productId);
+                      const quantity = currentSelections[productId];
+                      return quantity > 0 && product ? (
+                        <div key={productId} className='flex justify-between'>
+                          <span>
+                            {product.name} (×{quantity})
+                          </span>
+                          <span>${(product.price * quantity).toFixed(2)}</span>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {fieldError && (
+              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
+            )}
+            {field.helpText && (
+              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+            )}
+          </div>
+        );
+      }
 
       default:
         return (

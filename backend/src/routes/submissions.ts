@@ -610,7 +610,23 @@ function validateSubmissionData(
 
           case 'signature':
             if (fieldValue && typeof fieldValue === 'string') {
-              if (fieldValue.trim().length === 0) {
+              // Check if it's a valid data URL for canvas signature
+              if (fieldValue.startsWith('data:image/')) {
+                // Validate data URL format
+                const dataUrlRegex = /^data:image\/(png|jpeg|jpg);base64,/;
+                if (!dataUrlRegex.test(fieldValue)) {
+                  errors.push(
+                    `${field.label || field.id} contains an invalid signature format`
+                  );
+                }
+                // Check size (base64 encoded signatures shouldn't be too large)
+                if (fieldValue.length > 500000) {
+                  // ~375KB limit for base64
+                  errors.push(
+                    `${field.label || field.id} signature is too large`
+                  );
+                }
+              } else if (fieldValue.trim().length === 0) {
                 errors.push(
                   `${field.label || field.id} signature cannot be empty`
                 );
@@ -619,16 +635,108 @@ function validateSubmissionData(
             break;
 
           case 'fillBlank':
-            if (fieldValue && typeof fieldValue === 'string') {
-              if (fieldValue.trim().length === 0) {
-                errors.push(`${field.label || field.id} cannot be empty`);
+            if (fieldValue) {
+              if (typeof fieldValue === 'object') {
+                // New format with template and user input
+                if (
+                  !fieldValue.userInput ||
+                  fieldValue.userInput.trim() === ''
+                ) {
+                  if (field.required) {
+                    errors.push(
+                      `${field.label || field.id} requires completion of the blank`
+                    );
+                  }
+                } else {
+                  // Validate user input length
+                  const userInput = fieldValue.userInput.trim();
+                  if (userInput.length > 200) {
+                    errors.push(
+                      `${field.label || field.id} input cannot exceed 200 characters`
+                    );
+                  }
+                }
+
+                // Validate template structure if provided
+                if (
+                  fieldValue.beforeText &&
+                  fieldValue.beforeText.length > 500
+                ) {
+                  errors.push(
+                    `${field.label || field.id} template text is too long`
+                  );
+                }
+                if (fieldValue.afterText && fieldValue.afterText.length > 500) {
+                  errors.push(
+                    `${field.label || field.id} template text is too long`
+                  );
+                }
+              } else if (typeof fieldValue === 'string') {
+                // Legacy format - just the filled value
+                if (fieldValue.trim().length === 0) {
+                  errors.push(`${field.label || field.id} cannot be empty`);
+                } else if (fieldValue.length > 200) {
+                  errors.push(
+                    `${field.label || field.id} cannot exceed 200 characters`
+                  );
+                }
               }
             }
             break;
 
           case 'productList':
             if (fieldValue) {
-              if (typeof fieldValue !== 'object') {
+              if (typeof fieldValue === 'object') {
+                const { products, selectedProducts } = fieldValue;
+
+                // Validate products structure
+                if (products && Array.isArray(products)) {
+                  products.forEach((product: any, index: number) => {
+                    if (!product.id || !product.name) {
+                      errors.push(
+                        `${field.label || field.id} has invalid product at position ${index + 1}`
+                      );
+                    }
+                    if (
+                      typeof product.price !== 'number' ||
+                      product.price < 0
+                    ) {
+                      errors.push(
+                        `${field.label || field.id} has invalid price for product "${product.name}"`
+                      );
+                    }
+                  });
+                }
+
+                // Validate selections
+                if (selectedProducts && typeof selectedProducts === 'object') {
+                  const hasSelections = Object.values(selectedProducts).some(
+                    (qty: any) => qty && qty > 0
+                  );
+
+                  if (field.required && !hasSelections) {
+                    errors.push(
+                      `${field.label || field.id} requires at least one product to be selected`
+                    );
+                  }
+
+                  // Validate quantities
+                  Object.entries(selectedProducts).forEach(
+                    ([productId, quantity]) => {
+                      if (typeof quantity !== 'number' || quantity < 0) {
+                        errors.push(
+                          `${field.label || field.id} has invalid quantity for product`
+                        );
+                      }
+                      if (typeof quantity === 'number' && quantity > 1000) {
+                        errors.push(
+                          `${field.label || field.id} quantity cannot exceed 1000 per product`
+                        );
+                      }
+                    }
+                  );
+                }
+              } else {
                 errors.push(
                   `${field.label || field.id} must be a valid product selection`
                 );
@@ -1210,15 +1318,6 @@ router.post(
         message: 'Form not found',
       });
     }
-
-    console.log('📋 Form found:', {
-      id: form._id,
-      title: form.title,
-      isPublished: form.isPublished,
-      isEnabled: form.settings?.isEnabled,
-      isTrashed: form.isTrashed,
-      isArchived: form.isArchived,
-    });
 
     // STEP 3: Check form availability
     if (!form.isPublished) {

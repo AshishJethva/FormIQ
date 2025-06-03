@@ -284,7 +284,6 @@ const FilePreviewModal: React.FC<FilePreviewProps> = ({
   downloadingFileId,
 }) => {
   const [imageError, setImageError] = useState(false);
-
   const isDownloading = downloadingFileId === file.publicId;
   const isImage = file.mimeType.startsWith('image/');
   const isVideo = file.mimeType.startsWith('video/');

@@ -165,9 +165,79 @@ AVAILABLE FIELD TYPES (use exact values):
 - "address": Complete address with street, city, state
 - "datePicker": Date selection
 - "appointment": Date and time booking
-- "signature": Digital signature capture
-- "fillBlank": Fill-in-the-blank text inputs
-- "productList": Product catalog with pricing
+- "signature": Digital signature capture with customizable instructions
+- "fillBlank": Fill-in-the-blank text with customizable template
+- "productList": Product catalog with pricing and quantity selection
+
+ENHANCED FIELD CONFIGURATIONS:
+
+SIGNATURE Field:
+{
+  "id": "auto-generated",
+  "type": "signature",
+  "label": "Digital Signature",
+  "labelAlignment": "LEFT",
+  "required": true,
+  "helpText": "Please sign below to confirm your agreement",
+  "signatureConfig": {
+    "instructionText": "Please provide your digital signature below",
+    "clearButtonText": "Clear Signature",
+    "signHereText": "Sign here",
+    "width": 400,
+    "height": 150,
+    "backgroundColor": "#ffffff",
+    "penColor": "#000000"
+  }
+}
+
+FILL_BLANK Field:
+{
+  "id": "auto-generated", 
+  "type": "fillBlank",
+  "label": "Agreement Statement",
+  "labelAlignment": "LEFT",
+  "required": true,
+  "helpText": "Complete the statement by filling in the blank",
+  "fillBlankTemplate": {
+    "beforeText": "I, ",
+    "blankPlaceholder": "your full name",
+    "afterText": ", hereby agree to the terms and conditions stated above."
+  }
+}
+
+PRODUCT_LIST Field:
+{
+  "id": "auto-generated",
+  "type": "productList", 
+  "label": "Select Products",
+  "labelAlignment": "LEFT",
+  "required": false,
+  "helpText": "Choose your products and specify quantities",
+  "productListConfig": {
+    "allowQuantityEdit": true,
+    "showTotalPrice": true,
+    "currency": "USD",
+    "currencySymbol": "$",
+    "products": [
+      {
+        "id": "prod1",
+        "name": "Basic Package",
+        "description": "Essential features for getting started",
+        "price": 29.99,
+        "quantity": 1,
+        "category": "packages"
+      },
+      {
+        "id": "prod2", 
+        "name": "Premium Package",
+        "description": "Advanced features with priority support",
+        "price": 79.99,
+        "quantity": 1,
+        "category": "packages"
+      }
+    ]
+  }
+}
 
 FORM STRUCTURE (EXACT FORMAT REQUIRED):
 {
@@ -221,6 +291,11 @@ FORM STRUCTURE (EXACT FORMAT REQUIRED):
   }
 }
 
+SMART FIELD SELECTION GUIDELINES:
+- Use "signature" for: contracts, agreements, legal documents, consent forms, authorization forms
+- Use "fillBlank" for: personalized statements, agreements, custom declarations, templates
+- Use "productList" for: ordering, purchasing, service selection, package selection, catalog browsing
+
 IMPORTANT RULES:
 - "heading" fields should NOT have "required" or "helpText" properties
 - All other field types should have "required" and "helpText" properties
@@ -228,6 +303,9 @@ IMPORTANT RULES:
 - Each option must have both "label" and "value" properties
 - Set showLogo to true and allowMultipleSubmissions/allowMultipleEmailSubmissions to true by default
 - Generate realistic, contextual field options
+- For signature fields, customize instructionText based on context
+- For fillBlank fields, create meaningful templates that match the form purpose
+- For productList fields, generate relevant products with realistic pricing
 
 USER REQUEST: "${userPrompt}"
 
@@ -253,6 +331,69 @@ Generate the form configuration now:`;
           if (field.type !== 'heading') {
             cleanField.required = Boolean(field.required);
             cleanField.helpText = field.helpText || '';
+
+            // ✅ ENHANCED: Handle signature field configuration
+            if (field.type === 'signature') {
+              cleanField.signatureConfig = {
+                instructionText:
+                  field.signatureConfig?.instructionText ||
+                  'Please provide your digital signature below',
+                clearButtonText:
+                  field.signatureConfig?.clearButtonText || 'Clear Signature',
+                signHereText:
+                  field.signatureConfig?.signHereText || 'Sign here',
+                width: Number(field.signatureConfig?.width) || 400,
+                height: Number(field.signatureConfig?.height) || 150,
+                backgroundColor:
+                  field.signatureConfig?.backgroundColor || '#ffffff',
+                penColor: field.signatureConfig?.penColor || '#000000',
+                ...field.signatureConfig,
+              };
+            }
+
+            // ✅ ENHANCED: Handle fillBlank field configuration
+            if (field.type === 'fillBlank') {
+              cleanField.fillBlankTemplate = {
+                beforeText:
+                  field.fillBlankTemplate?.beforeText || 'I agree to the',
+                blankPlaceholder:
+                  field.fillBlankTemplate?.blankPlaceholder || 'terms',
+                afterText:
+                  field.fillBlankTemplate?.afterText || 'and conditions.',
+                ...field.fillBlankTemplate,
+              };
+            }
+
+            // ✅ ENHANCED: Handle productList field configuration
+            if (field.type === 'productList') {
+              const products = field.productListConfig?.products || [];
+              cleanField.productListConfig = {
+                allowQuantityEdit: Boolean(
+                  field.productListConfig?.allowQuantityEdit !== false
+                ),
+                showTotalPrice: Boolean(
+                  field.productListConfig?.showTotalPrice !== false
+                ),
+                currency: field.productListConfig?.currency || 'USD',
+                currencySymbol: field.productListConfig?.currencySymbol || '$',
+                products: products.map((product: any) => ({
+                  id: product.id || uuidv4(),
+                  name: String(product.name || 'Product'),
+                  description: String(product.description || ''),
+                  price: Number(product.price) || 0,
+                  quantity: Number(product.quantity) || 1,
+                  category: String(product.category || 'general'),
+                  ...product,
+                })),
+                ...field.productListConfig,
+              };
+
+              // Ensure at least one product exists
+              if (cleanField.productListConfig.products.length === 0) {
+                cleanField.productListConfig.products =
+                  this.generateDefaultProducts(field.label);
+              }
+            }
 
             // ✅ FIXED: Handle options array properly for choice fields
             const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
@@ -327,6 +468,10 @@ Generate the form configuration now:`;
           console.log(`🔧 Cleaned field: ${field.type} - ${field.label}`, {
             hasOptions: !!cleanField.options,
             optionsCount: cleanField.options?.length || 0,
+            hasSignatureConfig: !!cleanField.signatureConfig,
+            hasFillBlankTemplate: !!cleanField.fillBlankTemplate,
+            hasProductListConfig: !!cleanField.productListConfig,
+            productCount: cleanField.productListConfig?.products?.length || 0,
           });
 
           return cleanField;
@@ -336,6 +481,115 @@ Generate the form configuration now:`;
 
     console.log('✅ Form config cleaned for MongoDB compatibility');
     return config;
+  }
+
+  // ✅ NEW: Generate default products for productList fields
+  private generateDefaultProducts(label: string): Array<any> {
+    const lowerLabel = label.toLowerCase();
+
+    if (lowerLabel.includes('package') || lowerLabel.includes('plan')) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Basic Package',
+          description: 'Essential features to get started',
+          price: 29.99,
+          quantity: 1,
+          category: 'packages',
+        },
+        {
+          id: uuidv4(),
+          name: 'Premium Package',
+          description: 'Advanced features with priority support',
+          price: 79.99,
+          quantity: 1,
+          category: 'packages',
+        },
+      ];
+    }
+
+    if (lowerLabel.includes('service')) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Consultation Service',
+          description: '1-hour professional consultation',
+          price: 99.0,
+          quantity: 1,
+          category: 'services',
+        },
+        {
+          id: uuidv4(),
+          name: 'Full Service Package',
+          description: 'Complete service implementation',
+          price: 299.0,
+          quantity: 1,
+          category: 'services',
+        },
+      ];
+    }
+
+    if (lowerLabel.includes('product') || lowerLabel.includes('item')) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Product A',
+          description: 'High-quality standard product',
+          price: 19.99,
+          quantity: 1,
+          category: 'products',
+        },
+        {
+          id: uuidv4(),
+          name: 'Product B',
+          description: 'Premium quality with extra features',
+          price: 39.99,
+          quantity: 1,
+          category: 'products',
+        },
+      ];
+    }
+
+    if (lowerLabel.includes('course') || lowerLabel.includes('training')) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Beginner Course',
+          description: 'Foundation level training course',
+          price: 149.0,
+          quantity: 1,
+          category: 'courses',
+        },
+        {
+          id: uuidv4(),
+          name: 'Advanced Course',
+          description: 'Expert level comprehensive training',
+          price: 399.0,
+          quantity: 1,
+          category: 'courses',
+        },
+      ];
+    }
+
+    // Default generic products
+    return [
+      {
+        id: uuidv4(),
+        name: 'Standard Option',
+        description: 'Our most popular choice',
+        price: 49.99,
+        quantity: 1,
+        category: 'general',
+      },
+      {
+        id: uuidv4(),
+        name: 'Premium Option',
+        description: 'Enhanced features and benefits',
+        price: 99.99,
+        quantity: 1,
+        category: 'general',
+      },
+    ];
   }
 
   private async generateFormLogo(
@@ -479,7 +733,7 @@ Generate the form configuration now:`;
             description: 'Feedback collection header',
           },
           {
-            url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&h=265&fit=crop&crop=center',
+            url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
             publicId: 'feedback_900x265_2',
             description: 'Survey analytics header',
           },
@@ -516,6 +770,8 @@ Generate the form configuration now:`;
           'product',
           'checkout',
           'payment',
+          'signature', // Added for contract/purchase agreements
+          'productlist', // Added for product selection
         ],
         logos: [
           {
@@ -560,6 +816,9 @@ Generate the form configuration now:`;
           'professional',
           'service',
           'consultation',
+          'agreement', // Added for fillBlank/signature contexts
+          'contract',
+          'legal',
         ],
         logos: [
           {
@@ -776,6 +1035,58 @@ Generate the form configuration now:`;
             }
           }
         }
+
+        // ✅ ENHANCED: Validate new field types
+        if (field.type === 'signature') {
+          if (field.signatureConfig) {
+            if (
+              field.signatureConfig.width &&
+              isNaN(Number(field.signatureConfig.width))
+            ) {
+              console.log(
+                `⚠️ Signature field "${field.label}" has invalid width - will be fixed`
+              );
+            }
+            if (
+              field.signatureConfig.height &&
+              isNaN(Number(field.signatureConfig.height))
+            ) {
+              console.log(
+                `⚠️ Signature field "${field.label}" has invalid height - will be fixed`
+              );
+            }
+          }
+        }
+
+        if (field.type === 'fillBlank') {
+          if (field.fillBlankTemplate) {
+            if (
+              !field.fillBlankTemplate.beforeText &&
+              !field.fillBlankTemplate.afterText
+            ) {
+              console.log(
+                `⚠️ FillBlank field "${field.label}" missing template text - will use defaults`
+              );
+            }
+          }
+        }
+
+        if (field.type === 'productList') {
+          if (field.productListConfig && field.productListConfig.products) {
+            for (const product of field.productListConfig.products) {
+              if (!product.name) {
+                console.log(
+                  `⚠️ Product in "${field.label}" missing name - will be fixed`
+                );
+              }
+              if (isNaN(Number(product.price))) {
+                console.log(
+                  `⚠️ Product in "${field.label}" has invalid price - will be fixed`
+                );
+              }
+            }
+          }
+        }
       }
     }
 
@@ -815,7 +1126,53 @@ Generate the form configuration now:`;
           enhancedField.required =
             field.required !== undefined ? field.required : false;
           enhancedField.helpText =
-            field.helpText || this.generateHelpText(field.type, field.label);
+            field.helpText ||
+            this.generateHelpText(field.type, field.label, originalPrompt);
+
+          // ✅ ENHANCED: Generate contextual configurations for new field types
+          if (field.type === 'signature') {
+            enhancedField.signatureConfig = {
+              instructionText: this.generateSignatureInstructions(
+                field.label,
+                originalPrompt
+              ),
+              clearButtonText: 'Clear Signature',
+              signHereText: 'Sign here',
+              width: 400,
+              height: 150,
+              backgroundColor: '#ffffff',
+              penColor: '#000000',
+              ...field.signatureConfig,
+            };
+          }
+
+          if (field.type === 'fillBlank') {
+            enhancedField.fillBlankTemplate = this.generateFillBlankTemplate(
+              field.label,
+              originalPrompt,
+              field.fillBlankTemplate
+            );
+          }
+
+          if (field.type === 'productList') {
+            if (
+              !field.productListConfig ||
+              !field.productListConfig.products ||
+              field.productListConfig.products.length === 0
+            ) {
+              enhancedField.productListConfig = {
+                allowQuantityEdit: true,
+                showTotalPrice: true,
+                currency: 'USD',
+                currencySymbol: '$',
+                products: this.generateContextualProducts(
+                  field.label,
+                  originalPrompt
+                ),
+                ...field.productListConfig,
+              };
+            }
+          }
 
           // Add default options for choice fields if missing
           const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
@@ -840,6 +1197,283 @@ Generate the form configuration now:`;
     return config;
   }
 
+  // ✅ NEW: Generate contextual signature instructions
+  private generateSignatureInstructions(label: string, prompt: string): string {
+    const lowerLabel = label.toLowerCase();
+    const lowerPrompt = prompt.toLowerCase();
+
+    if (lowerLabel.includes('agreement') || lowerPrompt.includes('agreement')) {
+      return 'Please sign below to confirm your agreement to the terms and conditions';
+    }
+
+    if (
+      lowerLabel.includes('authorization') ||
+      lowerPrompt.includes('authorization')
+    ) {
+      return 'Please provide your digital signature to authorize this request';
+    }
+
+    if (lowerLabel.includes('consent') || lowerPrompt.includes('consent')) {
+      return 'Please sign to provide your consent for the stated purposes';
+    }
+
+    if (lowerLabel.includes('witness') || lowerPrompt.includes('witness')) {
+      return 'Please sign as a witness to validate this document';
+    }
+
+    if (lowerPrompt.includes('contract') || lowerPrompt.includes('legal')) {
+      return 'Please provide your legally binding digital signature';
+    }
+
+    if (lowerPrompt.includes('purchase') || lowerPrompt.includes('order')) {
+      return 'Please sign to confirm your purchase and acceptance of terms';
+    }
+
+    return 'Please provide your digital signature below';
+  }
+
+  // ✅ NEW: Generate contextual fill blank templates
+  private generateFillBlankTemplate(
+    label: string,
+    prompt: string,
+    existing?: any
+  ): any {
+    if (existing && existing.beforeText && existing.afterText) {
+      return existing;
+    }
+
+    const lowerLabel = label.toLowerCase();
+    const lowerPrompt = prompt.toLowerCase();
+
+    if (lowerLabel.includes('agreement') || lowerPrompt.includes('agreement')) {
+      return {
+        beforeText: 'I, ',
+        blankPlaceholder: 'your full name',
+        afterText: ', hereby agree to the terms and conditions stated above.',
+      };
+    }
+
+    if (
+      lowerLabel.includes('authorization') ||
+      lowerPrompt.includes('authorization')
+    ) {
+      return {
+        beforeText: 'I authorize ',
+        blankPlaceholder: 'company/person name',
+        afterText: ' to proceed with the requested action on my behalf.',
+      };
+    }
+
+    if (
+      lowerLabel.includes('declaration') ||
+      lowerPrompt.includes('declaration')
+    ) {
+      return {
+        beforeText: 'I declare that the information provided is ',
+        blankPlaceholder: 'true and accurate',
+        afterText: ' to the best of my knowledge.',
+      };
+    }
+
+    if (lowerLabel.includes('witness') || lowerPrompt.includes('witness')) {
+      return {
+        beforeText: 'I, ',
+        blankPlaceholder: 'witness name',
+        afterText: ', hereby witness the signing of this document.',
+      };
+    }
+
+    if (lowerPrompt.includes('emergency') || lowerLabel.includes('emergency')) {
+      return {
+        beforeText: 'In case of emergency, please contact ',
+        blankPlaceholder: 'emergency contact name',
+        afterText: ' at the provided phone number.',
+      };
+    }
+
+    // Default template
+    return {
+      beforeText: 'I confirm that ',
+      blankPlaceholder: 'your response',
+      afterText: ' is accurate and complete.',
+    };
+  }
+
+  // ✅ NEW: Generate contextual products based on form purpose
+  private generateContextualProducts(
+    label: string,
+    prompt: string
+  ): Array<any> {
+    const lowerLabel = label.toLowerCase();
+    const lowerPrompt = prompt.toLowerCase();
+
+    if (
+      lowerPrompt.includes('course') ||
+      lowerPrompt.includes('training') ||
+      lowerPrompt.includes('education')
+    ) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Beginner Course',
+          description: 'Perfect for those just starting out',
+          price: 99.0,
+          quantity: 1,
+          category: 'courses',
+        },
+        {
+          id: uuidv4(),
+          name: 'Intermediate Course',
+          description: 'Build on your existing knowledge',
+          price: 199.0,
+          quantity: 1,
+          category: 'courses',
+        },
+        {
+          id: uuidv4(),
+          name: 'Advanced Certification',
+          description: 'Master-level training with certification',
+          price: 399.0,
+          quantity: 1,
+          category: 'courses',
+        },
+      ];
+    }
+
+    if (
+      lowerPrompt.includes('subscription') ||
+      lowerPrompt.includes('membership')
+    ) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Basic Membership',
+          description: 'Essential features and support',
+          price: 9.99,
+          quantity: 1,
+          category: 'subscriptions',
+        },
+        {
+          id: uuidv4(),
+          name: 'Pro Membership',
+          description: 'Advanced features and priority support',
+          price: 29.99,
+          quantity: 1,
+          category: 'subscriptions',
+        },
+        {
+          id: uuidv4(),
+          name: 'Enterprise Membership',
+          description: 'Full access with dedicated support',
+          price: 99.99,
+          quantity: 1,
+          category: 'subscriptions',
+        },
+      ];
+    }
+
+    if (
+      lowerPrompt.includes('consultation') ||
+      lowerPrompt.includes('service')
+    ) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Initial Consultation',
+          description: '60-minute discovery session',
+          price: 150.0,
+          quantity: 1,
+          category: 'services',
+        },
+        {
+          id: uuidv4(),
+          name: 'Strategy Package',
+          description: 'Comprehensive strategy development',
+          price: 500.0,
+          quantity: 1,
+          category: 'services',
+        },
+        {
+          id: uuidv4(),
+          name: 'Implementation Support',
+          description: 'Full implementation with ongoing support',
+          price: 1500.0,
+          quantity: 1,
+          category: 'services',
+        },
+      ];
+    }
+
+    if (
+      lowerPrompt.includes('software') ||
+      lowerPrompt.includes('app') ||
+      lowerPrompt.includes('digital')
+    ) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Starter Plan',
+          description: 'Basic features for small teams',
+          price: 19.99,
+          quantity: 1,
+          category: 'software',
+        },
+        {
+          id: uuidv4(),
+          name: 'Professional Plan',
+          description: 'Advanced features for growing businesses',
+          price: 49.99,
+          quantity: 1,
+          category: 'software',
+        },
+        {
+          id: uuidv4(),
+          name: 'Enterprise Plan',
+          description: 'Full feature set with enterprise support',
+          price: 149.99,
+          quantity: 1,
+          category: 'software',
+        },
+      ];
+    }
+
+    if (
+      lowerPrompt.includes('event') ||
+      lowerPrompt.includes('conference') ||
+      lowerPrompt.includes('workshop')
+    ) {
+      return [
+        {
+          id: uuidv4(),
+          name: 'Early Bird Ticket',
+          description: 'Limited time special pricing',
+          price: 299.0,
+          quantity: 1,
+          category: 'events',
+        },
+        {
+          id: uuidv4(),
+          name: 'Regular Ticket',
+          description: 'Standard conference access',
+          price: 399.0,
+          quantity: 1,
+          category: 'events',
+        },
+        {
+          id: uuidv4(),
+          name: 'VIP Package',
+          description: 'Premium access with networking events',
+          price: 699.0,
+          quantity: 1,
+          category: 'events',
+        },
+      ];
+    }
+
+    // Return the default products from the existing method
+    return this.generateDefaultProducts(label);
+  }
+
   private generateThankYouMessage(title: string, prompt: string): string {
     const formType = prompt.toLowerCase();
 
@@ -859,19 +1493,43 @@ Generate the form configuration now:`;
       formType.includes('appointment')
     ) {
       return "Your booking has been confirmed! You'll receive a confirmation email with all the details.";
+    } else if (formType.includes('order') || formType.includes('purchase')) {
+      return "Thank you for your order! You'll receive a confirmation email with your order details and next steps.";
+    } else if (
+      formType.includes('signature') ||
+      formType.includes('agreement')
+    ) {
+      return "Thank you for completing the agreement. Your signature has been recorded and you'll receive a copy via email.";
     }
 
     return "Thank you for your submission! We've received your information and will be in touch soon.";
   }
 
-  private generateHelpText(fieldType: string, label: string): string {
+  private generateHelpText(
+    fieldType: string,
+    label: string,
+    prompt: string = ''
+  ): string {
     const lowerLabel = label.toLowerCase();
+    const lowerPrompt = prompt.toLowerCase();
 
     switch (fieldType) {
       case 'email':
         return 'example@company.com';
       case 'phone':
         return 'Enter your 10-digit mobile number';
+      case 'signature':
+        if (lowerPrompt.includes('legal') || lowerPrompt.includes('contract')) {
+          return 'Your digital signature will be legally binding';
+        }
+        return 'Draw your signature using your mouse or touch screen';
+      case 'fillBlank':
+        return 'Complete the statement by filling in the blank space';
+      case 'productList':
+        if (lowerPrompt.includes('order') || lowerPrompt.includes('purchase')) {
+          return 'Select products and specify quantities for your order';
+        }
+        return 'Choose your preferred options from the available products';
       case 'shortText':
         if (lowerLabel.includes('name')) return 'Enter your full name';
         if (lowerLabel.includes('company')) return 'Enter your company name';
@@ -1049,6 +1707,9 @@ Generate the form configuration now:`;
         'Context-aware help text generation',
         'Professional 900x265 logo sizing',
         'MongoDB-compatible field structures',
+        'Enhanced signature field configurations',
+        'Contextual fill-blank templates',
+        'Smart product list generation',
       ],
     };
   }
@@ -1091,6 +1752,88 @@ Generate the form configuration now:`;
       'fillBlank',
       'productList',
     ];
+  }
+
+  // ✅ NEW: Method to get field-specific enhancements
+  getFieldEnhancements(): {
+    signature: string[];
+    fillBlank: string[];
+    productList: string[];
+  } {
+    return {
+      signature: [
+        'Contextual instruction text generation',
+        'Customizable signature canvas dimensions',
+        'Professional styling with clear/sign prompts',
+        'Legal and business context awareness',
+      ],
+      fillBlank: [
+        'Smart template generation based on context',
+        'Multiple template patterns (agreements, declarations, etc.)',
+        'Contextual placeholder text',
+        'Professional statement formatting',
+      ],
+      productList: [
+        'Context-aware product generation',
+        'Realistic pricing based on industry',
+        'Category-specific product types',
+        'Quantity management and total calculation',
+        'Support for courses, services, software, events',
+      ],
+    };
+  }
+
+  // ✅ NEW: Method to test field generation
+  async testFieldGeneration(fieldType: string, context: string): Promise<any> {
+    try {
+      switch (fieldType) {
+        case 'signature':
+          return {
+            type: 'signature',
+            label: 'Digital Signature',
+            signatureConfig: {
+              instructionText: this.generateSignatureInstructions(
+                'signature',
+                context
+              ),
+              clearButtonText: 'Clear Signature',
+              signHereText: 'Sign here',
+              width: 400,
+              height: 150,
+              backgroundColor: '#ffffff',
+              penColor: '#000000',
+            },
+          };
+
+        case 'fillBlank':
+          return {
+            type: 'fillBlank',
+            label: 'Agreement Statement',
+            fillBlankTemplate: this.generateFillBlankTemplate(
+              'agreement',
+              context
+            ),
+          };
+
+        case 'productList':
+          return {
+            type: 'productList',
+            label: 'Select Products',
+            productListConfig: {
+              allowQuantityEdit: true,
+              showTotalPrice: true,
+              currency: 'USD',
+              currencySymbol: '$',
+              products: this.generateContextualProducts('products', context),
+            },
+          };
+
+        default:
+          return { error: 'Unsupported field type for testing' };
+      }
+    } catch (error: any) {
+      return { error: error.message };
+    }
   }
 }
 

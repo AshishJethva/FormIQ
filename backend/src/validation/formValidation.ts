@@ -20,7 +20,6 @@ export const fieldSchema = z
   .object({
     id: z.string().min(1, 'Field ID is required'),
     type: z.enum([
-      // Original fields
       'heading',
       'fullName',
       'email',
@@ -31,7 +30,6 @@ export const fieldSchema = z
       'signature',
       'fillBlank',
       'productList',
-      // ✅ NEW: Added all 10 new field types
       'shortText',
       'longText',
       'paragraph',
@@ -105,6 +103,31 @@ export const fieldSchema = z
     // ✅ NEW: File upload properties
     multiple: z.boolean().optional(),
     accept: z.string().optional(),
+
+    // ✅ NEW: Fill blank template properties
+    fillBlankTemplate: z
+      .object({
+        beforeText: z.string().max(500).optional(),
+        blankPlaceholder: z.string().max(100).optional(),
+        afterText: z.string().max(500).optional(),
+      })
+      .optional(),
+
+    // ✅ NEW: Product list configuration
+    productListConfig: z
+      .object({
+        products: z
+          .array(
+            z.object({
+              id: z.string(),
+              name: z.string().max(200),
+              price: z.number().min(0),
+              quantity: z.number().min(0),
+            })
+          )
+          .optional(),
+      })
+      .optional(),
 
     propertiesPanelOpen: z.boolean().default(false),
   })
@@ -204,6 +227,52 @@ export const fieldSchema = z
       message: 'Email placeholder should be a valid email if it contains @',
       path: ['placeholder'],
     }
+  )
+  .refine(
+    field => {
+      // Fill blank template validation
+      if (field.type === 'fillBlank' && field.fillBlankTemplate) {
+        const template = field.fillBlankTemplate;
+        return (
+          template.beforeText &&
+          template.beforeText.length <= 500 &&
+          template.blankPlaceholder &&
+          template.blankPlaceholder.length <= 100 &&
+          template.afterText &&
+          template.afterText.length <= 500
+        );
+      }
+      return true;
+    },
+    {
+      message: 'Fill blank template has invalid configuration',
+      path: ['fillBlankTemplate'],
+    }
+  )
+  .refine(
+    field => {
+      // Product list configuration validation
+      if (field.type === 'productList' && field.productListConfig) {
+        const config = field.productListConfig;
+        if (config.products && Array.isArray(config.products)) {
+          return config.products.every(
+            (product: any) =>
+              product.id &&
+              product.name &&
+              product.name.length <= 200 &&
+              typeof product.price === 'number' &&
+              product.price >= 0 &&
+              typeof product.quantity === 'number' &&
+              product.quantity >= 0
+          );
+        }
+      }
+      return true;
+    },
+    {
+      message: 'Product list configuration is invalid',
+      path: ['productListConfig'],
+    }
   );
 
 export const pageSchema = z.object({
@@ -283,13 +352,12 @@ export const updateFormSchema = z.object({
     .optional(),
 });
 
-// ✅ ENHANCED: Complete submission validation for all field types
+// Complete submission validation for all field types
 export const submitFormSchema = z.object({
   data: z
     .record(z.any())
     .refine(
-      data => {
-        // Allow empty submissions for forms with no required fields
+      () => {
         return true;
       },
       {
@@ -298,8 +366,8 @@ export const submitFormSchema = z.object({
     )
     .refine(
       data => {
-        // ✅ ENHANCED: Comprehensive validation for all field types
-        for (const [key, value] of Object.entries(data)) {
+        // Comprehensive validation for all field types
+        for (const [value] of Object.entries(data)) {
           if (typeof value === 'string') {
             // Phone number validation
             const hasPhonePattern =
@@ -341,6 +409,72 @@ export const submitFormSchema = z.object({
               }
             }
 
+            // Signature validation
+            if (typeof value === 'string' && value.startsWith('data:image/')) {
+              const dataUrlRegex = /^data:image\/(png|jpeg|jpg);base64,/;
+              if (!dataUrlRegex.test(value)) {
+                return false;
+              }
+              if (value.length > 500000) {
+                // ~375KB limit
+                return false;
+              }
+            }
+
+            // Fill blank validation
+            if (typeof value === 'object' && value !== null) {
+              const objValue = value as any;
+              if (
+                objValue.beforeText &&
+                objValue.afterText &&
+                objValue.userInput !== undefined
+              ) {
+                // Fill blank format
+                if (objValue.userInput && objValue.userInput.length > 200) {
+                  return false;
+                }
+                if (
+                  objValue.beforeText.length > 500 ||
+                  objValue.afterText.length > 500
+                ) {
+                  return false;
+                }
+              }
+
+              // Product list validation
+              if (objValue && objValue.products && objValue.selectedProducts) {
+                const { products, selectedProducts } = objValue;
+
+                if (!Array.isArray(products)) {
+                  return false;
+                }
+
+                const invalidProduct = products.some(
+                  (product: any) =>
+                    !product.id ||
+                    !product.name ||
+                    typeof product.price !== 'number' ||
+                    product.price < 0
+                );
+
+                if (invalidProduct) {
+                  return false;
+                }
+
+                if (typeof selectedProducts !== 'object') {
+                  return false;
+                }
+
+                const invalidQuantity = Object.values(selectedProducts).some(
+                  (qty: any) => typeof qty !== 'number' || qty < 0 || qty > 1000
+                );
+
+                if (invalidQuantity) {
+                  return false;
+                }
+              }
+            }
+
             // Date validation
             if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
               const date = new Date(value);
@@ -376,13 +510,80 @@ export const submitFormSchema = z.object({
     ),
 });
 
-// ✅ NEW: Helper functions for field creation with all types
+// Helper functions for field creation with all types
 export function createHeadingField(id: string, label: string) {
   return {
     id,
     type: 'heading' as const,
     label: label.trim(),
     labelAlignment: 'LEFT' as const,
+  };
+}
+
+// Helper functions for enhanced field creation:
+export function createSignatureField(
+  id: string,
+  label: string,
+  required: boolean = false
+) {
+  return {
+    id,
+    type: 'signature' as const,
+    label: label.trim(),
+    required,
+    helpText: 'Please sign in the box above',
+    labelAlignment: 'LEFT' as const,
+  };
+}
+
+export function createFillBlankField(
+  id: string,
+  label: string,
+  required: boolean = false,
+  template?: {
+    beforeText?: string;
+    blankPlaceholder?: string;
+    afterText?: string;
+  }
+) {
+  return {
+    id,
+    type: 'fillBlank' as const,
+    label: label.trim(),
+    required,
+    helpText: 'Complete the sentence by filling in the blank',
+    labelAlignment: 'LEFT' as const,
+    fillBlankTemplate: {
+      beforeText: template?.beforeText || 'I agree to the',
+      blankPlaceholder: template?.blankPlaceholder || 'terms',
+      afterText: template?.afterText || 'and conditions.',
+    },
+  };
+}
+
+export function createProductListField(
+  id: string,
+  label: string,
+  required: boolean = false,
+  products?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>
+) {
+  return {
+    id,
+    type: 'productList' as const,
+    label: label.trim(),
+    required,
+    helpText: 'Select products and specify quantities',
+    labelAlignment: 'LEFT' as const,
+    productListConfig: {
+      products: products || [
+        { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
+      ],
+    },
   };
 }
 

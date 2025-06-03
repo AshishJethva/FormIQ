@@ -59,14 +59,12 @@ const FieldSchema = new Schema(
     required: {
       type: Boolean,
       default: function () {
-        // Only add required property for non-heading fields
         return this.type !== 'heading' ? false : undefined;
       },
     },
     helpText: {
       type: String,
       default: function () {
-        // Only add helpText property for non-heading fields
         return this.type !== 'heading' ? '' : undefined;
       },
     },
@@ -77,19 +75,17 @@ const FieldSchema = new Schema(
     },
     options: {
       type: [OptionSchema],
-      default: undefined, // Don't set default empty array
+      default: undefined,
       validate: {
         validator: function (options: any[]) {
-          // Only validate if options array exists
           if (!options) return true;
 
-          // Check for choice fields that require options
           const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
           if (choiceFields.includes((this as any).type)) {
             if (!Array.isArray(options) || options.length === 0) {
               return false;
             }
-            // Validate each option has required fields
+
             return options.every(
               option =>
                 option &&
@@ -124,13 +120,33 @@ const FieldSchema = new Schema(
     // File upload properties
     multiple: { type: Boolean, default: false },
     accept: { type: String, maxlength: 200 }, // MIME types or file extensions
+
+    // Fill blank template configuration
+    fillBlankTemplate: {
+      beforeText: { type: String, maxlength: 500, default: 'I agree to the' },
+      blankPlaceholder: { type: String, maxlength: 100, default: 'terms' },
+      afterText: { type: String, maxlength: 500, default: 'and conditions.' },
+    },
+
+    // Product list configuration
+    productListConfig: {
+      products: [
+        {
+          id: { type: String, required: true },
+          name: { type: String, required: true, maxlength: 200 },
+          price: { type: Number, required: true, min: 0 },
+          quantity: { type: Number, default: 1, min: 0 },
+          _id: false,
+        },
+      ],
+    },
+
     propertiesPanelOpen: { type: Boolean, default: false },
   },
   {
     _id: false,
     strict: true,
     transform: function (doc, ret) {
-      // Remove required and helpText from heading fields
       if (ret.type === 'heading') {
         delete ret.required;
         delete ret.helpText;

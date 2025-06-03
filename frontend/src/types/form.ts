@@ -1,5 +1,4 @@
 // src/types/form.ts - Complete Frontend Types with All Field Types
-
 import { Submission } from '@/services/submissions';
 
 export interface Form {
@@ -44,36 +43,50 @@ export interface FormPage {
   fields: Field[];
 }
 
+export interface FillBlankTemplate {
+  beforeText: string;
+  blankPlaceholder: string;
+  afterText: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface ProductListConfig {
+  products: Product[];
+}
+
 export interface Field {
   id: string;
   type: FieldType;
   label: string;
+  labelAlignment?: LabelAlignment;
   required?: boolean;
   helpText?: string;
-  labelAlignment?: LabelAlignment;
-  options?: { label: string; value: string }[];
-  defaultValue?: string | string[] | number;
-  propertiesPanelOpen?: boolean;
   placeholder?: string;
-
-  // ✅ NEW: Text field properties
+  defaultValue?: string | string[] | number;
+  options?: Array<{
+    label: string;
+    value: string;
+    type?: string;
+  }>;
+  propertiesPanelOpen?: boolean;
   minLength?: number;
   maxLength?: number;
-
-  // ✅ NEW: Number field properties
   min?: number;
   max?: number;
   step?: number;
-
-  // ✅ NEW: Textarea properties
   rows?: number;
-
-  // ✅ NEW: File upload properties
   multiple?: boolean;
   accept?: string;
+  fillBlankTemplate?: FillBlankTemplate;
+  productListConfig?: ProductListConfig;
 }
 
-// ✅ COMPLETE: All field types including new ones
 export enum FieldType {
   // Original fields
   HEADING = 'heading',
@@ -87,7 +100,6 @@ export enum FieldType {
   FILL_BLANK = 'fillBlank',
   PRODUCT_LIST = 'productList',
 
-  // ✅ NEW: Added 10 new field types
   SHORT_TEXT = 'shortText',
   LONG_TEXT = 'longText',
   PARAGRAPH = 'paragraph',

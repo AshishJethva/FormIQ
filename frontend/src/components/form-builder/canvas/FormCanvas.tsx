@@ -912,8 +912,17 @@ export default function FormCanvas() {
           return (
             <div>
               {renderEditableLabel()}
-              <div className='h-24 border border-gray-300 rounded-md bg-gray-50 flex items-center justify-center text-gray-400'>
-                Click to sign
+              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 bg-gray-50'>
+                <div className='text-center'>
+                  <div className='w-full h-24 bg-white border border-gray-200 rounded mb-3 flex items-center justify-center'>
+                    <span className='text-gray-400 text-sm'>
+                      Interactive signature canvas will be here
+                    </span>
+                  </div>
+                  <p className='text-gray-500 text-sm'>
+                    Users will be able to draw their signature here
+                  </p>
+                </div>
               </div>
               {field.helpText && (
                 <div className='text-sm text-gray-500 mt-1'>
@@ -923,59 +932,98 @@ export default function FormCanvas() {
             </div>
           );
 
-        case FieldType.FILL_BLANK:
-          return (
-            <div>
-              {renderEditableLabel()}
-              <div className='flex items-center my-2'>
-                <span className='text-gray-700 mr-2'>I agree to the</span>
-                <Input
-                  className='w-40 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mx-2'
-                  placeholder='terms'
-                  disabled
-                />
-                <span className='text-gray-700'>and conditions.</span>
-              </div>
-              {field.helpText && (
-                <div className='text-sm text-gray-500 mt-1'>
-                  {field.helpText}
-                </div>
-              )}
-            </div>
-          );
+        case FieldType.FILL_BLANK: {
+          const beforeText =
+            field.fillBlankTemplate?.beforeText || 'I agree to the';
+          const blankPlaceholder =
+            field.fillBlankTemplate?.blankPlaceholder || 'terms';
+          const afterText =
+            field.fillBlankTemplate?.afterText || 'and conditions.';
 
-        case FieldType.PRODUCT_LIST:
+          const handleFillBlankUpdate = (updateType: string, value: string) => {
+            if (pageId) {
+              const newTemplate = {
+                beforeText: updateType === 'beforeText' ? value : beforeText,
+                blankPlaceholder:
+                  updateType === 'blankPlaceholder' ? value : blankPlaceholder,
+                afterText: updateType === 'afterText' ? value : afterText,
+              };
+
+              dispatch(
+                updateField({
+                  id: field.id,
+                  updates: {
+                    fillBlankTemplate: newTemplate,
+                  },
+                  pageId,
+                })
+              );
+            }
+          };
+
           return (
             <div>
               {renderEditableLabel()}
-              <div className='border border-gray-300 rounded-md overflow-hidden'>
-                <div className='flex bg-gray-100 p-3 border-b border-gray-300'>
-                  <div className='flex-1 font-medium text-gray-700'>
-                    Product
-                  </div>
-                  <div className='w-24 font-medium text-gray-700 text-center'>
-                    Price
-                  </div>
-                  <div className='w-24 font-medium text-gray-700 text-center'>
-                    Qty
-                  </div>
+              <div className='space-y-3 p-4 border border-gray-200 rounded-md bg-gray-50'>
+                <div>
+                  <label className='block text-sm font-medium text-gray-600 mb-1'>
+                    Text before blank
+                  </label>
+                  <Input
+                    value={beforeText}
+                    onChange={e =>
+                      handleFillBlankUpdate('beforeText', e.target.value)
+                    }
+                    onClick={e => e.stopPropagation()}
+                    onFocus={e => e.stopPropagation()}
+                    placeholder='Enter text before the blank'
+                    className='text-sm'
+                  />
                 </div>
-                <div className='p-3 flex items-center border-b border-gray-200'>
-                  <div className='flex-1 text-gray-700'>Sample Product</div>
-                  <div className='w-24 text-center'>$19.99</div>
-                  <div className='w-24 text-center'>
-                    <Input
-                      type='number'
-                      min='0'
-                      defaultValue='1'
-                      disabled
-                      className='w-16 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
-                  </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-600 mb-1'>
+                    Blank placeholder
+                  </label>
+                  <Input
+                    value={blankPlaceholder}
+                    onChange={e =>
+                      handleFillBlankUpdate('blankPlaceholder', e.target.value)
+                    }
+                    onClick={e => e.stopPropagation()}
+                    onFocus={e => e.stopPropagation()}
+                    placeholder='Enter placeholder text for the blank'
+                    className='text-sm'
+                  />
                 </div>
-                <div className='p-3 flex justify-between bg-gray-50'>
-                  <span className='font-medium text-gray-700'>Total:</span>
-                  <span className='font-medium text-gray-700'>$19.99</span>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-600 mb-1'>
+                    Text after blank
+                  </label>
+                  <Input
+                    value={afterText}
+                    onChange={e =>
+                      handleFillBlankUpdate('afterText', e.target.value)
+                    }
+                    onClick={e => e.stopPropagation()}
+                    onFocus={e => e.stopPropagation()}
+                    placeholder='Enter text after the blank'
+                    className='text-sm'
+                  />
+                </div>
+
+                <div className='pt-2 border-t border-gray-300'>
+                  <label className='block text-sm font-medium text-gray-600 mb-2'>
+                    Preview:
+                  </label>
+                  <div className='flex items-center flex-wrap gap-2 text-gray-700 bg-white p-3 rounded border'>
+                    <span>{beforeText}</span>
+                    <div className='px-3 py-1 border-b-2 border-blue-500 bg-blue-50 text-blue-700 min-w-[80px] text-center'>
+                      {blankPlaceholder}
+                    </div>
+                    <span>{afterText}</span>
+                  </div>
                 </div>
               </div>
               {field.helpText && (
@@ -985,6 +1033,210 @@ export default function FormCanvas() {
               )}
             </div>
           );
+        }
+
+        case FieldType.PRODUCT_LIST: {
+          const products = field.productListConfig?.products || [
+            { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
+          ];
+
+          const handleAddProduct = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            const newProduct = {
+              id: Date.now().toString(),
+              name: `Product ${products.length + 1}`,
+              price: 0,
+              quantity: 1,
+            };
+
+            const updatedProducts = [...products, newProduct];
+
+            if (pageId) {
+              dispatch(
+                updateField({
+                  id: field.id,
+                  updates: {
+                    productListConfig: { products: updatedProducts },
+                  },
+                  pageId,
+                })
+              );
+            }
+          };
+
+          const handleRemoveProduct = (
+            e: React.MouseEvent,
+            productId: string
+          ) => {
+            e.stopPropagation();
+            const updatedProducts = products.filter(p => p.id !== productId);
+
+            if (pageId) {
+              dispatch(
+                updateField({
+                  id: field.id,
+                  updates: {
+                    productListConfig: { products: updatedProducts },
+                  },
+                  pageId,
+                })
+              );
+            }
+          };
+
+          const handleUpdateProduct = (
+            productId: string,
+            fieldName: string,
+            value: any
+          ) => {
+            const updatedProducts = products.map(product =>
+              product.id === productId
+                ? {
+                    ...product,
+                    [fieldName]:
+                      fieldName === 'price'
+                        ? parseFloat(value) || 0
+                        : fieldName === 'quantity'
+                        ? parseInt(value) || 0
+                        : value,
+                  }
+                : product
+            );
+
+            if (pageId) {
+              dispatch(
+                updateField({
+                  id: field.id,
+                  updates: {
+                    productListConfig: { products: updatedProducts },
+                  },
+                  pageId,
+                })
+              );
+            }
+          };
+
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='border border-gray-300 rounded-md overflow-hidden bg-white'>
+                <div className='bg-gray-100 p-3 border-b border-gray-300 flex justify-between items-center'>
+                  <span className='font-medium text-gray-700'>
+                    Configure Products
+                  </span>
+                  <button
+                    type='button'
+                    onClick={handleAddProduct}
+                    className='px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors'
+                  >
+                    + Add Product
+                  </button>
+                </div>
+
+                <div className='space-y-0'>
+                  {products.map(product => (
+                    <div
+                      key={product.id}
+                      className='p-3 border-b border-gray-200 last:border-b-0'
+                    >
+                      <div className='grid grid-cols-12 gap-2 items-center'>
+                        <div className='col-span-5'>
+                          <label className='block text-xs text-gray-500 mb-1'>
+                            Product Name
+                          </label>
+                          <Input
+                            value={product.name}
+                            onChange={e =>
+                              handleUpdateProduct(
+                                product.id,
+                                'name',
+                                e.target.value
+                              )
+                            }
+                            onClick={e => e.stopPropagation()}
+                            onFocus={e => e.stopPropagation()}
+                            placeholder='Product name'
+                            className='text-sm'
+                          />
+                        </div>
+
+                        <div className='col-span-3'>
+                          <label className='block text-xs text-gray-500 mb-1'>
+                            Price ($)
+                          </label>
+                          <Input
+                            type='number'
+                            step='0.01'
+                            min='0'
+                            value={product.price}
+                            onChange={e =>
+                              handleUpdateProduct(
+                                product.id,
+                                'price',
+                                e.target.value
+                              )
+                            }
+                            onClick={e => e.stopPropagation()}
+                            onFocus={e => e.stopPropagation()}
+                            placeholder='0.00'
+                            className='text-sm'
+                          />
+                        </div>
+
+                        <div className='col-span-3'>
+                          <label className='block text-xs text-gray-500 mb-1'>
+                            Default Qty
+                          </label>
+                          <Input
+                            type='number'
+                            min='0'
+                            value={product.quantity}
+                            onChange={e =>
+                              handleUpdateProduct(
+                                product.id,
+                                'quantity',
+                                e.target.value
+                              )
+                            }
+                            onClick={e => e.stopPropagation()}
+                            onFocus={e => e.stopPropagation()}
+                            placeholder='1'
+                            className='text-sm'
+                          />
+                        </div>
+
+                        <div className='col-span-1 flex justify-end'>
+                          {products.length > 1 && (
+                            <button
+                              type='button'
+                              onClick={e => handleRemoveProduct(e, product.id)}
+                              className='w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors'
+                              title='Remove product'
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className='bg-gray-50 p-3'>
+                  <div className='text-sm text-gray-600'>
+                    Preview: Users will be able to select quantities for each
+                    product
+                  </div>
+                </div>
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+        }
 
         default:
           return (

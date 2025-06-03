@@ -5,6 +5,26 @@ import { Form, Field, FieldType, FormSettings, LogoState } from '@/types/form';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
+const deepEqual = (obj1: any, obj2: any): boolean => {
+  if (obj1 === obj2) return true;
+  if (obj1 == null || obj2 == null) return false;
+  if (typeof obj1 !== typeof obj2) return false;
+
+  if (typeof obj1 !== 'object') return obj1 === obj2;
+
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+
+  if (keys1.length !== keys2.length) return false;
+
+  for (const key of keys1) {
+    if (!keys2.includes(key)) return false;
+    if (!deepEqual(obj1[key], obj2[key])) return false;
+  }
+
+  return true;
+};
+
 interface FormBuilderState {
   form: Form | null;
   isPreviewMode: boolean;
@@ -325,38 +345,59 @@ const formBuilderSlice = createSlice({
           helpText: '',
         } as Field;
 
-        // ✅ NEW: Add field-specific properties
+        // ✅ ENHANCED: Add field-specific properties with proper typing
         switch (action.payload.type) {
           case FieldType.LONG_TEXT:
-            newField.rows = 3;
+            (newField as any).rows = 3;
             break;
           case FieldType.PARAGRAPH:
-            newField.rows = 5;
+            (newField as any).rows = 5;
             break;
           case FieldType.NUMBER:
-            newField.min = undefined;
-            newField.max = undefined;
-            newField.step = 1;
+            (newField as any).min = undefined;
+            (newField as any).max = undefined;
+            (newField as any).step = 1;
             break;
           case FieldType.DROPDOWN:
           case FieldType.SINGLE_CHOICE:
           case FieldType.MULTIPLE_CHOICE:
-            newField.options = [
+            (newField as any).options = [
               { label: 'Option 1', value: 'option1' },
               { label: 'Option 2', value: 'option2' },
               { label: 'Option 3', value: 'option3' },
             ];
             break;
           case FieldType.FILE_UPLOAD:
-            newField.accept = '*/*';
-            newField.multiple = false;
+            (newField as any).accept = '*/*';
+            (newField as any).multiple = false;
             break;
           case FieldType.IMAGE:
-            newField.accept = 'image/*';
-            newField.multiple = false;
+            (newField as any).accept = 'image/*';
+            (newField as any).multiple = false;
             break;
           case FieldType.EMAIL:
             newField.helpText = 'example@example.com';
+            break;
+          case FieldType.SIGNATURE:
+            newField.helpText = 'Please sign in the box above';
+            break;
+
+          case FieldType.FILL_BLANK:
+            newField.helpText = 'Complete the sentence by filling in the blank';
+            (newField as any).fillBlankTemplate = {
+              beforeText: 'I agree to the',
+              blankPlaceholder: 'terms',
+              afterText: 'and conditions.',
+            };
+            break;
+
+          case FieldType.PRODUCT_LIST:
+            newField.helpText = 'Select products and specify quantities';
+            (newField as any).productListConfig = {
+              products: [
+                { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
+              ],
+            };
             break;
         }
       }
@@ -405,15 +446,18 @@ const formBuilderSlice = createSlice({
 
           const fieldIndex = page.fields.findIndex(field => field.id === id);
           if (fieldIndex !== -1) {
-            page.fields[fieldIndex] = {
-              ...page.fields[fieldIndex],
-              ...updates,
-            };
-            state.hasUnsavedChanges = true;
-            state.form.lastSaved = new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            });
+            const currentField = page.fields[fieldIndex];
+            const newField = { ...currentField, ...updates };
+
+            // Only update if there's an actual change
+            if (!deepEqual(currentField, newField)) {
+              page.fields[fieldIndex] = newField;
+              state.hasUnsavedChanges = true;
+              state.form.lastSaved = new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+            }
             return;
           }
         }
@@ -429,15 +473,18 @@ const formBuilderSlice = createSlice({
 
         const fieldIndex = page.fields.findIndex(field => field.id === id);
         if (fieldIndex !== -1) {
-          page.fields[fieldIndex] = {
-            ...page.fields[fieldIndex],
-            ...updates,
-          };
-          state.hasUnsavedChanges = true;
-          state.form.lastSaved = new Date().toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const currentField = page.fields[fieldIndex];
+          const newField = { ...currentField, ...updates };
+
+          // Only update if there's an actual change
+          if (!deepEqual(currentField, newField)) {
+            page.fields[fieldIndex] = newField;
+            state.hasUnsavedChanges = true;
+            state.form.lastSaved = new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          }
         }
       }
     },
@@ -643,7 +690,7 @@ const formBuilderSlice = createSlice({
         page.fields = [];
       }
 
-      // ✅ ENHANCED: Create field with all properties
+      // Create field with all properties
       const newId = uuidv4();
       const baseField = {
         id: newId,
@@ -655,7 +702,6 @@ const formBuilderSlice = createSlice({
       let newField: Field;
       if (type === FieldType.HEADING) {
         newField = baseField as Field;
-        console.log('✅ Creating HEADING field at index:', newField);
       } else {
         newField = {
           ...baseField,
@@ -663,42 +709,66 @@ const formBuilderSlice = createSlice({
           helpText: '',
         } as Field;
 
-        // ✅ NEW: Add field-specific properties for all new types
+        // Add field-specific properties for all new types
         switch (type) {
           case FieldType.LONG_TEXT:
-            newField.rows = 3;
+            (newField as any).rows = 3;
             break;
           case FieldType.PARAGRAPH:
-            newField.rows = 5;
+            (newField as any).rows = 5;
             break;
           case FieldType.NUMBER:
-            newField.min = undefined;
-            newField.max = undefined;
-            newField.step = 1;
+            (newField as any).min = undefined;
+            (newField as any).max = undefined;
+            (newField as any).step = 1;
             break;
           case FieldType.DROPDOWN:
           case FieldType.SINGLE_CHOICE:
           case FieldType.MULTIPLE_CHOICE:
-            newField.options = [
+            (newField as any).options = [
               { label: 'Option 1', value: 'option1' },
               { label: 'Option 2', value: 'option2' },
               { label: 'Option 3', value: 'option3' },
             ];
             break;
           case FieldType.FILE_UPLOAD:
-            newField.accept = '*/*';
-            newField.multiple = false;
+            (newField as any).accept = '*/*';
+            (newField as any).multiple = false;
             break;
           case FieldType.IMAGE:
-            newField.accept = 'image/*';
-            newField.multiple = false;
+            (newField as any).accept = 'image/*';
+            (newField as any).multiple = false;
             break;
           case FieldType.EMAIL:
             newField.helpText = 'example@example.com';
             break;
-        }
+          case FieldType.SIGNATURE:
+            newField.helpText = 'Please sign in the box above';
+            break;
 
-        console.log('✅ Creating regular field at index:', newField);
+          case FieldType.FILL_BLANK:
+            newField.helpText = 'Complete the sentence by filling in the blank';
+            (newField as any).fillBlankTemplate = {
+              beforeText: 'I agree to the',
+              blankPlaceholder: 'terms',
+              afterText: 'and conditions.',
+            };
+            break;
+
+          case FieldType.PRODUCT_LIST:
+            newField.helpText = 'Select products and specify quantities';
+            (newField as any).productListConfig = {
+              products: [
+                {
+                  id: '1',
+                  name: 'Sample Product',
+                  price: 19.99,
+                  quantity: 1,
+                },
+              ],
+            };
+            break;
+        }
       }
 
       const insertIndex = Math.min(index, page.fields.length);
@@ -791,6 +861,45 @@ const formBuilderSlice = createSlice({
           hour: '2-digit',
           minute: '2-digit',
         });
+      }
+    },
+
+    updateFieldConfig: (
+      state,
+      action: PayloadAction<{
+        id: string;
+        config: any;
+        pageId?: string;
+      }>
+    ) => {
+      if (!state.form || !state.form.pages) return;
+
+      const { id, config, pageId } = action.payload;
+
+      const targetPageId = pageId || state.form.selectedPageId;
+      if (!targetPageId) return;
+
+      const pageIndex = state.form.pages.findIndex(
+        page => page.id === targetPageId
+      );
+
+      if (pageIndex !== -1) {
+        const page = state.form.pages[pageIndex];
+        if (!page || !page.fields) return;
+
+        const fieldIndex = page.fields.findIndex(field => field.id === id);
+        if (fieldIndex !== -1) {
+          // Merge the configuration with existing field
+          page.fields[fieldIndex] = {
+            ...page.fields[fieldIndex],
+            ...config,
+          };
+          state.hasUnsavedChanges = true;
+          state.form.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
       }
     },
 
@@ -1019,7 +1128,7 @@ const formBuilderSlice = createSlice({
   },
 });
 
-// ✅ ENHANCED: Complete label functions for all field types
+// Complete label functions for all field types
 function getDefaultLabelForType(type: FieldType): string {
   switch (type) {
     case FieldType.SHORT_TEXT:
@@ -1057,11 +1166,11 @@ function getDefaultLabelForType(type: FieldType): string {
     case FieldType.APPOINTMENT:
       return 'Schedule Appointment';
     case FieldType.SIGNATURE:
-      return 'Signature';
+      return 'Digital Signature';
     case FieldType.FILL_BLANK:
       return 'Complete the Sentence';
     case FieldType.PRODUCT_LIST:
-      return 'Products';
+      return 'Product Selection';
     default:
       return 'New Field';
   }

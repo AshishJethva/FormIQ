@@ -44,13 +44,12 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
   const shareableLink = `${window.location.origin}/form/${formId}`;
 
-  // Generate comprehensive dummy data for all field types including files
-  // Enhanced generateDummyData function that passes backend validation
+  // ✅ FULLY FIXED: Complete dummy data generation with safe placeholders
   const generateDummyData = () => {
     const dummyFormData: Record<string, any> = {};
     const dummyFileData: Record<string, any> = {};
 
-    // ✅ BACKEND-COMPLIANT: Realistic data pools that pass validation
+    // ✅ Realistic data pools for Indian context
     const names = {
       firstNames: [
         'Arjun',
@@ -69,6 +68,14 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         'Meera',
         'Aditya',
         'Ishita',
+        'Nikhil',
+        'Shreya',
+        'Varun',
+        'Divya',
+        'Ashish',
+        'Neha',
+        'Rajesh',
+        'Sunita',
       ],
       lastNames: [
         'Sharma',
@@ -87,10 +94,17 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         'Bansal',
         'Malhotra',
         'Kapoor',
+        'Mishra',
+        'Joshi',
+        'Pandey',
+        'Nair',
+        'Bhatia',
+        'Sinha',
+        'Yadav',
+        'Tiwari',
       ],
     };
 
-    // ✅ BACKEND VALIDATION: Valid email addresses that pass regex
     const emails = [
       'arjun.sharma@gmail.com',
       'priya.patel@yahoo.co.in',
@@ -102,9 +116,16 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       'pooja.reddy@university.edu',
       'amit.verma@consulting.com',
       'riya.chopra@design.studio',
+      'rohan.singh@software.com',
+      'meera.nair@finance.org',
+      'aditya.kumar@marketing.net',
+      'ishita.sharma@healthcare.in',
+      'nikhil.patel@tech.io',
+      'shreya.gupta@education.ac.in',
+      'varun.reddy@business.com',
+      'divya.joshi@creative.studio',
     ];
 
-    // ✅ BACKEND VALIDATION: 10-digit Indian phone numbers starting with valid digits
     const phones = [
       '9876543210',
       '8765432109',
@@ -118,9 +139,16 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       '7890123456',
       '6234567890',
       '9345678901',
+      '8456789012',
+      '7567890123',
+      '6678901234',
+      '9789012345',
+      '8890123456',
+      '7901234567',
+      '6012345678',
+      '9123456780',
     ];
 
-    // ✅ BACKEND COMPLIANT: Complete address objects with all required fields
     const addresses = [
       {
         street: '123 MG Road, Koramangala 5th Block',
@@ -158,9 +186,20 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         state: 'Tamil Nadu',
         zipCode: '600040',
       },
+      {
+        street: '567 FC Road, Shivajinagar',
+        city: 'Pune',
+        state: 'Maharashtra',
+        zipCode: '411005',
+      },
+      {
+        street: '890 Satellite Road, Vastrapur',
+        city: 'Ahmedabad',
+        state: 'Gujarat',
+        zipCode: '380015',
+      },
     ];
 
-    // Professional context data
     const companies = [
       'TCS',
       'Infosys',
@@ -177,6 +216,10 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       'Swiggy',
       "BYJU'S",
       'Ola',
+      'PhonePe',
+      'Razorpay',
+      'Freshworks',
+      'Zoho',
     ];
 
     const jobTitles = [
@@ -192,6 +235,10 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       'Product Manager',
       'Technical Architect',
       'Scrum Master',
+      'Frontend Developer',
+      'Backend Developer',
+      'Full Stack Developer',
+      'Mobile Developer',
     ];
 
     const skills = [
@@ -211,6 +258,10 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       'PostgreSQL',
       'Redis',
       'Kubernetes',
+      'GraphQL',
+      'Firebase',
+      'Express.js',
+      'Next.js',
     ];
 
     const cities = [
@@ -226,9 +277,17 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       'Lucknow',
       'Kanpur',
       'Nagpur',
+      'Indore',
+      'Bhopal',
+      'Visakhapatnam',
+      'Patna',
+      'Vadodara',
+      'Ghaziabad',
+      'Ludhiana',
+      'Coimbatore',
     ];
 
-    // ✅ BACKEND COMPLIANT: Helper functions for realistic data generation
+    // Helper functions
     const randomChoice = (arr: any[]) =>
       arr[Math.floor(Math.random() * arr.length)];
     const randomNumber = (min: number, max: number) =>
@@ -241,29 +300,53 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       return date;
     };
 
-    // ✅ BACKEND VALIDATION: Generate valid date strings in YYYY-MM-DD format
-    const formatDate = (date: Date): string => {
-      return date.toISOString().split('T')[0];
-    };
+    const formatDate = (date: Date): string => date.toISOString().split('T')[0];
 
-    // ✅ BACKEND VALIDATION: Generate valid time strings in HH:MM format
     const generateValidTime = (): string => {
       const hours = randomNumber(9, 17).toString().padStart(2, '0');
       const minutes = randomChoice(['00', '15', '30', '45']);
       return `${hours}:${minutes}`;
     };
 
+    // ✅ SAFE IMAGE PLACEHOLDERS - No external URLs
+    const generateSafeImagePlaceholder = (type: string = 'general') => {
+      const placeholders = {
+        profile:
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBmMmZlIi8+PGNpcmNsZSBjeD0iMjAwIiBjeT0iMTUwIiByPSI2MCIgZmlsbD0iIzM3NzNkYyIvPjxwYXRoIGQ9Im0xMjAgMjgwIGMwLTQ0IDM2LTgwIDgwLTgwczgwIDM2IDgwIDgwIiBmaWxsPSIjMzc3M2RjIi8+PHRleHQgeD0iMjAwIiB5PSIzNDAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzM3NzNkYyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UHJvZmlsZSBQaG90bzwvdGV4dD48L3N2Zz4=',
+        document:
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmOWZmIi8+PHJlY3QgeD0iMTAwIiB5PSI4MCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyNDAiIGZpbGw9IndoaXRlIiBzdHJva2U9IiNkMWQ1ZGIiIHN0cm9rZS13aWR0aD0iMiIvPjxsaW5lIHgxPSIxMjAiIHkxPSIxMjAiIHgyPSIyODAiIHkyPSIxMjAiIHN0cm9rZT0iIzY2NzNhZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PGxpbmUgeDE9IjEyMCIgeTE9IjE1MCIgeDI9IjI2MCIgeTI9IjE1MCIgc3Ryb2tlPSIjOWZhNmI3IiBzdHJva2Utd2lkdGg9IjIiLz48bGluZSB4MT0iMTIwIiB5MT0iMTgwIiB4Mj0iMjQwIiB5Mj0iMTgwIiBzdHJva2U9IiM5ZmE2YjciIHN0cm9rZS13aWR0aD0iMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMzUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2NjczYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRvY3VtZW50IEltYWdlPC90ZXh0Pjwvc3ZnPg==',
+        general:
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmFmYWZhIi8+PHJlY3QgeD0iMTQwIiB5PSIxNDAiIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTAiIGZpbGw9IiNlNWU3ZWIiIHN0cm9rZT0iI2Q0ZDRkOCIgc3Ryb2tlLXdpZHRoPSIyIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iMTgwIiByPSIxNSIgZmlsbD0iI2Y5ZmJmZiIvPjxwYXRoIGQ9Im0yMDUgMTk1IGwyNSAyNSBtLTI1IDAgbDI1IC0yNSIgc3Ryb2tlPSIjZjlmYmZmIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz48dGV4dCB4PSIyMDAiIHk9IjMwMCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBQcmV2aWV3PC90ZXh0Pjwvc3ZnPg==',
+      };
+      return (
+        placeholders[type as keyof typeof placeholders] || placeholders.general
+      );
+    };
+
+    // ✅ SAFE FILE PLACEHOLDERS
+    const generateSafeFileData = (fileName: string, mimeType: string) => ({
+      originalName: fileName,
+      fileName: `${fileName.split('.')[0]}_${Date.now()}.${fileName
+        .split('.')
+        .pop()}`,
+      url: `data:${mimeType};base64,JVBERi0xLjQKJdPr6eEKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwo+PgplbmRvYmoKeCByZWYKMCAxCjAwMDAwMDAwMDAgNjU1MzUgZiAKdHJhaWxlcgo8PAovU2l6ZSAxCi9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgo5CiUlRU9G`,
+      publicId: `form-submissions/files/${
+        fileName.split('.')[0]
+      }_${Date.now()}`,
+      size: randomNumber(200000, 2000000),
+      mimeType,
+      uploadedAt: new Date().toISOString(),
+    });
+
+    // Generate data for each field
     form.pages.forEach(page => {
       page.fields?.forEach(field => {
-        // Skip heading fields as they don't collect data
         if (field.type === 'heading') return;
 
-        // Generate realistic data based on field type and label
         const fieldLabel = field.label?.toLowerCase() || '';
 
         switch (field.type) {
           case 'fullName':
-            // ✅ BACKEND COMPLIANT: Complete name object with both firstName and lastName
             dummyFormData[field.id] = {
               firstName: randomChoice(names.firstNames),
               lastName: randomChoice(names.lastNames),
@@ -271,22 +354,18 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'email':
-            // ✅ BACKEND VALIDATION: Valid email format that passes regex
             dummyFormData[field.id] = randomChoice(emails);
             break;
 
           case 'phone':
-            // ✅ BACKEND VALIDATION: 10-digit number starting with valid digit (6-9)
             dummyFormData[field.id] = randomChoice(phones);
             break;
 
           case 'address':
-            // ✅ BACKEND COMPLIANT: Complete address with all required fields
             dummyFormData[field.id] = randomChoice(addresses);
             break;
 
           case 'datePicker':
-            // ✅ BACKEND VALIDATION: Valid date format YYYY-MM-DD
             if (fieldLabel.includes('birth') || fieldLabel.includes('dob')) {
               const birthDate = new Date();
               birthDate.setFullYear(
@@ -302,13 +381,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
                 startDate.getFullYear() - randomNumber(1, 10)
               );
               dummyFormData[field.id] = formatDate(startDate);
-            } else if (
-              fieldLabel.includes('end') ||
-              fieldLabel.includes('completion')
-            ) {
-              const endDate = new Date();
-              endDate.setMonth(endDate.getMonth() - randomNumber(6, 60));
-              dummyFormData[field.id] = formatDate(endDate);
             } else {
               const futureDate = randomDate(7, 90);
               dummyFormData[field.id] = formatDate(futureDate);
@@ -316,7 +388,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'appointment':
-            // ✅ BACKEND COMPLIANT: Complete appointment object with valid date and time
             const appointmentDate = randomDate(3, 14);
             dummyFormData[field.id] = {
               date: formatDate(appointmentDate),
@@ -325,7 +396,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'signature':
-            // ✅ BACKEND VALIDATION: Non-empty signature string
             const signatureName = `${randomChoice(
               names.firstNames
             )} ${randomChoice(names.lastNames)}`;
@@ -333,7 +403,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'fillBlank':
-            // ✅ BACKEND VALIDATION: Non-empty string
             const fillBlankOptions = [
               'terms and conditions',
               'privacy policy',
@@ -348,8 +417,42 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             dummyFormData[field.id] = randomChoice(fillBlankOptions);
             break;
 
+          case 'productList':
+            // ✅ ENHANCED: Realistic product selection with quantities
+            if (
+              field.productListConfig?.products &&
+              field.productListConfig.products.length > 0
+            ) {
+              const products = field.productListConfig.products;
+              const selectedProducts = [];
+              const numProducts = randomNumber(1, Math.min(3, products.length));
+              const shuffledProducts = [...products].sort(
+                () => Math.random() - 0.5
+              );
+
+              for (let i = 0; i < numProducts; i++) {
+                const product = shuffledProducts[i];
+                selectedProducts.push({
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  quantity: randomNumber(1, 5),
+                });
+              }
+              dummyFormData[field.id] = selectedProducts;
+            } else {
+              dummyFormData[field.id] = [
+                {
+                  id: 'sample1',
+                  name: 'Sample Product',
+                  price: 29.99,
+                  quantity: 2,
+                },
+              ];
+            }
+            break;
+
           case 'shortText':
-            // ✅ BACKEND COMPLIANT: Context-aware realistic short text
             if (
               fieldLabel.includes('company') ||
               fieldLabel.includes('organization')
@@ -382,7 +485,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'longText':
-            // ✅ BACKEND VALIDATION: Meaningful long text responses
             if (
               fieldLabel.includes('experience') ||
               fieldLabel.includes('background')
@@ -414,7 +516,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'paragraph':
-            // ✅ BACKEND VALIDATION: Detailed paragraph responses
             if (
               fieldLabel.includes('goal') ||
               fieldLabel.includes('objective') ||
@@ -447,17 +548,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'dropdown':
-            // ✅ BACKEND VALIDATION: Valid option from dropdown
-            if (field.options && field.options.length > 0) {
-              const randomOption = randomChoice(field.options);
-              dummyFormData[field.id] = randomOption.value;
-            } else {
-              dummyFormData[field.id] = 'option1';
-            }
-            break;
-
           case 'singleChoice':
-            // ✅ BACKEND VALIDATION: Single valid option
             if (field.options && field.options.length > 0) {
               const randomOption = randomChoice(field.options);
               dummyFormData[field.id] = randomOption.value;
@@ -467,7 +558,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'multipleChoice':
-            // ✅ BACKEND VALIDATION: Array of valid options
             if (field.options && field.options.length > 0) {
               const numSelections = randomNumber(
                 1,
@@ -491,160 +581,95 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'number':
-            // ✅ BACKEND VALIDATION: Context-aware numbers respecting field constraints
             let numberValue: number;
 
-            // Handle field validation constraints
             if (field.min !== undefined && field.max !== undefined) {
-              // Use field's min/max if specified
               numberValue = randomNumber(field.min, field.max);
             } else if (field.min !== undefined) {
-              // Use field's min with reasonable max
               const maxValue = field.min < 1950 ? 2024 : field.min + 100;
               numberValue = randomNumber(field.min, maxValue);
             } else if (field.max !== undefined) {
-              // Use field's max with reasonable min
               const minValue =
                 field.max > 2024 ? 1950 : Math.max(1, field.max - 100);
               numberValue = randomNumber(minValue, field.max);
             } else {
-              // Smart defaults based on field context
               if (
                 fieldLabel.includes('year') &&
                 (fieldLabel.includes('passing') ||
-                  fieldLabel.includes('graduation') ||
-                  fieldLabel.includes('completion'))
+                  fieldLabel.includes('graduation'))
               ) {
-                // Education years: 1950 to current year
                 numberValue = randomNumber(1950, new Date().getFullYear());
               } else if (
                 fieldLabel.includes('year') &&
                 (fieldLabel.includes('birth') || fieldLabel.includes('born'))
               ) {
-                // Birth years: 1950 to 2002 (for 22+ age)
                 numberValue = randomNumber(1950, 2002);
               } else if (
                 fieldLabel.includes('year') &&
                 fieldLabel.includes('experience')
               ) {
-                // Years of experience: 1-15
                 numberValue = randomNumber(1, 15);
-              } else if (
-                fieldLabel.includes('year') &&
-                fieldLabel.includes('established')
-              ) {
-                // Company established year: 1900 to current year
-                numberValue = randomNumber(1900, new Date().getFullYear());
               } else if (fieldLabel.includes('age')) {
-                // Age: 22-65 years
                 numberValue = randomNumber(22, 65);
               } else if (
                 fieldLabel.includes('salary') ||
-                fieldLabel.includes('package') ||
-                fieldLabel.includes('ctc')
+                fieldLabel.includes('package')
               ) {
-                // Salary in INR: 3-25 lakhs
                 numberValue = randomNumber(300000, 2500000);
               } else if (
                 fieldLabel.includes('rating') ||
                 fieldLabel.includes('score')
               ) {
-                // Ratings: 1-10
                 numberValue = randomNumber(1, 10);
               } else if (
                 fieldLabel.includes('percentage') ||
-                fieldLabel.includes('marks') ||
-                fieldLabel.includes('grade')
+                fieldLabel.includes('marks')
               ) {
-                // Academic percentage: 60-95%
                 numberValue = randomNumber(60, 95);
               } else if (
-                fieldLabel.includes('quantity') ||
-                fieldLabel.includes('count')
-              ) {
-                // Quantities: 1-100
-                numberValue = randomNumber(1, 100);
-              } else if (
-                fieldLabel.includes('price') ||
-                fieldLabel.includes('cost') ||
-                fieldLabel.includes('amount')
-              ) {
-                // Prices: 1000-50000
-                numberValue = randomNumber(1000, 50000);
-              } else if (
                 fieldLabel.includes('pin') ||
-                fieldLabel.includes('zip') ||
-                fieldLabel.includes('postal')
+                fieldLabel.includes('zip')
               ) {
-                // PIN codes: 6-digit numbers
                 numberValue = randomNumber(100000, 999999);
-              } else if (
-                fieldLabel.includes('employee') &&
-                fieldLabel.includes('id')
-              ) {
-                // Employee IDs: 4-6 digit numbers
-                numberValue = randomNumber(1000, 999999);
               } else {
-                // Default range
                 numberValue = randomNumber(1, 100);
               }
             }
-
             dummyFormData[field.id] = numberValue.toString();
             break;
 
           case 'time':
-            // ✅ BACKEND VALIDATION: Valid time format HH:MM
             dummyFormData[field.id] = generateValidTime();
             break;
 
           case 'image':
-            // ✅ BACKEND COMPLIANT: Proper image file objects with all required fields
-            const sampleImages = [
-              {
-                url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
-                name: 'professional_headshot.jpg',
-              },
-              {
-                url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
-                name: 'team_photo.jpg',
-              },
-              {
-                url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop&crop=face',
-                name: 'workplace_image.jpg',
-              },
-            ];
+            // ✅ SAFE IMAGE HANDLING
+            const imageType = fieldLabel.includes('profile')
+              ? 'profile'
+              : fieldLabel.includes('document')
+              ? 'document'
+              : 'general';
 
             if (field.multiple) {
               const numImages = randomNumber(2, 3);
               dummyFileData[field.id] = Array.from(
                 { length: numImages },
-                (_, i) => {
-                  const sample = sampleImages[i % sampleImages.length];
-                  const timestamp = Date.now() + i;
-                  return {
-                    originalName: `${sample.name.split('.')[0]}_${i + 1}.jpg`,
-                    fileName: `${sample.name.split('.')[0]}_${timestamp}.jpg`,
-                    url: sample.url,
-                    publicId: `form-submissions/images/${
-                      sample.name.split('.')[0]
-                    }_${timestamp}`,
-                    size: randomNumber(150000, 500000),
-                    mimeType: 'image/jpeg',
-                    uploadedAt: new Date().toISOString(),
-                  };
-                }
+                (_, i) => ({
+                  originalName: `sample_image_${i + 1}.jpg`,
+                  fileName: `sample_image_${Date.now() + i}.jpg`,
+                  url: generateSafeImagePlaceholder(imageType),
+                  publicId: `form-submissions/images/sample_${Date.now() + i}`,
+                  size: randomNumber(150000, 500000),
+                  mimeType: 'image/jpeg',
+                  uploadedAt: new Date().toISOString(),
+                })
               );
             } else {
-              const sample = randomChoice(sampleImages);
-              const timestamp = Date.now();
               dummyFileData[field.id] = {
-                originalName: sample.name,
-                fileName: `${sample.name.split('.')[0]}_${timestamp}.jpg`,
-                url: sample.url,
-                publicId: `form-submissions/images/${
-                  sample.name.split('.')[0]
-                }_${timestamp}`,
+                originalName: 'sample_image.jpg',
+                fileName: `sample_image_${Date.now()}.jpg`,
+                url: generateSafeImagePlaceholder(imageType),
+                publicId: `form-submissions/images/sample_${Date.now()}`,
                 size: randomNumber(200000, 400000),
                 mimeType: 'image/jpeg',
                 uploadedAt: new Date().toISOString(),
@@ -653,37 +678,19 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'fileUpload':
-            // ✅ BACKEND COMPLIANT: Proper file objects with all required fields
+            // ✅ SAFE FILE HANDLING
             const sampleFiles = [
-              {
-                name: 'resume.pdf',
-                type: 'application/pdf',
-                size: [800000, 2000000],
-              },
-              {
-                name: 'cover_letter.pdf',
-                type: 'application/pdf',
-                size: [300000, 800000],
-              },
-              {
-                name: 'portfolio.pdf',
-                type: 'application/pdf',
-                size: [2000000, 5000000],
-              },
-              {
-                name: 'certificates.pdf',
-                type: 'application/pdf',
-                size: [500000, 1500000],
-              },
+              { name: 'resume.pdf', type: 'application/pdf' },
+              { name: 'cover_letter.pdf', type: 'application/pdf' },
+              { name: 'portfolio.pdf', type: 'application/pdf' },
+              { name: 'certificates.pdf', type: 'application/pdf' },
               {
                 name: 'project_report.docx',
                 type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                size: [400000, 1200000],
               },
               {
                 name: 'data_analysis.xlsx',
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                size: [300000, 900000],
               },
             ];
 
@@ -693,58 +700,39 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
                 { length: numFiles },
                 (_, i) => {
                   const sample = sampleFiles[i % sampleFiles.length];
-                  const timestamp = Date.now() + i;
-                  const nameParts = sample.name.split('.');
-                  return {
-                    originalName: sample.name,
-                    fileName: `${nameParts[0]}_${timestamp}.${nameParts[1]}`,
-                    url: `https://res.cloudinary.com/demo/raw/upload/v1/${nameParts[0]}_${timestamp}.${nameParts[1]}`,
-                    publicId: `form-submissions/files/${nameParts[0]}_${timestamp}`,
-                    size: randomNumber(sample.size[0], sample.size[1]),
-                    mimeType: sample.type,
-                    uploadedAt: new Date().toISOString(),
-                  };
+                  return generateSafeFileData(
+                    `${sample.name.split('.')[0]}_${i + 1}.${sample.name
+                      .split('.')
+                      .pop()}`,
+                    sample.type
+                  );
                 }
               );
             } else {
               const sample = randomChoice(sampleFiles);
-              const timestamp = Date.now();
-              const nameParts = sample.name.split('.');
-              dummyFileData[field.id] = {
-                originalName: sample.name,
-                fileName: `${nameParts[0]}_${timestamp}.${nameParts[1]}`,
-                url: `https://res.cloudinary.com/demo/raw/upload/v1/${nameParts[0]}_${timestamp}.${nameParts[1]}`,
-                publicId: `form-submissions/files/${nameParts[0]}_${timestamp}`,
-                size: randomNumber(sample.size[0], sample.size[1]),
-                mimeType: sample.type,
-                uploadedAt: new Date().toISOString(),
-              };
+              dummyFileData[field.id] = generateSafeFileData(
+                sample.name,
+                sample.type
+              );
             }
             break;
 
           default:
-            // ✅ BACKEND SAFE: Fallback for any other field types
             dummyFormData[field.id] = `Sample ${field.label || 'response'}`;
         }
       });
     });
 
-    // ✅ BACKEND VALIDATION: Ensure data structure matches expected format
-    console.log('🎯 Generated dummy data for backend submission:', {
+    console.log('🎯 Generated safe dummy data:', {
       dataFields: Object.keys(dummyFormData).length,
       fileFields: Object.keys(dummyFileData).length,
-      sampleData: Object.keys(dummyFormData)
-        .slice(0, 3)
-        .reduce((acc, key) => {
-          acc[key] = dummyFormData[key];
-          return acc;
-        }, {} as Record<string, any>),
-      fileStructure: Object.keys(dummyFileData).map(key => ({
-        fieldId: key,
-        fileCount: Array.isArray(dummyFileData[key])
-          ? dummyFileData[key].length
-          : 1,
-      })),
+      totalFiles: Object.values(dummyFileData).reduce(
+        (total: number, files: any) => {
+          if (Array.isArray(files)) return total + files.length;
+          return total + (files ? 1 : 0);
+        },
+        0
+      ),
     });
 
     return { dummyFormData, dummyFileData };
@@ -771,13 +759,12 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     });
   };
 
-  // Enhanced validation function with file support
+  // ✅ COMPLETE VALIDATION with all field types
   const validateField = (field: any, value: any, files?: any): string => {
     if (field.type === 'heading') return '';
 
     // Required field validation
     if (field.required) {
-      // For file/image fields, check if files were uploaded
       if (field.type === 'fileUpload' || field.type === 'image') {
         const hasFiles =
           files && (Array.isArray(files) ? files.length > 0 : !!files);
@@ -785,7 +772,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           return `${field.label} is required`;
         }
       } else {
-        // For other fields, check regular value
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           return `${field.label} is required`;
         }
@@ -808,6 +794,18 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             return 'Both date and time are required';
           }
         }
+
+        if (field.type === 'productList') {
+          if (!Array.isArray(value) || value.length === 0) {
+            return 'Please select at least one product';
+          }
+        }
+
+        if (field.type === 'multipleChoice') {
+          if (!Array.isArray(value) || value.length === 0) {
+            return 'Please select at least one option';
+          }
+        }
       }
     }
 
@@ -825,11 +823,40 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       case 'phone':
         const cleanPhone = value.replace(/\D/g, '');
         if (cleanPhone.length !== 10) {
-          return 'Please enter a valid 10-digit Indian phone number';
+          return 'Please enter a valid 10-digit phone number';
+        }
+        if (!['6', '7', '8', '9'].includes(cleanPhone[0])) {
+          return 'Phone number must start with 6, 7, 8, or 9';
         }
         break;
 
-      // ✅ NEW: File validation
+      case 'number':
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+          return 'Please enter a valid number';
+        }
+        if (field.min !== undefined && numValue < field.min) {
+          return `Value must be at least ${field.min}`;
+        }
+        if (field.max !== undefined && numValue > field.max) {
+          return `Value must not exceed ${field.max}`;
+        }
+        break;
+
+      case 'datePicker':
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(value)) {
+          return 'Please enter a valid date';
+        }
+        break;
+
+      case 'time':
+        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (!timeRegex.test(value)) {
+          return 'Please enter a valid time (HH:MM)';
+        }
+        break;
+
       case 'image':
         if (files) {
           const fileArray = Array.isArray(files) ? files : [files];
@@ -838,7 +865,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
               return 'Only image files are allowed';
             }
             if (file.size > 10 * 1024 * 1024) {
-              // 10MB
               return 'Image files must be smaller than 10MB';
             }
           }
@@ -853,13 +879,68 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           const fileArray = Array.isArray(files) ? files : [files];
           for (const file of fileArray) {
             if (file.size > 25 * 1024 * 1024) {
-              // 25MB
               return 'Files must be smaller than 25MB';
+            }
+            if (
+              field.accept &&
+              !field.accept
+                .split(',')
+                .some((type: string) =>
+                  file.mimeType?.includes(type.trim().replace('*', ''))
+                )
+            ) {
+              return `File type not allowed. Accepted types: ${field.accept}`;
             }
           }
           if (!field.multiple && fileArray.length > 1) {
             return 'Only one file is allowed';
           }
+        }
+        break;
+
+      case 'signature':
+        if (typeof value === 'string' && value.trim().length < 3) {
+          return 'Please provide a valid signature';
+        }
+        break;
+
+      case 'fillBlank':
+        if (typeof value === 'string' && value.trim().length < 1) {
+          return 'Please fill in the blank';
+        }
+        break;
+
+      case 'productList':
+        if (Array.isArray(value)) {
+          for (const product of value) {
+            if (
+              !product.id ||
+              !product.name ||
+              typeof product.quantity !== 'number' ||
+              product.quantity < 1
+            ) {
+              return 'Invalid product selection';
+            }
+          }
+        }
+        break;
+
+      case 'shortText':
+        if (field.minLength && value.length < field.minLength) {
+          return `Minimum ${field.minLength} characters required`;
+        }
+        if (field.maxLength && value.length > field.maxLength) {
+          return `Maximum ${field.maxLength} characters allowed`;
+        }
+        break;
+
+      case 'longText':
+      case 'paragraph':
+        if (field.minLength && value.length < field.minLength) {
+          return `Minimum ${field.minLength} characters required`;
+        }
+        if (field.maxLength && value.length > field.maxLength) {
+          return `Maximum ${field.maxLength} characters allowed`;
         }
         break;
     }
@@ -890,13 +971,23 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       toast.error(
         'Please check all pages for required fields and validation errors'
       );
+      // Navigate to first page with errors
+      for (let i = 0; i < form.pages.length; i++) {
+        const pageHasError = form.pages[i].fields?.some(
+          (field: any) => allErrors[field.id]
+        );
+        if (pageHasError) {
+          setCurrentPageIndex(i);
+          break;
+        }
+      }
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      console.log('🚀 Submitting form with files from preview:', {
+      console.log('🚀 Submitting form with enhanced field types:', {
         formId,
         dataKeys: Object.keys(formData),
         fileKeys: Object.keys(fileData),
@@ -908,6 +999,27 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           },
           0
         ),
+        hasSignature: Object.keys(formData).some(key =>
+          form.pages.some((page: any) =>
+            page.fields?.some(
+              (field: any) => field.id === key && field.type === 'signature'
+            )
+          )
+        ),
+        hasProductList: Object.keys(formData).some(key =>
+          form.pages.some((page: any) =>
+            page.fields?.some(
+              (field: any) => field.id === key && field.type === 'productList'
+            )
+          )
+        ),
+        hasFillBlank: Object.keys(formData).some(key =>
+          form.pages.some((page: any) =>
+            page.fields?.some(
+              (field: any) => field.id === key && field.type === 'fillBlank'
+            )
+          )
+        ),
       });
 
       // Prepare file data for submission
@@ -917,7 +1029,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       const result = await submitForm(formId, formData, preparedFileData);
 
       console.log(
-        '✅ Form submission with files successful from preview:',
+        '✅ Form submission successful with enhanced fields:',
         result
       );
 
@@ -942,6 +1054,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         setErrors({});
       }, 100);
     } catch (error: any) {
+      // console.error('❌ Form submission failed:', error);
       toast.error(error.message || 'Failed to submit form');
     } finally {
       setIsSubmitting(false);
@@ -959,29 +1072,29 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           width: '375px',
           height: '667px',
           className:
-            'mx-auto border-8 border-gray-800 rounded-[2.5rem] bg-white shadow-2xl overflow-hidden',
+            'mx-auto border-8 border-gray-800 rounded-[2.5rem] bg-white shadow-2xl overflow-hidden mt-7',
         };
       case 'tablet':
         return {
           width: '768px',
           height: '1024px',
           className:
-            'mx-auto border-4 border-gray-600 rounded-2xl bg-white shadow-2xl overflow-hidden',
+            'mx-auto border-4 border-gray-600 rounded-2xl bg-white shadow-2xl overflow-hidden mt-7',
         };
       case 'desktop':
       default:
         return {
-          width: '100%',
+          width: '52%',
           height: '100%',
           className:
-            'w-full h-full bg-white shadow-lg rounded-lg overflow-hidden',
+            'w-full h-full bg-white shadow-lg rounded-lg overflow-hidden mt-7',
         };
     }
   };
 
   const deviceStyles = getDeviceStyles();
 
-  // Success state with enhanced animations
+  // ✅ SUCCESS STATE with enhanced animations
   if (isSubmitted) {
     return (
       <div className='min-h-screen bg-gray-100 flex flex-col'>
@@ -1098,6 +1211,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     );
   }
 
+  // ✅ MAIN PREVIEW INTERFACE
   return (
     <div className='min-h-screen bg-[#F3F3FE] flex flex-col'>
       <PreviewHeader
@@ -1138,6 +1252,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
   );
 }
 
+// ✅ WRAPPER COMPONENT for file support
 function PreviewFormWithFileSupport({
   form,
   formData,
