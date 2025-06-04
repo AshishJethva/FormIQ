@@ -461,8 +461,7 @@ router.post(
   protect,
   asyncHandler(async (req, res) => {
     try {
-      const { formType, title, description } = req.body;
-      const userId = req.user.id;
+      const { formType, title } = req.body;
 
       if (!formType && !title) {
         return res.status(400).json({

@@ -786,29 +786,94 @@ const FormSubmissionsPage: React.FC = () => {
 
   // Download CSV export
   const handleDownloadCsv = async () => {
-    if (!formId) return;
+    if (!formId) {
+      toast.error('Form ID is required for CSV export');
+      return;
+    }
 
     setDownloadingCsv(true);
+
     try {
-      console.log('📥 Starting CSV download for form:', formId);
+      console.log('📥 Starting Cloudinary-only CSV download for form:', formId);
 
-      const blob = await submissionsService.exportCSV(formId);
+      const loadingToast = toast.loading(
+        'Preparing CSV with Cloudinary links...'
+      );
 
+      // Build filters for export
+      const exportFilters = {
+        ...(searchTerm && { search: searchTerm }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(readFilter !== 'all' && {
+          isRead: readFilter === 'read' ? 'true' : 'false',
+        }),
+      };
+
+      console.log('🔍 Export filters:', exportFilters);
+
+      // Perform the CSV export
+      const blob = await submissionsService.exportCSV(
+        formId,
+        undefined,
+        undefined,
+        true
+      );
+
+      toast.dismiss(loadingToast);
+
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty CSV file received. No data to export.');
+      }
+
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `form-submissions-${
-        new Date().toISOString().split('T')[0]
-      }.csv`;
+
+      // Generate filename
+      const formTitle = formStructure?.title || 'form';
+      const formTitleSafe = formTitle
+        .replace(/[^a-zA-Z0-9\s]/g, '')
+        .replace(/\s+/g, '_');
+      const dateStamp = new Date().toISOString().split('T')[0];
+      const filename = `${formTitleSafe}_cloudinary_export_${dateStamp}.csv`;
+
+      a.download = filename;
+      a.style.display = 'none';
+
+      // Trigger download
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
 
-      console.log('✅ CSV download completed');
+      // Cleanup
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+
+      // Success feedback
+      const fileSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+      toast.success(
+        `✅ CSV exported successfully!\n📁 File: ${filename}\n📊 Size: ${fileSizeMB} MB\n🔗 Contains Cloudinary URLs for files/images/signatures`,
+        {
+          duration: 8000,
+          style: { maxWidth: '500px' },
+        }
+      );
+
+      console.log('🎉 Cloudinary CSV download completed:', {
+        filename,
+        fileSize: `${fileSizeMB} MB`,
+      });
     } catch (error: any) {
-      console.error('❌ Error downloading CSV:', error);
-      toast.error(error.message || 'Failed to download CSV');
+      console.error('❌ CSV download failed:', error);
+
+      let errorMessage = 'Failed to download CSV export';
+      if (error.message.includes('Empty')) {
+        errorMessage = 'No data available for export';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(`❌ ${errorMessage}`, { duration: 7000 });
     } finally {
       setDownloadingCsv(false);
     }
@@ -1472,6 +1537,8 @@ const FormSubmissionsPage: React.FC = () => {
     );
   }
 
+  const hasSubmissions = submissions.length > 0;
+
   return (
     <div className='container mx-auto px-4 py-8'>
       {/* Header */}
@@ -1484,11 +1551,42 @@ const FormSubmissionsPage: React.FC = () => {
         </div>
         <Button
           onClick={handleDownloadCsv}
-          disabled={downloadingCsv || submissions.length === 0}
-          className='bg-[#102035] hover:bg-slate-700 font-semibold text-white flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed'
+          disabled={downloadingCsv || !hasSubmissions}
+          className={`
+          bg-[#102035] hover:bg-slate-700 font-semibold text-white 
+          flex items-center gap-2 disabled:opacity-50 
+          ${
+            downloadingCsv
+              ? 'cursor-wait'
+              : hasSubmissions
+              ? 'cursor-pointer'
+              : 'cursor-not-allowed'
+          } 
+          transition-all duration-200 ease-in-out
+          hover:shadow-lg active:scale-95
+          min-w-[200px] justify-center
+        `}
+          title={
+            !hasSubmissions
+              ? 'No submissions to export'
+              : downloadingCsv
+              ? 'Preparing CSV export...'
+              : `Export ${stats.total} submission${
+                  stats.total === 1 ? '' : 's'
+                } to CSV`
+          }
         >
-          <Download className='w-4 h-4 mr-2' />
-          {downloadingCsv ? 'Downloading...' : 'Download CSV'}
+          {downloadingCsv ? (
+            <>
+              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white' />
+              <span>Exporting...</span>
+            </>
+          ) : (
+            <>
+              <Download className='w-4 h-4' />
+              <span>Download CSV ({stats.total})</span>
+            </>
+          )}
         </Button>
       </div>
 

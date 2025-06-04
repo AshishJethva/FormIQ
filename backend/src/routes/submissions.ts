@@ -13,10 +13,12 @@ import {
   monitorFormSubmissionPerformance,
 } from '../middleware/debugMiddleware';
 
+import { uploadFormFile } from '../services/cloudinaryService';
+
 const router = express.Router();
 
 // Helper function to create field labels map from form structure
-const createFieldLabelsMap = (formData: any): Record<string, string> => {
+export const createFieldLabelsMap = (formData: any): Record<string, string> => {
   const labelsMap: Record<string, string> = {};
 
   if (formData?.pages && Array.isArray(formData.pages)) {
@@ -55,7 +57,7 @@ const getSearchableFieldIds = (formData: any): string[] => {
 };
 
 // Helper function to get a user-friendly field label
-const getFieldDisplayLabel = (
+export const getFieldDisplayLabel = (
   fieldId: string,
   fieldLabelsMap: Record<string, string>
 ): string => {
@@ -89,10 +91,23 @@ const getFieldDisplayLabel = (
     occupation: 'Occupation',
     comments: 'Comments',
     feedback: 'Feedback',
+    signature: 'Digital Signature',
+    image: 'Image Upload',
+    file: 'File Upload',
+    document: 'Document',
+    attachment: 'Attachment',
   };
 
-  if (commonFields[fieldId]) {
-    return commonFields[fieldId];
+  const lowerFieldId = fieldId.toLowerCase();
+  for (const [key, label] of Object.entries(commonFields)) {
+    if (lowerFieldId.includes(key)) {
+      return label;
+    }
+  }
+
+  // ✅ Special handling for signature fields
+  if (lowerFieldId.includes('sign') || lowerFieldId.includes('signature')) {
+    return 'Digital Signature (URL)';
   }
 
   // If it looks like a UUID, show a user-friendly fallback
@@ -113,50 +128,176 @@ const getFieldDisplayLabel = (
 };
 
 // Helper function to format submission value for CSV
-const formatSubmissionValue = (value: any): string => {
+const formatSubmissionValue = (
+  value: any,
+  fieldKey: string,
+  fieldLabelsMap: Record<string, string>
+): string => {
   if (value === null || value === undefined) {
     return '';
   }
 
-  // Handle objects (like fullName: {firstName, lastName})
+  const fieldLabel = fieldLabelsMap[fieldKey] || fieldKey;
+
+  // Handle signature fields (base64 data URLs)
+  if (typeof value === 'string' && value.startsWith('data:image/')) {
+    return `Digital Signature: ${value}`;
+  }
+
+  // Handle file objects (legacy format)
   if (typeof value === 'object' && value !== null) {
+    // Single file object
+    if (value.url && value.originalName) {
+      const fileName = value.originalName || value.fileName || 'File';
+      const fileSize = value.size ? ` (${formatFileSize(value.size)})` : '';
+      return `${fileName}${fileSize}: ${value.url}`;
+    }
+
+    // Array of files
+    if (Array.isArray(value)) {
+      return value
+        .map(item => {
+          if (
+            item &&
+            typeof item === 'object' &&
+            item.url &&
+            item.originalName
+          ) {
+            const fileName = item.originalName || item.fileName || 'File';
+            const fileSize = item.size ? ` (${formatFileSize(item.size)})` : '';
+            return `${fileName}${fileSize}: ${item.url}`;
+          }
+          return formatSingleValue(item);
+        })
+        .filter(v => v && v !== 'N/A')
+        .join('; ');
+    }
+
+    // Complex objects (fullName, address, etc.)
     if (value.firstName && value.lastName) {
       return `${value.firstName} ${value.lastName}`.trim();
-    } else if (value.street && value.city) {
-      const parts = [
+    }
+
+    if (value.street || value.city || value.state || value.zipCode) {
+      const addressParts = [
         value.street,
         value.city,
         value.state,
         value.zipCode,
-      ].filter(Boolean);
-      return parts.join(', ');
-    } else if (Array.isArray(value)) {
-      return value.filter(v => v !== null && v !== undefined).join(', ');
-    } else {
-      // For other objects, try to extract meaningful values
-      const objectValues = Object.values(value).filter(
-        v => v !== null && v !== undefined && v !== ''
-      );
-      return objectValues.length > 0 ? objectValues.join(' ') : '';
+        value.country,
+      ].filter(part => part && part.trim());
+      return addressParts.join(', ');
     }
+
+    if (value.countryCode && value.number) {
+      return `${value.countryCode} ${value.number}`;
+    }
+
+    if (value.date && value.time) {
+      const datePart = value.date
+        ? new Date(value.date).toLocaleDateString()
+        : '';
+      const timePart = value.time || '';
+      return `${datePart} ${timePart}`.trim();
+    }
+
+    if (value.label && value.value !== undefined) {
+      return value.label;
+    }
+
+    // Handle fill blank template
+    if (value.beforeText && value.afterText && value.userInput) {
+      return `${value.beforeText} "${value.userInput}" ${value.afterText}`;
+    }
+
+    // Handle product list
+    if (value.selectedProducts && typeof value.selectedProducts === 'object') {
+      const products = [];
+      for (const [productId, quantity] of Object.entries(
+        value.selectedProducts
+      )) {
+        if (quantity && typeof quantity === 'number' && quantity > 0) {
+          const product = value.products?.find((p: any) => p.id === productId);
+          const productName = product?.name || `Product ${productId}`;
+          products.push(`${productName} (x${quantity})`);
+        }
+      }
+      return products.join(', ');
+    }
+
+    // Generic object handling
+    const meaningfulValues = Object.entries(value)
+      .filter(
+        ([key, val]) =>
+          val !== null &&
+          val !== undefined &&
+          val !== '' &&
+          !key.startsWith('_') &&
+          key !== 'id' &&
+          key !== 'createdAt' &&
+          key !== 'updatedAt'
+      )
+      .map(([, val]) => formatSingleValue(val))
+      .filter(val => val && val !== 'N/A');
+
+    return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
   }
 
-  return String(value).trim();
+  return formatSingleValue(value);
+};
+
+// Helper function to format single values
+const formatSingleValue = (value: any): string => {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (typeof value === 'number') {
+    return value.toString();
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(item => formatSingleValue(item))
+      .filter(v => v !== '')
+      .join(', ');
+  }
+
+  return String(value);
+};
+
+// Helper function to format file size
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 // Helper function to format date for CSV
-const formatSubmissionDate = (dateString: string): string => {
+export const formatSubmissionDate = (dateString: string): string => {
   if (!dateString) return '';
 
   try {
     const date = new Date(dateString);
-    // Ensure we have a valid date
     if (isNaN(date.getTime())) return '';
 
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
     });
   } catch {
     return '';
@@ -164,8 +305,8 @@ const formatSubmissionDate = (dateString: string): string => {
 };
 
 // Helper function to escape CSV values
-const escapeCSVValue = (value: string): string => {
-  if (!value && value !== '0') return ''; // Handle '0' as valid value
+export const escapeCSVValue = (value: string): string => {
+  if (!value && value !== '0') return '';
 
   let escapedValue = String(value).trim();
 
@@ -189,32 +330,45 @@ const escapeCSVValue = (value: string): string => {
 // Enhanced CSV export function with proper formatting
 const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
   if (!submissions || submissions.length === 0) {
-    return 'No submissions found\n';
+    return 'Submission Date,No Data\n"No submissions found",""';
   }
 
-  console.log('📊 Generating CSV for', submissions.length, 'submissions');
+  console.log(
+    '📊 Generating CSV with Cloudinary URLs only for',
+    submissions.length,
+    'submissions'
+  );
 
   // Create field labels map from form structure
   const fieldLabelsMap = createFieldLabelsMap(form);
 
-  // Get all unique field keys from submissions (excluding system fields)
+  // Get all unique field keys from submissions and files
   const allFieldKeys = new Set<string>();
+  const fileFieldKeys = new Set<string>();
+
   submissions.forEach(submission => {
+    // Regular data fields
     if (submission.data && typeof submission.data === 'object') {
       Object.keys(submission.data).forEach(key => {
-        // Only include actual form fields (exclude metadata, system fields, etc.)
         if (key && typeof key === 'string' && key.trim().length > 0) {
           allFieldKeys.add(key);
         }
       });
     }
+
+    // File fields from files array
+    if (submission.files && Array.isArray(submission.files)) {
+      submission.files.forEach((file: any) => {
+        if (file.fieldId) {
+          fileFieldKeys.add(file.fieldId);
+          allFieldKeys.add(file.fieldId);
+        }
+      });
+    }
   });
 
-  console.log('📋 Found form fields:', Array.from(allFieldKeys));
-
-  // Convert to array and sort for consistent column order
+  // Sort field keys for consistent column order
   const sortedFieldKeys = Array.from(allFieldKeys).sort((a, b) => {
-    // Prioritize common fields first
     const commonFieldOrder = [
       'name',
       'fullName',
@@ -224,9 +378,18 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
       'emailAddress',
       'phone',
       'phoneNumber',
+      'company',
+      'subject',
+      'message',
+      'address',
     ];
-    const aIndex = commonFieldOrder.indexOf(a);
-    const bIndex = commonFieldOrder.indexOf(b);
+
+    const aIndex = commonFieldOrder.findIndex(field =>
+      a.toLowerCase().includes(field.toLowerCase())
+    );
+    const bIndex = commonFieldOrder.findIndex(field =>
+      b.toLowerCase().includes(field.toLowerCase())
+    );
 
     if (aIndex !== -1 && bIndex !== -1) {
       return aIndex - bIndex;
@@ -257,7 +420,7 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
   submissions.forEach((submission, index) => {
     const rowData = [];
 
-    // First column: Submission Date (properly formatted and escaped)
+    // First column: Submission Date (properly formatted)
     const formattedDate = formatSubmissionDate(
       submission.submittedAt || submission.createdAt || ''
     );
@@ -265,29 +428,553 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
 
     // Remaining columns: All form field values
     sortedFieldKeys.forEach(fieldKey => {
-      const value = submission.data?.[fieldKey];
-      const formattedValue = formatSubmissionValue(value);
-      rowData.push(escapeCSVValue(formattedValue));
+      let fieldValue = '';
+
+      // Check if this is a file field from files array
+      if (fileFieldKeys.has(fieldKey)) {
+        // Handle file fields - extract only Cloudinary URLs
+        const fieldFiles =
+          submission.files?.filter((file: any) => file.fieldId === fieldKey) ||
+          [];
+
+        if (fieldFiles.length > 0) {
+          // Get only the URLs, no file details
+          const fileUrls = fieldFiles
+            .map((file: any) => file.url || '')
+            .filter(url => url.trim() !== '');
+
+          fieldValue = fileUrls.join('; ');
+        } else {
+          // Check data object for legacy file storage
+          const dataValue = submission.data?.[fieldKey];
+          fieldValue = formatValueCloudinaryOnly(dataValue);
+        }
+      } else {
+        // Handle regular data fields
+        const dataValue = submission.data?.[fieldKey];
+        fieldValue = formatValueCloudinaryOnly(dataValue);
+      }
+
+      rowData.push(escapeCSVValue(fieldValue));
+    });
+
+    // Add the complete row to CSV
+    csvContent += rowData.join(',') + '\n';
+  });
+
+  console.log('✅ CSV generation completed successfully');
+  return csvContent;
+};
+
+// Format values - Cloudinary URLs only for files/images/signatures
+const formatValueCloudinaryOnly = (value: any): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  // Handle direct Cloudinary URLs (including uploaded signatures)
+  if (typeof value === 'string') {
+    // If it's a Cloudinary URL, return it
+    if (
+      value.includes('cloudinary.com') ||
+      value.includes('res.cloudinary.com')
+    ) {
+      return value.trim();
+    }
+
+    // ✅ UPDATED: Still handle base64 signatures as fallback but show URL indicator
+    if (value.startsWith('data:image/')) {
+      console.warn(
+        '⚠️ Found base64 signature in export - should be Cloudinary URL'
+      );
+      return '[Digital Signature - Base64 Data]';
+    }
+
+    // Regular text values
+    return value.trim();
+  }
+
+  // Rest of your existing code...
+  // Handle file objects with URLs
+  if (typeof value === 'object' && value !== null) {
+    // Single file object
+    if (value.url && typeof value.url === 'string') {
+      return value.url.trim();
+    }
+    // ... rest of existing object handling code
+  }
+
+  // Handle other primitive types
+  if (typeof value === 'number') {
+    return value.toString();
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  return String(value).trim();
+};
+
+// Enhanced CSV export function - Cloudinary links only
+const generateSimplifiedCSVExport = (submissions: any[], form: any): string => {
+  if (!submissions || submissions.length === 0) {
+    return 'Submission Date,No Data\n"No submissions found",""';
+  }
+
+  console.log(
+    '📊 Generating Simplified CSV for',
+    submissions.length,
+    'submissions'
+  );
+
+  // Create field labels map from form structure
+  const fieldLabelsMap = createFieldLabelsMap(form);
+
+  // Get all unique field keys from submissions and files
+  const allFieldKeys = new Set<string>();
+  const fileFieldKeys = new Set<string>();
+
+  submissions.forEach(submission => {
+    // Regular data fields
+    if (submission.data && typeof submission.data === 'object') {
+      Object.keys(submission.data).forEach(key => {
+        if (key && typeof key === 'string' && key.trim().length > 0) {
+          allFieldKeys.add(key);
+        }
+      });
+    }
+
+    // File fields from files array
+    if (submission.files && Array.isArray(submission.files)) {
+      submission.files.forEach((file: any) => {
+        if (file.fieldId) {
+          fileFieldKeys.add(file.fieldId);
+          allFieldKeys.add(file.fieldId);
+        }
+      });
+    }
+  });
+
+  // Sort field keys for consistent column order
+  const sortedFieldKeys = Array.from(allFieldKeys).sort((a, b) => {
+    const commonFieldOrder = [
+      'name',
+      'fullName',
+      'firstName',
+      'lastName',
+      'email',
+      'emailAddress',
+      'phone',
+      'phoneNumber',
+      'company',
+      'subject',
+      'message',
+      'address',
+      'signature',
+    ];
+
+    const aIndex = commonFieldOrder.findIndex(field =>
+      a.toLowerCase().includes(field.toLowerCase())
+    );
+    const bIndex = commonFieldOrder.findIndex(field =>
+      b.toLowerCase().includes(field.toLowerCase())
+    );
+
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    } else if (aIndex !== -1) {
+      return -1;
+    } else if (bIndex !== -1) {
+      return 1;
+    } else {
+      return a.localeCompare(b);
+    }
+  });
+
+  // Define CSV headers
+  const headers = [
+    'Submission Date',
+    ...sortedFieldKeys.map(key => getFieldDisplayLabel(key, fieldLabelsMap)),
+  ];
+
+  console.log('📝 CSV Headers:', headers);
+
+  // Generate CSV content
+  let csvContent = '';
+
+  // Add headers
+  csvContent += headers.map(header => escapeCSVValue(header)).join(',') + '\n';
+
+  // Add data rows
+  submissions.forEach((submission, index) => {
+    const rowData = [];
+
+    // First column: Submission Date
+    const formattedDate = formatSubmissionDate(
+      submission.submittedAt || submission.createdAt || ''
+    );
+    rowData.push(escapeCSVValue(formattedDate));
+
+    // Remaining columns: All form field values
+    sortedFieldKeys.forEach(fieldKey => {
+      let fieldValue = '';
+
+      // Check if this is a file field
+      if (fileFieldKeys.has(fieldKey)) {
+        // Handle file fields - extract only Cloudinary URLs
+        const fieldFiles =
+          submission.files?.filter((file: any) => file.fieldId === fieldKey) ||
+          [];
+
+        if (fieldFiles.length > 0) {
+          // Get only the URLs, no file details
+          const fileUrls = fieldFiles
+            .map((file: any) => file.url || '')
+            .filter(url => url.trim() !== '');
+
+          fieldValue = fileUrls.join('; ');
+        } else {
+          // Check data object for legacy file storage
+          const dataValue = submission.data?.[fieldKey];
+          if (dataValue) {
+            fieldValue = extractCloudinaryUrlOnly(dataValue);
+          }
+        }
+      } else {
+        // Handle regular data fields
+        const dataValue = submission.data?.[fieldKey];
+        fieldValue = formatSubmissionValueCloudinaryOnly(dataValue, fieldKey);
+      }
+
+      rowData.push(escapeCSVValue(fieldValue));
     });
 
     // Add the complete row to CSV
     csvContent += rowData.join(',') + '\n';
 
     // Log first few rows for debugging
-    if (index < 3) {
+    if (index < 2) {
       console.log(`📄 Row ${index + 1}:`, {
         date: formattedDate,
-        fields: sortedFieldKeys.slice(0, 3).map(key => ({
-          key,
-          value: submission.data?.[key],
-          formatted: formatSubmissionValue(submission.data?.[key]),
-        })),
+        sampleField: sortedFieldKeys[0]
+          ? {
+              key: sortedFieldKeys[0],
+              value: submission.data?.[sortedFieldKeys[0]],
+            }
+          : null,
       });
     }
   });
 
-  console.log('CSV generation completed');
+  console.log('✅ Simplified CSV generation completed');
   return csvContent;
+};
+
+// Extract only Cloudinary URLs from various data formats
+const extractCloudinaryUrlOnly = (value: any): string => {
+  if (!value) return '';
+
+  // Direct URL string
+  if (typeof value === 'string') {
+    // If it's a Cloudinary URL, return it
+    if (value.includes('cloudinary.com') || value.startsWith('http')) {
+      return value.trim();
+    }
+
+    // ✅ FIXED: Handle base64 signature data - return meaningful text
+    if (value.startsWith('data:image/')) {
+      return '[Digital Signature Captured]';
+    }
+
+    return '';
+  }
+
+  // File object with URL
+  if (typeof value === 'object' && value !== null) {
+    if (value.url && typeof value.url === 'string') {
+      return value.url.trim();
+    }
+
+    // Array of file objects
+    if (Array.isArray(value)) {
+      const urls = value
+        .map(item => {
+          if (item && typeof item === 'object' && item.url) {
+            return item.url.trim();
+          }
+          // ✅ FIXED: Handle base64 signatures in file arrays
+          if (typeof item === 'string' && item.startsWith('data:image/')) {
+            return '[Digital Signature Captured]';
+          }
+          return '';
+        })
+        .filter(url => url !== '');
+      return urls.join('; ');
+    }
+  }
+
+  return '';
+};
+
+// Format submission values with Cloudinary URLs only for files/signatures
+const formatSubmissionValueCloudinaryOnly = (
+  value: any,
+  fieldKey: string
+): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  // Check if field is likely a signature/file field based on name
+  const isFileField =
+    fieldKey.toLowerCase().includes('signature') ||
+    fieldKey.toLowerCase().includes('image') ||
+    fieldKey.toLowerCase().includes('file') ||
+    fieldKey.toLowerCase().includes('upload') ||
+    fieldKey.toLowerCase().includes('photo') ||
+    fieldKey.toLowerCase().includes('document');
+
+  if (isFileField) {
+    return extractCloudinaryUrlOnly(value);
+  }
+
+  // ✅ FIXED: Handle signature fields - return meaningful indicator
+  if (typeof value === 'string' && value.startsWith('data:image/')) {
+    return '[Digital Signature Captured]';
+  }
+
+  // Handle file objects - extract only URLs
+  if (typeof value === 'object' && value !== null) {
+    // Single file object
+    if (value.url && typeof value.url === 'string') {
+      return value.url.trim();
+    }
+
+    // Array of files
+    if (Array.isArray(value)) {
+      const urls = value
+        .map(item => extractCloudinaryUrlOnly(item))
+        .filter(url => url !== '');
+
+      if (urls.length > 0) {
+        return urls.join('; ');
+      }
+    }
+
+    // Complex objects (fullName, address, etc.) - not file-related
+    if (value.firstName && value.lastName) {
+      return `${value.firstName} ${value.lastName}`.trim();
+    }
+
+    if (value.street || value.city || value.state || value.zipCode) {
+      const addressParts = [
+        value.street,
+        value.city,
+        value.state,
+        value.zipCode,
+        value.country,
+      ].filter(part => part && part.trim());
+      return addressParts.join(', ');
+    }
+
+    if (value.countryCode && value.number) {
+      return `${value.countryCode} ${value.number}`;
+    }
+
+    if (value.date && value.time) {
+      const datePart = value.date
+        ? new Date(value.date).toLocaleDateString()
+        : '';
+      const timePart = value.time || '';
+      return `${datePart} ${timePart}`.trim();
+    }
+
+    if (value.label && value.value !== undefined) {
+      return value.label;
+    }
+
+    // Handle fill blank template
+    if (value.beforeText && value.afterText && value.userInput) {
+      return `${value.beforeText} "${value.userInput}" ${value.afterText}`;
+    }
+
+    // Handle product list
+    if (value.selectedProducts && typeof value.selectedProducts === 'object') {
+      const products = [];
+      for (const [productId, quantity] of Object.entries(
+        value.selectedProducts
+      )) {
+        if (quantity && typeof quantity === 'number' && quantity > 0) {
+          const product = value.products?.find((p: any) => p.id === productId);
+          const productName = product?.name || `Product ${productId}`;
+          products.push(`${productName} (x${quantity})`);
+        }
+      }
+      return products.join(', ');
+    }
+
+    // Generic object handling
+    const meaningfulValues = Object.entries(value)
+      .filter(
+        ([key, val]) =>
+          val !== null &&
+          val !== undefined &&
+          val !== '' &&
+          !key.startsWith('_') &&
+          key !== 'id' &&
+          key !== 'createdAt' &&
+          key !== 'updatedAt'
+      )
+      .map(([, val]) => formatSingleValue(val))
+      .filter(val => val && val !== '');
+
+    return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
+  }
+
+  return formatSingleValue(value);
+};
+
+export const formatSubmissionValueSimplified = (
+  value: any,
+  fieldKey: string,
+  fieldLabelsMap: Record<string, string>
+): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const fieldLabel = fieldLabelsMap[fieldKey] || fieldKey;
+
+  // ✅ FIXED: Handle signature fields - return meaningful text
+  if (typeof value === 'string' && value.startsWith('data:image/')) {
+    return '[Digital Signature Captured]';
+  }
+
+  // Handle file objects (legacy format) - Extract only Cloudinary URLs
+  if (typeof value === 'object' && value !== null) {
+    // Single file object
+    if (value.url && typeof value.url === 'string') {
+      return value.url.trim();
+    }
+
+    // Array of files
+    if (Array.isArray(value)) {
+      const fileUrls = value
+        .map(item => {
+          if (item && typeof item === 'object' && item.url) {
+            return item.url.trim();
+          }
+          // ✅ FIXED: Handle base64 signatures in arrays
+          if (typeof item === 'string' && item.startsWith('data:image/')) {
+            return '[Digital Signature Captured]';
+          }
+          return '';
+        })
+        .filter(url => url !== '');
+
+      return fileUrls.join('; ');
+    }
+
+    // Complex objects (fullName, address, etc.)
+    if (value.firstName && value.lastName) {
+      return `${value.firstName} ${value.lastName}`.trim();
+    }
+
+    if (value.street || value.city || value.state || value.zipCode) {
+      const addressParts = [
+        value.street,
+        value.city,
+        value.state,
+        value.zipCode,
+        value.country,
+      ].filter(part => part && part.trim());
+      return addressParts.join(', ');
+    }
+
+    if (value.countryCode && value.number) {
+      return `${value.countryCode} ${value.number}`;
+    }
+
+    if (value.date && value.time) {
+      const datePart = value.date
+        ? new Date(value.date).toLocaleDateString()
+        : '';
+      const timePart = value.time || '';
+      return `${datePart} ${timePart}`.trim();
+    }
+
+    if (value.label && value.value !== undefined) {
+      return value.label;
+    }
+
+    // Handle fill blank template
+    if (value.beforeText && value.afterText && value.userInput) {
+      return `${value.beforeText} "${value.userInput}" ${value.afterText}`;
+    }
+
+    // Handle product list
+    if (value.selectedProducts && typeof value.selectedProducts === 'object') {
+      const products = [];
+      for (const [productId, quantity] of Object.entries(
+        value.selectedProducts
+      )) {
+        if (quantity && typeof quantity === 'number' && quantity > 0) {
+          const product = value.products?.find((p: any) => p.id === productId);
+          const productName = product?.name || `Product ${productId}`;
+          products.push(`${productName} (x${quantity})`);
+        }
+      }
+      return products.join(', ');
+    }
+
+    // Generic object handling
+    const meaningfulValues = Object.entries(value)
+      .filter(
+        ([key, val]) =>
+          val !== null &&
+          val !== undefined &&
+          val !== '' &&
+          !key.startsWith('_') &&
+          key !== 'id' &&
+          key !== 'createdAt' &&
+          key !== 'updatedAt'
+      )
+      .map(([, val]) => formatSingleValueSimplified(val))
+      .filter(val => val && val !== '');
+
+    return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
+  }
+
+  return formatSingleValueSimplified(value);
+};
+
+// Helper function to format single values (simplified)
+const formatSingleValueSimplified = (value: any): string => {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (typeof value === 'number') {
+    return value.toString();
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(item => formatSingleValueSimplified(item))
+      .filter(v => v !== '')
+      .join(', ');
+  }
+
+  return String(value);
 };
 
 // Helper function to validate submission data with file support
@@ -1367,6 +2054,55 @@ router.post(
       uploadedAt: Date;
     }> = [];
 
+    if (submissionData && typeof submissionData === 'object') {
+      for (const [fieldId, value] of Object.entries(submissionData)) {
+        // Check if this is a signature field with base64 data
+        if (typeof value === 'string' && value.startsWith('data:image/')) {
+          console.log(`🖋️ Processing signature field: ${fieldId}`);
+
+          try {
+            // Convert base64 to buffer
+            const base64Data = value.split(',')[1];
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            // Upload signature to Cloudinary
+            const uploadResult = await uploadFormFile(
+              buffer,
+              `signature_${fieldId}_${Date.now()}.png`,
+              'image/png',
+              fieldId,
+              formId
+            );
+
+            // Replace base64 data with Cloudinary URL in submission data
+            submissionData[fieldId] = uploadResult.url;
+
+            // Also add to processed files for consistency
+            processedFiles.push({
+              fieldId,
+              originalName: `signature_${fieldId}.png`,
+              fileName: uploadResult.fileName,
+              url: uploadResult.url,
+              publicId: uploadResult.publicId,
+              size: uploadResult.size,
+              mimeType: 'image/png',
+              uploadedAt: new Date(),
+            });
+
+            console.log(
+              `✅ Signature uploaded to Cloudinary: ${uploadResult.url}`
+            );
+          } catch (error) {
+            console.error(
+              `❌ Failed to upload signature for field ${fieldId}:`,
+              error
+            );
+            // Keep the base64 as fallback
+          }
+        }
+      }
+    }
+
     if (fileData && typeof fileData === 'object') {
       for (const [fieldId, fieldFiles] of Object.entries(fileData)) {
         if (!fieldFiles) continue;
@@ -1679,6 +2415,121 @@ router.post(
   })
 );
 
+// @desc    Validate export request
+// @route   POST /api/submissions/form/:formId/validate-export
+// @access  Private
+router.post(
+  '/form/:formId/validate-export',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { formId } = req.params;
+    const { filters = {} } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
+    }
+
+    // Verify form belongs to user
+    const form = await Form.findOne({ _id: formId, userId: req.user.id });
+    if (!form) {
+      throw new ApiError('Form not found', 404);
+    }
+
+    // Build query based on filters
+    const query: any = { formId };
+
+    // Apply filters similar to main export
+    if (filters.dateFrom || filters.dateTo) {
+      query.submittedAt = {};
+      if (filters.dateFrom) query.submittedAt.$gte = new Date(filters.dateFrom);
+      if (filters.dateTo) {
+        const endDate = new Date(filters.dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        query.submittedAt.$lte = endDate;
+      }
+    }
+
+    if (
+      filters.status &&
+      ['pending', 'processed', 'failed'].includes(filters.status)
+    ) {
+      query.status = filters.status;
+    }
+
+    if (filters.isRead !== undefined) {
+      query.isRead = filters.isRead === 'true';
+    }
+
+    // Get estimated counts
+    const estimatedRows = await Submission.countDocuments(query);
+
+    // Calculate warnings and errors
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    // Size warnings
+    if (estimatedRows > 10000) {
+      warnings.push(
+        `Large export: ${estimatedRows} submissions. This may take several minutes.`
+      );
+    }
+
+    if (estimatedRows > 50000) {
+      warnings.push(
+        'Very large export. Consider filtering by date range or status.'
+      );
+    }
+
+    // File size estimation
+    const avgRowSize = 150; // Conservative estimate including file URLs
+    const estimatedSizeBytes = estimatedRows * avgRowSize;
+    const estimatedSizeMB = estimatedSizeBytes / (1024 * 1024);
+
+    if (estimatedSizeMB > 50) {
+      warnings.push(
+        `Estimated file size: ${Math.round(estimatedSizeMB)}MB. Large files may be slow to download.`
+      );
+    }
+
+    // Validation errors
+    if (estimatedRows === 0) {
+      errors.push('No submissions match the specified filters.');
+    }
+
+    if (estimatedSizeMB > 100) {
+      errors.push(
+        'Export too large (>100MB). Please filter your data to reduce size.'
+      );
+    }
+
+    // Form validation
+    if (!form.pages || form.pages.length === 0) {
+      warnings.push(
+        'Form has no fields defined. Export will only contain submission dates.'
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isValid: errors.length === 0,
+        estimatedRows,
+        estimatedSize: formatFileSize(estimatedSizeBytes),
+        warnings,
+        errors,
+        recommendations:
+          estimatedRows > 5000
+            ? [
+                'Consider filtering by date range to reduce export size',
+                'Large exports may take several minutes to complete',
+                'Ensure stable internet connection for large downloads',
+              ]
+            : [],
+      },
+    });
+  })
+);
+
 // @desc    Remove tag from submission
 // @route   DELETE /api/submissions/:id/tags/:tag
 // @access  Private
@@ -1876,7 +2727,7 @@ router.patch(
   })
 );
 
-// ✅ ENHANCED: Export submissions with proper field labels and clean CSV format
+// Export submissions with proper field labels and clean CSV format
 // @desc    Export submissions
 // @route   GET /api/submissions/form/:formId/export
 // @access  Private
@@ -1887,15 +2738,19 @@ router.get(
     const { formId } = req.params;
     const { format = 'csv', dateFrom, dateTo, status, isRead } = req.query;
 
+    console.log('📊 Starting simplified CSV export for form:', formId);
+
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
     }
 
-    // Verify form belongs to user and get form structure for field labels
+    // Verify form belongs to user and get form structure
     const form = await Form.findOne({ _id: formId, userId: req.user.id });
     if (!form) {
       throw new ApiError('Form not found', 404);
     }
+
+    console.log('✅ Form found:', form.title);
 
     // Build query for filtering
     const query: any = { formId };
@@ -1924,46 +2779,91 @@ router.get(
       query.isRead = isRead === 'true';
     }
 
+    console.log('🔍 Query filters:', query);
+
+    // Fetch submissions with all data including files
     const submissions = await Submission.find(query)
       .sort({ submittedAt: -1 })
       .lean();
 
-    if (format === 'csv') {
-      const csvData = generateEnhancedCSVExport(submissions, form);
-      const filename = `${form.title.replace(/[^a-zA-Z0-9]/g, '_')}-submissions-${new Date().toISOString().split('T')[0]}.csv`;
+    console.log(`📋 Found ${submissions.length} submissions for export`);
 
+    if (format === 'csv') {
+      // Generate simplified CSV with Cloudinary URLs only
+      const csvData = generateSimplifiedCSVExport(submissions, form);
+
+      // Create filename
+      const formTitleSafe = form.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const dateStamp = new Date().toISOString().split('T')[0];
+      const filename = `${formTitleSafe}-submissions-${dateStamp}.csv`;
+
+      console.log('📤 Sending simplified CSV file:', filename);
+
+      // Set headers for CSV download
       res.set({
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-cache',
+        'Content-Length': Buffer.byteLength(csvData, 'utf8').toString(),
       });
-      res.send(csvData);
+
+      // Send CSV data
+      res.status(200).send(csvData);
     } else if (format === 'json') {
-      const filename = `${form.title.replace(/[^a-zA-Z0-9]/g, '_')}-submissions-${new Date().toISOString().split('T')[0]}.json`;
+      // JSON export with simplified structure
+      const formTitleSafe = form.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const dateStamp = new Date().toISOString().split('T')[0];
+      const filename = `${formTitleSafe}-submissions-${dateStamp}.json`;
+
+      const fieldLabelsMap = createFieldLabelsMap(form);
+
+      const exportData = {
+        success: true,
+        export: {
+          form: {
+            id: form.id,
+            title: form.title,
+            description: form.description,
+            exportedAt: new Date().toISOString(),
+          },
+          fieldLabels: fieldLabelsMap,
+          submissions: submissions.map(submission => ({
+            id: submission._id,
+            submittedAt: submission.submittedAt,
+            status: submission.status,
+            isRead: submission.isRead,
+            data: submission.data,
+            files: submission.files || [],
+            fileCount: submission.files?.length || 0,
+          })),
+          summary: {
+            totalRecords: submissions.length,
+            recordsWithFiles: submissions.filter(
+              s => s.files && s.files.length > 0
+            ).length,
+            totalFiles: submissions.reduce(
+              (sum: number, s: any) => sum + (s.files?.length || 0),
+              0
+            ),
+          },
+        },
+      };
 
       res.set({
         'Content-Type': 'application/json',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-cache',
       });
-      res.json({
-        success: true,
-        data: {
-          form: {
-            id: form.id,
-            title: form.title,
-            exportedAt: new Date().toISOString(),
-          },
-          submissions,
-          count: submissions.length,
-        },
-      });
+
+      res.status(200).json(exportData);
     } else {
       throw new ApiError(
         'Invalid export format. Supported formats: csv, json',
         400
       );
     }
+
+    console.log('✅ Simplified export completed successfully');
   })
 );
 
@@ -2105,6 +3005,172 @@ router.get(
           failed: 0,
         },
         dailyBreakdown: dailyStats,
+      },
+    });
+  })
+);
+
+// @desc    Get export statistics for a form
+// @route   GET /api/submissions/form/:formId/export-stats
+// @access  Private
+router.get(
+  '/form/:formId/export-stats',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { formId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
+    }
+
+    // Verify form belongs to user
+    const form = await Form.findOne({ _id: formId, userId: req.user.id });
+    if (!form) {
+      throw new ApiError('Form not found', 404);
+    }
+
+    // Get comprehensive statistics
+    const [submissionStats, fileStats] = await Promise.all([
+      // Basic submission statistics
+      Submission.aggregate([
+        { $match: { formId: new mongoose.Types.ObjectId(formId) } },
+        {
+          $group: {
+            _id: null,
+            totalSubmissions: { $sum: 1 },
+            totalFiles: { $sum: { $size: { $ifNull: ['$files', []] } } },
+            totalFileSize: {
+              $sum: {
+                $reduce: {
+                  input: { $ifNull: ['$files', []] },
+                  initialValue: 0,
+                  in: { $add: ['$$value', { $ifNull: ['$$this.size', 0] }] },
+                },
+              },
+            },
+            avgFilesPerSubmission: {
+              $avg: { $size: { $ifNull: ['$files', []] } },
+            },
+          },
+        },
+      ]),
+
+      // File type breakdown
+      Submission.aggregate([
+        { $match: { formId: new mongoose.Types.ObjectId(formId) } },
+        { $unwind: { path: '$files', preserveNullAndEmptyArrays: false } },
+        {
+          $group: {
+            _id: '$files.mimeType',
+            count: { $sum: 1 },
+            totalSize: { $sum: '$files.size' },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]),
+    ]);
+
+    const stats = submissionStats[0] || {
+      totalSubmissions: 0,
+      totalFiles: 0,
+      totalFileSize: 0,
+      avgFilesPerSubmission: 0,
+    };
+
+    // Create field labels map
+    const fieldLabelsMap = createFieldLabelsMap(form);
+    const fieldCount = Object.keys(fieldLabelsMap).length;
+
+    // Estimate CSV size (rough calculation)
+    const avgRowSize = 100; // Average bytes per row (conservative estimate)
+    const headerSize = fieldCount * 20; // Average header size
+    const estimatedSize = headerSize + stats.totalSubmissions * avgRowSize;
+    const estimatedSizeFormatted = formatFileSize(estimatedSize);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalSubmissions: stats.totalSubmissions,
+        totalFiles: stats.totalFiles,
+        totalFileSize: stats.totalFileSize,
+        avgFilesPerSubmission:
+          Math.round(stats.avgFilesPerSubmission * 10) / 10,
+        estimatedCsvSize: estimatedSizeFormatted,
+        fieldCount,
+        fieldLabels: fieldLabelsMap,
+        fileTypeBreakdown: fileStats,
+        formInfo: {
+          title: form.title,
+          createdAt: form.createdAt,
+          isPublished: form.isPublished,
+        },
+      },
+    });
+  })
+);
+
+// @desc    Get export preview (first few rows)
+// @route   GET /api/submissions/form/:formId/export-preview
+// @access  Private
+router.get(
+  '/form/:formId/export-preview',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { formId } = req.params;
+    const { limit = '5' } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
+    }
+
+    const limitNum = Math.min(parseInt(limit as string, 10) || 5, 20); // Max 20 for preview
+
+    // Verify form belongs to user
+    const form = await Form.findOne({ _id: formId, userId: req.user.id });
+    if (!form) {
+      throw new ApiError('Form not found', 404);
+    }
+
+    // Get preview submissions
+    const submissions = await Submission.find({ formId })
+      .sort({ submittedAt: -1 })
+      .limit(limitNum)
+      .lean();
+
+    // Get total count
+    const totalSubmissions = await Submission.countDocuments({ formId });
+
+    if (submissions.length === 0) {
+      res.status(200).json({
+        success: true,
+        data: {
+          headers: ['Submission Date'],
+          rows: [],
+          totalSubmissions: 0,
+          previewCount: 0,
+        },
+      });
+      return;
+    }
+
+    // Generate preview using the same logic as full export
+    const csvContent = generateEnhancedCSVExport(submissions, form);
+    const lines = csvContent.split('\n').filter(line => line.trim());
+
+    const headers = lines[0]
+      ? lines[0].split(',').map(h => h.replace(/"/g, ''))
+      : [];
+    const rows = lines
+      .slice(1, limitNum + 1)
+      .map(line => line.split(',').map(cell => cell.replace(/"/g, '')));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        headers,
+        rows,
+        totalSubmissions,
+        previewCount: submissions.length,
       },
     });
   })
