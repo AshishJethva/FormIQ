@@ -322,10 +322,59 @@ const FormsList: React.FC<FormsListProps> = ({
           break;
 
         case 'Delete Permanently':
-          await dispatch(deleteFormAsync(formId) as any).unwrap();
-          toast.success('Form permanently deleted');
-          // Trigger refetch to remove from trash view
-          triggerRefetch();
+          // Get form details for better confirmation message
+          const form = forms.find(f => f.id === formId);
+          const submissionCount = form?.submissions || 0;
+
+          // Enhanced confirmation message
+          const confirmMessage =
+            submissionCount > 0
+              ? `⚠️ PERMANENT DELETION WARNING ⚠️\n\nThis will permanently delete:\n• The form "${
+                  form?.name
+                }"\n• All ${submissionCount} submission${
+                  submissionCount === 1 ? '' : 's'
+                }\n• All uploaded files and attachments\n\nThis action cannot be undone. Are you sure you want to continue?`
+              : `This will permanently delete the form "${form?.name}". This action cannot be undone.\n\nAre you sure you want to continue?`;
+
+          if (window.confirm(confirmMessage)) {
+            console.log(
+              `🗑️ User confirmed deletion of form ${formId} with ${submissionCount} submissions`
+            );
+
+            // Show loading toast
+            const loadingToast = toast.loading(
+              submissionCount > 0
+                ? `Deleting form and ${submissionCount} submission${
+                    submissionCount === 1 ? '' : 's'
+                  }...`
+                : 'Deleting form...'
+            );
+
+            try {
+              await dispatch(deleteFormAsync(formId) as any).unwrap();
+
+              toast.dismiss(loadingToast);
+              toast.success(
+                submissionCount > 0
+                  ? `Form and ${submissionCount} submission${
+                      submissionCount === 1 ? '' : 's'
+                    } permanently deleted`
+                  : 'Form permanently deleted',
+                { duration: 5000 }
+              );
+
+              triggerRefetch();
+            } catch (deleteError: any) {
+              toast.dismiss(loadingToast);
+              toast.error(`Failed to delete form: ${deleteError.message}`, {
+                duration: 7000,
+              });
+              throw deleteError;
+            }
+          } else {
+            console.log('❌ User cancelled form deletion');
+            return; // User cancelled
+          }
           break;
 
         case 'Add Label':
@@ -337,7 +386,6 @@ const FormsList: React.FC<FormsListProps> = ({
 
         case 'Rename':
           // Start rename mode
-          const form = forms.find(f => f.id === formId);
           if (form) {
             handleRenameStart(formId, form.name);
           }
@@ -385,13 +433,60 @@ const FormsList: React.FC<FormsListProps> = ({
           break;
 
         case 'Delete Permanently':
-          // Handle bulk permanent delete for trashed forms
-          for (const formId of selectedForms) {
-            await dispatch(deleteFormAsync(formId) as any).unwrap();
+          // Calculate total submissions across selected forms
+          const totalSubmissions = selectedForms.reduce((total, formId) => {
+            const form = forms.find(f => f.id === formId);
+            return total + (form?.submissions || 0);
+          }, 0);
+
+          const bulkConfirmMessage =
+            totalSubmissions > 0
+              ? `⚠️ BULK PERMANENT DELETION WARNING ⚠️\n\nThis will permanently delete:\n• ${
+                  selectedForms.length
+                } forms\n• ${totalSubmissions} total submission${
+                  totalSubmissions === 1 ? '' : 's'
+                }\n• All uploaded files and attachments\n\nThis action cannot be undone. Are you sure you want to continue?`
+              : `This will permanently delete ${selectedForms.length} forms. This action cannot be undone.\n\nAre you sure you want to continue?`;
+
+          if (window.confirm(bulkConfirmMessage)) {
+            console.log(
+              `🗑️ User confirmed bulk deletion of ${selectedForms.length} forms with ${totalSubmissions} total submissions`
+            );
+
+            const loadingToast = toast.loading(
+              `Deleting ${selectedForms.length} forms and ${totalSubmissions} submissions...`
+            );
+
+            // Handle bulk permanent delete for trashed forms
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const formId of selectedForms) {
+              try {
+                await dispatch(deleteFormAsync(formId) as any).unwrap();
+                successCount++;
+              } catch (error) {
+                console.error(`Failed to delete form ${formId}:`, error);
+                failCount++;
+              }
+            }
+
+            toast.dismiss(loadingToast);
+
+            if (successCount === selectedForms.length) {
+              toast.success(
+                `Successfully deleted ${successCount} forms and their submissions`
+              );
+            } else if (successCount > 0) {
+              toast.warning(
+                `Deleted ${successCount} forms, but ${failCount} failed`
+              );
+            } else {
+              toast.error(`Failed to delete all ${selectedForms.length} forms`);
+            }
+
+            triggerRefetch();
           }
-          toast.success(`${selectedForms.length} forms permanently deleted`);
-          // Trigger refetch to remove from trash view
-          triggerRefetch();
           break;
 
         case 'Label as':
@@ -696,7 +791,7 @@ const FormsList: React.FC<FormsListProps> = ({
                   <h3 className='font-medium text-sm truncate'>{form.name}</h3>
                 )}
                 <div className='text-xs text-gray-500 truncate flex items-center gap-1'>
-                  {/* ✅ NEW: Make submissions count clickable */}
+                  {/*  NEW: Make submissions count clickable */}
                   <button
                     onClick={e => handleSubmissionsClick(e, form.id)}
                     className='text-[#2E66C3] hover:text-blue-800 hover:underline font-medium transition-colors inline-flex items-center gap-1 cursor-pointer'

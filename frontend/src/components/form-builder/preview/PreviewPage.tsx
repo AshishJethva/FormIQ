@@ -44,12 +44,12 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
   const shareableLink = `${window.location.origin}/form/${formId}`;
 
-  // ✅ FULLY FIXED: Complete dummy data generation with safe placeholders
+  //  FULLY FIXED: Complete dummy data generation with safe placeholders
   const generateDummyData = () => {
     const dummyFormData: Record<string, any> = {};
     const dummyFileData: Record<string, any> = {};
 
-    // ✅ Realistic data pools for Indian context
+    //  Realistic data pools for Indian context
     const names = {
       firstNames: [
         'Arjun',
@@ -308,7 +308,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       return `${hours}:${minutes}`;
     };
 
-    // ✅ SAFE IMAGE PLACEHOLDERS - No external URLs
+    //  SAFE IMAGE PLACEHOLDERS - No external URLs
     const generateSafeImagePlaceholder = (type: string = 'general') => {
       const placeholders = {
         profile:
@@ -323,7 +323,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       );
     };
 
-    // ✅ SAFE FILE PLACEHOLDERS
+    //  SAFE FILE PLACEHOLDERS
     const generateSafeFileData = (fileName: string, mimeType: string) => ({
       originalName: fileName,
       fileName: `${fileName.split('.')[0]}_${Date.now()}.${fileName
@@ -418,7 +418,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'productList':
-            // ✅ ENHANCED: Realistic product selection with quantities
+            //  ENHANCED: Realistic product selection with quantities
             if (
               field.productListConfig?.products &&
               field.productListConfig.products.length > 0
@@ -643,7 +643,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'image':
-            // ✅ SAFE IMAGE HANDLING
+            //  SAFE IMAGE HANDLING
             const imageType = fieldLabel.includes('profile')
               ? 'profile'
               : fieldLabel.includes('document')
@@ -678,7 +678,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'fileUpload':
-            // ✅ SAFE FILE HANDLING
+            //  SAFE FILE HANDLING
             const sampleFiles = [
               { name: 'resume.pdf', type: 'application/pdf' },
               { name: 'cover_letter.pdf', type: 'application/pdf' },
@@ -759,7 +759,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     });
   };
 
-  // ✅ COMPLETE VALIDATION with all field types
+  //  COMPLETE VALIDATION with all field types
   const validateField = (field: any, value: any, files?: any): string => {
     if (field.type === 'heading') return '';
 
@@ -1028,10 +1028,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       // Submit form with both regular data and file data
       const result = await submitForm(formId, formData, preparedFileData);
 
-      console.log(
-        '✅ Form submission successful with enhanced fields:',
-        result
-      );
+      console.log(' Form submission successful with enhanced fields:', result);
 
       setIsSubmitted(true);
       setSubmissionId(result.data.submissionId);
@@ -1084,7 +1081,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       case 'desktop':
       default:
         return {
-          width: '52%',
+          width: '100%',
           height: '100%',
           className:
             'w-full h-full bg-white shadow-lg rounded-lg overflow-hidden mt-7',
@@ -1094,7 +1091,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
   const deviceStyles = getDeviceStyles();
 
-  // ✅ SUCCESS STATE with enhanced animations
+  //  SUCCESS STATE with enhanced animations
   if (isSubmitted) {
     return (
       <div className='min-h-screen bg-gray-100 flex flex-col'>
@@ -1211,7 +1208,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     );
   }
 
-  // ✅ MAIN PREVIEW INTERFACE
+  //  MAIN PREVIEW INTERFACE
   return (
     <div className='min-h-screen bg-[#F3F3FE] flex flex-col'>
       <PreviewHeader
@@ -1252,7 +1249,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
   );
 }
 
-// ✅ WRAPPER COMPONENT for file support
+//  WRAPPER COMPONENT for file support
 function PreviewFormWithFileSupport({
   form,
   formData,

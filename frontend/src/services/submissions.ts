@@ -262,7 +262,7 @@ export const submissionsService = {
         )}`
       );
 
-      console.log('✅ File deleted from submission successfully');
+      console.log(' File deleted from submission successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error deleting file from submission:', error);
@@ -288,7 +288,7 @@ export const submissionsService = {
 
       const response = await api.get(`/submissions/${submissionId}/files`);
 
-      console.log('✅ Submission files retrieved successfully');
+      console.log(' Submission files retrieved successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error getting submission files:', error);
@@ -325,7 +325,7 @@ export const submissionsService = {
         }
       );
 
-      console.log('✅ Submission files ZIP downloaded successfully');
+      console.log(' Submission files ZIP downloaded successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error downloading submission files:', error);
@@ -353,7 +353,7 @@ export const submissionsService = {
 
       const response = await api.post('/submissions/files/bulk', operation);
 
-      console.log('✅ Bulk file operation completed successfully');
+      console.log(' Bulk file operation completed successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error performing bulk file operation:', error);
@@ -441,7 +441,7 @@ export const submissionsService = {
         },
       });
 
-      console.log('✅ CSV export response received:', {
+      console.log(' CSV export response received:', {
         size: response.data.size,
         type: response.data.type,
         headers: response.headers,
@@ -603,7 +603,7 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('✅ Validating export request for form:', formId);
+      console.log(' Validating export request for form:', formId);
 
       const response = await api.post(
         `/submissions/form/${formId}/validate-export`,
@@ -657,7 +657,7 @@ export const submissionsService = {
         }`
       );
 
-      console.log('✅ Submission analytics retrieved successfully');
+      console.log(' Submission analytics retrieved successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error getting submission analytics:', error);
@@ -699,7 +699,7 @@ export const submissionsService = {
         `/submissions/form/${formId}/search/files?${params.toString()}`
       );
 
-      console.log('✅ File content search completed successfully');
+      console.log(' File content search completed successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error searching file content:', error);
@@ -745,7 +745,7 @@ export const submissionsService = {
         }`
       );
 
-      console.log('✅ File access logs retrieved successfully');
+      console.log(' File access logs retrieved successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error getting file access logs:', error);

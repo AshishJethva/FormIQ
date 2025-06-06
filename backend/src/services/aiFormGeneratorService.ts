@@ -44,21 +44,14 @@ export class AIFormGeneratorService {
         };
       }
 
-      if (prompt.trim().length > 1000) {
-        return {
-          success: false,
-          error: 'Prompt must not exceed 1000 characters',
-          generationTime: Date.now() - startTime,
-        };
-      }
-
       console.log('🤖 Starting AI form generation:', {
         userId,
         promptLength: prompt.trim().length,
         timestamp: new Date().toISOString(),
+        prompt: prompt.substring(0, 100) + '...',
       });
 
-      // Generate form config with logo
+      // Generate form config
       const systemPrompt = this.buildSystemPrompt(prompt.trim());
       const result = await this.model.generateContent(systemPrompt);
       const response = await result.response;
@@ -78,45 +71,18 @@ export class AIFormGeneratorService {
         };
       }
 
-      // Enhance form config with logo and settings
-      let formConfig = this.enhanceFormConfig(parseResult.data, prompt);
+      // Clean and enhance form config
+      let formConfig = parseResult.data;
       formConfig = this.cleanFormConfigForMongoDB(formConfig);
-
-      console.log('🎨 Generating 900x265 logo for form...');
-      const logoResult = await this.generateFormLogo(
-        formConfig.title,
-        formConfig.description,
-        prompt
-      );
-
-      if (logoResult.success && logoResult.logoUrl) {
-        formConfig.logo = {
-          src: logoResult.logoUrl,
-          type: 'url',
-          alignment: 'CENTER',
-          size: 100, // Maximum size (100%)
-          publicId: logoResult.publicId || null,
-        };
-        console.log('✅ Logo generated successfully:', logoResult.logoUrl);
-      } else {
-        console.log('⚠️ No appropriate logo found, proceeding without logo');
-        formConfig.logo = null; // Don't set logo if not appropriate
-      }
-
-      // Add unique IDs
       formConfig = this.addUniqueIds(formConfig);
 
       const generationTime = Date.now() - startTime;
 
       console.log('✅ AI Generation Success:', {
         userId,
-        prompt: prompt.substring(0, 50) + '...',
         generationTime,
         fieldCount: this.countFields(formConfig),
-        hasLogo: !!formConfig.logo,
-        logoUrl: formConfig.logo?.src
-          ? formConfig.logo.src.substring(0, 50) + '...'
-          : 'None',
+        hasQuizFields: this.hasQuizFields(formConfig),
       });
 
       return {
@@ -126,6 +92,7 @@ export class AIFormGeneratorService {
       };
     } catch (error: any) {
       const generationTime = Date.now() - startTime;
+      console.error('❌ AI generation failed:', error);
 
       return {
         success: false,
@@ -133,6 +100,21 @@ export class AIFormGeneratorService {
         generationTime,
       };
     }
+  }
+
+  private hasQuizFields(config: any): boolean {
+    if (!config.pages) return false;
+
+    for (const page of config.pages) {
+      if (page.fields) {
+        for (const field of page.fields) {
+          if (field.correctAnswer) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   private buildSystemPrompt(userPrompt: string): string {
@@ -270,9 +252,10 @@ FORM STRUCTURE (EXACT FORMAT REQUIRED):
           "helpText": "Choose from the available options",
           "options": [
             {"label": "Option 1", "value": "option1"},
-            {"label": "Option 2", "value": "option2"},
+            {"label": "Option 2", "value": "option2", "isCorrect": true},
             {"label": "Option 3", "value": "option3"}
-          ]
+          ],
+          "correctAnswer": "option2"
         }
       ]
     }
@@ -291,16 +274,38 @@ FORM STRUCTURE (EXACT FORMAT REQUIRED):
   }
 }
 
-SMART FIELD SELECTION GUIDELINES:
-- Use "signature" for: contracts, agreements, legal documents, consent forms, authorization forms
-- Use "fillBlank" for: personalized statements, agreements, custom declarations, templates
-- Use "productList" for: ordering, purchasing, service selection, package selection, catalog browsing
+🚨 CRITICAL QUIZ/TEST FORM RULES:
+- Detect quiz context from these keywords: quiz, test, assessment, exam, evaluation, question, correct, answer, choose, select
+- For ANY form containing these keywords in title, description, or field labels, ALWAYS add correctAnswer
+- For choice fields (dropdown, singleChoice, multipleChoice) in quiz forms:
+  1. Mark ONE option as "isCorrect": true
+  2. Set "correctAnswer" field to match the correct option's value
+  3. Make the correct answer logical and educational
+
+Example quiz field structure:
+{
+  "type": "singleChoice",
+  "label": "What is the capital of France?",
+  "options": [
+    {"label": "London", "value": "london"},
+    {"label": "Paris", "value": "paris", "isCorrect": true},
+    {"label": "Berlin", "value": "berlin"}
+  ],
+  "correctAnswer": "paris"
+}
+
+🎯 SMART QUIZ DETECTION:
+- If user prompt contains: "quiz", "test", "assessment", "exam", "evaluation"
+- If any field label contains: "correct", "answer", "choose", "select", "what is", "which"
+- If form is educational: ALWAYS add correctAnswer to choice fields
 
 IMPORTANT RULES:
-- "heading" fields should NOT have "required" or "helpText" properties
+- "heading" fields should NOT have "required", "helpText", or "correctAnswer" properties
 - All other field types should have "required" and "helpText" properties
 - Choice fields (dropdown, singleChoice, multipleChoice) MUST include "options" array
 - Each option must have both "label" and "value" properties
+- For quiz/test forms, mark correct options with "isCorrect": true
+- For quiz/test forms, set "correctAnswer" to the value of the correct option
 - Set showLogo to true and allowMultipleSubmissions/allowMultipleEmailSubmissions to true by default
 - Generate realistic, contextual field options
 - For signature fields, customize instructionText based on context
@@ -315,7 +320,10 @@ Generate the form configuration now:`;
   private cleanFormConfigForMongoDB(config: any): any {
     console.log('🧹 Cleaning form config for MongoDB compatibility...');
 
-    // Clean pages and fields
+    // Detect if this is a quiz form
+    const isQuizForm = this.detectQuizForm(config);
+    console.log(`🎯 Is quiz form: ${isQuizForm}`);
+
     if (config.pages && Array.isArray(config.pages)) {
       config.pages = config.pages.map((page: any) => ({
         ...page,
@@ -327,12 +335,12 @@ Generate the form configuration now:`;
             labelAlignment: field.labelAlignment || 'LEFT',
           };
 
-          // ✅ FIXED: Only add properties that exist for non-heading fields
+          // Only add properties that exist for non-heading fields
           if (field.type !== 'heading') {
             cleanField.required = Boolean(field.required);
             cleanField.helpText = field.helpText || '';
 
-            // ✅ ENHANCED: Handle signature field configuration
+            // Handle signature field configuration
             if (field.type === 'signature') {
               cleanField.signatureConfig = {
                 instructionText:
@@ -351,7 +359,7 @@ Generate the form configuration now:`;
               };
             }
 
-            // ✅ ENHANCED: Handle fillBlank field configuration
+            // Handle fillBlank field configuration
             if (field.type === 'fillBlank') {
               cleanField.fillBlankTemplate = {
                 beforeText:
@@ -364,7 +372,7 @@ Generate the form configuration now:`;
               };
             }
 
-            // ✅ ENHANCED: Handle productList field configuration
+            // Handle productList field configuration
             if (field.type === 'productList') {
               const products = field.productListConfig?.products || [];
               cleanField.productListConfig = {
@@ -395,7 +403,6 @@ Generate the form configuration now:`;
               }
             }
 
-            // ✅ FIXED: Handle options array properly for choice fields
             const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
             if (choiceFields.includes(field.type)) {
               if (
@@ -408,27 +415,67 @@ Generate the form configuration now:`;
                   .map((option: any) => ({
                     label: String(option.label || option),
                     value: String(option.value || option.label || option),
-                    type: option.type || undefined,
+                    isCorrect: Boolean(option.isCorrect), // Preserve isCorrect flag
                   }))
                   .filter((option: any) => option.label && option.value);
 
-                // If no valid options, create defaults
+                // 🎯 CRITICAL: Handle correctAnswer properly
+                if (field.correctAnswer) {
+                  cleanField.correctAnswer = String(field.correctAnswer);
+                  console.log(
+                    `Set correctAnswer from field: ${cleanField.correctAnswer}`
+                  );
+                } else {
+                  // Find the option marked as correct
+                  const correctOption = cleanField.options.find(
+                    (opt: any) => opt.isCorrect
+                  );
+                  if (correctOption) {
+                    cleanField.correctAnswer = correctOption.value;
+                    console.log(
+                      `Set correctAnswer from isCorrect option: ${cleanField.correctAnswer}`
+                    );
+                  } else if (isQuizForm) {
+                    // For quiz forms, force a correct answer
+                    cleanField.options[1].isCorrect = true; // Make second option correct
+                    cleanField.correctAnswer = cleanField.options[1].value;
+                    console.log(
+                      `🎯 Forced correctAnswer for quiz field: ${cleanField.correctAnswer}`
+                    );
+                  }
+                }
+
+                // If no valid options, create defaults with correct answer
                 if (cleanField.options.length === 0) {
-                  cleanField.options = this.generateDefaultOptions(
-                    field.label,
-                    field.type
+                  const defaultOptions =
+                    this.generateDefaultOptionsWithCorrectAnswer(
+                      field.label,
+                      field.type,
+                      isQuizForm
+                    );
+                  cleanField.options = defaultOptions.options;
+                  cleanField.correctAnswer = defaultOptions.correctAnswer;
+                  console.log(
+                    `🔧 Generated default options with correctAnswer: ${cleanField.correctAnswer}`
                   );
                 }
               } else {
                 // Generate default options if missing
-                cleanField.options = this.generateDefaultOptions(
-                  field.label,
-                  field.type
+                const defaultOptions =
+                  this.generateDefaultOptionsWithCorrectAnswer(
+                    field.label,
+                    field.type,
+                    isQuizForm
+                  );
+                cleanField.options = defaultOptions.options;
+                cleanField.correctAnswer = defaultOptions.correctAnswer;
+                console.log(
+                  `🆕 Created new options with correctAnswer: ${cleanField.correctAnswer}`
                 );
               }
             }
 
-            // ✅ FIXED: Handle other field-specific properties
+            // Handle other field-specific properties...
             if (field.type === 'number') {
               if (field.min !== undefined) cleanField.min = Number(field.min);
               if (field.max !== undefined) cleanField.max = Number(field.max);
@@ -465,25 +512,71 @@ Generate the form configuration now:`;
             }
           }
 
-          console.log(`🔧 Cleaned field: ${field.type} - ${field.label}`, {
-            hasOptions: !!cleanField.options,
-            optionsCount: cleanField.options?.length || 0,
-            hasSignatureConfig: !!cleanField.signatureConfig,
-            hasFillBlankTemplate: !!cleanField.fillBlankTemplate,
-            hasProductListConfig: !!cleanField.productListConfig,
-            productCount: cleanField.productListConfig?.products?.length || 0,
-          });
-
           return cleanField;
         }),
       }));
     }
 
-    console.log('✅ Form config cleaned for MongoDB compatibility');
+    console.log(' Form config cleaned for MongoDB compatibility');
     return config;
   }
 
-  // ✅ NEW: Generate default products for productList fields
+  private detectQuizForm(config: any): boolean {
+    const formTitle = config.title?.toLowerCase() || '';
+    const formDescription = config.description?.toLowerCase() || '';
+
+    // Check title and description for quiz keywords
+    const quizKeywords = [
+      'quiz',
+      'test',
+      'assessment',
+      'exam',
+      'evaluation',
+      'question',
+    ];
+    const hasQuizKeywords = quizKeywords.some(
+      keyword =>
+        formTitle.includes(keyword) || formDescription.includes(keyword)
+    );
+
+    if (hasQuizKeywords) {
+      console.log(`🎯 Quiz detected from title/description: ${formTitle}`);
+      return true;
+    }
+
+    // Check field labels for quiz patterns
+    if (config.pages && Array.isArray(config.pages)) {
+      for (const page of config.pages) {
+        if (page.fields && Array.isArray(page.fields)) {
+          for (const field of page.fields) {
+            const fieldLabel = field.label?.toLowerCase() || '';
+            const questionPatterns = [
+              'what is',
+              'which',
+              'choose',
+              'select',
+              'correct',
+              'answer',
+              'true or false',
+              'pick the',
+              'identify',
+            ];
+
+            if (
+              questionPatterns.some(pattern => fieldLabel.includes(pattern))
+            ) {
+              console.log(`🎯 Quiz detected from field label: ${field.label}`);
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // Generate default products for productList fields
   private generateDefaultProducts(label: string): Array<any> {
     const lowerLabel = label.toLowerCase();
 
@@ -603,7 +696,7 @@ Generate the form configuration now:`;
     error?: string;
   }> {
     try {
-      // ✅ Enhanced logo selection logic for professional web app forms
+      //  Enhanced logo selection logic for professional web app forms
       const logoResult = this.selectAppropriateLogoForWebApp(
         title,
         description,
@@ -647,7 +740,7 @@ Generate the form configuration now:`;
   } {
     const content = (title + ' ' + description + ' ' + prompt).toLowerCase();
 
-    // ✅ Professional 900x265 logos for different form categories
+    //  Professional 900x265 logos for different form categories
     const professionalLogos = {
       contact: {
         keywords: [
@@ -835,7 +928,7 @@ Generate the form configuration now:`;
       },
     };
 
-    // ✅ Find the most appropriate category
+    //  Find the most appropriate category
     let bestMatch = { category: '', score: 0 };
 
     for (const [category, data] of Object.entries(professionalLogos)) {
@@ -848,7 +941,7 @@ Generate the form configuration now:`;
       }
     }
 
-    // ✅ Only return logo if we have a strong match (at least 1 keyword match)
+    //  Only return logo if we have a strong match (at least 1 keyword match)
     if (bestMatch.score > 0 && bestMatch.category) {
       const categoryData =
         professionalLogos[bestMatch.category as keyof typeof professionalLogos];
@@ -857,7 +950,7 @@ Generate the form configuration now:`;
           Math.floor(Math.random() * categoryData.logos.length)
         ];
 
-      console.log('✅ Found appropriate professional logo:', {
+      console.log(' Found appropriate professional logo:', {
         category: bestMatch.category,
         matchScore: bestMatch.score,
         logoUrl: selectedLogo.url,
@@ -872,7 +965,7 @@ Generate the form configuration now:`;
       };
     }
 
-    // ✅ Fallback: Only use generic business logo for clearly business-related forms
+    //  Fallback: Only use generic business logo for clearly business-related forms
     const businessTerms = [
       'form',
       'submit',
@@ -889,7 +982,7 @@ Generate the form configuration now:`;
       (content.includes('business') || content.includes('professional'))
     ) {
       const businessLogo = professionalLogos.business.logos[0];
-      console.log('✅ Using fallback business logo for professional context');
+      console.log(' Using fallback business logo for professional context');
 
       return {
         isAppropriate: true,
@@ -984,7 +1077,7 @@ Generate the form configuration now:`;
           };
         }
 
-        // All 20 field types
+        // All field types
         const validTypes = [
           'shortText',
           'longText',
@@ -1020,23 +1113,22 @@ Generate the form configuration now:`;
             !Array.isArray(field.options) ||
             field.options.length === 0
           ) {
-            // Will be fixed in cleanFormConfigForMongoDB
             console.log(
-              `⚠️ Field "${field.label}" missing options - will be generated`
+              `Field "${field.label}" missing options - will be generated`
             );
           } else {
             // Validate option structure
             for (const option of field.options) {
               if (!option.label || !option.value) {
                 console.log(
-                  `⚠️ Field "${field.label}" has invalid option structure - will be fixed`
+                  `Field "${field.label}" has invalid option structure - will be fixed`
                 );
               }
             }
           }
         }
 
-        // ✅ ENHANCED: Validate new field types
+        //  ENHANCED: Validate new field types
         if (field.type === 'signature') {
           if (field.signatureConfig) {
             if (
@@ -1094,7 +1186,16 @@ Generate the form configuration now:`;
   }
 
   private enhanceFormConfig(config: any, originalPrompt: string): any {
-    // ✅ Enhanced default settings with required configurations
+    // Detect if this is a quiz/test form from title, description, or prompt
+    const formTitle = config.title?.toLowerCase() || '';
+    const formDescription = config.description?.toLowerCase() || '';
+    const promptLower = originalPrompt.toLowerCase();
+
+    const isQuizForm = /quiz|test|assessment|exam|evaluation|question/.test(
+      formTitle + ' ' + formDescription + ' ' + promptLower
+    );
+
+    //  Enhanced default settings with required configurations
     config.settings = {
       submitButtonText: 'Submit Form',
       showLogo: true, // Enable logo by default
@@ -1115,11 +1216,8 @@ Generate the form configuration now:`;
     // Enhance each page and field
     config.pages = config.pages.map((page: any) => ({
       ...page,
-      fields: (page.fields || []).map((field: any) => {
-        const enhancedField = {
-          ...field,
-          labelAlignment: field.labelAlignment || 'LEFT',
-        };
+      fields: page.fields.map((field: any) => {
+        const enhancedField = { ...field };
 
         // Add required and helpText for non-heading fields
         if (field.type !== 'heading') {
@@ -1129,7 +1227,7 @@ Generate the form configuration now:`;
             field.helpText ||
             this.generateHelpText(field.type, field.label, originalPrompt);
 
-          // ✅ ENHANCED: Generate contextual configurations for new field types
+          //  ENHANCED: Generate contextual configurations for new field types
           if (field.type === 'signature') {
             enhancedField.signatureConfig = {
               instructionText: this.generateSignatureInstructions(
@@ -1182,10 +1280,38 @@ Generate the form configuration now:`;
               !Array.isArray(field.options) ||
               field.options.length === 0
             ) {
-              enhancedField.options = this.generateDefaultOptions(
-                field.label,
-                field.type
+              const defaultOptionsWithAnswer =
+                this.generateDefaultOptionsWithCorrectAnswer(
+                  field.label,
+                  field.type
+                );
+              enhancedField.options = defaultOptionsWithAnswer.options;
+
+              // Force correct answer for quiz forms
+              if (isQuizForm && defaultOptionsWithAnswer.correctAnswer) {
+                enhancedField.correctAnswer =
+                  defaultOptionsWithAnswer.correctAnswer;
+                console.log(' Added correct answer for quiz field:', {
+                  label: field.label,
+                  correctAnswer: enhancedField.correctAnswer,
+                });
+              }
+            } else if (isQuizForm && !field.correctAnswer) {
+              // Find or set a correct answer for existing options
+              const correctOption = field.options.find(
+                (opt: any) => opt.isCorrect
               );
+              if (correctOption) {
+                enhancedField.correctAnswer = correctOption.value;
+              } else {
+                // Set first option as correct if none specified
+                enhancedField.options[0].isCorrect = true;
+                enhancedField.correctAnswer = enhancedField.options[0].value;
+              }
+              console.log(' Set correct answer for existing options:', {
+                label: field.label,
+                correctAnswer: enhancedField.correctAnswer,
+              });
             }
           }
         }
@@ -1197,7 +1323,7 @@ Generate the form configuration now:`;
     return config;
   }
 
-  // ✅ NEW: Generate contextual signature instructions
+  //  NEW: Generate contextual signature instructions
   private generateSignatureInstructions(label: string, prompt: string): string {
     const lowerLabel = label.toLowerCase();
     const lowerPrompt = prompt.toLowerCase();
@@ -1232,7 +1358,7 @@ Generate the form configuration now:`;
     return 'Please provide your digital signature below';
   }
 
-  // ✅ NEW: Generate contextual fill blank templates
+  //  NEW: Generate contextual fill blank templates
   private generateFillBlankTemplate(
     label: string,
     prompt: string,
@@ -1299,7 +1425,7 @@ Generate the form configuration now:`;
     };
   }
 
-  // ✅ NEW: Generate contextual products based on form purpose
+  //  NEW: Generate contextual products based on form purpose
   private generateContextualProducts(
     label: string,
     prompt: string
@@ -1551,101 +1677,108 @@ Generate the form configuration now:`;
     }
   }
 
-  private generateDefaultOptions(
+  private generateDefaultOptionsWithCorrectAnswer(
     label: string,
-    fieldType: string
-  ): Array<{ label: string; value: string }> {
+    fieldType: string,
+    forceCorrectAnswer: boolean = false
+  ): {
+    options: Array<{ label: string; value: string; isCorrect?: boolean }>;
+    correctAnswer?: string;
+  } {
     const lowerLabel = label.toLowerCase();
 
+    // Determine if this should have a correct answer based on context
+    const isQuizField =
+      forceCorrectAnswer ||
+      lowerLabel.includes('correct') ||
+      lowerLabel.includes('answer') ||
+      lowerLabel.includes('question') ||
+      lowerLabel.includes('quiz') ||
+      lowerLabel.includes('test') ||
+      lowerLabel.includes('assessment') ||
+      lowerLabel.includes('choose') ||
+      lowerLabel.includes('select') ||
+      lowerLabel.includes('which') ||
+      lowerLabel.includes('what') ||
+      lowerLabel.includes('true') ||
+      lowerLabel.includes('false');
+
+    console.log(`🤔 Generating options for "${label}":`, {
+      isQuizField,
+      forceCorrectAnswer,
+      fieldType,
+    });
+
     if (lowerLabel.includes('experience') || lowerLabel.includes('level')) {
-      return [
+      const options = [
         { label: 'Beginner (0-2 years)', value: 'beginner' },
-        { label: 'Intermediate (2-5 years)', value: 'intermediate' },
+        {
+          label: 'Intermediate (2-5 years)',
+          value: 'intermediate',
+          isCorrect: isQuizField,
+        },
         { label: 'Advanced (5+ years)', value: 'advanced' },
         { label: 'Expert (10+ years)', value: 'expert' },
       ];
+      return {
+        options,
+        correctAnswer: isQuizField ? 'intermediate' : undefined,
+      };
     }
 
     if (lowerLabel.includes('satisfaction') || lowerLabel.includes('rating')) {
-      return [
-        { label: 'Excellent', value: 'excellent' },
+      const options = [
+        { label: 'Excellent', value: 'excellent', isCorrect: isQuizField },
         { label: 'Good', value: 'good' },
         { label: 'Average', value: 'average' },
         { label: 'Poor', value: 'poor' },
       ];
-    }
-    if (lowerLabel.includes('size') || lowerLabel.includes('company')) {
-      return [
-        { label: 'Small (1-50 employees)', value: 'small' },
-        { label: 'Medium (51-500 employees)', value: 'medium' },
-        { label: 'Large (500+ employees)', value: 'large' },
-      ];
+      return {
+        options,
+        correctAnswer: isQuizField ? 'excellent' : undefined,
+      };
     }
 
-    if (lowerLabel.includes('priority') || lowerLabel.includes('urgency')) {
-      return [
-        { label: 'High Priority', value: 'high' },
-        { label: 'Medium Priority', value: 'medium' },
-        { label: 'Low Priority', value: 'low' },
+    if (lowerLabel.includes('capital') || lowerLabel.includes('geography')) {
+      const options = [
+        { label: 'London', value: 'london' },
+        { label: 'Paris', value: 'paris', isCorrect: isQuizField },
+        { label: 'Berlin', value: 'berlin' },
+        { label: 'Madrid', value: 'madrid' },
       ];
+      return {
+        options,
+        correctAnswer: isQuizField ? 'paris' : undefined,
+      };
     }
 
-    if (lowerLabel.includes('frequency') || lowerLabel.includes('often')) {
-      return [
-        { label: 'Daily', value: 'daily' },
-        { label: 'Weekly', value: 'weekly' },
-        { label: 'Monthly', value: 'monthly' },
-        { label: 'Rarely', value: 'rarely' },
+    if (lowerLabel.includes('math') || lowerLabel.includes('calculation')) {
+      const options = [
+        { label: '4', value: '4', isCorrect: isQuizField },
+        { label: '5', value: '5' },
+        { label: '6', value: '6' },
+        { label: '7', value: '7' },
       ];
+      return {
+        options,
+        correctAnswer: isQuizField ? '4' : undefined,
+      };
     }
 
-    if (lowerLabel.includes('gender')) {
-      return [
-        { label: 'Male', value: 'male' },
-        { label: 'Female', value: 'female' },
-        { label: 'Other', value: 'other' },
-        { label: 'Prefer not to say', value: 'prefer_not_to_say' },
-      ];
-    }
-
-    if (
-      lowerLabel.includes('education') ||
-      lowerLabel.includes('qualification')
-    ) {
-      return [
-        { label: 'High School', value: 'high_school' },
-        { label: "Bachelor's Degree", value: 'bachelors' },
-        { label: "Master's Degree", value: 'masters' },
-        { label: 'PhD', value: 'phd' },
-      ];
-    }
-
-    if (lowerLabel.includes('country') || lowerLabel.includes('location')) {
-      return [
-        { label: 'India', value: 'india' },
-        { label: 'United States', value: 'usa' },
-        { label: 'United Kingdom', value: 'uk' },
-        { label: 'Canada', value: 'canada' },
-        { label: 'Other', value: 'other' },
-      ];
-    }
-
-    if (lowerLabel.includes('industry') || lowerLabel.includes('sector')) {
-      return [
-        { label: 'Technology', value: 'technology' },
-        { label: 'Healthcare', value: 'healthcare' },
-        { label: 'Finance', value: 'finance' },
-        { label: 'Education', value: 'education' },
-        { label: 'Other', value: 'other' },
-      ];
-    }
-
-    // Default options
-    return [
+    // Default options with quiz support
+    const options = [
       { label: 'Option 1', value: 'option1' },
-      { label: 'Option 2', value: 'option2' },
+      { label: 'Option 2', value: 'option2', isCorrect: isQuizField },
       { label: 'Option 3', value: 'option3' },
     ];
+
+    const result = {
+      options,
+      correctAnswer: isQuizField ? 'option2' : undefined,
+    };
+
+    console.log(`Generated options:`, result);
+    return result;
   }
 
   private addUniqueIds(config: any): any {
@@ -1754,7 +1887,7 @@ Generate the form configuration now:`;
     ];
   }
 
-  // ✅ NEW: Method to get field-specific enhancements
+  //  Method to get field-specific enhancements
   getFieldEnhancements(): {
     signature: string[];
     fillBlank: string[];
@@ -1783,7 +1916,7 @@ Generate the form configuration now:`;
     };
   }
 
-  // ✅ NEW: Method to test field generation
+  // Method to test field generation
   async testFieldGeneration(fieldType: string, context: string): Promise<any> {
     try {
       switch (fieldType) {

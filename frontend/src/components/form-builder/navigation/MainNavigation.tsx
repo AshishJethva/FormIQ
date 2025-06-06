@@ -93,7 +93,7 @@ export default function MainNavigation({
         })
       ).unwrap();
 
-      console.log('✅ Form published successfully for preview');
+      console.log(' Form published successfully for preview');
       toast.success('Form published and preview enabled!');
 
       return true;
@@ -168,7 +168,7 @@ export default function MainNavigation({
         // Update URL hash for preview state
         window.location.hash = '#preview';
 
-        console.log('✅ Preview mode enabled successfully');
+        console.log(' Preview mode enabled successfully');
       } catch (error) {
         console.error('❌ Error enabling preview mode:', error);
         toast.error('Failed to enable preview mode');

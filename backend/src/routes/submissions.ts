@@ -36,26 +36,6 @@ export const createFieldLabelsMap = (formData: any): Record<string, string> => {
   return labelsMap;
 };
 
-// Helper function to get all searchable field IDs from form
-const getSearchableFieldIds = (formData: any): string[] => {
-  const fieldIds: string[] = [];
-
-  if (formData?.pages && Array.isArray(formData.pages)) {
-    formData.pages.forEach((page: any) => {
-      if (page.fields && Array.isArray(page.fields)) {
-        page.fields.forEach((field: any) => {
-          // Include all fields except headings for search
-          if (field.id && field.type !== 'heading') {
-            fieldIds.push(field.id);
-          }
-        });
-      }
-    });
-  }
-
-  return fieldIds;
-};
-
 // Helper function to get a user-friendly field label
 export const getFieldDisplayLabel = (
   fieldId: string,
@@ -105,7 +85,7 @@ export const getFieldDisplayLabel = (
     }
   }
 
-  // ✅ Special handling for signature fields
+  // Special handling for signature fields
   if (lowerFieldId.includes('sign') || lowerFieldId.includes('signature')) {
     return 'Digital Signature (URL)';
   }
@@ -127,8 +107,51 @@ export const getFieldDisplayLabel = (
     .trim();
 };
 
-// Helper function to format submission value for CSV
-const formatSubmissionValue = (
+// Helper function to format date for CSV
+export const formatSubmissionDate = (dateString: string): string => {
+  if (!dateString) return '';
+
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return '';
+  }
+};
+
+// Helper function to escape CSV values
+export const escapeCSVValue = (value: string): string => {
+  if (!value && value !== '0') return '';
+
+  let escapedValue = String(value).trim();
+
+  // If the value contains comma, quote, newline, or starts/ends with whitespace, wrap it in quotes
+  if (
+    escapedValue.includes(',') ||
+    escapedValue.includes('"') ||
+    escapedValue.includes('\n') ||
+    escapedValue.includes('\r') ||
+    escapedValue !== escapedValue.trim()
+  ) {
+    // Escape existing quotes by doubling them
+    escapedValue = escapedValue.replace(/"/g, '""');
+    // Wrap in quotes
+    escapedValue = `"${escapedValue}"`;
+  }
+
+  return escapedValue;
+};
+
+export const formatSubmissionValueSimplified = (
   value: any,
   fieldKey: string,
   fieldLabelsMap: Record<string, string>
@@ -139,38 +162,34 @@ const formatSubmissionValue = (
 
   const fieldLabel = fieldLabelsMap[fieldKey] || fieldKey;
 
-  // Handle signature fields (base64 data URLs)
+  //  FIXED: Handle signature fields - return meaningful text
   if (typeof value === 'string' && value.startsWith('data:image/')) {
-    return `Digital Signature: ${value}`;
+    return '[Digital Signature Captured]';
   }
 
-  // Handle file objects (legacy format)
+  // Handle file objects (legacy format) - Extract only Cloudinary URLs
   if (typeof value === 'object' && value !== null) {
     // Single file object
-    if (value.url && value.originalName) {
-      const fileName = value.originalName || value.fileName || 'File';
-      const fileSize = value.size ? ` (${formatFileSize(value.size)})` : '';
-      return `${fileName}${fileSize}: ${value.url}`;
+    if (value.url && typeof value.url === 'string') {
+      return value.url.trim();
     }
 
     // Array of files
     if (Array.isArray(value)) {
-      return value
+      const fileUrls = value
         .map(item => {
-          if (
-            item &&
-            typeof item === 'object' &&
-            item.url &&
-            item.originalName
-          ) {
-            const fileName = item.originalName || item.fileName || 'File';
-            const fileSize = item.size ? ` (${formatFileSize(item.size)})` : '';
-            return `${fileName}${fileSize}: ${item.url}`;
+          if (item && typeof item === 'object' && item.url) {
+            return item.url.trim();
           }
-          return formatSingleValue(item);
+          //  FIXED: Handle base64 signatures in arrays
+          if (typeof item === 'string' && item.startsWith('data:image/')) {
+            return '[Digital Signature Captured]';
+          }
+          return '';
         })
-        .filter(v => v && v !== 'N/A')
-        .join('; ');
+        .filter(url => url !== '');
+
+      return fileUrls.join('; ');
     }
 
     // Complex objects (fullName, address, etc.)
@@ -237,13 +256,13 @@ const formatSubmissionValue = (
           key !== 'createdAt' &&
           key !== 'updatedAt'
       )
-      .map(([, val]) => formatSingleValue(val))
-      .filter(val => val && val !== 'N/A');
+      .map(([, val]) => formatSingleValueSimplified(val))
+      .filter(val => val && val !== '');
 
     return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
   }
 
-  return formatSingleValue(value);
+  return formatSingleValueSimplified(value);
 };
 
 // Helper function to format single values
@@ -283,48 +302,24 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// Helper function to format date for CSV
-export const formatSubmissionDate = (dateString: string): string => {
-  if (!dateString) return '';
+// Helper function to get all searchable field IDs from form
+const getSearchableFieldIds = (formData: any): string[] => {
+  const fieldIds: string[] = [];
 
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
+  if (formData?.pages && Array.isArray(formData.pages)) {
+    formData.pages.forEach((page: any) => {
+      if (page.fields && Array.isArray(page.fields)) {
+        page.fields.forEach((field: any) => {
+          // Include all fields except headings for search
+          if (field.id && field.type !== 'heading') {
+            fieldIds.push(field.id);
+          }
+        });
+      }
     });
-  } catch {
-    return '';
-  }
-};
-
-// Helper function to escape CSV values
-export const escapeCSVValue = (value: string): string => {
-  if (!value && value !== '0') return '';
-
-  let escapedValue = String(value).trim();
-
-  // If the value contains comma, quote, newline, or starts/ends with whitespace, wrap it in quotes
-  if (
-    escapedValue.includes(',') ||
-    escapedValue.includes('"') ||
-    escapedValue.includes('\n') ||
-    escapedValue.includes('\r') ||
-    escapedValue !== escapedValue.trim()
-  ) {
-    // Escape existing quotes by doubling them
-    escapedValue = escapedValue.replace(/"/g, '""');
-    // Wrap in quotes
-    escapedValue = `"${escapedValue}"`;
   }
 
-  return escapedValue;
+  return fieldIds;
 };
 
 // Enhanced CSV export function with proper formatting
@@ -462,7 +457,7 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
     csvContent += rowData.join(',') + '\n';
   });
 
-  console.log('✅ CSV generation completed successfully');
+  console.log(' CSV generation completed successfully');
   return csvContent;
 };
 
@@ -482,7 +477,7 @@ const formatValueCloudinaryOnly = (value: any): string => {
       return value.trim();
     }
 
-    // ✅ UPDATED: Still handle base64 signatures as fallback but show URL indicator
+    //  UPDATED: Still handle base64 signatures as fallback but show URL indicator
     if (value.startsWith('data:image/')) {
       console.warn(
         '⚠️ Found base64 signature in export - should be Cloudinary URL'
@@ -667,7 +662,7 @@ const generateSimplifiedCSVExport = (submissions: any[], form: any): string => {
     }
   });
 
-  console.log('✅ Simplified CSV generation completed');
+  console.log(' Simplified CSV generation completed');
   return csvContent;
 };
 
@@ -682,7 +677,7 @@ const extractCloudinaryUrlOnly = (value: any): string => {
       return value.trim();
     }
 
-    // ✅ FIXED: Handle base64 signature data - return meaningful text
+    //  FIXED: Handle base64 signature data - return meaningful text
     if (value.startsWith('data:image/')) {
       return '[Digital Signature Captured]';
     }
@@ -703,7 +698,7 @@ const extractCloudinaryUrlOnly = (value: any): string => {
           if (item && typeof item === 'object' && item.url) {
             return item.url.trim();
           }
-          // ✅ FIXED: Handle base64 signatures in file arrays
+          //  FIXED: Handle base64 signatures in file arrays
           if (typeof item === 'string' && item.startsWith('data:image/')) {
             return '[Digital Signature Captured]';
           }
@@ -739,7 +734,7 @@ const formatSubmissionValueCloudinaryOnly = (
     return extractCloudinaryUrlOnly(value);
   }
 
-  // ✅ FIXED: Handle signature fields - return meaningful indicator
+  //  FIXED: Handle signature fields - return meaningful indicator
   if (typeof value === 'string' && value.startsWith('data:image/')) {
     return '[Digital Signature Captured]';
   }
@@ -833,120 +828,6 @@ const formatSubmissionValueCloudinaryOnly = (
   }
 
   return formatSingleValue(value);
-};
-
-export const formatSubmissionValueSimplified = (
-  value: any,
-  fieldKey: string,
-  fieldLabelsMap: Record<string, string>
-): string => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-
-  const fieldLabel = fieldLabelsMap[fieldKey] || fieldKey;
-
-  // ✅ FIXED: Handle signature fields - return meaningful text
-  if (typeof value === 'string' && value.startsWith('data:image/')) {
-    return '[Digital Signature Captured]';
-  }
-
-  // Handle file objects (legacy format) - Extract only Cloudinary URLs
-  if (typeof value === 'object' && value !== null) {
-    // Single file object
-    if (value.url && typeof value.url === 'string') {
-      return value.url.trim();
-    }
-
-    // Array of files
-    if (Array.isArray(value)) {
-      const fileUrls = value
-        .map(item => {
-          if (item && typeof item === 'object' && item.url) {
-            return item.url.trim();
-          }
-          // ✅ FIXED: Handle base64 signatures in arrays
-          if (typeof item === 'string' && item.startsWith('data:image/')) {
-            return '[Digital Signature Captured]';
-          }
-          return '';
-        })
-        .filter(url => url !== '');
-
-      return fileUrls.join('; ');
-    }
-
-    // Complex objects (fullName, address, etc.)
-    if (value.firstName && value.lastName) {
-      return `${value.firstName} ${value.lastName}`.trim();
-    }
-
-    if (value.street || value.city || value.state || value.zipCode) {
-      const addressParts = [
-        value.street,
-        value.city,
-        value.state,
-        value.zipCode,
-        value.country,
-      ].filter(part => part && part.trim());
-      return addressParts.join(', ');
-    }
-
-    if (value.countryCode && value.number) {
-      return `${value.countryCode} ${value.number}`;
-    }
-
-    if (value.date && value.time) {
-      const datePart = value.date
-        ? new Date(value.date).toLocaleDateString()
-        : '';
-      const timePart = value.time || '';
-      return `${datePart} ${timePart}`.trim();
-    }
-
-    if (value.label && value.value !== undefined) {
-      return value.label;
-    }
-
-    // Handle fill blank template
-    if (value.beforeText && value.afterText && value.userInput) {
-      return `${value.beforeText} "${value.userInput}" ${value.afterText}`;
-    }
-
-    // Handle product list
-    if (value.selectedProducts && typeof value.selectedProducts === 'object') {
-      const products = [];
-      for (const [productId, quantity] of Object.entries(
-        value.selectedProducts
-      )) {
-        if (quantity && typeof quantity === 'number' && quantity > 0) {
-          const product = value.products?.find((p: any) => p.id === productId);
-          const productName = product?.name || `Product ${productId}`;
-          products.push(`${productName} (x${quantity})`);
-        }
-      }
-      return products.join(', ');
-    }
-
-    // Generic object handling
-    const meaningfulValues = Object.entries(value)
-      .filter(
-        ([key, val]) =>
-          val !== null &&
-          val !== undefined &&
-          val !== '' &&
-          !key.startsWith('_') &&
-          key !== 'id' &&
-          key !== 'createdAt' &&
-          key !== 'updatedAt'
-      )
-      .map(([, val]) => formatSingleValueSimplified(val))
-      .filter(val => val && val !== '');
-
-    return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
-  }
-
-  return formatSingleValueSimplified(value);
 };
 
 // Helper function to format single values (simplified)
@@ -1524,225 +1405,6 @@ function validateSubmissionData(
   return errors;
 }
 
-// Enhanced validation function
-function validateFormData(
-  submissionData: any,
-  pages: any[],
-  files: any[]
-): string[] {
-  const errors: string[] = [];
-
-  if (!pages || !Array.isArray(pages)) {
-    return errors; // No validation needed if no pages
-  }
-
-  console.log('🔍 Validating form data:', {
-    pages: pages.length,
-    submissionKeys: Object.keys(submissionData || {}),
-    filesCount: files.length,
-  });
-
-  pages.forEach((page: any, pageIndex: number) => {
-    if (!page || !page.fields || !Array.isArray(page.fields)) {
-      return;
-    }
-
-    page.fields.forEach((field: any) => {
-      if (!field || !field.id || !field.type) {
-        return;
-      }
-
-      // Skip heading fields
-      if (field.type === 'heading') {
-        return;
-      }
-
-      const fieldValue = submissionData[field.id];
-      const fieldFiles = files.filter(file => file.fieldId === field.id);
-
-      console.log(`🔍 Validating field "${field.label}" (${field.type}):`, {
-        fieldId: field.id,
-        required: field.required,
-        hasValue:
-          fieldValue !== undefined && fieldValue !== null && fieldValue !== '',
-        hasFiles: fieldFiles.length > 0,
-        valueType: typeof fieldValue,
-      });
-
-      // Required field validation
-      if (field.required === true) {
-        // For file/image fields, check if files were uploaded
-        if (field.type === 'fileUpload' || field.type === 'image') {
-          if (fieldFiles.length === 0) {
-            errors.push(
-              `${field.label || field.id} requires a file to be uploaded`
-            );
-          }
-        } else {
-          // For other fields, check regular value
-          const isEmpty =
-            fieldValue === undefined ||
-            fieldValue === null ||
-            fieldValue === '' ||
-            (Array.isArray(fieldValue) && fieldValue.length === 0);
-
-          if (isEmpty) {
-            errors.push(`${field.label || field.id} is required`);
-          } else {
-            // Enhanced validation for complex required fields
-            if (field.type === 'fullName' && typeof fieldValue === 'object') {
-              if (
-                !fieldValue.firstName?.trim() ||
-                !fieldValue.lastName?.trim()
-              ) {
-                errors.push(
-                  `${field.label || field.id} requires both first and last name`
-                );
-              }
-            }
-
-            if (field.type === 'address' && typeof fieldValue === 'object') {
-              if (
-                !fieldValue.street?.trim() ||
-                !fieldValue.city?.trim() ||
-                !fieldValue.state?.trim()
-              ) {
-                errors.push(
-                  `${field.label || field.id} requires street address, city, and state`
-                );
-              }
-            }
-
-            if (
-              field.type === 'appointment' &&
-              typeof fieldValue === 'object'
-            ) {
-              if (!fieldValue.date || !fieldValue.time) {
-                errors.push(
-                  `${field.label || field.id} requires both date and time`
-                );
-              }
-            }
-          }
-        }
-      }
-
-      // Skip further validation if field is empty and not required
-      const isEmpty =
-        fieldValue === undefined ||
-        fieldValue === null ||
-        fieldValue === '' ||
-        (Array.isArray(fieldValue) && fieldValue.length === 0);
-
-      if (isEmpty && field.required !== true) {
-        return;
-      }
-
-      // Field-specific validation for non-empty values
-      try {
-        switch (field.type) {
-          case 'email':
-            if (fieldValue && typeof fieldValue === 'string') {
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              if (!emailRegex.test(fieldValue.trim())) {
-                errors.push(
-                  `${field.label || field.id} must be a valid email address`
-                );
-              }
-            }
-            break;
-
-          case 'phone':
-            if (fieldValue && typeof fieldValue === 'string') {
-              const cleanPhone = fieldValue.replace(/\D/g, '');
-              let phoneDigits = cleanPhone;
-
-              // Handle Indian country code
-              if (phoneDigits.startsWith('91') && phoneDigits.length === 12) {
-                phoneDigits = phoneDigits.substring(2);
-              }
-
-              // Flexible phone validation
-              if (phoneDigits.length !== 10) {
-                errors.push(
-                  `${field.label || field.id} must be a valid 10-digit phone number`
-                );
-              } else {
-                const firstDigit = phoneDigits.charAt(0);
-                if (
-                  !['6', '7', '8', '9', '2', '3', '4', '5'].includes(firstDigit)
-                ) {
-                  errors.push(
-                    `${field.label || field.id} must start with a valid digit`
-                  );
-                }
-              }
-            }
-            break;
-
-          case 'number':
-            if (
-              fieldValue !== undefined &&
-              fieldValue !== null &&
-              fieldValue !== ''
-            ) {
-              const numValue = Number(fieldValue);
-              if (isNaN(numValue)) {
-                errors.push(
-                  `${field.label || field.id} must be a valid number`
-                );
-              } else {
-                if (field.min !== undefined && numValue < field.min) {
-                  errors.push(
-                    `${field.label || field.id} must be at least ${field.min}`
-                  );
-                }
-                if (field.max !== undefined && numValue > field.max) {
-                  errors.push(
-                    `${field.label || field.id} must be no more than ${field.max}`
-                  );
-                }
-              }
-            }
-            break;
-
-          case 'time':
-            if (fieldValue && typeof fieldValue === 'string') {
-              const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-              if (!timeRegex.test(fieldValue)) {
-                errors.push(
-                  `${field.label || field.id} must be a valid time format (HH:MM)`
-                );
-              }
-            }
-            break;
-
-          case 'datePicker':
-            if (fieldValue && typeof fieldValue === 'string') {
-              const date = new Date(fieldValue);
-              if (isNaN(date.getTime())) {
-                errors.push(`${field.label || field.id} must be a valid date`);
-              }
-            }
-            break;
-
-          // Add more field validations as needed
-        }
-      } catch (fieldError: any) {
-        // console.error(`❌ Validation error for field ${field.id}:`, fieldError);
-        errors.push(`${field.label || field.id} validation failed`);
-      }
-    });
-  });
-
-  console.log('Validation completed:', {
-    totalErrors: errors.length,
-    errors: errors.slice(0, 3), // Log first 3 errors
-  });
-
-  return errors;
-}
-
 // ===== ROUTE HANDLERS =====
 
 // @desc    Get all submissions for a form
@@ -2090,7 +1752,7 @@ router.post(
             });
 
             console.log(
-              `✅ Signature uploaded to Cloudinary: ${uploadResult.url}`
+              ` Signature uploaded to Cloudinary: ${uploadResult.url}`
             );
           } catch (error) {
             console.error(
@@ -2257,7 +1919,7 @@ router.post(
         dataFieldCount: Object.keys(submissionData).length,
       });
 
-      // ✅ STEP 10: Return success response
+      //  STEP 10: Return success response
       return res.status(201).json({
         success: true,
         data: {
@@ -2750,7 +2412,7 @@ router.get(
       throw new ApiError('Form not found', 404);
     }
 
-    console.log('✅ Form found:', form.title);
+    console.log(' Form found:', form.title);
 
     // Build query for filtering
     const query: any = { formId };
@@ -2863,7 +2525,7 @@ router.get(
       );
     }
 
-    console.log('✅ Simplified export completed successfully');
+    console.log(' Simplified export completed successfully');
   })
 );
 

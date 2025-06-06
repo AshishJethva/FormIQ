@@ -26,7 +26,7 @@ export default function PropertiesPanel() {
   const form = useSelector((state: RootState) => state.formBuilder.form);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // ✅ FIXED: Move ALL useState hooks to the top, before any conditional logic
+  //  FIXED: Move ALL useState hooks to the top, before any conditional logic
   const [labelAlignment, setLabelAlignment] =
     useState<LabelAlignmentType>('LEFT');
   const [isRequired, setIsRequired] = useState(false);
@@ -103,7 +103,7 @@ export default function PropertiesPanel() {
     };
   }, []);
 
-  // ✅ FIXED: Early return AFTER all hooks
+  //  FIXED: Early return AFTER all hooks
   if (!form || !field || !form.propertiesPanelOpen) return null;
 
   const handleClosePanel = () => {
@@ -188,7 +188,7 @@ export default function PropertiesPanel() {
     toast.info(`${field.label} field removed`);
   };
 
-  // ✅ ENHANCED: Option management functions (now properly after hooks)
+  //  ENHANCED: Option management functions (now properly after hooks)
   const addOption = () => {
     const newOption = {
       label: `Option ${options.length + 1}`,
@@ -246,7 +246,7 @@ export default function PropertiesPanel() {
     }
   };
 
-  // ✅ ENHANCED: Better field title formatting
+  //  ENHANCED: Better field title formatting
   const getFieldTitle = (fieldType: string): string => {
     const fieldTitles: Record<string, string> = {
       shortText: 'Short Text',

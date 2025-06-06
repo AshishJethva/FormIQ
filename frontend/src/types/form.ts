@@ -1,4 +1,4 @@
-// src/types/form.ts - Complete Frontend Types with All Field Types
+// src/types/form.ts - Frontend Types
 import { Submission } from '@/services/submissions';
 
 export interface Form {
@@ -152,7 +152,7 @@ export type RegularField = Field & {
   helpText: string;
 };
 
-// ✅ NEW: Specific field type interfaces
+//  NEW: Specific field type interfaces
 export interface DropdownField extends Field {
   type: FieldType.DROPDOWN;
   options: { label: string; value: string }[];
@@ -235,7 +235,7 @@ export interface PublicFormAccess {
   isTrashed?: boolean;
 }
 
-// ✅ NEW: Field validation helpers
+//  NEW: Field validation helpers
 export interface FieldValidationRule {
   type: 'required' | 'minLength' | 'maxLength' | 'min' | 'max' | 'pattern';
   value?: any;
@@ -247,7 +247,7 @@ export interface FieldValidationResult {
   errors: string[];
 }
 
-// ✅ NEW: Field type categories for organization
+//  NEW: Field type categories for organization
 export const FIELD_CATEGORIES = {
   BASIC: [
     FieldType.SHORT_TEXT,
@@ -275,7 +275,7 @@ export const FIELD_CATEGORIES = {
   SPECIAL: [FieldType.FILL_BLANK, FieldType.PRODUCT_LIST],
 } as const;
 
-// ✅ NEW: Helper functions
+//  NEW: Helper functions
 export const getFieldCategory = (
   fieldType: FieldType
 ): keyof typeof FIELD_CATEGORIES => {
@@ -339,7 +339,7 @@ export const supportsAccept = (fieldType: FieldType): boolean => {
   return isFileField(fieldType);
 };
 
-// ✅ NEW: Field type display names
+//  NEW: Field type display names
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   [FieldType.HEADING]: 'Heading',
   [FieldType.SHORT_TEXT]: 'Short Text',
@@ -363,7 +363,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   [FieldType.PRODUCT_LIST]: 'Product List',
 };
 
-// ✅ NEW: Default field configurations
+//  NEW: Default field configurations
 export const getDefaultFieldConfig = (fieldType: FieldType): Partial<Field> => {
   const baseConfig: Partial<Field> = {
     labelAlignment: 'LEFT',
@@ -464,7 +464,7 @@ export const getDefaultFieldConfig = (fieldType: FieldType): Partial<Field> => {
   }
 };
 
-// ✅ NEW: Utility functions
+//  NEW: Utility functions
 export const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'Unknown';
   try {

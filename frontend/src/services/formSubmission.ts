@@ -343,7 +343,7 @@ export const getPublicForm = async (formId: string) => {
     );
 
     if (response.status >= 400) {
-      // ✅ Create structured error object, NO toasts here
+      //  Create structured error object, NO toasts here
       const errorInfo = getSubmissionErrorMessage(
         response.status,
         response.data?.message || response.statusText
@@ -359,7 +359,7 @@ export const getPublicForm = async (formId: string) => {
       throw error;
     }
 
-    console.log('✅ Public form loaded:', {
+    console.log(' Public form loaded:', {
       title: response.data.data?.title,
       pages: response.data.data?.pages?.length || 0,
       lastUpdated: response.data.data?.updatedAt,
@@ -383,12 +383,12 @@ export const getPublicForm = async (formId: string) => {
       throw enhancedError;
     }
 
-    // ✅ Re-throw enhanced errors
+    //  Re-throw enhanced errors
     if (error.title && error.type) {
       throw error;
     }
 
-    // ✅ Generic network error
+    //  Generic network error
     const networkError = new Error(
       'Unable to connect to the server. Please check your internet connection.'
     ) as any;
@@ -484,7 +484,7 @@ export const validateFormBeforeSubmission = (
     });
   });
 
-  console.log('✅ Client-side validation completed:', {
+  console.log(' Client-side validation completed:', {
     isValid: errors.length === 0,
     errorCount: errors.length,
     errors: errors.slice(0, 3),
@@ -574,7 +574,7 @@ export const submitForm = async (
       );
     }
 
-    console.log('✅ Payload validation passed');
+    console.log(' Payload validation passed');
 
     // Make the API request with enhanced configuration
     const response = await axios.post(
@@ -616,7 +616,7 @@ export const submitForm = async (
       throw error;
     }
 
-    console.log('✅ Form submission successful:', {
+    console.log(' Form submission successful:', {
       submissionId: response.data.data?.submissionId,
       fileCount: response.data.data?.fileCount || 0,
       message: response.data.message,

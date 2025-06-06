@@ -134,7 +134,7 @@ const BeautifulErrorScreen = ({
             {config.description}
           </p>
 
-          {/* ✅ Error Details (Instant Display - No Animation Delay) */}
+          {/*  Error Details (Instant Display - No Animation Delay) */}
           <details className='mb-6 text-left' open>
             <summary className='text-sm text-gray-500 cursor-pointer hover:text-gray-700 mb-2 flex items-center'>
               <span className='mr-2'>📋</span>
@@ -1207,7 +1207,7 @@ export default function PublicFormPage() {
         );
 
       case FieldType.FILL_BLANK: {
-        // ✅ USE ACTUAL FIELD CONFIGURATION from builder
+        //  USE ACTUAL FIELD CONFIGURATION from builder
         const beforeText =
           field.fillBlankTemplate?.beforeText || 'I agree to the';
         const blankPlaceholder =
@@ -1222,7 +1222,7 @@ export default function PublicFormPage() {
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
 
-            {/* ✅ PUBLIC FORM: Show the configured template with interactive blank */}
+            {/*  PUBLIC FORM: Show the configured template with interactive blank */}
             <div className='border border-gray-300 rounded-lg p-4 bg-gray-50'>
               <div className='flex flex-wrap items-center gap-2 text-gray-700 mb-3'>
                 <span className='text-base'>{beforeText}</span>
@@ -1238,7 +1238,7 @@ export default function PublicFormPage() {
                 <span className='text-base'>{afterText}</span>
               </div>
 
-              {/* ✅ Show what user typed */}
+              {/*  Show what user typed */}
               {value && (
                 <div className='text-sm text-green-600 mt-2'>
                   ✓ Your answer: &quot;{value}&quot;
@@ -1254,7 +1254,7 @@ export default function PublicFormPage() {
       }
 
       case FieldType.PRODUCT_LIST: {
-        // ✅ USE ACTUAL PRODUCT CONFIGURATION from builder
+        //  USE ACTUAL PRODUCT CONFIGURATION from builder
         const products = field.productListConfig?.products || [
           { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
         ];
@@ -1290,7 +1290,7 @@ export default function PublicFormPage() {
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
 
-            {/* ✅ PUBLIC FORM: Show configured products with quantity selectors */}
+            {/*  PUBLIC FORM: Show configured products with quantity selectors */}
             <div className='border border-gray-300 rounded-md overflow-hidden bg-white shadow-sm'>
               {/* Header */}
               <div className='bg-gray-100 p-3 border-b border-gray-300'>
@@ -1301,7 +1301,7 @@ export default function PublicFormPage() {
                 </div>
               </div>
 
-              {/* ✅ Product List from Builder Configuration */}
+              {/*  Product List from Builder Configuration */}
               <div className='divide-y divide-gray-200'>
                 {products.map(product => (
                   <div
@@ -1341,7 +1341,7 @@ export default function PublicFormPage() {
                 ))}
               </div>
 
-              {/* ✅ Total Section */}
+              {/*  Total Section */}
               <div className='bg-gray-50 p-3 border-t border-gray-300'>
                 <div className='flex justify-between items-center'>
                   <span className='font-medium text-gray-700'>Total:</span>
@@ -1350,7 +1350,7 @@ export default function PublicFormPage() {
                   </span>
                 </div>
 
-                {/* ✅ Show selected items summary */}
+                {/*  Show selected items summary */}
                 {Object.keys(currentSelections).length > 0 && (
                   <div className='mt-3 p-3 bg-white rounded border border-gray-200'>
                     <div className='text-sm font-medium text-gray-600 mb-2'>
@@ -1381,7 +1381,7 @@ export default function PublicFormPage() {
                   </div>
                 )}
 
-                {/* ✅ Show empty state */}
+                {/*  Show empty state */}
                 {Object.keys(currentSelections).length === 0 && (
                   <div className='text-sm text-gray-500 mt-2'>
                     Select quantities above to see your order total

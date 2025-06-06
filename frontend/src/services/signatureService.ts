@@ -56,7 +56,7 @@ export const signatureCloudinaryService = {
 
       const result = await response.json();
 
-      console.log('✅ Signature uploaded to Cloudinary:', result.secure_url);
+      console.log(' Signature uploaded to Cloudinary:', result.secure_url);
       return result.secure_url;
     } catch (error: any) {
       console.error('❌ Error uploading signature to Cloudinary:', error);
@@ -83,7 +83,7 @@ export const signatureCloudinaryService = {
           processedData[fieldId] = cloudinaryUrl;
 
           console.log(
-            `✅ Processed signature for field ${fieldId}:`,
+            ` Processed signature for field ${fieldId}:`,
             cloudinaryUrl
           );
         } catch (error) {

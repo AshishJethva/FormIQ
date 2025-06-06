@@ -59,7 +59,7 @@ export const fieldSchema = z
       .optional(),
     labelAlignment: z.enum(['LEFT', 'RIGHT']).default('LEFT'),
 
-    // ✅ NEW: Choice field options
+    //  NEW: Choice field options
     options: z
       .array(
         z.object({
@@ -69,7 +69,7 @@ export const fieldSchema = z
       )
       .optional(),
 
-    // ✅ NEW: Default values for all field types
+    //  NEW: Default values for all field types
     defaultValue: z
       .union([
         z.string(),
@@ -88,23 +88,23 @@ export const fieldSchema = z
       ])
       .optional(),
 
-    // ✅ NEW: Number field constraints
+    //  NEW: Number field constraints
     min: z.number().optional(),
     max: z.number().optional(),
     step: z.number().optional(),
 
-    // ✅ NEW: Text field constraints
+    //  NEW: Text field constraints
     minLength: z.number().min(0).optional(),
     maxLength: z.number().min(1).optional(),
 
-    // ✅ NEW: Textarea properties
+    //  NEW: Textarea properties
     rows: z.number().min(1).max(20).optional(),
 
-    // ✅ NEW: File upload properties
+    //  NEW: File upload properties
     multiple: z.boolean().optional(),
     accept: z.string().optional(),
 
-    // ✅ NEW: Fill blank template properties
+    //  NEW: Fill blank template properties
     fillBlankTemplate: z
       .object({
         beforeText: z.string().max(500).optional(),
@@ -113,7 +113,7 @@ export const fieldSchema = z
       })
       .optional(),
 
-    // ✅ NEW: Product list configuration
+    //  NEW: Product list configuration
     productListConfig: z
       .object({
         products: z

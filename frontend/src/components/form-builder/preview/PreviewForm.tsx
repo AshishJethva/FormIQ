@@ -11,26 +11,26 @@ interface PreviewFormProps {
   form: Form;
   formData: Record<string, any>;
   setFormData: (data: Record<string, any>) => void;
-  fileData: Record<string, any>; // ✅ ADD: Accept fileData from parent
-  setFileData: (data: Record<string, any>) => void; // ✅ ADD: Accept setFileData from parent
+  fileData: Record<string, any>; //  ADD: Accept fileData from parent
+  setFileData: (data: Record<string, any>) => void; //  ADD: Accept setFileData from parent
   currentPageIndex: number;
   setCurrentPageIndex: (index: number) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
-  errors: Record<string, string>; // ✅ ADD: Accept errors from parent
+  errors: Record<string, string>; //  ADD: Accept errors from parent
 }
 
 export default function PreviewForm({
   form,
   formData,
   setFormData,
-  fileData, // ✅ USE: fileData from parent
-  setFileData, // ✅ USE: setFileData from parent
+  fileData, //  USE: fileData from parent
+  setFileData, //  USE: setFileData from parent
   currentPageIndex,
   setCurrentPageIndex,
   onSubmit,
   isSubmitting,
-  errors, // ✅ USE: errors from parent
+  errors, //  USE: errors from parent
 }: PreviewFormProps) {
   const currentPage = form.pages[currentPageIndex];
   const isFirstPage = currentPageIndex === 0;
@@ -831,7 +831,7 @@ export default function PreviewForm({
         );
 
       case FieldType.FILL_BLANK: {
-        // ✅ USE ACTUAL FIELD CONFIGURATION from builder
+        //  USE ACTUAL FIELD CONFIGURATION from builder
         const beforeText =
           field.fillBlankTemplate?.beforeText || 'I agree to the';
         const blankPlaceholder =
@@ -846,7 +846,7 @@ export default function PreviewForm({
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
 
-            {/* ✅ PREVIEW: Show the configured template with interactive blank */}
+            {/*  PREVIEW: Show the configured template with interactive blank */}
             <div className='border border-gray-300 rounded-lg p-4 bg-gray-50'>
               <div className='flex flex-wrap items-center gap-2 text-gray-700 mb-3'>
                 <span className='text-base'>{beforeText}</span>
@@ -862,7 +862,7 @@ export default function PreviewForm({
                 <span className='text-base'>{afterText}</span>
               </div>
 
-              {/* ✅ Show what user typed */}
+              {/*  Show what user typed */}
               {value && (
                 <div className='text-sm text-green-600 mt-2'>
                   ✓ Your answer: &quot;{value}&quot;
@@ -881,7 +881,7 @@ export default function PreviewForm({
       }
 
       case FieldType.PRODUCT_LIST: {
-        // ✅ USE ACTUAL PRODUCT CONFIGURATION from builder
+        //  USE ACTUAL PRODUCT CONFIGURATION from builder
         const products = field.productListConfig?.products || [
           { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
         ];
@@ -917,7 +917,7 @@ export default function PreviewForm({
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
 
-            {/* ✅ PREVIEW: Show configured products with quantity selectors */}
+            {/*  PREVIEW: Show configured products with quantity selectors */}
             <div className='border border-gray-300 rounded-md overflow-hidden bg-white'>
               {/* Header */}
               <div className='bg-gray-100 p-3 border-b border-gray-300'>
@@ -928,7 +928,7 @@ export default function PreviewForm({
                 </div>
               </div>
 
-              {/* ✅ Product List from Builder Configuration */}
+              {/*  Product List from Builder Configuration */}
               <div className='divide-y divide-gray-200'>
                 {products.map(product => (
                   <div key={product.id} className='p-3'>
@@ -963,7 +963,7 @@ export default function PreviewForm({
                 ))}
               </div>
 
-              {/* ✅ Total Section */}
+              {/*  Total Section */}
               <div className='bg-gray-50 p-3 border-t border-gray-300'>
                 <div className='flex justify-between items-center'>
                   <span className='font-medium text-gray-700'>Total:</span>
@@ -972,7 +972,7 @@ export default function PreviewForm({
                   </span>
                 </div>
 
-                {/* ✅ Show selected items summary */}
+                {/*  Show selected items summary */}
                 {Object.keys(currentSelections).length > 0 && (
                   <div className='mt-2 text-sm text-gray-600'>
                     {Object.keys(currentSelections).map(productId => {

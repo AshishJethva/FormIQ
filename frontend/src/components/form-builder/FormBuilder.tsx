@@ -64,7 +64,7 @@ export default function FormBuilder() {
       retryAttempts: 3,
       forceUpdatePublished: isPublishedForm,
       onSaveSuccess: data => {
-        console.log('✅ Auto-save successful:', data);
+        console.log(' Auto-save successful:', data);
         if (isPublishedForm) {
           console.log('🌐 Published form updated - changes are live!');
         }
@@ -123,7 +123,7 @@ export default function FormBuilder() {
           const result = await dispatch(loadFormAsync(formId));
 
           if (loadFormAsync.fulfilled.match(result)) {
-            console.log('✅ Form loaded successfully:', {
+            console.log(' Form loaded successfully:', {
               title: result.payload.title,
               pageCount: result.payload.pages?.length || 0,
               fieldsCount:

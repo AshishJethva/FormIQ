@@ -151,7 +151,7 @@ const downloadFile = async (file: FileData): Promise<void> => {
     a.click();
     document.body.removeChild(a);
 
-    console.log('✅ File download initiated successfully');
+    console.log(' File download initiated successfully');
   } catch (error) {
     console.error('❌ Download error:', error);
     toast.error('Download failed', {
@@ -220,7 +220,11 @@ const PDFViewer: React.FC<{ url: string; fileName: string }> = ({
           restrictions or file permissions.
         </p>
         <div className='flex space-x-3'>
-          <Button onClick={handleRetry} variant='outline' className='cursor-pointer'>
+          <Button
+            onClick={handleRetry}
+            variant='outline'
+            className='cursor-pointer'
+          >
             <RefreshCw className='w-4 h-4 mr-2' />
             Retry Preview
           </Button>

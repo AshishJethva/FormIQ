@@ -32,7 +32,7 @@ export default function AddNewPageButton({
     const newPageIndex = form.pages.length; // Index of the new page
     dispatch(setCurrentPageIndex(newPageIndex));
 
-    console.log('✅ New page added and navigated to index:', newPageIndex);
+    console.log(' New page added and navigated to index:', newPageIndex);
     toast.success(`Page ${newPageIndex + 1} added successfully`);
   };
 

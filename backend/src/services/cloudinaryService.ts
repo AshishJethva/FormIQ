@@ -116,7 +116,7 @@ export const uploadFormFile = async (
           if (error) {
             reject(error);
           } else {
-            console.log('✅ Cloudinary upload successful:', {
+            console.log(' Cloudinary upload successful:', {
               public_id: result?.public_id,
               secure_url: result?.secure_url,
               bytes: result?.bytes,
@@ -325,7 +325,7 @@ export const uploadLogo = async (
             console.error('Cloudinary logo upload error:', error);
             reject(error);
           } else {
-            console.log('✅ Logo upload successful:', {
+            console.log(' Logo upload successful:', {
               public_id: result?.public_id,
               secure_url: result?.secure_url,
               bytes: result?.bytes,
@@ -366,3 +366,5 @@ export default {
   getImageUrl,
   uploadLogo,
 };
+
+

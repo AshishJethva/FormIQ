@@ -326,7 +326,7 @@ const formBuilderSlice = createSlice({
     ) => {
       if (!state.form || !state.form.pages) return;
 
-      // ✅ ENHANCED: Create field with proper structure for all types
+      //  ENHANCED: Create field with proper structure for all types
       const baseField = {
         id: uuidv4(),
         type: action.payload.type,
@@ -345,7 +345,7 @@ const formBuilderSlice = createSlice({
           helpText: '',
         } as Field;
 
-        // ✅ ENHANCED: Add field-specific properties with proper typing
+        //  ENHANCED: Add field-specific properties with proper typing
         switch (action.payload.type) {
           case FieldType.LONG_TEXT:
             (newField as any).rows = 3;
@@ -774,7 +774,7 @@ const formBuilderSlice = createSlice({
       const insertIndex = Math.min(index, page.fields.length);
       page.fields.splice(insertIndex, 0, newField);
 
-      console.log('✅ Field added successfully:', {
+      console.log(' Field added successfully:', {
         fieldId: newId,
         fieldType: type,
         pageId,
@@ -1101,7 +1101,7 @@ const formBuilderSlice = createSlice({
           if (updatedData && updatedData.isPublished !== undefined) {
             state.form.isPublished = updatedData.isPublished;
             console.log(
-              '✅ Form publish status updated:',
+              ' Form publish status updated:',
               updatedData.isPublished
             );
 

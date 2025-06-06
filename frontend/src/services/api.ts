@@ -60,15 +60,9 @@ export const submitForm = async (formId: string, formData: any) => {
       }
     );
 
-    console.log('✅ Form submission successful:', response.data);
+    console.log(' Form submission successful:', response.data);
     return response.data;
   } catch (error: any) {
-    // console.error('❌ Form submission error:', {
-    //   message: error.message,
-    //   status: error.response?.status,
-    //   data: error.response?.data,
-    // });
-
     // Enhanced error handling
     if (error.response) {
       // Server responded with error status

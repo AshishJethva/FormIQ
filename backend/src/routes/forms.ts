@@ -13,6 +13,7 @@ import {
 } from '../validation/formValidation';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
+import Submission from '../models/Submission';
 
 const router = express.Router();
 
@@ -69,7 +70,7 @@ router.get(
           form.settings?.allowMultipleSubmissions !== false,
         collectIpAddress: form.settings?.collectIpAddress !== false,
       },
-      updatedAt: form.updatedAt, 
+      updatedAt: form.updatedAt,
       publishedAt: form.publishedAt,
     };
 
@@ -873,6 +874,139 @@ router.delete(
       success: true,
       message: 'Form deleted permanently',
     });
+  })
+);
+
+// @desc    Delete all submissions for a form (used when form is permanently deleted)
+// @route   DELETE /api/submissions/form/:formId/all
+// @access  Private
+router.delete(
+  '/form/:formId/all',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { formId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
+    }
+
+    // Verify form belongs to user
+    const form = await Form.findOne({ _id: formId, userId: req.user.id });
+    if (!form) {
+      throw new ApiError('Form not found or not authorized', 404);
+    }
+
+    console.log(`🗑️ Starting deletion of all submissions for form: ${formId}`);
+
+    try {
+      // Get all submissions with their files for cleanup
+      const submissions = await Submission.find({ formId }).lean();
+
+      console.log(`📊 Found ${submissions.length} submissions to delete`);
+
+      // Collect all files that need to be deleted from Cloudinary
+      const filesToDelete: Array<{ publicId: string; resourceType: string }> =
+        [];
+
+      submissions.forEach(submission => {
+        if (submission.files && Array.isArray(submission.files)) {
+          submission.files.forEach((file: any) => {
+            if (file.publicId) {
+              const resourceType = file.mimeType?.startsWith('image/')
+                ? 'image'
+                : 'raw';
+              filesToDelete.push({
+                publicId: file.publicId,
+                resourceType: resourceType,
+              });
+            }
+          });
+        }
+
+        // Also check data object for legacy file storage
+        if (submission.data && typeof submission.data === 'object') {
+          Object.values(submission.data).forEach((value: any) => {
+            if (value && typeof value === 'object') {
+              // Handle single file objects
+              if (value.publicId && value.url) {
+                const resourceType = value.mimeType?.startsWith('image/')
+                  ? 'image'
+                  : 'raw';
+                filesToDelete.push({
+                  publicId: value.publicId,
+                  resourceType: resourceType,
+                });
+              }
+
+              // Handle arrays of file objects
+              if (Array.isArray(value)) {
+                value.forEach((item: any) => {
+                  if (item && item.publicId && item.url) {
+                    const resourceType = item.mimeType?.startsWith('image/')
+                      ? 'image'
+                      : 'raw';
+                    filesToDelete.push({
+                      publicId: item.publicId,
+                      resourceType: resourceType,
+                    });
+                  }
+                });
+              }
+            }
+          });
+        }
+      });
+
+      console.log(
+        `📁 Found ${filesToDelete.length} files to delete from Cloudinary`
+      );
+
+      // Delete all submissions from database first
+      const deleteResult = await Submission.deleteMany({ formId });
+
+      // Clean up files from Cloudinary (async, don't wait for completion)
+      if (filesToDelete.length > 0) {
+        // Import your file deletion service
+        const { deleteFormFile } = require('../services/cloudinaryService'); // Adjust import path
+
+        const fileCleanupPromises = filesToDelete.map(
+          ({ publicId, resourceType }) =>
+            deleteFormFile(publicId, resourceType).catch(error => {
+              console.warn(`Failed to delete file ${publicId}:`, error.message);
+            })
+        );
+
+        // Don't await this - let it run in background to avoid timeout
+        Promise.all(fileCleanupPromises)
+          .then(() => {
+            console.log(
+              `Cleaned up ${filesToDelete.length} files from Cloudinary`
+            );
+          })
+          .catch(error => {
+            console.error(
+              '❌ Some files failed to delete from Cloudinary:',
+              error
+            );
+          });
+      }
+
+      // Update form's submission count to 0
+      await Form.findByIdAndUpdate(formId, {
+        submissions: 0,
+        updatedAt: new Date(),
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully deleted ${deleteResult.deletedCount} submissions`,
+        deletedSubmissions: deleteResult.deletedCount,
+        filesToCleanup: filesToDelete.length,
+      });
+    } catch (error: any) {
+      console.error('❌ Error deleting submissions:', error);
+      throw new ApiError('Failed to delete form submissions', 500);
+    }
   })
 );
 

@@ -91,7 +91,7 @@ const logoUpload = multer({
       return cb(new Error('Supported formats: JPG, PNG, GIF, WebP, SVG'));
     }
 
-    console.log('✅ Logo file validation passed');
+    console.log(' Logo file validation passed');
     cb(null, true);
   },
 });
@@ -137,7 +137,7 @@ router.post(
         formId
       );
 
-      console.log('✅ File uploaded successfully:', uploadResult.url);
+      console.log(' File uploaded successfully:', uploadResult.url);
 
       res.status(200).json({
         success: true,
@@ -199,7 +199,7 @@ router.post(
       );
 
       console.log(
-        '✅ Multiple files uploaded successfully:',
+        ' Multiple files uploaded successfully:',
         uploadResults.length
       );
 
@@ -251,7 +251,7 @@ router.post(
         return;
       }
 
-      console.log('✅ Logo uploaded successfully:', {
+      console.log(' Logo uploaded successfully:', {
         url: req.file.path,
         publicId: req.file.filename,
         size: req.file.size,
@@ -332,7 +332,7 @@ router.post(
         formId
       );
 
-      console.log('✅ Image uploaded successfully:', uploadResult.url);
+      console.log(' Image uploaded successfully:', uploadResult.url);
 
       res.status(200).json({
         success: true,
@@ -364,7 +364,7 @@ router.delete(
       );
 
       if (result.result === 'ok') {
-        console.log('✅ File deleted successfully');
+        console.log(' File deleted successfully');
         res.status(200).json({
           success: true,
           message: 'File deleted successfully',

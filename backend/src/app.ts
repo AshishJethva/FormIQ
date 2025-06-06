@@ -15,8 +15,7 @@ import rateLimit from 'express-rate-limit';
 import submissionRoutes from './routes/submissions';
 import publicRoutes from './routes/public';
 import { errorHandler } from './utils/errorHandler';
-import setupLocatorUI from "@locator/runtime";
-
+import aiEvaluationRoutes from './routes/aiEvaluation';
 
 const app = express();
 
@@ -45,8 +44,8 @@ app.use(
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500,
+  windowMs: 60 * 1000, // 1 minutes
+  max: 2000,
   message: {
     success: false,
     message: 'Too many requests, please try again later.',
@@ -66,6 +65,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ai-evaluation', aiEvaluationRoutes);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

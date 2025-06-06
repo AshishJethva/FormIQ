@@ -62,7 +62,7 @@ export default function FormLogo() {
   const getImageStyle = () => {
     const size = logo.size || 50;
 
-    // ✅ ENHANCED: Better scaling for 100% logos
+    //  ENHANCED: Better scaling for 100% logos
     let maxHeight: string;
     let maxWidth: string;
 
@@ -113,7 +113,7 @@ export default function FormLogo() {
       <div
         className='relative flex items-center justify-center'
         style={{
-          // ✅ FIXED: Let width be determined by size percentage
+          //  FIXED: Let width be determined by size percentage
           width: logo.size >= 100 ? '100%' : `${Math.max(5, logo.size || 50)}%`,
           transition: 'all 0.3s ease',
           minHeight: '60px',

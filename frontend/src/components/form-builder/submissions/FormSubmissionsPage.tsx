@@ -72,6 +72,10 @@ import {
 import { formsService } from '@/services/forms';
 import { deleteFormFile, formatFileSize } from '@/services/fileUploadService';
 import FileManager from '@/components/form-builder/FileManager';
+import {
+  aiEvaluationService,
+  type AIEvaluationResult,
+} from '@/services/aiEvaluation';
 
 // ===== UTILITY FUNCTIONS =====
 const formatDateTime = (dateString: string): string => {
@@ -211,16 +215,7 @@ const formatDisplayValue = (value: any): string => {
 };
 
 // ===== AI EVALUATION TYPES =====
-interface AIEvaluation {
-  id: string;
-  submissionId: string;
-  score: number;
-  feedback: string;
-  sentiment: 'positive' | 'neutral' | 'negative';
-  categories: string[];
-  evaluatedAt: string;
-  status: 'evaluating' | 'completed' | 'failed';
-}
+type AIEvaluation = AIEvaluationResult;
 
 // ===== UNIQUE FIELD TYPES =====
 interface UniqueField {
@@ -315,6 +310,86 @@ const getFileTypeInfo = (mimeType: string) => {
   } else {
     return { type: 'file', icon: FileText, color: 'gray' };
   }
+};
+
+// ===== FORM TYPE DETECTION =====
+// Add this function before the FormSubmissionsPage component
+const detectFormTypeClient = (
+  formData: any
+): 'quiz' | 'survey' | 'feedback' | 'general' => {
+  const formTitle = formData?.title?.toLowerCase() || '';
+  const formDescription = formData?.description?.toLowerCase() || '';
+
+  let quizIndicators = 0;
+  let surveyIndicators = 0;
+  let feedbackIndicators = 0;
+
+  // Analyze title and description
+  if (
+    /quiz|test|exam|assessment|question/.test(formTitle + ' ' + formDescription)
+  ) {
+    quizIndicators += 3;
+  }
+  if (
+    /survey|poll|research|opinion|rate/.test(formTitle + ' ' + formDescription)
+  ) {
+    surveyIndicators += 3;
+  }
+  if (
+    /feedback|review|comment|experience|improve/.test(
+      formTitle + ' ' + formDescription
+    )
+  ) {
+    feedbackIndicators += 3;
+  }
+
+  // Analyze form fields
+  if (formData?.pages) {
+    formData.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields.forEach((field: any) => {
+          const fieldLabel = field.label?.toLowerCase() || '';
+
+          // Quiz patterns
+          if (
+            field.type === 'singleChoice' ||
+            field.type === 'multipleChoice'
+          ) {
+            if (/correct|answer|choose|select|true|false/.test(fieldLabel)) {
+              quizIndicators += 2;
+            }
+          }
+
+          // Survey patterns
+          if (
+            field.type === 'rating' ||
+            field.type === 'scale' ||
+            fieldLabel.includes('rate')
+          ) {
+            surveyIndicators += 2;
+          }
+
+          // Feedback patterns
+          if (field.type === 'longText' || field.type === 'paragraph') {
+            if (
+              /feedback|comment|improve|experience|suggest|issue|problem/.test(
+                fieldLabel
+              )
+            ) {
+              feedbackIndicators += 2;
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // Determine form type based on highest score
+  if (quizIndicators >= 3) return 'quiz';
+  if (surveyIndicators >= 3) return 'survey';
+  if (feedbackIndicators >= 3) return 'feedback';
+
+  return 'general';
 };
 
 // ===== MAIN COMPONENT =====
@@ -491,11 +566,15 @@ const FormSubmissionsPage: React.FC = () => {
   const analyzeFormStructure = (formData: any) => {
     let emailFound = false;
     let fullNameFound = false;
-    let feedbackForm = false;
 
     const labelsMap: Record<string, string> = {};
     const detectedUniqueFields = detectUniqueFields(formData);
     setUniqueFields(detectedUniqueFields);
+
+    // Detect if this form should be auto-evaluated
+    const formType = detectFormTypeClient(formData);
+    const shouldEvaluate = ['quiz', 'survey', 'feedback'].includes(formType);
+    setIsFeedbackForm(shouldEvaluate);
 
     if (formData?.pages && Array.isArray(formData.pages)) {
       formData.pages.forEach((page: any) => {
@@ -522,15 +601,6 @@ const FormSubmissionsPage: React.FC = () => {
             ) {
               fullNameFound = true;
             }
-
-            if (
-              field.type === 'textarea' ||
-              field.type === 'rating' ||
-              field.label?.toLowerCase().includes('feedback') ||
-              field.label?.toLowerCase().includes('review')
-            ) {
-              feedbackForm = true;
-            }
           });
         }
       });
@@ -547,9 +617,7 @@ const FormSubmissionsPage: React.FC = () => {
       setHasFullNameField(false);
     }
 
-    setIsFeedbackForm(feedbackForm);
     setFieldLabelsMap(labelsMap);
-
     return labelsMap;
   };
 
@@ -625,7 +693,7 @@ const FormSubmissionsPage: React.FC = () => {
       if (response.success && response.data) {
         setFormStructure(response.data);
         analyzeFormStructure(response.data);
-        console.log('✅ Form structure fetched and analyzed');
+        console.log(' Form structure fetched and analyzed');
       }
     } catch (error) {
       console.error('❌ Error fetching form structure:', error);
@@ -634,48 +702,42 @@ const FormSubmissionsPage: React.FC = () => {
 
   // Function to evaluate submission with AI
   const evaluateSubmissionWithAI = async (submission: Submission) => {
-    if (!isFeedbackForm || evaluatingSubmissions.has(submission.id)) return;
+    if (evaluatingSubmissions.has(submission.id)) return;
 
     setEvaluatingSubmissions(prev => new Set(prev).add(submission.id));
 
     try {
-      console.log('🤖 Starting AI evaluation for submission:', submission.id);
+      console.log(
+        '🤖 Starting real AI evaluation for submission:',
+        submission.id
+      );
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await aiEvaluationService.evaluateSubmission(
+        submission.id
+      );
 
-      const mockEvaluation: AIEvaluation = {
-        id: `eval_${submission.id}`,
-        submissionId: submission.id,
-        score: Math.floor(Math.random() * 5) + 1,
-        feedback:
-          'AI analysis shows positive sentiment with constructive feedback.',
-        sentiment: ['positive', 'neutral', 'negative'][
-          Math.floor(Math.random() * 3)
-        ] as any,
-        categories: ['service', 'quality', 'experience'],
-        evaluatedAt: new Date().toISOString(),
-        status: 'completed',
-      };
-
-      setAiEvaluations(prev => ({
-        ...prev,
-        [submission.id]: mockEvaluation,
-      }));
-
-      console.log('✅ AI evaluation completed for submission:', submission.id);
-    } catch (error) {
+      if (result.success && result.data) {
+        setAiEvaluations(prev => ({
+          ...prev,
+          [submission.id]: result.data as AIEvaluation,
+        }));
+        console.log(' AI evaluation completed for submission:', submission.id);
+      } else {
+        throw new Error(result.error || 'Evaluation failed');
+      }
+    } catch (error: any) {
       console.error('❌ Error in AI evaluation:', error);
       setAiEvaluations(prev => ({
         ...prev,
         [submission.id]: {
           id: `eval_${submission.id}`,
           submissionId: submission.id,
-          score: 0,
-          feedback: 'Evaluation failed',
+          formType: 'general',
           sentiment: 'neutral',
           categories: [],
           evaluatedAt: new Date().toISOString(),
           status: 'failed',
+          feedback: 'Evaluation failed: ' + error.message,
         },
       }));
     } finally {
@@ -684,6 +746,40 @@ const FormSubmissionsPage: React.FC = () => {
         newSet.delete(submission.id);
         return newSet;
       });
+    }
+  };
+
+  // Add batch evaluation function:
+  const evaluateMultipleSubmissions = async (submissionIds: string[]) => {
+    if (!formId) return;
+
+    try {
+      console.log(
+        '🤖 Starting batch AI evaluation for',
+        submissionIds.length,
+        'submissions'
+      );
+
+      const result = await aiEvaluationService.evaluateBatch(
+        formId,
+        submissionIds
+      );
+
+      if (result.success && result.data) {
+        const evaluationsMap: Record<string, AIEvaluation> = {};
+        result.data.forEach(evaluation => {
+          evaluationsMap[evaluation.submissionId] = evaluation;
+        });
+
+        setAiEvaluations(prev => ({
+          ...prev,
+          ...evaluationsMap,
+        }));
+
+        console.log(' Batch AI evaluation completed');
+      }
+    } catch (error) {
+      console.error('❌ Batch evaluation error:', error);
     }
   };
 
@@ -749,19 +845,25 @@ const FormSubmissionsPage: React.FC = () => {
             }
           );
 
-          if (isFeedbackForm) {
-            processedSubmissions.forEach((submission: Submission) => {
-              if (
+          if (isFeedbackForm && processedSubmissions.length > 0) {
+            // Auto-evaluate submissions that don't have evaluations yet
+            const unevaluatedSubmissions = processedSubmissions.filter(
+              (submission: Submission) =>
                 !aiEvaluations[submission.id] &&
                 !evaluatingSubmissions.has(submission.id)
-              ) {
-                evaluateSubmissionWithAI(submission);
-              }
-            });
+            );
+
+            if (unevaluatedSubmissions.length > 0) {
+              // Evaluate in batches of 5 to avoid overwhelming the API
+              const submissionIds = unevaluatedSubmissions
+                .slice(0, 5)
+                .map((s: Submission) => s.id);
+              evaluateMultipleSubmissions(submissionIds);
+            }
           }
 
           console.log(
-            '✅ Submissions fetched successfully:',
+            ' Submissions fetched successfully:',
             processedSubmissions.length
           );
         }
@@ -851,13 +953,6 @@ const FormSubmissionsPage: React.FC = () => {
 
       // Success feedback
       const fileSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-      toast.success(
-        `✅ CSV exported successfully!\n📁 File: ${filename}\n📊 Size: ${fileSizeMB} MB\n🔗 Contains Cloudinary URLs for files/images/signatures`,
-        {
-          duration: 8000,
-          style: { maxWidth: '500px' },
-        }
-      );
 
       console.log('🎉 Cloudinary CSV download completed:', {
         filename,
@@ -905,7 +1000,7 @@ const FormSubmissionsPage: React.FC = () => {
         unread: !isRead ? prev.unread - 1 : prev.unread + 1,
       }));
 
-      console.log('✅ Read status updated successfully');
+      console.log(' Read status updated successfully');
     } catch (error: any) {
       console.error('❌ Error updating read status:', error);
       setSubmissions(prev =>
@@ -946,7 +1041,7 @@ const FormSubmissionsPage: React.FC = () => {
         return newEvaluations;
       });
 
-      console.log('✅ Submission deleted successfully');
+      console.log(' Submission deleted successfully');
     } catch (error: any) {
       console.error('❌ Error deleting submission:', error);
       toast.error(error.message || 'Failed to delete submission');
@@ -1036,7 +1131,7 @@ const FormSubmissionsPage: React.FC = () => {
         });
       }
 
-      console.log('✅ File deleted successfully');
+      console.log(' File deleted successfully');
     } catch (error: any) {
       console.error('❌ Error deleting file:', error);
       toast.error(error.message || 'Failed to delete file');
@@ -1066,7 +1161,7 @@ const FormSubmissionsPage: React.FC = () => {
       a.click();
       document.body.removeChild(a);
 
-      console.log('✅ File download completed');
+      console.log(' File download completed');
     } catch (error: any) {
       console.error('❌ Download error:', error);
       toast.error(`Failed to download ${file.originalName}`);
@@ -1140,15 +1235,6 @@ const FormSubmissionsPage: React.FC = () => {
 
   // Get AI evaluation badge
   const getAIEvaluationBadge = (submissionId: string) => {
-    if (!isFeedbackForm) {
-      return (
-        <Badge variant='outline' className='bg-gray-100 text-gray-600'>
-          <AlertTriangle className='w-3 h-3 mr-1' />
-          Non-evaluable
-        </Badge>
-      );
-    }
-
     if (evaluatingSubmissions.has(submissionId)) {
       return (
         <Badge variant='secondary' className='bg-blue-100 text-blue-800'>
@@ -1177,21 +1263,88 @@ const FormSubmissionsPage: React.FC = () => {
       );
     }
 
-    const scoreColor =
-      evaluation.score >= 4
-        ? 'green'
-        : evaluation.score >= 3
-        ? 'yellow'
-        : 'red';
-    return (
-      <Badge
-        variant='default'
-        className={`bg-${scoreColor}-100 text-${scoreColor}-800`}
-      >
-        <Star className='w-3 h-3 mr-1' />
-        {evaluation.score}/5
-      </Badge>
-    );
+    // Form type specific badges
+    switch (evaluation.formType) {
+      case 'quiz':
+        const scoreColor =
+          evaluation.quizResults!.percentage >= 70
+            ? 'green'
+            : evaluation.quizResults!.percentage >= 50
+            ? 'yellow'
+            : 'red';
+        return (
+          <Badge
+            variant='default'
+            className={`bg-${scoreColor}-100 text-${scoreColor}-800`}
+          >
+            <Star className='w-3 h-3 mr-1' />
+            {evaluation.quizResults!.correctAnswers}/
+            {evaluation.quizResults!.totalQuestions} (
+            {evaluation.quizResults!.percentage}%)
+          </Badge>
+        );
+
+      case 'survey':
+        const surveyColor =
+          evaluation.sentiment === 'positive'
+            ? 'green'
+            : evaluation.sentiment === 'negative'
+            ? 'red'
+            : 'yellow';
+        return (
+          <Badge
+            variant='default'
+            className={`bg-${surveyColor}-100 text-${surveyColor}-800`}
+          >
+            <Brain className='w-3 h-3 mr-1' />
+            {evaluation.surveyResults!.overallSentiment.positive}% Positive
+          </Badge>
+        );
+
+      case 'feedback':
+        const urgencyColor =
+          evaluation.feedbackResults!.urgencyLevel === 'high'
+            ? 'red'
+            : evaluation.feedbackResults!.urgencyLevel === 'medium'
+            ? 'yellow'
+            : 'green';
+        return (
+          <Badge
+            variant='default'
+            className={`bg-${urgencyColor}-100 text-${urgencyColor}-800`}
+          >
+            <AlertTriangle className='w-3 h-3 mr-1' />
+            {evaluation.feedbackResults!.sentimentBreakdown.positive}% Positive
+          </Badge>
+        );
+
+      default:
+        return (
+          <Badge variant='default' className='bg-blue-100 text-blue-800'>
+            <Brain className='w-3 h-3 mr-1' />
+            Analyzed
+          </Badge>
+        );
+    }
+  };
+
+  // Add state for the evaluation modal:
+  const [showAIEvaluationModal, setShowAIEvaluationModal] = useState(false);
+  const [selectedEvaluation, setSelectedEvaluation] =
+    useState<AIEvaluation | null>(null);
+
+  // Add function to handle evaluation modal:
+  const handleViewAIEvaluation = (submissionId: string) => {
+    const evaluation = aiEvaluations[submissionId];
+    if (evaluation && evaluation.status === 'completed') {
+      setSelectedEvaluation(evaluation);
+      setShowAIEvaluationModal(true);
+    } else if (!evaluation && !evaluatingSubmissions.has(submissionId)) {
+      const submission = submissions.find(s => s.id === submissionId);
+      if (submission) {
+        evaluateSubmissionWithAI(submission);
+      }
+    }
   };
 
   // Enhanced render field value with complete file management
@@ -1208,7 +1361,7 @@ const FormSubmissionsPage: React.FC = () => {
       ),
     });
 
-    // ✅ NEW: Check if this is a signature field
+    //  NEW: Check if this is a signature field
     const isSignatureField = (value: any, label: string): boolean => {
       if (typeof value === 'string' && value.startsWith('data:image/')) {
         return true;
@@ -1216,7 +1369,7 @@ const FormSubmissionsPage: React.FC = () => {
       return label.toLowerCase().includes('signature');
     };
 
-    // ✅ NEW: Handle signature fields specially
+    //  NEW: Handle signature fields specially
     if (isSignatureField(value, label)) {
       console.log('✍️ Rendering signature field:', label);
 
@@ -1232,7 +1385,7 @@ const FormSubmissionsPage: React.FC = () => {
           link.click();
           document.body.removeChild(link);
 
-          console.log('✅ Signature download initiated');
+          console.log(' Signature download initiated');
           toast.success('Signature downloaded successfully');
         } catch (error) {
           console.error('❌ Error downloading signature:', error);
@@ -1319,13 +1472,13 @@ const FormSubmissionsPage: React.FC = () => {
                           <head>
                             <title>Digital Signature - ${label}</title>
                             <style>
-                              body { 
-                                margin: 0; 
-                                padding: 20px; 
-                                background: #f5f5f5; 
-                                display: flex; 
-                                justify-content: center; 
-                                align-items: center; 
+                              body {
+                                margin: 0;
+                                padding: 20px;
+                                background: #f5f5f5;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
                                 min-height: 100vh;
                                 font-family: Arial, sans-serif;
                               }
@@ -1336,16 +1489,16 @@ const FormSubmissionsPage: React.FC = () => {
                                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                                 text-align: center;
                               }
-                              img { 
-                                max-width: 100%; 
-                                height: auto; 
+                              img {
+                                max-width: 100%;
+                                height: auto;
                                 border: 2px solid #e5e5e5;
                                 border-radius: 4px;
                                 background: white;
                               }
-                              h2 { 
-                                color: #333; 
-                                margin-bottom: 20px; 
+                              h2 {
+                                color: #333;
+                                margin-bottom: 20px;
                               }
                               .info {
                                 margin-top: 20px;
@@ -1553,15 +1706,15 @@ const FormSubmissionsPage: React.FC = () => {
           onClick={handleDownloadCsv}
           disabled={downloadingCsv || !hasSubmissions}
           className={`
-          bg-[#102035] hover:bg-slate-700 font-semibold text-white 
-          flex items-center gap-2 disabled:opacity-50 
+          bg-[#102035] hover:bg-slate-700 font-semibold text-white
+          flex items-center gap-2 disabled:opacity-50
           ${
             downloadingCsv
               ? 'cursor-wait'
               : hasSubmissions
               ? 'cursor-pointer'
               : 'cursor-not-allowed'
-          } 
+          }
           transition-all duration-200 ease-in-out
           hover:shadow-lg active:scale-95
           min-w-[200px] justify-center
@@ -1829,28 +1982,10 @@ const FormSubmissionsPage: React.FC = () => {
                         <div
                           onClick={e => {
                             e.stopPropagation();
-                            if (
-                              isFeedbackForm &&
-                              !evaluatingSubmissions.has(submission.id) &&
-                              !aiEvaluations[submission.id]
-                            ) {
-                              evaluateSubmissionWithAI(submission);
-                            }
+                            handleViewAIEvaluation(submission.id);
                           }}
-                          className={
-                            isFeedbackForm &&
-                            !evaluatingSubmissions.has(submission.id) &&
-                            !aiEvaluations[submission.id]
-                              ? 'cursor-pointer'
-                              : ''
-                          }
-                          title={
-                            isFeedbackForm &&
-                            !evaluatingSubmissions.has(submission.id) &&
-                            !aiEvaluations[submission.id]
-                              ? 'Click to start AI evaluation'
-                              : ''
-                          }
+                          className='cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors'
+                          title='Click to view detailed AI evaluation'
                         >
                           {getAIEvaluationBadge(submission.id)}
                         </div>
@@ -2014,7 +2149,19 @@ const FormSubmissionsPage: React.FC = () => {
                       <span className='text-green-700 font-medium'>Score:</span>
                       <div className='mt-1'>
                         <Badge className='bg-green-100 text-green-800 font-bold'>
-                          {aiEvaluations[selectedSubmission.id].score}/5 ⭐
+                          {(() => {
+                            const evaluation =
+                              aiEvaluations[selectedSubmission.id];
+                            if (evaluation.quizResults) {
+                              return `${evaluation.quizResults.percentage}%`;
+                            } else if (evaluation.surveyResults) {
+                              return `${evaluation.surveyResults.overallSentiment.positive}% Positive`;
+                            } else if (evaluation.feedbackResults) {
+                              return `${evaluation.feedbackResults.sentimentBreakdown.positive}% Positive`;
+                            }
+                            return 'Analyzed';
+                          })()}{' '}
+                          ⭐
                         </Badge>
                       </div>
                     </div>
@@ -2085,7 +2232,8 @@ const FormSubmissionsPage: React.FC = () => {
 
                       {/* IMPORTANT: Render file fields from submission.files array */}
                       {selectedSubmission.files &&
-                        Array.isArray(selectedSubmission.files) && (
+                        Array.isArray(selectedSubmission.files) &&
+                        selectedSubmission.files.length > 0 && (
                           <>
                             <div className='border-t border-gray-300 pt-4 mt-6'>
                               <h4 className='text-md font-semibold text-gray-800 mb-4 flex items-center gap-2'>
@@ -2342,6 +2490,512 @@ const FormSubmissionsPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Evaluation Details Modal */}
+      <Dialog
+        open={showAIEvaluationModal}
+        onOpenChange={setShowAIEvaluationModal}
+      >
+        <DialogContent className='max-w-6xl max-h-[90vh] overflow-y-auto bg-white'>
+          <DialogHeader className='border-b border-gray-200 pb-4'>
+            <DialogTitle className='flex items-center gap-2 text-xl font-bold text-gray-900'>
+              <Brain className='w-6 h-6 text-purple-600' />
+              AI Evaluation Results
+              {selectedEvaluation && (
+                <Badge
+                  variant='secondary'
+                  className={`ml-2 ${
+                    selectedEvaluation.formType === 'quiz'
+                      ? 'bg-blue-100 text-blue-800'
+                      : selectedEvaluation.formType === 'survey'
+                      ? 'bg-green-100 text-green-800'
+                      : selectedEvaluation.formType === 'feedback'
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {selectedEvaluation.formType.charAt(0).toUpperCase() +
+                    selectedEvaluation.formType.slice(1)}{' '}
+                  Form
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedEvaluation && (
+            <div className='space-y-6 pt-4'>
+              {/* Quiz Results */}
+              {selectedEvaluation.formType === 'quiz' &&
+                selectedEvaluation.quizResults && (
+                  <div className='space-y-6'>
+                    {/* Quiz Summary */}
+                    <div className='bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200'>
+                      <h3 className='text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2'>
+                        <Star className='w-5 h-5' />
+                        Quiz Performance Summary
+                      </h3>
+                      <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-blue-600'>
+                            {selectedEvaluation.quizResults.percentage}%
+                          </div>
+                          <div className='text-sm text-gray-600'>
+                            Overall Score
+                          </div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-green-600'>
+                            {selectedEvaluation.quizResults.correctAnswers}
+                          </div>
+                          <div className='text-sm text-gray-600'>
+                            Correct Answers
+                          </div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-red-600'>
+                            {selectedEvaluation.quizResults.totalQuestions -
+                              selectedEvaluation.quizResults.correctAnswers}
+                          </div>
+                          <div className='text-sm text-gray-600'>
+                            Incorrect Answers
+                          </div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-gray-600'>
+                            {selectedEvaluation.quizResults.totalQuestions}
+                          </div>
+                          <div className='text-sm text-gray-600'>
+                            Total Questions
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Question-by-Question Analysis */}
+                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <FileText className='w-5 h-5' />
+                        Detailed Question Analysis
+                      </h3>
+                      <div className='space-y-4'>
+                        {selectedEvaluation.quizResults.explanations.map(
+                          (explanation, index) => (
+                            <div
+                              key={explanation.questionId}
+                              className={`p-4 rounded-lg border-l-4 ${
+                                explanation.isCorrect
+                                  ? 'border-l-green-500 bg-green-50'
+                                  : 'border-l-red-500 bg-red-50'
+                              }`}
+                            >
+                              <div className='flex items-start justify-between mb-2'>
+                                <h4 className='font-medium text-gray-900'>
+                                  Question {index + 1}: {explanation.question}
+                                </h4>
+                                <Badge
+                                  variant={
+                                    explanation.isCorrect
+                                      ? 'default'
+                                      : 'destructive'
+                                  }
+                                  className={
+                                    explanation.isCorrect
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-red-100 text-red-800'
+                                  }
+                                >
+                                  {explanation.isCorrect
+                                    ? 'Correct'
+                                    : 'Incorrect'}
+                                </Badge>
+                              </div>
+
+                              <div className='space-y-2 text-sm'>
+                                <div>
+                                  <span className='font-medium text-gray-700'>
+                                    Your Answer:
+                                  </span>
+                                  <span className='ml-2 text-gray-900'>
+                                    {explanation.userAnswer}
+                                  </span>
+                                </div>
+
+                                {!explanation.isCorrect && (
+                                  <div>
+                                    <span className='font-medium text-gray-700'>
+                                      Correct Answer:
+                                    </span>
+                                    <span className='ml-2 text-green-700 font-medium'>
+                                      {explanation.correctAnswer}
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div className='mt-3 p-3 bg-white rounded border'>
+                                  <span className='font-medium text-gray-700'>
+                                    Explanation:
+                                  </span>
+                                  <p className='mt-1 text-gray-900 leading-relaxed'>
+                                    {explanation.explanation}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              {/* Survey Results */}
+              {selectedEvaluation.formType === 'survey' &&
+                selectedEvaluation.surveyResults && (
+                  <div className='space-y-6'>
+                    {/* Sentiment Overview */}
+                    <div className='bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border border-green-200'>
+                      <h3 className='text-lg font-semibold text-green-900 mb-4 flex items-center gap-2'>
+                        <Brain className='w-5 h-5' />
+                        Sentiment Analysis
+                      </h3>
+                      <div className='grid grid-cols-3 gap-4 mb-4'>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-green-600'>
+                            {
+                              selectedEvaluation.surveyResults.overallSentiment
+                                .positive
+                            }
+                            %
+                          </div>
+                          <div className='text-sm text-gray-600'>Positive</div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-yellow-600'>
+                            {
+                              selectedEvaluation.surveyResults.overallSentiment
+                                .neutral
+                            }
+                            %
+                          </div>
+                          <div className='text-sm text-gray-600'>Neutral</div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-red-600'>
+                            {
+                              selectedEvaluation.surveyResults.overallSentiment
+                                .negative
+                            }
+                            %
+                          </div>
+                          <div className='text-sm text-gray-600'>Negative</div>
+                        </div>
+                      </div>
+
+                      {/* Visual Sentiment Bar */}
+                      <div className='w-full bg-gray-200 rounded-full h-4 mb-4'>
+                        <div className='flex h-full rounded-full overflow-hidden'>
+                          <div
+                            className='bg-green-500'
+                            style={{
+                              width: `${selectedEvaluation.surveyResults.overallSentiment.positive}%`,
+                            }}
+                          ></div>
+                          <div
+                            className='bg-yellow-500'
+                            style={{
+                              width: `${selectedEvaluation.surveyResults.overallSentiment.neutral}%`,
+                            }}
+                          ></div>
+                          <div
+                            className='bg-red-500'
+                            style={{
+                              width: `${selectedEvaluation.surveyResults.overallSentiment.negative}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Key Metrics */}
+                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <Star className='w-5 h-5' />
+                        Key Performance Metrics
+                      </h3>
+                      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                        {selectedEvaluation.surveyResults.keyMetrics.map(
+                          (metric, index) => (
+                            <div
+                              key={index}
+                              className='p-4 bg-gray-50 rounded-lg'
+                            >
+                              <div className='flex items-center justify-between mb-2'>
+                                <h4 className='font-medium text-gray-900'>
+                                  {metric.metric}
+                                </h4>
+                                <Badge
+                                  variant='secondary'
+                                  className={`${
+                                    metric.trend === 'up'
+                                      ? 'bg-green-100 text-green-800'
+                                      : metric.trend === 'down'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}
+                                >
+                                  {metric.trend === 'up'
+                                    ? '↗'
+                                    : metric.trend === 'down'
+                                    ? '↘'
+                                    : '→'}{' '}
+                                  {metric.trend}
+                                </Badge>
+                              </div>
+                              <div className='text-2xl font-bold text-blue-600'>
+                                {metric.value}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Insights */}
+                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-6'>
+                      <h3 className='text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2'>
+                        <AlertCircle className='w-5 h-5' />
+                        Key Insights
+                      </h3>
+                      <ul className='space-y-2'>
+                        {selectedEvaluation.surveyResults.insights.map(
+                          (insight, index) => (
+                            <li key={index} className='flex items-start gap-2'>
+                              <CheckCircle className='w-4 h-4 text-blue-600 mt-1 flex-shrink-0' />
+                              <span className='text-gray-900'>{insight}</span>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+              {/* Feedback Results */}
+              {selectedEvaluation.formType === 'feedback' &&
+                selectedEvaluation.feedbackResults && (
+                  <div className='space-y-6'>
+                    {/* Sentiment Analysis */}
+                    <div className='bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200'>
+                      <h3 className='text-lg font-semibold text-orange-900 mb-4 flex items-center gap-2'>
+                        <Brain className='w-5 h-5' />
+                        Sentiment Analysis
+                        <Badge
+                          variant='destructive'
+                          className={`ml-2 ${
+                            selectedEvaluation.feedbackResults.urgencyLevel ===
+                            'high'
+                              ? 'bg-red-100 text-red-800'
+                              : selectedEvaluation.feedbackResults
+                                  .urgencyLevel === 'medium'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}
+                        >
+                          {selectedEvaluation.feedbackResults.urgencyLevel
+                            .charAt(0)
+                            .toUpperCase() +
+                            selectedEvaluation.feedbackResults.urgencyLevel.slice(
+                              1
+                            )}{' '}
+                          Priority
+                        </Badge>
+                      </h3>
+
+                      <div className='grid grid-cols-3 gap-4 mb-4'>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-green-600'>
+                            {
+                              selectedEvaluation.feedbackResults
+                                .sentimentBreakdown.positive
+                            }
+                            %
+                          </div>
+                          <div className='text-sm text-gray-600'>Positive</div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-yellow-600'>
+                            {
+                              selectedEvaluation.feedbackResults
+                                .sentimentBreakdown.neutral
+                            }
+                            %
+                          </div>
+                          <div className='text-sm text-gray-600'>Neutral</div>
+                        </div>
+                        <div className='text-center'>
+                          <div className='text-3xl font-bold text-red-600'>
+                            {
+                              selectedEvaluation.feedbackResults
+                                .sentimentBreakdown.negative
+                            }
+                            %
+                          </div>
+                          <div className='text-sm text-gray-600'>Negative</div>
+                        </div>
+                      </div>
+
+                      {/* Visual Sentiment Bar */}
+                      <div className='w-full bg-gray-200 rounded-full h-4'>
+                        <div className='flex h-full rounded-full overflow-hidden'>
+                          <div
+                            className='bg-green-500'
+                            style={{
+                              width: `${selectedEvaluation.feedbackResults.sentimentBreakdown.positive}%`,
+                            }}
+                          ></div>
+                          <div
+                            className='bg-yellow-500'
+                            style={{
+                              width: `${selectedEvaluation.feedbackResults.sentimentBreakdown.neutral}%`,
+                            }}
+                          ></div>
+                          <div
+                            className='bg-red-500'
+                            style={{
+                              width: `${selectedEvaluation.feedbackResults.sentimentBreakdown.negative}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Critical Themes */}
+                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <AlertTriangle className='w-5 h-5' />
+                        Critical Themes Analysis
+                      </h3>
+                      <div className='space-y-4'>
+                        {selectedEvaluation.feedbackResults.criticalThemes.map(
+                          (theme, index) => (
+                            <div
+                              key={index}
+                              className={`p-4 rounded-lg border-l-4 ${
+                                theme.severity === 'high'
+                                  ? 'border-l-red-500 bg-red-50'
+                                  : theme.severity === 'medium'
+                                  ? 'border-l-yellow-500 bg-yellow-50'
+                                  : 'border-l-green-500 bg-green-50'
+                              }`}
+                            >
+                              <div className='flex items-center justify-between mb-2'>
+                                <h4 className='font-medium text-gray-900'>
+                                  {theme.theme}
+                                </h4>
+                                <div className='flex items-center gap-2'>
+                                  <Badge
+                                    variant='secondary'
+                                    className={`${
+                                      theme.severity === 'high'
+                                        ? 'bg-red-100 text-red-800'
+                                        : theme.severity === 'medium'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-green-100 text-green-800'
+                                    }`}
+                                  >
+                                    {theme.severity.charAt(0).toUpperCase() +
+                                      theme.severity.slice(1)}{' '}
+                                    Severity
+                                  </Badge>
+                                  <span className='text-sm text-gray-600'>
+                                    {theme.frequency} mention
+                                    {theme.frequency > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className='mt-3'>
+                                <span className='font-medium text-gray-700 text-sm'>
+                                  Examples:
+                                </span>
+                                <div className='mt-1 flex flex-wrap gap-1'>
+                                  {theme.examples.map(
+                                    (example, exampleIndex) => (
+                                      <Badge
+                                        key={exampleIndex}
+                                        variant='outline'
+                                        className='text-xs bg-white'
+                                      >
+                                        {example.length > 50
+                                          ? example.substring(0, 50) + '...'
+                                          : example}
+                                      </Badge>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actionable Insights */}
+                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-6'>
+                      <h3 className='text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2'>
+                        <CheckCircle className='w-5 h-5' />
+                        Actionable Insights & Recommendations
+                      </h3>
+                      <ul className='space-y-3'>
+                        {selectedEvaluation.feedbackResults.actionableInsights.map(
+                          (insight, index) => (
+                            <li
+                              key={index}
+                              className='flex items-start gap-3 p-3 bg-white rounded border'
+                            >
+                              <div className='w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5'>
+                                <span className='text-blue-600 text-sm font-medium'>
+                                  {index + 1}
+                                </span>
+                              </div>
+                              <span className='text-gray-900 leading-relaxed'>
+                                {insight}
+                              </span>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+              {/* General Form Results */}
+              {selectedEvaluation.formType === 'general' && (
+                <div className='bg-gray-50 border border-gray-200 rounded-lg p-6'>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                    <FileText className='w-5 h-5' />
+                    General Analysis
+                  </h3>
+                  <p className='text-gray-700 leading-relaxed'>
+                    {selectedEvaluation.feedback}
+                  </p>
+                </div>
+              )}
+
+              {/* Evaluation Metadata */}
+              <div className='bg-gray-50 border border-gray-200 rounded-lg p-4'>
+                <div className='flex items-center justify-between text-sm text-gray-600'>
+                  <span>
+                    Evaluation completed:{' '}
+                    {formatDateTime(selectedEvaluation.evaluatedAt)}
+                  </span>
+                  <span>Analysis ID: {selectedEvaluation.id}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

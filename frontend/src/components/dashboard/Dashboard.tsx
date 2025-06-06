@@ -107,7 +107,7 @@ export default function DashboardPage() {
               labels: [labelId.trim()],
               status: 'all',
             };
-            console.log('✅ Created filters for label:', filters);
+            console.log(' Created filters for label:', filters);
           } else {
             console.error('❌ Invalid label ID extracted:', labelId);
             filters = { status: 'all' };

@@ -141,9 +141,20 @@ export const restoreFormAsync = createAsyncThunk(
 
 export const deleteFormAsync = createAsyncThunk(
   'forms/deleteForm',
-  async (formId: string) => {
-    await formsService.deleteForm(formId);
-    return formId;
+  async (formId: string, { rejectWithValue }) => {
+    try {
+      console.log('🗑️ Redux: Starting form deletion with submissions cleanup');
+
+      const result = await formsService.deleteForm(formId);
+
+      console.log('Redux: Form and submissions deleted successfully');
+      return { formId, ...result };
+    } catch (error: any) {
+      console.error('Redux: Form deletion failed:', error);
+      return rejectWithValue(
+        error.message || 'Failed to delete form and submissions'
+      );
+    }
   }
 );
 

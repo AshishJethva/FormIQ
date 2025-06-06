@@ -19,10 +19,14 @@ const OptionSchema = new Schema(
       type: String,
       maxlength: 50,
     },
+    isCorrect: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     _id: false,
-    strict: true, // Enforce schema structure
+    strict: true,
   }
 );
 
@@ -102,6 +106,31 @@ const FieldSchema = new Schema(
           'Choice fields must have at least one valid option with label and value',
       },
     },
+
+    correctAnswer: {
+      type: String,
+      default: undefined,
+      validate: {
+        validator: function (correctAnswer: string) {
+          // Only validate correctAnswer if it exists
+          if (!correctAnswer) return true;
+
+          const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
+          if (choiceFields.includes((this as any).type)) {
+            // Check if correctAnswer matches one of the option values
+            const options = (this as any).options;
+            if (options && Array.isArray(options)) {
+              return options.some(
+                (option: any) => option.value === correctAnswer
+              );
+            }
+          }
+          return true;
+        },
+        message: 'correctAnswer must match one of the option values',
+      },
+    },
+
     defaultValue: Schema.Types.Mixed,
 
     // Text field properties
@@ -150,6 +179,7 @@ const FieldSchema = new Schema(
       if (ret.type === 'heading') {
         delete ret.required;
         delete ret.helpText;
+        delete ret.correctAnswer;
       }
       return ret;
     },
@@ -161,7 +191,8 @@ FieldSchema.pre('save', function (next) {
   if (this.type === 'heading') {
     this.required = undefined;
     this.helpText = undefined;
-    this.options = undefined; // Headings don't need options
+    this.options = undefined;
+    this.correctAnswer = undefined;
   }
 
   // Validate choice fields have options
@@ -174,10 +205,26 @@ FieldSchema.pre('save', function (next) {
     ) {
       // Auto-generate default options if missing
       this.options = [
-        { label: 'Option 1', value: 'option1' },
-        { label: 'Option 2', value: 'option2' },
-        { label: 'Option 3', value: 'option3' },
+        { label: 'Option 1', value: 'option1', isCorrect: false },
+        { label: 'Option 2', value: 'option2', isCorrect: true },
+        { label: 'Option 3', value: 'option3', isCorrect: false },
       ] as any;
+      this.correctAnswer = 'option2'; // Set default correct answer
+    } else {
+      // If options exist, ensure correctAnswer is set if any option is marked correct
+      const correctOption = this.options.find((opt: any) => opt.isCorrect);
+      if (correctOption && !this.correctAnswer) {
+        this.correctAnswer = correctOption.value;
+      }
+      // If correctAnswer is set, mark the corresponding option as correct
+      if (this.correctAnswer && !correctOption) {
+        const targetOption = this.options.find(
+          (opt: any) => opt.value === this.correctAnswer
+        );
+        if (targetOption) {
+          targetOption.isCorrect = true;
+        }
+      }
     }
   }
 
@@ -504,6 +551,7 @@ const FormSchema = new Schema<IForm>(
                   delete field.required;
                   delete field.helpText;
                   delete field.options;
+                  delete field.correctAnswer;
                 }
               });
             }

@@ -75,7 +75,7 @@ export const uploadFormFile = async (
       }
     );
 
-    console.log('✅ File uploaded successfully:', response.data.data);
+    console.log(' File uploaded successfully:', response.data.data);
     return response.data.data;
   } catch (error: any) {
     console.error('❌ File upload failed:', error);
@@ -150,7 +150,7 @@ export const uploadFormImage = async (
       }
     );
 
-    console.log('✅ Image uploaded successfully:', response.data.data);
+    console.log(' Image uploaded successfully:', response.data.data);
     return response.data.data;
   } catch (error: any) {
     console.error('❌ Image upload failed:', error);
@@ -223,7 +223,7 @@ export const uploadMultipleFiles = async (
     );
 
     console.log(
-      '✅ Multiple files uploaded successfully:',
+      ' Multiple files uploaded successfully:',
       response.data.data.length
     );
     return response.data.data;
@@ -279,7 +279,7 @@ export const deleteFormFile = async (
       }
     );
 
-    console.log('✅ File deleted successfully from cloud storage');
+    console.log(' File deleted successfully from cloud storage');
     return response.data;
   } catch (error: any) {
     console.error('❌ File deletion failed:', error);
@@ -341,7 +341,7 @@ export const deleteFileFromSubmission = async (
       }
     );
 
-    console.log('✅ File removed from submission data successfully');
+    console.log(' File removed from submission data successfully');
     return response.data;
   } catch (error: any) {
     console.error('❌ Failed to remove file from submission data:', error);
@@ -385,7 +385,7 @@ export const deleteFileCompletely = async (
 
     try {
       await deleteFormFile(file.publicId, resourceType);
-      console.log('✅ File deleted from cloud storage');
+      console.log(' File deleted from cloud storage');
     } catch (cloudError: any) {
       console.warn(
         '⚠️ Cloud storage deletion failed, continuing with database cleanup:',
@@ -397,7 +397,7 @@ export const deleteFileCompletely = async (
     // Step 2: Remove from submission data
     try {
       await deleteFileFromSubmission(submissionId, fieldId, file.publicId);
-      console.log('✅ File removed from submission data');
+      console.log(' File removed from submission data');
     } catch (dbError: any) {
       console.error('❌ Database cleanup failed:', dbError);
       throw new Error(
@@ -557,7 +557,7 @@ export const getFileTypeIcon = (mimeType: string): string => {
 };
 
 /**
- * ✅ NEW: Get file download URL with authentication
+ *  NEW: Get file download URL with authentication
  * @param fileUrl - Original file URL
  * @param fileName - Suggested filename for download
  * @returns Promise with secure download URL or blob
@@ -676,7 +676,7 @@ export const downloadFileEnhanced = async (
     if (file.mimeType.includes('pdf') || file.mimeType.includes('document')) {
       const newWindow = window.open(file.url, '_blank', 'noopener,noreferrer');
       if (newWindow) {
-        console.log('✅ File opened in new tab for download');
+        console.log(' File opened in new tab for download');
         return { success: true, method: 'new-tab' };
       }
     }
@@ -693,7 +693,7 @@ export const downloadFileEnhanced = async (
     a.click();
     document.body.removeChild(a);
 
-    console.log('✅ File download initiated via direct link');
+    console.log(' File download initiated via direct link');
     return { success: true, method: 'direct-link' };
   } catch (directError) {
     console.error('❌ Direct download failed:', directError);

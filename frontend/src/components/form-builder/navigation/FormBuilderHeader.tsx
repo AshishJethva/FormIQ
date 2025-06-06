@@ -57,13 +57,13 @@ export default function FormBuilderHeader({
 
   const { user } = useSelector((state: RootState) => state.user as UserState);
 
-  // ✅ FIXED: Update titleValue when title prop changes
+  //  FIXED: Update titleValue when title prop changes
   useEffect(() => {
     setTitleValue(title);
     setTitleError(null); // Clear any previous errors when title changes
   }, [title]);
 
-  // ✅ ADDED: Manual save function for title with duplicate validation
+  //  ADDED: Manual save function for title with duplicate validation
   const saveTitleToBackend = async (newTitle: string) => {
     if (!newTitle.trim() || !formId || newTitle.trim() === title) return;
 
@@ -98,11 +98,11 @@ export default function FormBuilderHeader({
       dispatch(setFormTitle(newTitle.trim()));
 
       toast.success('Form title updated successfully');
-      console.log('✅ Title updated successfully from header');
+      console.log(' Title updated successfully from header');
     } catch (error: any) {
       let errorMessage = 'Failed to update title';
 
-      // ✅ FIXED: Handle specific error cases
+      //  FIXED: Handle specific error cases
       if (error.response?.status === 400) {
         errorMessage =
           error.response.data?.message ||
@@ -148,7 +148,7 @@ export default function FormBuilderHeader({
 
   // Get save status display
   const getSaveStatusDisplay = () => {
-    // ✅ ADDED: Show title saving status first
+    //  ADDED: Show title saving status first
     if (isSavingTitle) {
       return (
         <motion.div
@@ -162,7 +162,7 @@ export default function FormBuilderHeader({
       );
     }
 
-    // ✅ ADDED: Show title error if exists
+    //  ADDED: Show title error if exists
     if (titleError) {
       return (
         <motion.div
@@ -273,7 +273,7 @@ export default function FormBuilderHeader({
             disabled={isSavingTitle}
           />
 
-          {/* ✅ ADDED: Loading indicator for title */}
+          {/*  ADDED: Loading indicator for title */}
           {isSavingTitle && (
             <div className='absolute right-2 top-1/2 transform -translate-y-1/2'>
               <Loader2 className='w-4 h-4 animate-spin text-blue-500' />
@@ -305,7 +305,7 @@ export default function FormBuilderHeader({
             </AnimatePresence>
           </div>
 
-          {/* ✅ ADDED: Title error display */}
+          {/*  ADDED: Title error display */}
           {titleError && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}

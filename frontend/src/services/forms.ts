@@ -160,7 +160,7 @@ export const formsService = {
     try {
       console.log('📋 Fetching form structure for ID:', id);
       const response = await api.get(`/forms/${id}`);
-      console.log('✅ Form structure fetched successfully');
+      console.log(' Form structure fetched successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error fetching form structure:', error);
@@ -223,8 +223,30 @@ export const formsService = {
   },
 
   async deleteForm(id: string) {
-    const response = await api.delete(`/forms/${id}`);
-    return response.data;
+    try {
+      console.log('🗑️ Starting form deletion process for:', id);
+
+      // Step 1: Delete all submissions for this form first
+      try {
+        await api.delete(`/submissions/form/${id}/all`);
+      } catch (submissionError: any) {
+        console.warn(
+          'Failed to delete some submissions:',
+          submissionError.message
+        );
+      }
+
+      // Step 2: Delete the form itself
+      const response = await api.delete(`/forms/${id}`);
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to delete form and associated submissions'
+      );
+    }
   },
 
   async bulkAction(formIds: string[], action: string) {

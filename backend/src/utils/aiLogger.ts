@@ -20,7 +20,7 @@ export class AILogger {
     };
 
     if (data.success) {
-      console.log('✅ AI Generation Success:', logEntry);
+      console.log(' AI Generation Success:', logEntry);
     } else {
       console.error('❌ AI Generation Failed:', logEntry);
     }
