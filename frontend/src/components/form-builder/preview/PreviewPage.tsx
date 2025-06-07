@@ -31,7 +31,12 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
   const [submissionId, setSubmissionId] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  if (!form) {
+  // Ensure form has proper ID for preview mode
+  const formWithId = form
+    ? { ...form, id: form.id || formId || 'preview' }
+    : null;
+
+  if (!formWithId) {
     return (
       <div className='min-h-screen bg-gray-100 flex items-center justify-center'>
         <div className='text-center'>
@@ -44,7 +49,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
   const shareableLink = `${window.location.origin}/form/${formId}`;
 
-  //  FULLY FIXED: Complete dummy data generation with safe placeholders
+  //  FULLY : Complete dummy data generation with safe placeholders
   const generateDummyData = () => {
     const dummyFormData: Record<string, any> = {};
     const dummyFileData: Record<string, any> = {};
@@ -316,7 +321,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         document:
           'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmOWZmIi8+PHJlY3QgeD0iMTAwIiB5PSI4MCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyNDAiIGZpbGw9IndoaXRlIiBzdHJva2U9IiNkMWQ1ZGIiIHN0cm9rZS13aWR0aD0iMiIvPjxsaW5lIHgxPSIxMjAiIHkxPSIxMjAiIHgyPSIyODAiIHkyPSIxMjAiIHN0cm9rZT0iIzY2NzNhZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PGxpbmUgeDE9IjEyMCIgeTE9IjE1MCIgeDI9IjI2MCIgeTI9IjE1MCIgc3Ryb2tlPSIjOWZhNmI3IiBzdHJva2Utd2lkdGg9IjIiLz48bGluZSB4MT0iMTIwIiB5MT0iMTgwIiB4Mj0iMjQwIiB5Mj0iMTgwIiBzdHJva2U9IiM5ZmE2YjciIHN0cm9rZS13aWR0aD0iMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMzUwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2NjczYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRvY3VtZW50IEltYWdlPC90ZXh0Pjwvc3ZnPg==',
         general:
-          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmFmYWZhIi8+PHJlY3QgeD0iMTQwIiB5PSIxNDAiIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTAiIGZpbGw9IiNlNWU3ZWIiIHN0cm9rZT0iI2Q0ZDRkOCIgc3Ryb2tlLXdpZHRoPSIyIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iMTgwIiByPSIxNSIgZmlsbD0iI2Y5ZmJmZiIvPjxwYXRoIGQ9Im0yMDUgMTk1IGwyNSAyNSBtLTI1IDAgbDI1IC0yNSIgc3Ryb2tlPSIjZjlmYmZmIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz48dGV4dCB4PSIyMDAiIHk9IjMwMCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBQcmV2aWV3PC90ZXh0Pjwvc3ZnPg==',
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmFmYWZhIi8+PHJlY3QgeD0iMTQwIiB5PSIxNDAiIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTAiIGZpbGw9IiNlNWU3ZWIiIHN0cm9rZT0iI2Q0ZDRkOCIgc3Ryb2tlLXdpZHRoPSIyIi8+PGNpcmNsZSBjeD0iMTgwIiBjeT0iMTgwIiByPSIxNSIgZmlsbD0iI2Y5ZmJmZiIvPjxwYXRoIGQ9Im0yMDUgMTk1IGwyNSAyNSBtLTI1IDAgbDI1IC0yNSIgc3Ryb2tlPSIjZjlmYmZmIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz48dGV4dCB4PSIyMDAiIHk9IjMwMCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBQcmV2aWV3PC90ZXh0Pjwvc3ZnPg==',
       };
       return (
         placeholders[type as keyof typeof placeholders] || placeholders.general
@@ -339,7 +344,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     });
 
     // Generate data for each field
-    form.pages.forEach(page => {
+    form?.pages?.forEach(page => {
       page.fields?.forEach(field => {
         if (field.type === 'heading') return;
 
@@ -759,12 +764,12 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     });
   };
 
-  //  COMPLETE VALIDATION with all field types
   const validateField = (field: any, value: any, files?: any): string => {
     if (field.type === 'heading') return '';
 
     // Required field validation
     if (field.required) {
+      // For file/image fields, check if files were uploaded
       if (field.type === 'fileUpload' || field.type === 'image') {
         const hasFiles =
           files && (Array.isArray(files) ? files.length > 0 : !!files);
@@ -772,26 +777,34 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           return `${field.label} is required`;
         }
       } else {
+        // For other fields, check regular value
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           return `${field.label} is required`;
         }
 
-        // Complex field validations
-        if (field.type === 'fullName' && typeof value === 'object') {
-          if (!value.firstName || !value.lastName) {
-            return 'Both first and last name are required';
+        if (field.type === 'fullName') {
+          if (typeof value === 'object') {
+            if (!value.firstName || !value.lastName) {
+              return 'Both first and last name are required';
+            }
+          } else if (typeof value === 'string' && value.trim().length < 2) {
+            return 'Full name must be at least 2 characters';
           }
         }
 
-        if (field.type === 'address' && typeof value === 'object') {
-          if (!value.street || !value.city || !value.state) {
-            return 'Street address, city, and state are required';
+        if (field.type === 'address') {
+          if (typeof value === 'object') {
+            if (!value.street || !value.city || !value.state) {
+              return 'Street address, city, and state are required';
+            }
           }
         }
 
-        if (field.type === 'appointment' && typeof value === 'object') {
-          if (!value.date || !value.time) {
-            return 'Both date and time are required';
+        if (field.type === 'appointment') {
+          if (typeof value === 'object') {
+            if (!value.date || !value.time) {
+              return 'Both date and time are required';
+            }
           }
         }
 
@@ -881,15 +894,36 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             if (file.size > 25 * 1024 * 1024) {
               return 'Files must be smaller than 25MB';
             }
+
+            // FIXED: Better accept validation that matches frontend
             if (
               field.accept &&
-              !field.accept
-                .split(',')
-                .some((type: string) =>
-                  file.mimeType?.includes(type.trim().replace('*', ''))
-                )
+              field.accept !== '*/*' &&
+              field.accept !== '*'
             ) {
-              return `File type not allowed. Accepted types: ${field.accept}`;
+              const allowedTypes = field.accept
+                .split(',')
+                .map((type: string) => type.trim());
+
+              const isTypeAllowed = allowedTypes.some((type: string) => {
+                // Handle wildcard MIME types
+                if (type.endsWith('/*')) {
+                  const baseType = type.slice(0, -2);
+                  return file.mimeType?.toLowerCase().startsWith(baseType);
+                }
+                // Handle file extensions
+                if (type.startsWith('.')) {
+                  return file.originalName
+                    ?.toLowerCase()
+                    .endsWith(type.toLowerCase());
+                }
+                // Handle exact MIME types
+                return file.mimeType?.toLowerCase() === type.toLowerCase();
+              });
+
+              if (!isTypeAllowed) {
+                return `File "${file.originalName}" is not an allowed file type. Accepted: ${field.accept}`;
+              }
             }
           }
           if (!field.multiple && fileArray.length > 1) {
@@ -926,14 +960,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         break;
 
       case 'shortText':
-        if (field.minLength && value.length < field.minLength) {
-          return `Minimum ${field.minLength} characters required`;
-        }
-        if (field.maxLength && value.length > field.maxLength) {
-          return `Maximum ${field.maxLength} characters allowed`;
-        }
-        break;
-
       case 'longText':
       case 'paragraph':
         if (field.minLength && value.length < field.minLength) {
@@ -952,6 +978,11 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     // Validate all pages before submission
     let isValid = true;
     const allErrors: Record<string, string> = {};
+
+    if (!form?.pages) {
+      toast.error('Form data is not available');
+      return;
+    }
 
     form.pages.forEach(page => {
       page.fields?.forEach(field => {
@@ -1155,7 +1186,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  {form.settings?.thankyouMessage ||
+                  {form?.settings?.thankyouMessage ||
                     'Your submission has been received successfully.'}
                 </motion.p>
 
@@ -1231,7 +1262,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
         >
           <div className='h-full overflow-y-auto'>
             <PreviewFormWithFileSupport
-              form={form}
+              form={formWithId} // Pass form with proper ID
               formData={formData}
               setFormData={setFormData}
               fileData={fileData}

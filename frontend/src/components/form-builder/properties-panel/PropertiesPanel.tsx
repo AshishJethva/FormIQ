@@ -26,7 +26,7 @@ export default function PropertiesPanel() {
   const form = useSelector((state: RootState) => state.formBuilder.form);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  //  FIXED: Move ALL useState hooks to the top, before any conditional logic
+  //  : Move ALL useState hooks to the top, before any conditional logic
   const [labelAlignment, setLabelAlignment] =
     useState<LabelAlignmentType>('LEFT');
   const [isRequired, setIsRequired] = useState(false);
@@ -103,7 +103,7 @@ export default function PropertiesPanel() {
     };
   }, []);
 
-  //  FIXED: Early return AFTER all hooks
+  //  : Early return AFTER all hooks
   if (!form || !field || !form.propertiesPanelOpen) return null;
 
   const handleClosePanel = () => {

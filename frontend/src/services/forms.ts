@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 import type { SortOption } from '@/components/dashboard/FilterBar';
+import { toast } from 'sonner';
 
 // Create axios instance with base URL and default headers
 const api = axios.create({
@@ -224,28 +225,31 @@ export const formsService = {
 
   async deleteForm(id: string) {
     try {
-      console.log('🗑️ Starting form deletion process for:', id);
+      console.log('🗑️ Starting comprehensive form deletion:', id);
 
-      // Step 1: Delete all submissions for this form first
-      try {
-        await api.delete(`/submissions/form/${id}/all`);
-      } catch (submissionError: any) {
-        console.warn(
-          'Failed to delete some submissions:',
-          submissionError.message
-        );
-      }
+      const response = await api.delete(`/forms/${id}`, {
+        timeout: 120000, // 2 minute timeout for large deletions
+      });
 
-      // Step 2: Delete the form itself
-      const response = await api.delete(`/forms/${id}`);
+      // Show detailed success message
+      const details = response.data.details;
 
+      console.log(' Form deletion completed:', details);
       return response.data;
     } catch (error: any) {
-      throw new Error(
+      console.error('❌ Form deletion failed:', error);
+
+      const errorMessage =
         error.response?.data?.message ||
-          error.message ||
-          'Failed to delete form and associated submissions'
-      );
+        error.message ||
+        'Failed to delete form and associated data';
+
+      toast.error('Deletion Failed', {
+        description: errorMessage,
+        duration: 10000,
+      });
+
+      throw error;
     }
   },
 

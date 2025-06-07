@@ -1,4 +1,4 @@
-// src/services/submissions.ts
+// src/services/submissions.ts - Frontend
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
@@ -222,23 +222,29 @@ export const submissionsService = {
     }
   },
 
-  // Delete submission
-  async deleteSubmission(
-    submissionId: string,
-    deleteFiles = true
-  ): Promise<{ success: boolean; message: string }> {
+  async deleteSubmission(submissionId: string): Promise<{
+    success: boolean;
+    message: string;
+    details?: any;
+  }> {
     try {
-      const params = deleteFiles ? '?deleteFiles=true' : '';
-      const response = await api.delete(
-        `/submissions/${submissionId}${params}`
+      console.log(
+        '🗑️ Starting comprehensive submission deletion:',
+        submissionId
       );
+
+      const response = await api.delete(`/submissions/${submissionId}`, {
+        timeout: 60000, // 1 minute timeout
+      });
+
+      console.log(' Submission deletion completed:', response.data.details);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Error deleting submission:', error);
+      console.error('❌ Submission deletion failed:', error);
       throw new Error(
         error.response?.data?.message ||
           error.message ||
-          'Failed to delete submission'
+          'Failed to delete submission and associated files'
       );
     }
   },

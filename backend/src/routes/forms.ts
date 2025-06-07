@@ -14,6 +14,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import Submission from '../models/Submission';
+import { deleteFormFiles } from '../services/cloudinaryService';
 
 const router = express.Router();
 
@@ -839,7 +840,7 @@ router.patch(
   })
 );
 
-// @desc    Delete form permanently
+// @desc    Delete form permanently with all submissions and files
 // @route   DELETE /api/forms/:id
 // @access  Private
 router.delete(
@@ -847,33 +848,97 @@ router.delete(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+    const formId = req.params.id;
 
-    // First, find the form to ensure it exists and belongs to the user
-    const form = await Form.findOne({
-      _id: req.params.id,
-      userId,
-    });
+    console.log(`🗑️ STARTING PERMANENT FORM DELETION: ${formId}`);
 
-    if (!form) {
-      console.log(`Form ${req.params.id} not found for user ${userId}`);
-      throw new ApiError('Form not found', 404);
+    // Validate form ID
+    if (!mongoose.Types.ObjectId.isValid(formId)) {
+      throw new ApiError('Invalid form ID format', 400);
     }
 
-    // Delete the form permanently
-    const deleteResult = await Form.deleteOne({
-      _id: req.params.id,
-      userId,
-    });
+    // Step 1: Find and verify form ownership
+    const form = await Form.findOne({ _id: formId, userId });
+    if (!form) {
+      console.log(`❌ Form ${formId} not found for user ${userId}`);
+      throw new ApiError('Form not found or access denied', 404);
+    }
 
-    if (deleteResult.deletedCount === 0) {
-      console.log(`Failed to delete form ${req.params.id}`);
+    console.log(
+      `📋 Form found: "${form.title}" with ${form.submissions} submissions`
+    );
+
+    // Step 2: Get all submissions for this form
+    const submissions = await Submission.find({ formId }).lean();
+    console.log(`📊 Found ${submissions.length} submissions to delete`);
+
+    // Step 3: Delete all files from Cloudinary (submissions + form logo)
+    let fileCleanupResult;
+    try {
+      console.log(`🧹 Starting file cleanup process...`);
+      fileCleanupResult = await deleteFormFiles(form, submissions);
+
+      console.log(` File cleanup completed:`, {
+        submissionFilesDeleted: fileCleanupResult.submissionFiles.successCount,
+        submissionFilesFailed: fileCleanupResult.submissionFiles.failureCount,
+        logoDeleted: fileCleanupResult.logoResult?.success || false,
+        totalProcessed: fileCleanupResult.totalFilesProcessed,
+      });
+    } catch (fileError: any) {
+      console.error(
+        `⚠️ File cleanup failed (continuing with database cleanup):`,
+        fileError
+      );
+      // Continue with database cleanup even if file cleanup fails
+    }
+
+    // Step 4: Delete all submissions from database
+    let deletedSubmissionsCount = 0;
+    try {
+      const submissionDeleteResult = await Submission.deleteMany({ formId });
+      deletedSubmissionsCount = submissionDeleteResult.deletedCount || 0;
+      console.log(
+        ` Deleted ${deletedSubmissionsCount} submissions from database`
+      );
+    } catch (submissionError: any) {
+      console.error(`❌ Failed to delete submissions:`, submissionError);
+      throw new ApiError('Failed to delete form submissions', 500);
+    }
+
+    // Step 5: Delete the form from database
+    try {
+      const formDeleteResult = await Form.deleteOne({ _id: formId, userId });
+
+      if (formDeleteResult.deletedCount === 0) {
+        console.log(`❌ Failed to delete form ${formId} from database`);
+        throw new ApiError('Failed to delete form', 500);
+      }
+
+      console.log(` Form "${form.title}" deleted from database`);
+    } catch (formError: any) {
+      console.error(`❌ Failed to delete form:`, formError);
       throw new ApiError('Failed to delete form', 500);
     }
 
-    res.status(200).json({
+    // Step 6: Prepare response with detailed results
+    const response = {
       success: true,
-      message: 'Form deleted permanently',
-    });
+      message: `Form "${form.title}" and all associated data permanently deleted`,
+      details: {
+        formId,
+        formTitle: form.title,
+        submissionsDeleted: deletedSubmissionsCount,
+        filesProcessed: fileCleanupResult?.totalFilesProcessed || 0,
+        filesDeleted: fileCleanupResult?.submissionFiles.successCount || 0,
+        filesFailed: fileCleanupResult?.submissionFiles.failureCount || 0,
+        logoDeleted: fileCleanupResult?.logoResult?.success || false,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    console.log(`🎉 FORM DELETION COMPLETED SUCCESSFULLY:`, response.details);
+
+    res.status(200).json(response);
   })
 );
 

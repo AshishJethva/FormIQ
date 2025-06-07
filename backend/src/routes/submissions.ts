@@ -12,8 +12,9 @@ import {
   handleFormSubmissionError,
   monitorFormSubmissionPerformance,
 } from '../middleware/debugMiddleware';
-
 import { uploadFormFile } from '../services/cloudinaryService';
+import { deleteSubmissionFiles } from '../services/cloudinaryService';
+import { deleteFormFile } from '../services/cloudinaryService';
 
 const router = express.Router();
 
@@ -162,7 +163,7 @@ export const formatSubmissionValueSimplified = (
 
   const fieldLabel = fieldLabelsMap[fieldKey] || fieldKey;
 
-  //  FIXED: Handle signature fields - return meaningful text
+  //  : Handle signature fields - return meaningful text
   if (typeof value === 'string' && value.startsWith('data:image/')) {
     return '[Digital Signature Captured]';
   }
@@ -181,7 +182,7 @@ export const formatSubmissionValueSimplified = (
           if (item && typeof item === 'object' && item.url) {
             return item.url.trim();
           }
-          //  FIXED: Handle base64 signatures in arrays
+          //  : Handle base64 signatures in arrays
           if (typeof item === 'string' && item.startsWith('data:image/')) {
             return '[Digital Signature Captured]';
           }
@@ -677,7 +678,7 @@ const extractCloudinaryUrlOnly = (value: any): string => {
       return value.trim();
     }
 
-    //  FIXED: Handle base64 signature data - return meaningful text
+    //  : Handle base64 signature data - return meaningful text
     if (value.startsWith('data:image/')) {
       return '[Digital Signature Captured]';
     }
@@ -698,7 +699,7 @@ const extractCloudinaryUrlOnly = (value: any): string => {
           if (item && typeof item === 'object' && item.url) {
             return item.url.trim();
           }
-          //  FIXED: Handle base64 signatures in file arrays
+          //  : Handle base64 signatures in file arrays
           if (typeof item === 'string' && item.startsWith('data:image/')) {
             return '[Digital Signature Captured]';
           }
@@ -734,7 +735,7 @@ const formatSubmissionValueCloudinaryOnly = (
     return extractCloudinaryUrlOnly(value);
   }
 
-  //  FIXED: Handle signature fields - return meaningful indicator
+  //  : Handle signature fields - return meaningful indicator
   if (typeof value === 'string' && value.startsWith('data:image/')) {
     return '[Digital Signature Captured]';
   }
@@ -1633,7 +1634,7 @@ router.get(
   })
 );
 
-// @desc    Submit form data (public endpoint) - COMPLETE FIXED VERSION
+// @desc    Submit form data (public endpoint) - COMPLETE  VERSION
 // @route   POST /api/submissions/:formId/submit
 // @access  Public
 router.post(
@@ -2234,7 +2235,7 @@ router.delete(
   })
 );
 
-// @desc    Delete submission
+// @desc    Delete submission permanently with all associated files
 // @route   DELETE /api/submissions/:id
 // @access  Private
 router.delete(
@@ -2243,35 +2244,466 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
+    console.log(`🗑️ STARTING SUBMISSION DELETION: ${id}`);
+
+    // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new ApiError('Invalid submission ID format', 400);
     }
 
+    // Step 1: Find and verify submission
     const submission = await Submission.findById(id);
     if (!submission) {
+      console.log(`❌ Submission ${id} not found`);
       throw new ApiError('Submission not found', 404);
     }
 
-    // Verify form ownership
+    // Step 2: Verify form ownership
     const form = await Form.findOne({
       _id: submission.formId,
       userId: req.user.id,
     });
     if (!form) {
+      console.log(
+        `❌ User ${req.user.id} does not own form ${submission.formId}`
+      );
       throw new ApiError('Not authorized to delete this submission', 403);
     }
 
-    await Submission.findByIdAndDelete(id);
+    console.log(`📋 Deleting submission from form: "${form.title}"`);
 
-    // Update form submission count
-    await Form.findByIdAndUpdate(submission.formId, {
-      $inc: { submissions: -1 },
-    });
+    // Step 3: Collect all files to delete
+    const filesToDelete: any[] = [];
 
-    res.status(200).json({
+    // Files from submission.files array
+    if (submission.files && Array.isArray(submission.files)) {
+      filesToDelete.push(...submission.files);
+      console.log(
+        `📁 Found ${submission.files.length} files in submission.files array`
+      );
+    }
+
+    // Files from submission.data (legacy format and base64 signatures)
+    if (submission.data && typeof submission.data === 'object') {
+      Object.entries(submission.data).forEach(([fieldId, value]) => {
+        if (value && typeof value === 'object') {
+          // Single file object
+          if (value.publicId && value.url) {
+            filesToDelete.push(value);
+          }
+          // Array of file objects
+          if (Array.isArray(value)) {
+            value.forEach(item => {
+              if (item && item.publicId && item.url) {
+                filesToDelete.push(item);
+              }
+            });
+          }
+        }
+        // Handle base64 signatures stored as URLs
+        if (typeof value === 'string' && value.includes('cloudinary.com')) {
+          // Extract public ID from Cloudinary URL if needed
+          const urlParts = value.split('/');
+          const publicIdWithFormat = urlParts[urlParts.length - 1];
+          const publicId = publicIdWithFormat.split('.')[0];
+
+          if (publicId) {
+            filesToDelete.push({
+              publicId,
+              mimeType: 'image/png', // Assume signature is PNG
+              url: value,
+              fieldId,
+            });
+          }
+        }
+      });
+    }
+
+    console.log(`📊 Total files to delete: ${filesToDelete.length}`);
+
+    // Step 4: Delete files from Cloudinary
+    let fileCleanupResult;
+    if (filesToDelete.length > 0) {
+      try {
+        console.log(`🧹 Starting file cleanup for submission...`);
+        fileCleanupResult = await deleteSubmissionFiles(filesToDelete);
+
+        console.log(` File cleanup completed:`, {
+          filesDeleted: fileCleanupResult.successCount,
+          filesFailed: fileCleanupResult.failureCount,
+          totalProcessed: fileCleanupResult.total,
+        });
+      } catch (fileError: any) {
+        console.error(
+          `⚠️ File cleanup failed (continuing with database cleanup):`,
+          fileError
+        );
+        // Continue with database cleanup even if file cleanup fails
+      }
+    } else {
+      console.log(`ℹ️ No files to delete for this submission`);
+    }
+
+    // Step 5: Delete submission from database
+    try {
+      await Submission.findByIdAndDelete(id);
+      console.log(` Submission ${id} deleted from database`);
+    } catch (dbError: any) {
+      console.error(`❌ Failed to delete submission from database:`, dbError);
+      throw new ApiError('Failed to delete submission from database', 500);
+    }
+
+    // Step 6: Update form submission count
+    try {
+      await Form.findByIdAndUpdate(submission.formId, {
+        $inc: { submissions: -1 },
+        $set: { updatedAt: new Date() },
+      });
+      console.log(` Updated form submission count`);
+    } catch (countError: any) {
+      console.warn(`⚠️ Failed to update form submission count:`, countError);
+    }
+
+    // Step 7: Prepare response
+    const response = {
       success: true,
-      message: 'Submission deleted successfully',
+      message: 'Submission and associated files permanently deleted',
+      details: {
+        submissionId: id,
+        formId: submission.formId.toString(),
+        formTitle: form.title,
+        filesProcessed: fileCleanupResult?.total || 0,
+        filesDeleted: fileCleanupResult?.successCount || 0,
+        filesFailed: fileCleanupResult?.failureCount || 0,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    console.log(`🎉 SUBMISSION DELETION COMPLETED:`, response.details);
+
+    res.status(200).json(response);
+  })
+);
+
+// @desc    Delete specific file from submission
+// @route   DELETE /api/submissions/:submissionId/files/:fieldId/:publicId
+// @access  Private
+router.delete(
+  '/:submissionId/files/:fieldId/:publicId',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { submissionId, fieldId, publicId } = req.params;
+
+    console.log(`🗑️ DELETING INDIVIDUAL FILE FROM SUBMISSION:`, {
+      submissionId,
+      fieldId,
+      publicId: decodeURIComponent(publicId),
     });
+
+    // Validate submission ID
+    if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+      throw new ApiError('Invalid submission ID format', 400);
+    }
+
+    // Decode the public ID (in case it was URL encoded)
+    const decodedPublicId = decodeURIComponent(publicId);
+
+    // Step 1: Find and verify submission
+    const submission = await Submission.findById(submissionId);
+    if (!submission) {
+      throw new ApiError('Submission not found', 404);
+    }
+
+    // Step 2: Verify form ownership
+    const form = await Form.findOne({
+      _id: submission.formId,
+      userId: req.user.id,
+    });
+    if (!form) {
+      throw new ApiError('Not authorized to modify this submission', 403);
+    }
+
+    // Step 3: Find the file to delete
+    let fileToDelete: any = null;
+    let fileLocation: 'files_array' | 'data_object' | 'not_found' = 'not_found';
+
+    // Check in submission.files array
+    if (submission.files && Array.isArray(submission.files)) {
+      fileToDelete = submission.files.find(
+        file => file.fieldId === fieldId && file.publicId === decodedPublicId
+      );
+      if (fileToDelete) {
+        fileLocation = 'files_array';
+      }
+    }
+
+    // Check in submission.data object (legacy storage)
+    if (!fileToDelete && submission.data && submission.data[fieldId]) {
+      const fieldValue = submission.data[fieldId];
+
+      // Single file object
+      if (fieldValue.publicId === decodedPublicId) {
+        fileToDelete = fieldValue;
+        fileLocation = 'data_object';
+      }
+
+      // Array of file objects
+      if (Array.isArray(fieldValue)) {
+        fileToDelete = fieldValue.find(
+          file => file.publicId === decodedPublicId
+        );
+        if (fileToDelete) {
+          fileLocation = 'data_object';
+        }
+      }
+    }
+
+    if (!fileToDelete) {
+      throw new ApiError('File not found in submission', 404);
+    }
+
+    console.log(`📁 File found in ${fileLocation}:`, {
+      originalName: fileToDelete.originalName,
+      mimeType: fileToDelete.mimeType,
+      size: fileToDelete.size,
+    });
+
+    // Step 4: Delete file from Cloudinary
+    let cloudinarySuccess = false;
+    try {
+      const resourceType = fileToDelete.mimeType?.startsWith('image/')
+        ? 'image'
+        : 'raw';
+      const deleteResult = await deleteFormFile(decodedPublicId, resourceType);
+
+      cloudinarySuccess = deleteResult.success;
+
+      if (!cloudinarySuccess) {
+        console.warn(`⚠️ Cloudinary deletion failed: ${deleteResult.error}`);
+        // Continue with database cleanup even if Cloudinary fails
+      } else {
+        console.log(` File deleted from Cloudinary: ${decodedPublicId}`);
+      }
+    } catch (cloudinaryError: any) {
+      console.error(`❌ Cloudinary deletion error:`, cloudinaryError);
+      // Continue with database cleanup
+    }
+
+    // Step 5: Remove file from submission in database
+    let databaseSuccess = false;
+    try {
+      if (fileLocation === 'files_array') {
+        // Remove from files array
+        await Submission.findByIdAndUpdate(submissionId, {
+          $pull: {
+            files: {
+              fieldId: fieldId,
+              publicId: decodedPublicId,
+            },
+          },
+          $set: {
+            updatedAt: new Date(),
+          },
+        });
+
+        console.log(` File removed from submission.files array`);
+        databaseSuccess = true;
+      } else if (fileLocation === 'data_object') {
+        // Update data object
+        const fieldValue = submission.data[fieldId];
+
+        if (Array.isArray(fieldValue)) {
+          // Remove from array
+          const updatedArray = fieldValue.filter(
+            file => file.publicId !== decodedPublicId
+          );
+
+          const updateQuery =
+            updatedArray.length > 0
+              ? { [`data.${fieldId}`]: updatedArray }
+              : { $unset: { [`data.${fieldId}`]: 1 } };
+
+          await Submission.findByIdAndUpdate(submissionId, {
+            ...updateQuery,
+            $set: { updatedAt: new Date() },
+          });
+        } else {
+          // Remove single file field
+          await Submission.findByIdAndUpdate(submissionId, {
+            $unset: { [`data.${fieldId}`]: 1 },
+            $set: { updatedAt: new Date() },
+          });
+        }
+
+        console.log(` File removed from submission.data.${fieldId}`);
+        databaseSuccess = true;
+      }
+    } catch (dbError: any) {
+      console.error(`❌ Database update failed:`, dbError);
+      throw new ApiError('Failed to update submission in database', 500);
+    }
+
+    // Step 6: Prepare response
+    const response = {
+      success: true,
+      message: `File "${fileToDelete.originalName}" deleted successfully`,
+      details: {
+        submissionId,
+        fieldId,
+        publicId: decodedPublicId,
+        fileName: fileToDelete.originalName,
+        fileSize: fileToDelete.size,
+        cloudinaryDeleted: cloudinarySuccess,
+        databaseUpdated: databaseSuccess,
+        location: fileLocation,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    console.log(`🎉 FILE DELETION COMPLETED:`, response.details);
+
+    res.status(200).json(response);
+  })
+);
+
+// @desc    Delete all files from a specific field in submission
+// @route   DELETE /api/submissions/:submissionId/files/:fieldId
+// @access  Private
+router.delete(
+  '/:submissionId/files/:fieldId',
+  protect,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { submissionId, fieldId } = req.params;
+
+    console.log(`🗑️ DELETING ALL FILES FROM FIELD:`, {
+      submissionId,
+      fieldId,
+    });
+
+    // Validate submission ID
+    if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+      throw new ApiError('Invalid submission ID format', 400);
+    }
+
+    // Step 1: Find and verify submission
+    const submission = await Submission.findById(submissionId);
+    if (!submission) {
+      throw new ApiError('Submission not found', 404);
+    }
+
+    // Step 2: Verify form ownership
+    const form = await Form.findOne({
+      _id: submission.formId,
+      userId: req.user.id,
+    });
+    if (!form) {
+      throw new ApiError('Not authorized to modify this submission', 403);
+    }
+
+    // Step 3: Collect all files for this field
+    const filesToDelete: any[] = [];
+
+    // From files array
+    if (submission.files && Array.isArray(submission.files)) {
+      const fieldFiles = submission.files.filter(
+        file => file.fieldId === fieldId
+      );
+      filesToDelete.push(...fieldFiles);
+    }
+
+    // From data object
+    if (submission.data && submission.data[fieldId]) {
+      const fieldValue = submission.data[fieldId];
+
+      if (Array.isArray(fieldValue)) {
+        fieldValue.forEach(file => {
+          if (file.publicId) filesToDelete.push(file);
+        });
+      } else if (fieldValue.publicId) {
+        filesToDelete.push(fieldValue);
+      }
+    }
+
+    if (filesToDelete.length === 0) {
+      throw new ApiError('No files found for this field', 404);
+    }
+
+    console.log(
+      `📁 Found ${filesToDelete.length} files to delete for field ${fieldId}`
+    );
+
+    // Step 4: Delete files from Cloudinary
+    const cloudinaryResults: Array<{
+      publicId: string;
+      success: boolean;
+      error?: string;
+    }> = [];
+
+    for (const file of filesToDelete) {
+      try {
+        const resourceType = file.mimeType?.startsWith('image/')
+          ? 'image'
+          : 'raw';
+        const deleteResult = await deleteFormFile(file.publicId, resourceType);
+
+        cloudinaryResults.push({
+          publicId: file.publicId,
+          success: deleteResult.success,
+          error: deleteResult.error,
+        });
+      } catch (error: any) {
+        cloudinaryResults.push({
+          publicId: file.publicId,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+
+    const cloudinarySuccessCount = cloudinaryResults.filter(
+      r => r.success
+    ).length;
+
+    // Step 5: Remove files from submission in database
+    try {
+      // Remove from files array
+      await Submission.findByIdAndUpdate(submissionId, {
+        $pull: {
+          files: { fieldId: fieldId },
+        },
+        $unset: {
+          [`data.${fieldId}`]: 1,
+        },
+        $set: {
+          updatedAt: new Date(),
+        },
+      });
+
+      console.log(`All files removed from field ${fieldId} in database`);
+    } catch (dbError: any) {
+      console.error(`❌ Database update failed:`, dbError);
+      throw new ApiError('Failed to update submission in database', 500);
+    }
+
+    // Step 6: Prepare response
+    const response = {
+      success: true,
+      message: `All files deleted from field "${fieldId}"`,
+      details: {
+        submissionId,
+        fieldId,
+        totalFiles: filesToDelete.length,
+        cloudinaryDeleted: cloudinarySuccessCount,
+        cloudinaryFailed: filesToDelete.length - cloudinarySuccessCount,
+        databaseCleared: true,
+        timestamp: new Date().toISOString(),
+        cloudinaryResults,
+      },
+    };
+
+    console.log(`🎉 FIELD FILES DELETION COMPLETED:`, response.details);
+
+    res.status(200).json(response);
   })
 );
 

@@ -112,7 +112,7 @@ router.post(
         throw new ApiError('Not authorized to evaluate this submission', 403);
       }
 
-      console.log('✅ Validation passed, starting AI evaluation:', {
+      console.log(' Validation passed, starting AI evaluation:', {
         submissionId,
         formId: form!._id,
         formTitle: form!.title,
@@ -262,7 +262,7 @@ router.post(
         );
       }
 
-      console.log('✅ Batch validation passed, processing evaluations:', {
+      console.log(' Batch validation passed, processing evaluations:', {
         formId,
         formTitle: form!.title,
         submissionCount: submissions.length,
@@ -302,7 +302,7 @@ router.post(
             );
 
           const submissionTime = Date.now() - submissionStartTime;
-          console.log(`✅ Submission ${i + 1} evaluated successfully:`, {
+          console.log(` Submission ${i + 1} evaluated successfully:`, {
             submissionId: submission._id,
             formType: evaluation.formType,
             status: evaluation.status,

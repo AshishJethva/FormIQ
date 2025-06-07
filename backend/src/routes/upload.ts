@@ -33,26 +33,14 @@ const logoStorage = new CloudinaryStorage({
   } as Options['params'],
 });
 
-// Configure multer for memory storage (for form files)
+// Multer configuration for memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25MB max file size
-    files: 10, // Maximum 10 files per upload
+    fileSize: 25 * 1024 * 1024, // 25MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Basic file validation
-    const validation = validateFile({
-      size: 0, // Will be validated after upload
-      mimeType: file.mimetype,
-      originalName: file.originalname,
-    });
-
-    if (!validation.isValid) {
-      cb(new Error(validation.error));
-    } else {
-      cb(null, true);
-    }
+    cb(null, true);
   },
 });
 
@@ -344,6 +332,172 @@ router.post(
       throw new ApiError(error.message || 'Failed to upload image', 500);
     }
   })
+);
+
+// @desc    Upload single file for preview mode
+// @route   POST /api/upload/preview/field/:fieldId
+// @access  Public
+router.post(
+  '/preview/field/:fieldId',
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { fieldId } = req.params;
+
+    if (!req.file) {
+      throw new ApiError('No file uploaded', 400);
+    }
+
+    // Validate file size (multer limits should catch this, but double-check)
+    const validation = validateFile({
+      size: req.file.size,
+      mimeType: req.file.mimetype,
+      originalName: req.file.originalname,
+    });
+
+    if (!validation.isValid) {
+      throw new ApiError(validation.error!, 400);
+    }
+
+    try {
+      console.log('📎 Uploading preview file:', {
+        fieldId,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimeType: req.file.mimetype,
+      });
+
+      const uploadResult = await uploadFormFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        fieldId,
+        'preview' // Use 'preview' as formId
+      );
+
+      console.log(' Preview file uploaded successfully:', uploadResult.url);
+
+      res.status(200).json({
+        success: true,
+        data: uploadResult,
+        message: 'File uploaded successfully',
+      });
+    } catch (error: any) {
+      console.error('❌ Preview file upload failed:', error);
+      throw new ApiError(
+        error.message || 'Failed to upload file',
+        error.statusCode || 500
+      );
+    }
+  })
+);
+
+// @desc    Upload image file for preview mode
+// @route   POST /api/upload/preview/field/:fieldId/image
+// @access  Public
+router.post(
+  '/preview/field/:fieldId/image',
+  upload.single('image'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { fieldId } = req.params;
+
+    if (!req.file) {
+      throw new ApiError('No image uploaded', 400);
+    }
+
+    // Define allowed image types
+    const allowedImageTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+    ];
+
+    const validation = validateFile(
+      {
+        size: req.file.size,
+        mimeType: req.file.mimetype,
+        originalName: req.file.originalname,
+      },
+      allowedImageTypes,
+      10 * 1024 * 1024
+    ); // 10MB for images
+
+    if (!validation.isValid) {
+      throw new ApiError(validation.error!, 400);
+    }
+
+    try {
+      console.log('🖼️ Uploading preview image:', {
+        fieldId,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimeType: req.file.mimetype,
+      });
+
+      const uploadResult = await uploadFormFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        fieldId,
+        'preview' // Use 'preview' as formId
+      );
+
+      console.log(' Preview image uploaded successfully:', uploadResult.url);
+
+      res.status(200).json({
+        success: true,
+        data: uploadResult,
+        message: 'Image uploaded successfully',
+      });
+    } catch (error: any) {
+      console.error('❌ Preview image upload failed:', error);
+      throw new ApiError(
+        error.message || 'Failed to upload image',
+        error.statusCode || 500
+      );
+    }
+  })
+);
+
+// Handle upload errors
+router.use(
+  (
+    error: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({
+          success: false,
+          message: 'File too large. Maximum size is 25MB.',
+          error: 'FILE_TOO_LARGE',
+        });
+        return;
+      } else if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        res.status(400).json({
+          success: false,
+          message: 'Unexpected file field.',
+          error: 'UNEXPECTED_FILE',
+        });
+        return;
+      }
+    }
+
+    if (error.message) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+        error: 'UPLOAD_ERROR',
+      });
+      return;
+    }
+
+    next(error);
+  }
 );
 
 // @desc    Delete uploaded file

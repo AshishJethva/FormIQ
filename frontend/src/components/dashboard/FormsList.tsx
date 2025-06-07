@@ -6,6 +6,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useDeletion } from '@/hooks/useDeletion';
+import { formsService } from '@/services/forms';
 import {
   Star,
   MoreHorizontal,
@@ -20,7 +22,10 @@ import {
   Tag,
   ChevronRight,
   RotateCcw,
-  ExternalLink, // For restore icon
+  ExternalLink,
+  Loader2,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -42,7 +47,6 @@ import {
   archiveFormAsync,
   trashFormAsync,
   restoreFormAsync,
-  deleteFormAsync,
   bulkArchiveFormsAsync,
   bulkTrashFormsAsync,
   bulkAddLabelToFormsAsync,
@@ -52,7 +56,6 @@ import {
   renameFormOptimistic,
 } from '@/redux/slices/dashboard/formsSlice';
 
-// Dialog for label selection
 import {
   Dialog,
   DialogContent,
@@ -61,9 +64,19 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+
 interface FormsListProps {
   activeSection?: string;
-  onFormAction?: () => void; // Callback to refetch forms after actions
+  onFormAction?: () => void;
 }
 
 const FormsList: React.FC<FormsListProps> = ({
@@ -83,38 +96,146 @@ const FormsList: React.FC<FormsListProps> = ({
     Record<string, 'add' | 'remove'>
   >({});
 
-  // Rename functionality state
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [itemsToDelete, setItemsToDelete] = useState<
+    Array<{
+      id: string;
+      name: string;
+      submissions: number;
+      files: number;
+    }>
+  >([]);
+  const [isDeletingCustom, setIsDeletingCustom] = useState(false);
+
   const [renamingFormId, setRenamingFormId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>('');
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // Click handling state
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [clickedFormId, setClickedFormId] = useState<string | null>(null);
 
-  // Helper function to determine current context
   const isTrashSection = activeSection === 'Trash';
   const isArchiveSection = activeSection === 'Archive';
   const isNormalSection = !isTrashSection && !isArchiveSection;
 
-  // Helper function to trigger refetch
+  const { isDeleting, progress } = useDeletion({
+    type: 'form',
+    requireConfirmation: true,
+    onSuccess: result => {
+      console.log(' Forms deletion completed:', result);
+      triggerRefetch();
+      setSelectedForms([]);
+    },
+    onError: error => {
+      console.error('❌ Forms deletion failed:', error);
+    },
+  });
+
+  const handleDeleteFormPermanently = async (formId: string) => {
+    const form = forms.find(f => f.id === formId);
+    if (!form) return;
+
+    const items = [
+      {
+        id: formId,
+        name: form.name,
+        submissions: form.submissions,
+        files: form.submissions * 2,
+      },
+    ];
+
+    setItemsToDelete(items);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleBulkDeleteForms = async () => {
+    const selectedFormData = forms.filter(form =>
+      selectedForms.includes(form.id)
+    );
+
+    const items = selectedFormData.map(form => ({
+      id: form.id,
+      name: form.name,
+      submissions: form.submissions,
+      files: form.submissions * 2,
+    }));
+
+    setItemsToDelete(items);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const performDeletion = async () => {
+    setIsDeletingCustom(true);
+
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      const errors: string[] = [];
+
+      for (const item of itemsToDelete) {
+        try {
+          await formsService.deleteForm(item.id);
+          successCount++;
+        } catch (error: any) {
+          console.error(`Failed to delete form ${item.id}:`, error);
+          failCount++;
+          errors.push(`${item.name}: ${error.message}`);
+        }
+      }
+
+      if (successCount === itemsToDelete.length) {
+        toast.success(
+          `${successCount} Form${
+            successCount > 1 ? 's' : ''
+          } Permanently Deleted`,
+          {
+            description:
+              'Successfully removed all forms, submissions, and associated files',
+            duration: 2000,
+          }
+        );
+      } else if (successCount > 0) {
+        toast.warning('Partial Success', {
+          description: `${successCount} forms deleted, ${failCount} failed. Check console for details.`,
+          duration: 10000,
+        });
+      } else {
+        toast.error('All Deletions Failed', {
+          description: `Failed to delete any of the ${itemsToDelete.length} forms. Please try again.`,
+          duration: 10000,
+        });
+      }
+
+      if (itemsToDelete.length > 1) {
+        setSelectedForms([]);
+      }
+      triggerRefetch();
+    } catch (error: any) {
+      toast.error('Deletion Error', {
+        description: error.message || 'An unexpected error occurred',
+        duration: 3000,
+      });
+    } finally {
+      setIsDeletingCustom(false);
+      setShowDeleteConfirmModal(false);
+      setItemsToDelete([]);
+    }
+  };
+
   const triggerRefetch = useCallback(() => {
     if (onFormAction) {
       onFormAction();
     }
   }, [onFormAction]);
 
-  // Handle submissions link click
   const handleSubmissionsClick = (e: React.MouseEvent, formId: string) => {
-    e.stopPropagation(); // Prevent form selection
+    e.stopPropagation();
     router.push(`/build/${formId}/submissions`);
   };
 
-  // Rename form functionality
   const handleRenameStart = (formId: string, currentName: string) => {
     setRenamingFormId(formId);
     setRenameValue(currentName);
-    // Focus the input after a short delay to ensure it's rendered
     setTimeout(() => {
       renameInputRef.current?.focus();
       renameInputRef.current?.select();
@@ -128,7 +249,6 @@ const FormsList: React.FC<FormsListProps> = ({
     }
 
     try {
-      // Optimistic update
       dispatch(
         renameFormOptimistic({
           formId: renamingFormId,
@@ -136,7 +256,6 @@ const FormsList: React.FC<FormsListProps> = ({
         })
       );
 
-      // API call
       await dispatch(
         renameFormAsync({
           formId: renamingFormId,
@@ -147,13 +266,11 @@ const FormsList: React.FC<FormsListProps> = ({
       toast.success('Form renamed successfully');
       triggerRefetch();
 
-      // Reset rename state
       setRenamingFormId(null);
       setRenameValue('');
     } catch {
-      // Revert optimistic update by refetching or handling error
       toast.error('Failed to rename form');
-      triggerRefetch(); // This will revert the optimistic update
+      triggerRefetch();
       handleRenameCancel();
     }
   }, [renamingFormId, renameValue, dispatch, triggerRefetch]);
@@ -173,37 +290,28 @@ const FormsList: React.FC<FormsListProps> = ({
     }
   };
 
-  // Improved click handling - distinguish between single and double clicks
   const handleFormClick = useCallback(
     (e: React.MouseEvent, formId: string) => {
       e.stopPropagation();
 
-      // Don't handle clicks if we're in rename mode
       if (renamingFormId) return;
 
-      // If clicking on the same form within double-click timeframe
       if (clickedFormId === formId && clickTimeoutRef.current) {
-        // This is a double-click - clear timeout and open form
         clearTimeout(clickTimeoutRef.current);
         clickTimeoutRef.current = null;
         setClickedFormId(null);
 
-        // Navigate to form builder
         router.push(`/build/${formId}`);
         return;
       }
 
-      // Clear any existing timeout
       if (clickTimeoutRef.current) {
         clearTimeout(clickTimeoutRef.current);
       }
 
-      // Set the clicked form
       setClickedFormId(formId);
 
-      // Set timeout for single click action (selection)
       clickTimeoutRef.current = setTimeout(() => {
-        // This is a single click - handle selection
         setSelectedForms(prev =>
           prev.includes(formId)
             ? prev.filter(id => id !== formId)
@@ -212,12 +320,11 @@ const FormsList: React.FC<FormsListProps> = ({
 
         setClickedFormId(null);
         clickTimeoutRef.current = null;
-      }, 200); // 200ms delay for distinguishing single vs double click
+      }, 200);
     },
     [clickedFormId, router, renamingFormId]
   );
 
-  // Clean up timeout on unmount
   React.useEffect(() => {
     return () => {
       if (clickTimeoutRef.current) {
@@ -226,7 +333,6 @@ const FormsList: React.FC<FormsListProps> = ({
     };
   }, []);
 
-  // Handle clicks outside rename input to cancel/submit rename
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -246,7 +352,6 @@ const FormsList: React.FC<FormsListProps> = ({
     }
   }, [renamingFormId, handleRenameSubmit]);
 
-  // Handle checkbox click separately
   const handleCheckboxClick = (e: React.MouseEvent, formId: string) => {
     e.stopPropagation();
     setSelectedForms(prev =>
@@ -256,22 +361,18 @@ const FormsList: React.FC<FormsListProps> = ({
     );
   };
 
-  // Handle form actions with backend calls
   const handleToggleFavorite = async (e: React.MouseEvent, formId: string) => {
     e.stopPropagation();
 
-    // Optimistic update
     dispatch(toggleFavoriteOptimistic(formId));
 
     try {
       await dispatch(toggleFormFavorite(formId) as any).unwrap();
       toast.success('Form favorite status updated');
-      // Trigger refetch for favorites section
       if (activeSection === 'Favorites') {
         triggerRefetch();
       }
     } catch {
-      // Revert optimistic update on error
       dispatch(toggleFormFavorite(formId) as any);
       toast.error('Failed to update favorite status');
     }
@@ -281,101 +382,42 @@ const FormsList: React.FC<FormsListProps> = ({
     try {
       switch (action) {
         case 'Edit':
-          // Navigate to form builder for editing
           router.push(`/build/${formId}`);
           break;
 
         case 'View':
-          // Navigate to form preview/view
           window.open(`/form/${formId}`, '_blank');
           break;
 
         case 'Settings':
-          // Navigate to form settings
           router.push(`/build/${formId}/settings`);
           break;
 
         case 'Publish Form':
-          // Navigate to form settings
           router.push(`/build/${formId}/publish`);
           break;
 
         case 'Move to Trash':
           await dispatch(trashFormAsync(formId) as any).unwrap();
           toast.success('Form moved to Trash');
-          // Trigger refetch to remove from current view
           triggerRefetch();
           break;
 
         case 'Archive':
           await dispatch(archiveFormAsync(formId) as any).unwrap();
           toast.success('Form archived');
-          // Trigger refetch to remove from current view
           triggerRefetch();
           break;
 
         case 'Restore':
           await dispatch(restoreFormAsync(formId) as any).unwrap();
           toast.success('Form restored');
-          // Trigger refetch to remove from trash/archive view
           triggerRefetch();
           break;
 
         case 'Delete Permanently':
-          // Get form details for better confirmation message
-          const form = forms.find(f => f.id === formId);
-          const submissionCount = form?.submissions || 0;
-
-          // Enhanced confirmation message
-          const confirmMessage =
-            submissionCount > 0
-              ? `⚠️ PERMANENT DELETION WARNING ⚠️\n\nThis will permanently delete:\n• The form "${
-                  form?.name
-                }"\n• All ${submissionCount} submission${
-                  submissionCount === 1 ? '' : 's'
-                }\n• All uploaded files and attachments\n\nThis action cannot be undone. Are you sure you want to continue?`
-              : `This will permanently delete the form "${form?.name}". This action cannot be undone.\n\nAre you sure you want to continue?`;
-
-          if (window.confirm(confirmMessage)) {
-            console.log(
-              `🗑️ User confirmed deletion of form ${formId} with ${submissionCount} submissions`
-            );
-
-            // Show loading toast
-            const loadingToast = toast.loading(
-              submissionCount > 0
-                ? `Deleting form and ${submissionCount} submission${
-                    submissionCount === 1 ? '' : 's'
-                  }...`
-                : 'Deleting form...'
-            );
-
-            try {
-              await dispatch(deleteFormAsync(formId) as any).unwrap();
-
-              toast.dismiss(loadingToast);
-              toast.success(
-                submissionCount > 0
-                  ? `Form and ${submissionCount} submission${
-                      submissionCount === 1 ? '' : 's'
-                    } permanently deleted`
-                  : 'Form permanently deleted',
-                { duration: 5000 }
-              );
-
-              triggerRefetch();
-            } catch (deleteError: any) {
-              toast.dismiss(loadingToast);
-              toast.error(`Failed to delete form: ${deleteError.message}`, {
-                duration: 7000,
-              });
-              throw deleteError;
-            }
-          } else {
-            console.log('❌ User cancelled form deletion');
-            return; // User cancelled
-          }
-          break;
+          await handleDeleteFormPermanently(formId);
+          return;
 
         case 'Add Label':
         case 'Manage Labels':
@@ -385,7 +427,7 @@ const FormsList: React.FC<FormsListProps> = ({
           return;
 
         case 'Rename':
-          // Start rename mode
+          const form = forms.find(f => f.id === formId);
           if (form) {
             handleRenameStart(formId, form.name);
           }
@@ -396,12 +438,15 @@ const FormsList: React.FC<FormsListProps> = ({
           return;
       }
 
-      // Remove from selection if it was selected
       if (selectedForms.includes(formId)) {
         setSelectedForms(prev => prev.filter(id => id !== formId));
       }
-    } catch {
-      toast.error(`Failed to ${action.toLowerCase()}`);
+    } catch (error: any) {
+      console.error('Action failed:', error);
+      toast.error(`Failed to ${action.toLowerCase()}`, {
+        description: error.message || 'An unexpected error occurred',
+        duration: 3000,
+      });
     }
   };
 
@@ -411,83 +456,26 @@ const FormsList: React.FC<FormsListProps> = ({
         case 'Move to Trash':
           await dispatch(bulkTrashFormsAsync(selectedForms) as any).unwrap();
           toast.success(`${selectedForms.length} forms moved to Trash`);
-          // Trigger refetch to remove from current view
           triggerRefetch();
           break;
 
         case 'Archive':
           await dispatch(bulkArchiveFormsAsync(selectedForms) as any).unwrap();
           toast.success(`${selectedForms.length} forms archived`);
-          // Trigger refetch to remove from current view
           triggerRefetch();
           break;
 
         case 'Restore':
-          // Handle bulk restore for trashed/archived forms
           for (const formId of selectedForms) {
             await dispatch(restoreFormAsync(formId) as any).unwrap();
           }
           toast.success(`${selectedForms.length} forms restored`);
-          // Trigger refetch to remove from trash/archive view
           triggerRefetch();
           break;
 
         case 'Delete Permanently':
-          // Calculate total submissions across selected forms
-          const totalSubmissions = selectedForms.reduce((total, formId) => {
-            const form = forms.find(f => f.id === formId);
-            return total + (form?.submissions || 0);
-          }, 0);
-
-          const bulkConfirmMessage =
-            totalSubmissions > 0
-              ? `⚠️ BULK PERMANENT DELETION WARNING ⚠️\n\nThis will permanently delete:\n• ${
-                  selectedForms.length
-                } forms\n• ${totalSubmissions} total submission${
-                  totalSubmissions === 1 ? '' : 's'
-                }\n• All uploaded files and attachments\n\nThis action cannot be undone. Are you sure you want to continue?`
-              : `This will permanently delete ${selectedForms.length} forms. This action cannot be undone.\n\nAre you sure you want to continue?`;
-
-          if (window.confirm(bulkConfirmMessage)) {
-            console.log(
-              `🗑️ User confirmed bulk deletion of ${selectedForms.length} forms with ${totalSubmissions} total submissions`
-            );
-
-            const loadingToast = toast.loading(
-              `Deleting ${selectedForms.length} forms and ${totalSubmissions} submissions...`
-            );
-
-            // Handle bulk permanent delete for trashed forms
-            let successCount = 0;
-            let failCount = 0;
-
-            for (const formId of selectedForms) {
-              try {
-                await dispatch(deleteFormAsync(formId) as any).unwrap();
-                successCount++;
-              } catch (error) {
-                console.error(`Failed to delete form ${formId}:`, error);
-                failCount++;
-              }
-            }
-
-            toast.dismiss(loadingToast);
-
-            if (successCount === selectedForms.length) {
-              toast.success(
-                `Successfully deleted ${successCount} forms and their submissions`
-              );
-            } else if (successCount > 0) {
-              toast.warning(
-                `Deleted ${successCount} forms, but ${failCount} failed`
-              );
-            } else {
-              toast.error(`Failed to delete all ${selectedForms.length} forms`);
-            }
-
-            triggerRefetch();
-          }
-          break;
+          await handleBulkDeleteForms();
+          return;
 
         case 'Label as':
         case 'Manage Labels':
@@ -501,8 +489,11 @@ const FormsList: React.FC<FormsListProps> = ({
       }
 
       setSelectedForms([]);
-    } catch {
-      toast.error(`Failed to ${action.toLowerCase()} forms`);
+    } catch (error: any) {
+      toast.error(`Bulk ${action.toLowerCase()} failed`, {
+        description: error.message || 'An unexpected error occurred',
+        duration: 3000,
+      });
     }
   };
 
@@ -539,25 +530,21 @@ const FormsList: React.FC<FormsListProps> = ({
       setLabelOperations({});
       setShowLabelDialog(false);
 
-      // Trigger refetch to update form labels display
       triggerRefetch();
     } catch {
       toast.error('Failed to update labels');
     }
   };
 
-  // Select all visible forms
   const handleSelectAll = () => {
     const allIds = forms.map(form => form.id);
     setSelectedForms(allIds);
   };
 
-  // Deselect all forms
   const handleDeselectAll = () => {
     setSelectedForms([]);
   };
 
-  // Helper functions for label management
   const allFormsHaveLabel = (labelId: string) => {
     return selectedForms.every(formId => {
       const form = forms.find(f => f.id === formId);
@@ -579,7 +566,6 @@ const FormsList: React.FC<FormsListProps> = ({
     }));
   };
 
-  // Format date for display
   const getFormattedDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -589,7 +575,6 @@ const FormsList: React.FC<FormsListProps> = ({
     });
   };
 
-  // Get appropriate bulk action buttons based on section
   const getBulkActionButtons = () => {
     if (isTrashSection) {
       return (
@@ -603,6 +588,7 @@ const FormsList: React.FC<FormsListProps> = ({
             <RotateCcw className='mr-2 h-4 w-4' />
             Restore
           </Button>
+
           <Button
             variant='outline'
             size='sm'
@@ -641,7 +627,6 @@ const FormsList: React.FC<FormsListProps> = ({
       );
     }
 
-    // Normal sections (All, Favorites, Drafts, Labels)
     return (
       <>
         <Button
@@ -693,7 +678,34 @@ const FormsList: React.FC<FormsListProps> = ({
 
   return (
     <div className='space-y-2'>
-      {/* Selection Actions Bar - shown when forms are selected */}
+      {/* Show deletion progress if active */}
+      {isDeleting && progress && (
+        <div className='bg-blue-50 border border-blue-200 rounded-md p-3 mb-4'>
+          <div className='flex items-center justify-between'>
+            <span className='text-sm font-medium text-blue-900'>
+              Deleting forms... ({progress.completed + (progress.failed || 0)}/
+              {progress.total})
+            </span>
+            <div className='text-xs text-blue-700'>
+              {progress.current && `Current: ${progress.current}`}
+            </div>
+          </div>
+          <div className='mt-2 bg-blue-200 rounded-full h-2'>
+            <div
+              className='bg-blue-600 h-2 rounded-full transition-all duration-300'
+              style={{
+                width: `${
+                  ((progress.completed + (progress.failed || 0)) /
+                    progress.total) *
+                  100
+                }%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Selection Actions Bar */}
       {selectedForms.length > 0 && (
         <div className='flex items-center justify-between p-3 bg-[#EDF8FF] border border-blue-300 rounded-md mb-2'>
           <div className='flex items-center'>
@@ -733,7 +745,7 @@ const FormsList: React.FC<FormsListProps> = ({
       {/* Forms List */}
       {forms.length === 0 ? (
         <div className='text-center py-10'>
-          <p className='text-gray-500'>No forms found in this section.</p>
+          <span className='text-gray-500'>No forms found in this section.</span>
         </div>
       ) : (
         forms.map(form => (
@@ -788,10 +800,11 @@ const FormsList: React.FC<FormsListProps> = ({
                     onClick={e => e.stopPropagation()}
                   />
                 ) : (
-                  <h3 className='font-medium text-sm truncate'>{form.name}</h3>
+                  <div className='font-medium text-sm truncate'>
+                    {form.name}
+                  </div>
                 )}
                 <div className='text-xs text-gray-500 truncate flex items-center gap-1'>
-                  {/*  NEW: Make submissions count clickable */}
                   <button
                     onClick={e => handleSubmissionsClick(e, form.id)}
                     className='text-[#2E66C3] hover:text-blue-800 hover:underline font-medium transition-colors inline-flex items-center gap-1 cursor-pointer'
@@ -865,7 +878,6 @@ const FormsList: React.FC<FormsListProps> = ({
                       Form Actions
                     </DropdownMenuLabel>
 
-                    {/* Always show Edit and Preview */}
                     <DropdownMenuItem
                       onClick={e => {
                         e.stopPropagation();
@@ -898,15 +910,27 @@ const FormsList: React.FC<FormsListProps> = ({
                           <RotateCcw className='mr-2 h-4 w-4' />
                           <span>Restore</span>
                         </DropdownMenuItem>
+
                         <DropdownMenuItem
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleFormAction('Delete Permanently', form.id);
-                          }}
-                          className='text-red-400 focus:text-red-400'
+                          onClick={() =>
+                            handleFormAction('Delete Permanently', form.id)
+                          }
+                          disabled={isDeleting}
+                          className={`text-red-600 border-gray-300 hover:bg-red-50 ${
+                            isDeleting ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
-                          <Trash2 className='mr-2 h-4 w-4' />
-                          <span>Delete Permanently</span>
+                          {isDeleting ? (
+                            <>
+                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className='mr-2 h-4 w-4' />
+                              Delete Permanently
+                            </>
+                          )}
                         </DropdownMenuItem>
                       </>
                     ) : isArchiveSection ? (
@@ -1025,22 +1049,19 @@ const FormsList: React.FC<FormsListProps> = ({
           </DialogHeader>
           <div className='grid gap-4 py-4'>
             {labels.length === 0 ? (
-              <p className='text-center text-gray-500'>
+              <div className='text-center text-gray-500'>
                 No labels available. Create a label first.
-              </p>
+              </div>
             ) : (
               <div className='grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2'>
                 {labels.map(label => {
-                  // Determine if all or some forms have this label
                   const allHaveLabel = allFormsHaveLabel(label.id);
                   const someHaveLabel = anyFormsHaveLabel(label.id);
 
-                  // Determine checkbox state based on current operations or existing labels
                   const isChecked =
                     labelOperations[label.id] === 'add' ||
                     (labelOperations[label.id] === undefined && allHaveLabel);
 
-                  // Show mixed state when some forms have the label but not all
                   const showMixedState =
                     labelOperations[label.id] === undefined &&
                     someHaveLabel &&
@@ -1135,6 +1156,117 @@ const FormsList: React.FC<FormsListProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Custom Deletion Confirmation Modal -  VERSION */}
+      <AlertDialog
+        open={showDeleteConfirmModal}
+        onOpenChange={setShowDeleteConfirmModal}
+      >
+        <AlertDialogContent className='max-w-2xl bg-white text-gray-900'>
+          <AlertDialogHeader>
+            <AlertDialogTitle className='text-red-600 font-bold flex items-center gap-2 text-xl'>
+              <AlertTriangle className='w-6 h-6' />
+              Permanent Deletion Warning
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+
+          {/* : Use a separate container instead of AlertDialogDescription to avoid nesting issues */}
+          <div className='text-gray-700 space-y-4 px-6'>
+            <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+              <span className='font-semibold text-red-800 mb-3 flex items-center gap-2'>
+                <AlertTriangle className='w-4 h-4' />
+                This will permanently delete:
+              </span>
+
+              {/* Impact Summary */}
+              <div className='bg-yellow-50 border border-yellow-200 rounded p-3'>
+                <span className='font-medium text-yellow-800 mb-2 flex items-center gap-1'>
+                  📊 Deletion Impact:
+                </span>
+                <div className='text-sm text-yellow-700 space-y-1 mt-2'>
+                  <span className='block'>
+                    • {itemsToDelete.length} form
+                    {itemsToDelete.length > 1 ? 's' : ''}
+                  </span>
+                  <span className='block'>
+                    •{' '}
+                    {itemsToDelete.reduce(
+                      (sum, item) => sum + item.submissions,
+                      0
+                    )}{' '}
+                    total submission
+                    {itemsToDelete.reduce(
+                      (sum, item) => sum + item.submissions,
+                      0
+                    ) !== 1
+                      ? 's'
+                      : ''}
+                  </span>
+                  <span className='block'>
+                    • {itemsToDelete.reduce((sum, item) => sum + item.files, 0)}{' '}
+                    estimated file
+                    {itemsToDelete.reduce(
+                      (sum, item) => sum + item.files,
+                      0
+                    ) !== 1
+                      ? 's'
+                      : ''}{' '}
+                    from cloud storage
+                  </span>
+                  <span className='block'>• All form logos and assets</span>
+                </div>
+              </div>
+            </div>
+
+            <div className='bg-gray-100 border-l-4 border-red-500 p-4'>
+              <span className='font-bold text-red-700 flex items-center gap-2'>
+                <XCircle className='w-5 h-5' />
+                THIS ACTION CANNOT BE UNDONE
+              </span>
+              <span className='text-gray-700 mt-2 block'>
+                All data will be permanently removed from our servers and cannot
+                be recovered.
+              </span>
+            </div>
+
+            <span className='text-center font-medium text-gray-900 block'>
+              Are you sure you want to permanently delete{' '}
+              {itemsToDelete.length > 1 ? 'these forms' : 'this form'}?
+            </span>
+          </div>
+
+          <AlertDialogFooter className='gap-3'>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteConfirmModal(false);
+                setItemsToDelete([]);
+              }}
+              disabled={isDeletingCustom}
+              className='border-gray-300 hover:bg-gray-50 px-6'
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={performDeletion}
+              disabled={isDeletingCustom}
+              className='bg-red-600 hover:bg-red-700 text-white px-6'
+            >
+              {isDeletingCustom ? (
+                <span className='flex items-center gap-2'>
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                  Deleting...
+                </span>
+              ) : (
+                <span className='flex items-center gap-2'>
+                  <Trash2 className='w-4 h-4' />
+                  Delete Permanently
+                </span>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -66,7 +66,7 @@ export default function DashboardPage() {
   const [formDescription, setFormDescription] = useState('');
   const [isCreatingForm, setIsCreatingForm] = useState(false);
 
-  // FIXED: Single function to fetch forms for current section
+  // : Single function to fetch forms for current section
   const fetchFormsForCurrentSection = useCallback(() => {
     let filters: any = {};
 

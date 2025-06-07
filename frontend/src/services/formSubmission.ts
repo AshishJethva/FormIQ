@@ -20,6 +20,14 @@ export interface SubmissionResponse {
   };
   message: string;
 }
+export interface FormSubmissionResult {
+  success: boolean;
+  data: {
+    submissionId: string;
+    message: string;
+    fileCount?: number;
+  };
+}
 
 /**
  * Enhanced error messages for better user experience
@@ -270,60 +278,6 @@ function cleanFileData(fileData?: FileData): FileData {
 }
 
 /**
- * Validate submission payload
- */
-function validatePayload(payload: any): { isValid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  // Check basic structure
-  if (!payload || typeof payload !== 'object') {
-    errors.push('Invalid payload structure');
-    return { isValid: false, errors };
-  }
-
-  // Validate data field
-  if (payload.data && typeof payload.data !== 'object') {
-    errors.push('Invalid data field type');
-  }
-
-  // Validate files field
-  if (payload.files && typeof payload.files !== 'object') {
-    errors.push('Invalid files field type');
-  }
-
-  // Validate file structure
-  if (payload.files) {
-    for (const [fieldId, files] of Object.entries(payload.files)) {
-      if (Array.isArray(files)) {
-        for (const file of files) {
-          if (!isValidFileObject(file)) {
-            errors.push(`Invalid file object in field ${fieldId}`);
-          }
-        }
-      } else if (!isValidFileObject(files)) {
-        errors.push(`Invalid file object in field ${fieldId}`);
-      }
-    }
-  }
-
-  return { isValid: errors.length === 0, errors };
-}
-
-/**
- * Check if file object is valid
- */
-function isValidFileObject(file: any): boolean {
-  return (
-    file &&
-    typeof file === 'object' &&
-    typeof file.url === 'string' &&
-    typeof file.publicId === 'string' &&
-    typeof file.originalName === 'string' &&
-    typeof file.size === 'number'
-  );
-}
-
-/**
  * Get public form data with enhanced error handling
  */
 export const getPublicForm = async (formId: string) => {
@@ -494,245 +448,161 @@ export const validateFormBeforeSubmission = (
 };
 
 /**
- * Submit form with data and files - Enhanced with better error handling
- * @param formId - Form ID
- * @param formData - Form field data
- * @param fileData - File upload data (optional)
- * @param formTitle - Form title for better error messages (optional)
- * @returns Promise with submission response
+ * Submit form with both regular data and file data
  */
 export const submitForm = async (
   formId: string,
-  formData: SubmitFormData,
-  fileData?: FileData,
-  formTitle?: string
-): Promise<SubmissionResponse> => {
+  formData: Record<string, any>,
+  fileData?: Record<string, any>
+): Promise<FormSubmissionResult> => {
   try {
-    console.log('🚀 ENHANCED FORM SUBMISSION DEBUG:', {
+    console.log('🚀 Submitting form with enhanced data:', {
       formId,
-      formTitle,
       dataKeys: Object.keys(formData || {}),
       fileKeys: Object.keys(fileData || {}),
-      hasFiles: !!fileData && Object.keys(fileData).length > 0,
-      formDataSample: Object.fromEntries(
-        Object.entries(formData || {})
-          .slice(0, 3)
-          .map(([key, value]) => [
-            key,
-            typeof value === 'string' && value.length > 50
-              ? `${value.substring(0, 50)}...`
-              : value,
-          ])
-      ),
-      fileSummary: fileData
-        ? Object.fromEntries(
-            Object.entries(fileData).map(([key, value]) => [
-              key,
-              Array.isArray(value)
-                ? `${value.length} files`
-                : value
-                ? '1 file'
-                : 'no file',
-            ])
-          )
-        : {},
-    });
-
-    // Data validation and cleaning
-    const cleanedFormData = cleanFormData(formData);
-    const cleanedFileData = cleanFileData(fileData);
-
-    console.log('🧹 Data cleaning results:', {
-      originalDataKeys: Object.keys(formData || {}),
-      cleanedDataKeys: Object.keys(cleanedFormData),
-      originalFileKeys: Object.keys(fileData || {}),
-      cleanedFileKeys: Object.keys(cleanedFileData),
+      totalFiles: fileData
+        ? Object.values(fileData).reduce((total: number, files: any) => {
+            if (Array.isArray(files)) return total + files.length;
+            return total + (files ? 1 : 0);
+          }, 0)
+        : 0,
     });
 
     // Prepare submission payload
-    const payload = {
-      data: cleanedFormData,
-      files: cleanedFileData,
+    const submissionPayload: any = {
+      data: formData || {},
     };
 
-    console.log('📤 Final submission payload:', {
-      payloadSize: JSON.stringify(payload).length,
-      dataFieldCount: Object.keys(payload.data).length,
-      fileFieldCount: Object.keys(payload.files).length,
-      payloadStructure: {
-        data: Object.keys(payload.data),
-        files: Object.keys(payload.files),
-      },
-    });
-
-    // Validate payload structure
-    const validationResult = validatePayload(payload);
-    if (!validationResult.isValid) {
-      // console.error('❌ Payload validation failed:', validationResult.errors);
-      throw new Error(
-        `Payload validation failed: ${validationResult.errors.join(', ')}`
-      );
+    // Add file data if present
+    if (fileData && Object.keys(fileData).length > 0) {
+      submissionPayload.files = fileData;
     }
 
-    console.log(' Payload validation passed');
-
-    // Make the API request with enhanced configuration
     const response = await axios.post(
       `${apiConfig.url}/submissions/${formId}/submit`,
-      payload,
+      submissionPayload,
       {
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json',
         },
-        timeout: 60000, // 60 second timeout
-        validateStatus: status => {
-          // Don't throw for 4xx/5xx status codes, let us handle them
-          return status < 600;
-        },
+        timeout: 30000, // 30 second timeout
       }
     );
 
-    console.log('📡 API Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      dataKeys: Object.keys(response.data || {}),
-    });
-
-    if (response.status >= 400) {
-      // Create enhanced error with structured message for better toast handling
-      const errorInfo = getSubmissionErrorMessage(
-        response.status,
-        response.data?.message || response.statusText,
-        formTitle
-      );
-
-      const error = new Error(errorInfo.description) as any;
-      error.title = errorInfo.title;
-      error.type = errorInfo.type;
-      error.status = response.status;
-
-      throw error;
-    }
-
-    console.log(' Form submission successful:', {
-      submissionId: response.data.data?.submissionId,
-      fileCount: response.data.data?.fileCount || 0,
-      message: response.data.message,
-    });
-
-    return response.data;
+    console.log('Form submission successful:', response.data);
+    return {
+      success: true,
+      data: {
+        submissionId: response.data.data?.id || response.data.submissionId,
+        message: response.data.message || 'Form submitted successfully',
+        fileCount: fileData
+          ? Object.values(fileData).reduce((total: number, files: any) => {
+              if (Array.isArray(files)) return total + files.length;
+              return total + (files ? 1 : 0);
+            }, 0)
+          : undefined,
+      },
+    };
   } catch (error: any) {
-    console.log('❌ DETAILED FORM SUBMISSION ERROR:', {
-      errorType: error.constructor.name,
-      message: error.message,
-      title: error.title,
-      type: error.type,
-      status: error.status,
-      stack: error.stack?.split('\n').slice(0, 5),
-      formId,
-      formTitle,
-      formDataKeys: Object.keys(formData || {}),
-      fileDataKeys: Object.keys(fileData || {}),
-    });
+    // Enhanced error handling
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || error.message;
 
-    // Enhanced error handling with structured error info
-    if (axios.isAxiosError(error)) {
-      console.log('🔍 Axios error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        responseData: error.response?.data,
-        requestConfig: {
-          url: error.config?.url,
-          method: error.config?.method,
-          headers: error.config?.headers,
-        },
-        code: error.code,
-      });
+      switch (status) {
+        case 400:
+          if (message.includes('Validation failed')) {
+            throw new Error(
+              `Please check your form inputs: ${message.replace(
+                'Validation failed: ',
+                ''
+              )}`
+            );
+          } else if (message.includes('Form is not published')) {
+            throw new Error(
+              'This form is no longer available for submissions.'
+            );
+          } else if (message.includes('Form has no fields')) {
+            throw new Error('This form is not properly configured.');
+          }
+          throw new Error(message);
 
-      const status = error.response?.status || 0;
-      const responseMessage = error.response?.data?.message || error.message;
+        case 403:
+          if (message.includes('disabled')) {
+            throw new Error(
+              'This form is currently disabled and not accepting submissions.'
+            );
+          }
+          throw new Error('This form is not available for submissions.');
 
-      const errorInfo = getSubmissionErrorMessage(
-        status,
-        responseMessage,
-        formTitle
-      );
+        case 404:
+          throw new Error('Form not found. Please check the form link.');
 
-      const enhancedError = new Error(errorInfo.description) as any;
-      enhancedError.title = errorInfo.title;
-      enhancedError.type = errorInfo.type;
-      enhancedError.status = status;
+        case 413:
+          throw new Error(
+            'File(s) too large. Please reduce file sizes and try again.'
+          );
 
-      throw enhancedError;
-    } else if (error.request) {
-      // Network error - no response received
-      const networkError = new Error(
-        'Please check your internet connection and try again.'
-      ) as any;
-      networkError.title = 'Network Error';
-      networkError.type = 'error';
-      throw networkError;
-    } else if (error.code === 'ECONNABORTED') {
-      // Timeout error
-      const timeoutError = new Error(
-        'The request took too long. Please try again.'
-      ) as any;
-      timeoutError.title = 'Request Timeout';
-      timeoutError.type = 'warning';
-      throw timeoutError;
-    } else {
-      // Re-throw enhanced errors or create new one
-      if (error.title && error.type) {
-        throw error;
+        case 429:
+          throw new Error(
+            'You have already submitted this form recently. Please try again later.'
+          );
+
+        case 500:
+          throw new Error('Server error. Please try again later.');
+
+        default:
+          throw new Error(
+            message || 'An error occurred while submitting the form.'
+          );
       }
-
-      const genericError = new Error(
-        'An unexpected error occurred. Please try again.'
-      ) as any;
-      genericError.title = 'Unexpected Error';
-      genericError.type = 'error';
-      throw genericError;
+    } else if (error.request) {
+      throw new Error(
+        'Network error. Please check your connection and try again.'
+      );
+    } else {
+      throw new Error('An unexpected error occurred. Please try again.');
     }
   }
 };
 
-// Rest of your existing functions remain the same...
+/**
+ * Prepare file data for submission by converting it to the correct format
+ */
 export const prepareFileDataForSubmission = (
-  files: Record<string, any>
-): FileData => {
-  const fileData: FileData = {};
+  fileData: Record<string, any>
+): Record<string, any> => {
+  const preparedData: Record<string, any> = {};
 
-  Object.entries(files).forEach(([fieldId, fieldFiles]) => {
-    if (fieldFiles) {
-      if (Array.isArray(fieldFiles)) {
-        // Multiple files for one field
-        fileData[fieldId] = fieldFiles.map(file => ({
-          originalName: file.originalName,
-          fileName: file.fileName,
-          url: file.url,
-          publicId: file.publicId,
-          size: file.size,
-          mimeType: file.mimeType,
-          uploadedAt: file.uploadedAt,
-        }));
-      } else {
-        // Single file for one field
-        fileData[fieldId] = {
-          originalName: fieldFiles.originalName,
-          fileName: fieldFiles.fileName,
-          url: fieldFiles.url,
-          publicId: fieldFiles.publicId,
-          size: fieldFiles.size,
-          mimeType: fieldFiles.mimeType,
-          uploadedAt: fieldFiles.uploadedAt,
-        };
-      }
+  Object.entries(fileData).forEach(([fieldId, files]) => {
+    if (!files) return;
+
+    if (Array.isArray(files)) {
+      // Multiple files - keep as array
+      preparedData[fieldId] = files.map(file => ({
+        originalName: file.originalName,
+        fileName: file.fileName,
+        url: file.url,
+        publicId: file.publicId,
+        size: file.size,
+        mimeType: file.mimeType,
+        uploadedAt: file.uploadedAt,
+      }));
+    } else {
+      // Single file - convert to object
+      preparedData[fieldId] = {
+        originalName: files.originalName,
+        fileName: files.fileName,
+        url: files.url,
+        publicId: files.publicId,
+        size: files.size,
+        mimeType: files.mimeType,
+        uploadedAt: files.uploadedAt,
+      };
     }
   });
 
-  return fileData;
+  return preparedData;
 };
 
 const formSubmissionService = {

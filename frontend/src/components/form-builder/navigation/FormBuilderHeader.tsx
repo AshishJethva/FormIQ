@@ -57,7 +57,7 @@ export default function FormBuilderHeader({
 
   const { user } = useSelector((state: RootState) => state.user as UserState);
 
-  //  FIXED: Update titleValue when title prop changes
+  //  : Update titleValue when title prop changes
   useEffect(() => {
     setTitleValue(title);
     setTitleError(null); // Clear any previous errors when title changes
@@ -102,7 +102,7 @@ export default function FormBuilderHeader({
     } catch (error: any) {
       let errorMessage = 'Failed to update title';
 
-      //  FIXED: Handle specific error cases
+      //  : Handle specific error cases
       if (error.response?.status === 400) {
         errorMessage =
           error.response.data?.message ||

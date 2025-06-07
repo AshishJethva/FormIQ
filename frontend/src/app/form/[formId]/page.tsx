@@ -207,14 +207,14 @@ const handleFormSubmissionWithToasts = async (
   formTitle?: string
 ) => {
   try {
-    const result = await submitForm(formId, formData, fileData, formTitle);
+    const result = await submitForm(formId, formData, fileData);
 
     // Beautiful success toast
     toast.success('Submission Successful! 🎉', {
       description: formTitle
         ? `Thank you for submitting "${formTitle}". We'll be in touch soon.`
         : 'Your submission has been received successfully. Thank you!',
-      duration: 5000,
+      duration: 1000,
       style: {
         background: '#D1FAE5',
         borderColor: '#10B981',
@@ -224,8 +224,6 @@ const handleFormSubmissionWithToasts = async (
 
     return result;
   } catch (error: any) {
-    console.error('Form submission error:', error);
-
     if (error.type === 'warning') {
       // This will show the "already submitted" warning
       toast.warning(error.title || 'Warning', {

@@ -49,7 +49,6 @@ export default function FileUploadField({
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(
     null
   );
@@ -65,13 +64,105 @@ export default function FileUploadField({
     }
   }, [value]);
 
+  const validateFile = (file: File): { isValid: boolean; error?: string } => {
+    console.log('🔍 Validating file:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      accept,
+      fieldType,
+    });
+
+    // Check file size first
+    const maxSize = fieldType === 'image' ? 10 * 1024 * 1024 : 25 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const maxSizeMB = fieldType === 'image' ? '10MB' : '25MB';
+      return {
+        isValid: false,
+        error: `File "${file.name}" exceeds ${maxSizeMB} limit`,
+      };
+    }
+
+    // If it's an image field, enforce image type
+    if (fieldType === 'image' && !file.type.startsWith('image/')) {
+      return {
+        isValid: false,
+        error: `Only image files are allowed`,
+      };
+    }
+
+    // Handle accept attribute
+    if (accept && accept !== '*/*' && accept !== '*' && accept.trim() !== '') {
+      const isValid = validateAcceptAttribute(file, accept);
+      if (!isValid) {
+        return {
+          isValid: false,
+          error: `File type not accepted. Allowed: ${accept}`,
+        };
+      }
+    }
+
+    // Check for dangerous file types
+    const dangerousExtensions = [
+      '.exe',
+      '.bat',
+      '.cmd',
+      '.scr',
+      '.com',
+      '.vbs',
+    ];
+    const hasDangerousExtension = dangerousExtensions.some(ext =>
+      file.name.toLowerCase().endsWith(ext)
+    );
+
+    if (hasDangerousExtension) {
+      return {
+        isValid: false,
+        error: 'File type not allowed for security reasons',
+      };
+    }
+
+    console.log('✅ File validation passed');
+    return { isValid: true };
+  };
+
+  const validateAcceptAttribute = (file: File, acceptAttr: string): boolean => {
+    const allowedTypes = acceptAttr
+      .split(',')
+      .map(type => type.trim().toLowerCase());
+
+    for (const type of allowedTypes) {
+      // Handle wildcards like "image/*"
+      if (type.endsWith('/*')) {
+        const baseType = type.slice(0, -2);
+        if (file.type.toLowerCase().startsWith(baseType + '/')) {
+          return true;
+        }
+      }
+      // Handle extensions like ".pdf"
+      else if (type.startsWith('.')) {
+        if (file.name.toLowerCase().endsWith(type)) {
+          return true;
+        }
+      }
+      // Handle exact MIME types like "application/pdf"
+      else if (file.type.toLowerCase() === type) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // Validate file count
+    console.log('📁 Files selected:', files.length);
+
+    // Check file count limits
     if (!multiple && files.length > 1) {
       toast.error('Only one file is allowed');
       return;
@@ -85,43 +176,26 @@ export default function FileUploadField({
     setUploading(true);
 
     try {
-      const uploadPromises = Array.from(files).map(file => {
-        // Validate file size
-        const maxSize =
-          fieldType === 'image' ? 10 * 1024 * 1024 : 25 * 1024 * 1024;
-        if (file.size > maxSize) {
-          throw new Error(
-            `File "${file.name}" is too large. Maximum size is ${
-              fieldType === 'image' ? '10MB' : '25MB'
-            }`
-          );
+      const validFiles: File[] = [];
+
+      // Validate each file
+      for (const file of Array.from(files)) {
+        const validation = validateFile(file);
+        if (!validation.isValid) {
+          toast.error(validation.error);
+          continue;
         }
+        validFiles.push(file);
+      }
 
-        // Validate file type for images
-        if (fieldType === 'image' && !file.type.startsWith('image/')) {
-          throw new Error(`File "${file.name}" is not a valid image`);
-        }
+      if (validFiles.length === 0) {
+        setUploading(false);
+        return;
+      }
 
-        // Validate against accept attribute
-        if (accept && accept !== '*/*') {
-          const allowedTypes = accept.split(',').map(type => type.trim());
-          const isAllowed = allowedTypes.some(type => {
-            if (type.startsWith('.')) {
-              return file.name.toLowerCase().endsWith(type.toLowerCase());
-            } else if (type.endsWith('/*')) {
-              const baseType = type.slice(0, -2);
-              return file.type.startsWith(baseType);
-            } else {
-              return file.type === type;
-            }
-          });
-
-          if (!isAllowed) {
-            throw new Error(`File "${file.name}" is not an allowed file type`);
-          }
-        }
-
-        // Upload the file
+      // Upload valid files
+      const uploadPromises = validFiles.map(file => {
+        console.log(`📤 Uploading: ${file.name}`);
         return fieldType === 'image'
           ? uploadFormImage(file, fieldId, formId)
           : uploadFormFile(file, fieldId, formId);
@@ -129,7 +203,7 @@ export default function FileUploadField({
 
       const results = await Promise.all(uploadPromises);
 
-      // Update uploaded files
+      // Update state
       const newFiles = [...uploadedFiles, ...results];
       setUploadedFiles(newFiles);
 
@@ -146,11 +220,11 @@ export default function FileUploadField({
         } uploaded successfully`
       );
     } catch (error: any) {
-      console.error('File upload error:', error);
-      toast.error(error.message || 'Failed to upload file');
+      console.error('❌ Upload failed:', error);
+      toast.error(error.message || 'Upload failed');
     } finally {
       setUploading(false);
-      // Reset file input
+      // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -172,26 +246,18 @@ export default function FileUploadField({
       }
 
       toast.success('File removed');
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to remove file');
-      throw error; // Re-throw for FileManager error handling
     }
   };
 
   const handleDownloadFile = async (file: UploadedFile) => {
-    // Prevent duplicate downloads
-    if (downloadInProgress.current.has(file.publicId)) {
-      console.log('Download already in progress for:', file.originalName);
-      return;
-    }
+    if (downloadInProgress.current.has(file.publicId)) return;
 
     try {
       downloadInProgress.current.add(file.publicId);
       setDownloadingFileId(file.publicId);
 
-      console.log('Starting download for:', file.originalName);
-
-      // SINGLE download method - direct link
       const a = document.createElement('a');
       a.href = file.url;
       a.download = file.originalName || 'download';
@@ -202,12 +268,8 @@ export default function FileUploadField({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (error: any) {
-      console.error('Download failed:', error);
-      toast.error('Download failed', {
-        description: `Failed to download ${file.originalName}`,
-        duration: 5000,
-      });
+    } catch {
+      toast.error(`Download failed: ${file.originalName}`);
     } finally {
       downloadInProgress.current.delete(file.publicId);
       setDownloadingFileId(null);
@@ -248,7 +310,7 @@ export default function FileUploadField({
               <p className='text-gray-400 text-xs'>
                 {fieldType === 'image'
                   ? 'PNG, JPG, GIF up to 10MB'
-                  : accept
+                  : accept && accept !== '*/*' && accept !== '*'
                   ? `Accepted: ${accept}`
                   : 'Any file type up to 25MB'}
               </p>
@@ -257,12 +319,12 @@ export default function FileUploadField({
         </div>
       )}
 
-      {/* Hidden File Input */}
+      {/* Hidden File Input - : Better accept handling */}
       <input
         ref={fileInputRef}
         type='file'
         multiple={multiple}
-        accept={accept}
+        accept={accept === 'undefined' || !accept ? undefined : accept}
         onChange={handleFileSelect}
         className='hidden'
         disabled={uploading || readOnly}

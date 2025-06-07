@@ -88,7 +88,7 @@ export default function PreviewForm({
           <FileUploadField
             key={field.id}
             fieldId={field.id}
-            formId={form.id}
+            formId={form.id || 'preview'}
             label={field.label}
             required={field.required}
             helpText={field.helpText}
@@ -107,7 +107,7 @@ export default function PreviewForm({
           <FileUploadField
             key={field.id}
             fieldId={field.id}
-            formId={form.id}
+            formId={form.id || 'preview'}
             label={field.label}
             required={field.required}
             helpText={field.helpText}

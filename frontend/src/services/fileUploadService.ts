@@ -1,4 +1,4 @@
-// src/services/fileUploadService.ts - Enhanced with File Management
+// src/services/fileUploadService.ts - Frontend
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
@@ -10,6 +10,20 @@ export interface FileUploadResult {
   size: number;
   mimeType: string;
   uploadedAt: string;
+}
+
+export interface FileDeleteResult {
+  success: boolean;
+  publicId: string;
+  error?: string;
+}
+
+export interface BulkDeleteProgress {
+  total: number;
+  processed: number;
+  successful: number;
+  failed: number;
+  currentFile?: string;
 }
 
 // Create axios instance with base URL and default headers
@@ -45,6 +59,11 @@ export const uploadFormFile = async (
   formId: string
 ): Promise<FileUploadResult> => {
   try {
+    // Validate file size (25MB max)
+    if (file.size > 25 * 1024 * 1024) {
+      throw new Error('File size must be less than 25MB.');
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -56,24 +75,26 @@ export const uploadFormFile = async (
       formId,
     });
 
-    const response = await axios.post(
-      `${apiConfig.url}/upload/form/${formId}/field/${fieldId}`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 60000, // 60 second timeout for large files
-        onUploadProgress: progressEvent => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            console.log(`Upload progress: ${percentCompleted}%`);
-          }
-        },
-      }
-    );
+    // Use different endpoint for preview mode
+    const endpoint =
+      formId === 'preview'
+        ? `${apiConfig.url}/upload/preview/field/${fieldId}`
+        : `${apiConfig.url}/upload/form/${formId}/field/${fieldId}`;
+
+    const response = await axios.post(endpoint, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 60000, // 60 second timeout for large files
+      onUploadProgress: progressEvent => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Upload progress: ${percentCompleted}%`);
+        }
+      },
+    });
 
     console.log(' File uploaded successfully:', response.data.data);
     return response.data.data;
@@ -131,24 +152,26 @@ export const uploadFormImage = async (
       formId,
     });
 
-    const response = await axios.post(
-      `${apiConfig.url}/upload/form/${formId}/field/${fieldId}/image`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 60000,
-        onUploadProgress: progressEvent => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            console.log(`Image upload progress: ${percentCompleted}%`);
-          }
-        },
-      }
-    );
+    // Use different endpoint for preview mode
+    const endpoint =
+      formId === 'preview'
+        ? `${apiConfig.url}/upload/preview/field/${fieldId}/image`
+        : `${apiConfig.url}/upload/form/${formId}/field/${fieldId}/image`;
+
+    const response = await axios.post(endpoint, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 60000,
+      onUploadProgress: progressEvent => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Image upload progress: ${percentCompleted}%`);
+        }
+      },
+    });
 
     console.log(' Image uploaded successfully:', response.data.data);
     return response.data.data;
@@ -223,7 +246,7 @@ export const uploadMultipleFiles = async (
     );
 
     console.log(
-      ' Multiple files uploaded successfully:',
+      'Multiple files uploaded successfully:',
       response.data.data.length
     );
     return response.data.data;
@@ -252,24 +275,14 @@ export const uploadMultipleFiles = async (
 };
 
 /**
- * Delete an uploaded file from cloud storage and database
- * @param publicId - Cloudinary public ID of the file
- * @param resourceType - Type of resource (image, video, raw)
- * @returns Promise with deletion result
+ * Delete a single file
  */
 export const deleteFormFile = async (
   publicId: string,
   resourceType: 'image' | 'video' | 'raw' = 'raw'
-): Promise<{ success: boolean; message: string }> => {
+): Promise<FileDeleteResult> => {
   try {
-    if (!publicId || publicId.trim() === '') {
-      throw new Error('Invalid file public ID');
-    }
-
-    console.log('🗑️ Deleting file from cloud storage:', {
-      publicId,
-      resourceType,
-    });
+    console.log('🗑️ Requesting file deletion via backend:', publicId);
 
     const response = await api.delete(
       `/upload/file/${encodeURIComponent(publicId)}`,
@@ -279,33 +292,20 @@ export const deleteFormFile = async (
       }
     );
 
-    console.log(' File deleted successfully from cloud storage');
-    return response.data;
+    if (response.data.success) {
+      console.log(' File deleted successfully via backend');
+      return { success: true, publicId };
+    } else {
+      throw new Error('Backend deletion failed');
+    }
   } catch (error: any) {
     console.error('❌ File deletion failed:', error);
-
-    if (error.response?.status === 404) {
-      console.warn(
-        '⚠️ File not found in cloud storage, may have been already deleted'
-      );
-      return {
-        success: true,
-        message: 'File not found (may have been already deleted)',
-      };
-    } else if (error.response?.status === 403) {
-      throw new Error(
-        'Access denied. You do not have permission to delete this file.'
-      );
-    } else if (error.response?.status === 400) {
-      throw new Error(
-        error.response.data?.message || 'Invalid file deletion request.'
-      );
-    }
-
-    throw new Error(
-      error.response?.data?.message ||
-        'Failed to delete file from cloud storage.'
-    );
+    return {
+      success: false,
+      publicId,
+      error:
+        error.response?.data?.message || error.message || 'Deletion failed',
+    };
   }
 };
 
@@ -416,24 +416,100 @@ export const deleteFileCompletely = async (
 };
 
 /**
- * Validate file before upload
+ * Enhanced bulk delete
+ */
+export const bulkDeleteFilesWithProgress = async (
+  files: Array<{ publicId: string; mimeType?: string; name?: string }>,
+  onProgress?: (progress: BulkDeleteProgress) => void,
+  batchSize: number = 10 // Smaller batches for API calls
+): Promise<{
+  successful: string[];
+  failed: Array<{ publicId: string; error: string }>;
+  total: number;
+}> => {
+  const result = {
+    successful: [] as string[],
+    failed: [] as Array<{ publicId: string; error: string }>,
+    total: files.length,
+  };
+
+  if (files.length === 0) return result;
+
+  console.log(`🗑️ Starting bulk deletion of ${files.length} files via backend`);
+
+  let processed = 0;
+
+  // Process in smaller batches to avoid overwhelming the backend
+  for (let i = 0; i < files.length; i += batchSize) {
+    const batch = files.slice(i, i + batchSize);
+
+    // Process batch in parallel with limited concurrency
+    const batchPromises = batch.map(async file => {
+      try {
+        const resourceType = file.mimeType?.startsWith('image/')
+          ? 'image'
+          : 'raw';
+        const deleteResult = await deleteFormFile(file.publicId, resourceType);
+
+        if (deleteResult.success) {
+          result.successful.push(file.publicId);
+        } else {
+          result.failed.push({
+            publicId: file.publicId,
+            error: deleteResult.error || 'Unknown error',
+          });
+        }
+      } catch (error: any) {
+        result.failed.push({
+          publicId: file.publicId,
+          error: error.message || 'Deletion failed',
+        });
+      }
+
+      processed++;
+      onProgress?.({
+        total: files.length,
+        processed,
+        successful: result.successful.length,
+        failed: result.failed.length,
+        currentFile: file.name,
+      });
+    });
+
+    // Wait for current batch to complete
+    await Promise.all(batchPromises);
+
+    // Rate limiting delay between batches
+    if (i + batchSize < files.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  console.log(
+    ` Bulk deletion completed: ${result.successful.length} successful, ${result.failed.length} failed`
+  );
+  return result;
+};
+
+/**
+ * : File validation with better MIME type and extension handling
  * @param file - File to validate
- * @param options - Validation options
+ * @param allowedTypes - Allowed MIME types or file extensions
+ * @param maxSize - Maximum file size in bytes
  * @returns Validation result
  */
 export const validateFile = (
   file: File,
-  options: {
-    maxSize?: number;
-    allowedTypes?: string[];
-    isImage?: boolean;
-  } = {}
+  allowedTypes: string[] = [],
+  maxSize: number = 25 * 1024 * 1024 // 25MB default
 ): { isValid: boolean; error?: string } => {
-  const {
-    maxSize = 25 * 1024 * 1024, // 25MB default
-    allowedTypes = [],
-    isImage = false,
-  } = options;
+  console.log('🔍 Validating file:', {
+    fileName: file.name,
+    mimeType: file.type,
+    size: file.size,
+    allowedTypes,
+    maxSize,
+  });
 
   // Check file size
   if (file.size > maxSize) {
@@ -444,36 +520,102 @@ export const validateFile = (
     };
   }
 
-  // Check if it's supposed to be an image
-  if (isImage && !file.type.startsWith('image/')) {
-    return {
-      isValid: false,
-      error: 'Please select a valid image file',
-    };
-  }
+  // If no allowedTypes specified, allow all files (but check for dangerous extensions)
+  if (allowedTypes.length === 0) {
+    const dangerousExtensions = [
+      '.exe',
+      '.bat',
+      '.cmd',
+      '.scr',
+      '.pif',
+      '.com',
+      '.vbs',
+      '.js',
+    ];
+    const hasUnsafeExtension = dangerousExtensions.some(ext =>
+      file.name.toLowerCase().endsWith(ext)
+    );
 
-  // Check allowed file types
-  if (allowedTypes.length > 0) {
-    const isTypeAllowed = allowedTypes.some(type => {
-      if (type.endsWith('/*')) {
-        // Handle wildcard types like 'image/*'
-        const baseType = type.slice(0, -2);
-        return file.type.startsWith(baseType);
-      } else if (type.startsWith('.')) {
-        // Handle file extensions like '.pdf'
-        return file.name.toLowerCase().endsWith(type.toLowerCase());
-      } else {
-        // Handle exact MIME types
-        return file.type === type;
-      }
-    });
-
-    if (!isTypeAllowed) {
+    if (hasUnsafeExtension) {
       return {
         isValid: false,
-        error: `File type ${file.type} is not allowed`,
+        error: 'File type not allowed for security reasons',
       };
     }
+
+    return { isValid: true };
+  }
+
+  // Check allowed file types with enhanced logic
+  const isTypeAllowed = allowedTypes.some(type => {
+    const normalizedType = type.trim().toLowerCase();
+
+    // Handle wildcard MIME types like 'image/*', 'video/*'
+    if (normalizedType.endsWith('/*')) {
+      const baseType = normalizedType.slice(0, -2);
+      const result = file.type.toLowerCase().startsWith(baseType);
+      if (result) {
+        console.log(` File matches wildcard type: ${normalizedType}`);
+      }
+      return result;
+    }
+
+    // Handle file extensions like '.pdf', '.doc', '.jpg'
+    if (normalizedType.startsWith('.')) {
+      const result = file.name.toLowerCase().endsWith(normalizedType);
+      if (result) {
+        console.log(` File matches extension: ${normalizedType}`);
+      }
+      return result;
+    }
+
+    // Handle exact MIME types like 'application/pdf', 'image/jpeg'
+    if (file.type.toLowerCase() === normalizedType) {
+      console.log(` File matches exact MIME type: ${normalizedType}`);
+      return true;
+    }
+
+    // Handle common aliases
+    if (normalizedType === 'pdf' && file.type === 'application/pdf') {
+      console.log(' File matches PDF alias');
+      return true;
+    }
+
+    if (
+      normalizedType === 'doc' &&
+      (file.type === 'application/msword' ||
+        file.type ===
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    ) {
+      console.log(' File matches DOC alias');
+      return true;
+    }
+
+    if (
+      normalizedType === 'excel' &&
+      (file.type === 'application/vnd.ms-excel' ||
+        file.type ===
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    ) {
+      console.log(' File matches Excel alias');
+      return true;
+    }
+
+    return false;
+  });
+
+  if (!isTypeAllowed) {
+    console.log('❌ File type not allowed:', {
+      fileType: file.type,
+      fileName: file.name,
+      allowedTypes,
+    });
+    return {
+      isValid: false,
+      error: `File type "${
+        file.type
+      }" is not allowed. Accepted types: ${allowedTypes.join(', ')}`,
+    };
   }
 
   // Check for potentially dangerous file extensions
@@ -498,6 +640,7 @@ export const validateFile = (
     };
   }
 
+  console.log(' File validation passed');
   return { isValid: true };
 };
 

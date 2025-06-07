@@ -22,7 +22,12 @@ export default function RootLayout({
       <body suppressHydrationWarning={true}>
         <Providers>
           <main>{children}</main>
-          <Toaster richColors position='top-right' closeButton={true} />
+          <Toaster
+            duration={1000}
+            richColors
+            position='top-right'
+            closeButton={true}
+          />
         </Providers>
       </body>
     </html>

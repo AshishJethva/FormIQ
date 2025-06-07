@@ -15,10 +15,10 @@ export class AIFormGeneratorService {
     this.model = this.genAI.getGenerativeModel({
       model: 'gemini-2.0-flash-exp',
       generationConfig: {
-        temperature: 0.3,
+        temperature: 0.2,
         topK: 40,
         topP: 0.8,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       },
     });
   }
@@ -78,7 +78,7 @@ export class AIFormGeneratorService {
 
       const generationTime = Date.now() - startTime;
 
-      console.log('✅ AI Generation Success:', {
+      console.log(' AI Generation Success:', {
         userId,
         generationTime,
         fieldCount: this.countFields(formConfig),
@@ -142,7 +142,7 @@ AVAILABLE FIELD TYPES (use exact values):
 - "fileUpload": General file upload
 - "time": Time picker
 - "fullName": Complete name collection
-- "email": Email address with validation  
+- "email": Email address with validation
 - "phone": Phone number collection
 - "address": Complete address with street, city, state
 - "datePicker": Date selection
@@ -174,7 +174,7 @@ SIGNATURE Field:
 
 FILL_BLANK Field:
 {
-  "id": "auto-generated", 
+  "id": "auto-generated",
   "type": "fillBlank",
   "label": "Agreement Statement",
   "labelAlignment": "LEFT",
@@ -190,7 +190,7 @@ FILL_BLANK Field:
 PRODUCT_LIST Field:
 {
   "id": "auto-generated",
-  "type": "productList", 
+  "type": "productList",
   "label": "Select Products",
   "labelAlignment": "LEFT",
   "required": false,
@@ -210,7 +210,7 @@ PRODUCT_LIST Field:
         "category": "packages"
       },
       {
-        "id": "prod2", 
+        "id": "prod2",
         "name": "Premium Package",
         "description": "Advanced features with priority support",
         "price": 79.99,

@@ -12,6 +12,21 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+export interface CloudinaryDeleteResult {
+  success: boolean;
+  publicId: string;
+  result?: string;
+  error?: string;
+}
+
+export interface BulkDeleteResult {
+  successful: string[];
+  failed: Array<{ publicId: string; error: string }>;
+  total: number;
+  successCount: number;
+  failureCount: number;
+}
+
 export interface FileUploadResult {
   originalName: string;
   fileName: string;
@@ -176,28 +191,6 @@ export const uploadMultipleFiles = async (
 };
 
 /**
- * Delete a file from Cloudinary
- * @param publicId - The public ID of the file to delete
- * @param resourceType - Type of resource (image, video, raw)
- * @returns Promise with the deletion result
- */
-export const deleteFormFile = async (
-  publicId: string,
-  resourceType: 'image' | 'video' | 'raw' = 'raw'
-): Promise<any> => {
-  try {
-    const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType,
-    });
-    console.log('File deleted from Cloudinary:', result);
-    return result;
-  } catch (error) {
-    console.error('Error deleting file from Cloudinary:', error);
-    throw error;
-  }
-};
-
-/**
  * Get optimized file URL with transformations
  * @param publicId - The public ID of the file
  * @param options - Transformation options
@@ -355,6 +348,280 @@ export const uploadLogo = async (
   }
 };
 
+/**
+ * Delete a single file from Cloudinary
+ */
+export const deleteFormFile = async (
+  publicId: string,
+  resourceType: 'image' | 'video' | 'raw' = 'raw'
+): Promise<CloudinaryDeleteResult> => {
+  try {
+    console.log(`🗑️ Deleting ${resourceType} from Cloudinary:`, publicId);
+
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: resourceType,
+      invalidate: true, // Invalidate CDN cache
+    });
+
+    console.log('Cloudinary delete result:', result);
+
+    const success = result.result === 'ok' || result.result === 'not found';
+
+    return {
+      success,
+      publicId,
+      result: result.result,
+      error: success ? undefined : `Unexpected result: ${result.result}`,
+    };
+  } catch (error: any) {
+    console.error(`❌ Failed to delete ${resourceType} ${publicId}:`, error);
+    return {
+      success: false,
+      publicId,
+      error: error.message || 'Unknown error occurred',
+    };
+  }
+};
+
+/**
+ * Delete multiple files from Cloudinary in batches
+ */
+export const bulkDeleteFiles = async (
+  publicIds: string[],
+  resourceType: 'image' | 'raw' = 'raw',
+  batchSize: number = 100
+): Promise<BulkDeleteResult> => {
+  const result: BulkDeleteResult = {
+    successful: [],
+    failed: [],
+    total: publicIds.length,
+    successCount: 0,
+    failureCount: 0,
+  };
+
+  if (publicIds.length === 0) {
+    return result;
+  }
+
+  console.log(
+    `🗑️ Bulk deleting ${publicIds.length} ${resourceType} files from Cloudinary`
+  );
+
+  // Process in batches to avoid API limits
+  for (let i = 0; i < publicIds.length; i += batchSize) {
+    const batch = publicIds.slice(i, i + batchSize);
+
+    try {
+      // Use admin API for bulk deletion
+      const batchResult = await cloudinary.api.delete_resources(batch, {
+        resource_type: resourceType,
+        invalidate: true,
+      });
+
+      // Process batch results
+      Object.entries(batchResult.deleted || {}).forEach(
+        ([publicId, status]) => {
+          if (status === 'deleted' || status === 'not_found') {
+            result.successful.push(publicId);
+            result.successCount++;
+          } else {
+            result.failed.push({
+              publicId,
+              error: `Unexpected status: ${status}`,
+            });
+            result.failureCount++;
+          }
+        }
+      );
+
+      // Handle partial failures
+      Object.entries(batchResult.partial || {}).forEach(([publicId, error]) => {
+        result.failed.push({
+          publicId,
+          error: typeof error === 'string' ? error : 'Partial failure',
+        });
+        result.failureCount++;
+      });
+    } catch (error: any) {
+      console.error(
+        `❌ Batch deletion failed for batch starting at ${i}:`,
+        error
+      );
+
+      // Mark all files in this batch as failed
+      batch.forEach(publicId => {
+        result.failed.push({
+          publicId,
+          error: error.message || 'Batch deletion failed',
+        });
+        result.failureCount++;
+      });
+    }
+
+    // Add delay between batches to respect rate limits
+    if (i + batchSize < publicIds.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  console.log(
+    ` Bulk deletion completed: ${result.successCount} successful, ${result.failureCount} failed`
+  );
+  return result;
+};
+
+/**
+ * Delete all files associated with a form submission
+ */
+export const deleteSubmissionFiles = async (
+  files: any[]
+): Promise<BulkDeleteResult> => {
+  if (!files || files.length === 0) {
+    return {
+      successful: [],
+      failed: [],
+      total: 0,
+      successCount: 0,
+      failureCount: 0,
+    };
+  }
+
+  console.log(`🗑️ Deleting ${files.length} files for submission`);
+
+  // Group files by resource type
+  const imageFiles: string[] = [];
+  const rawFiles: string[] = [];
+
+  files.forEach(file => {
+    if (file.publicId) {
+      if (file.mimeType?.startsWith('image/')) {
+        imageFiles.push(file.publicId);
+      } else {
+        rawFiles.push(file.publicId);
+      }
+    }
+  });
+
+  // Delete both types in parallel
+  const [imageResults, rawResults] = await Promise.all([
+    imageFiles.length > 0
+      ? bulkDeleteFiles(imageFiles, 'image')
+      : Promise.resolve({
+          successful: [],
+          failed: [],
+          total: 0,
+          successCount: 0,
+          failureCount: 0,
+        }),
+    rawFiles.length > 0
+      ? bulkDeleteFiles(rawFiles, 'raw')
+      : Promise.resolve({
+          successful: [],
+          failed: [],
+          total: 0,
+          successCount: 0,
+          failureCount: 0,
+        }),
+  ]);
+
+  // Combine results
+  return {
+    successful: [...imageResults.successful, ...rawResults.successful],
+    failed: [...imageResults.failed, ...rawResults.failed],
+    total: imageResults.total + rawResults.total,
+    successCount: imageResults.successCount + rawResults.successCount,
+    failureCount: imageResults.failureCount + rawResults.failureCount,
+  };
+};
+
+/**
+ * Delete all files associated with a form (including submissions and form logo)
+ */
+export const deleteFormFiles = async (
+  formData: any,
+  submissions: any[]
+): Promise<{
+  submissionFiles: BulkDeleteResult;
+  logoResult?: CloudinaryDeleteResult;
+  totalFilesProcessed: number;
+}> => {
+  console.log(
+    `🗑️ Starting comprehensive file deletion for form: ${formData.title}`
+  );
+
+  // Collect all file public IDs from submissions
+  const allFiles: any[] = [];
+
+  submissions.forEach(submission => {
+    // Files from submission.files array
+    if (submission.files && Array.isArray(submission.files)) {
+      allFiles.push(...submission.files);
+    }
+
+    // Files from submission.data (legacy format)
+    if (submission.data && typeof submission.data === 'object') {
+      Object.values(submission.data).forEach(value => {
+        if (value && typeof value === 'object') {
+          // Single file object
+          if (
+            value &&
+            typeof value === 'object' &&
+            'publicId' in value &&
+            'url' in value
+          ) {
+            allFiles.push(value);
+          }
+          // Array of file objects
+          if (Array.isArray(value)) {
+            value.forEach(item => {
+              if (
+                item &&
+                typeof item === 'object' &&
+                'publicId' in item &&
+                'url' in item
+              ) {
+                allFiles.push(item);
+              }
+            });
+          }
+        }
+      });
+    }
+  });
+
+  console.log(
+    `📊 Found ${allFiles.length} files across ${submissions.length} submissions`
+  );
+
+  // Delete submission files
+  const submissionFilesResult = await deleteSubmissionFiles(allFiles);
+
+  // Delete form logo if exists
+  let logoResult: CloudinaryDeleteResult | undefined;
+  if (formData.logo && formData.logo.publicId) {
+    console.log(`🖼️ Deleting form logo: ${formData.logo.publicId}`);
+    logoResult = await deleteFormFile(
+      formData.logo.publicId,
+      formData.logo.type === 'uploaded' ? 'image' : 'raw'
+    );
+  }
+
+  const totalFilesProcessed = allFiles.length + (logoResult ? 1 : 0);
+
+  console.log(` Form file deletion completed:`, {
+    submissionFiles: submissionFilesResult.successCount,
+    submissionFilesFailed: submissionFilesResult.failureCount,
+    logoDeleted: logoResult?.success || false,
+    totalProcessed: totalFilesProcessed,
+  });
+
+  return {
+    submissionFiles: submissionFilesResult,
+    logoResult,
+    totalFilesProcessed,
+  };
+};
+
 export default {
   uploadFormFile,
   uploadMultipleFiles,
@@ -366,5 +633,3 @@ export default {
   getImageUrl,
   uploadLogo,
 };
-
-

@@ -140,19 +140,24 @@ export const restoreFormAsync = createAsyncThunk(
 );
 
 export const deleteFormAsync = createAsyncThunk(
-  'forms/deleteForm',
+  'forms/deleteFormCompletely',
   async (formId: string, { rejectWithValue }) => {
     try {
-      console.log('🗑️ Redux: Starting form deletion with submissions cleanup');
+      console.log('🗑️ Redux: Starting comprehensive form deletion:', formId);
 
       const result = await formsService.deleteForm(formId);
 
-      console.log('Redux: Form and submissions deleted successfully');
-      return { formId, ...result };
+      return {
+        formId,
+        details: result.details,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error: any) {
-      console.error('Redux: Form deletion failed:', error);
+      console.error('❌ Redux: Form deletion failed:', error);
       return rejectWithValue(
-        error.message || 'Failed to delete form and submissions'
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to delete form and associated data'
       );
     }
   }
@@ -363,6 +368,60 @@ export const formsSlice = createSlice({
     // Permanently delete a form
     deleteForm: (state, action: PayloadAction<string>) => {
       state.forms = state.forms.filter(form => form.id !== action.payload);
+    },
+
+    deleteFormCompletely: (
+      state,
+      action: PayloadAction<{
+        formId: string;
+        details: {
+          submissionsDeleted: number;
+          filesDeleted: number;
+          filesFailed: number;
+          logoDeleted: boolean;
+        };
+      }>
+    ) => {
+      const { formId, details } = action.payload;
+
+      // Remove form from state
+      state.forms = state.forms.filter(form => form.id !== formId);
+
+      // Log the deletion details for debugging
+      console.log('🗑️ Redux: Form completely deleted:', {
+        formId,
+        ...details,
+      });
+    },
+
+    bulkDeleteFormsCompletely: (
+      state,
+      action: PayloadAction<{
+        formIds: string[];
+        results: Array<{
+          formId: string;
+          success: boolean;
+          details?: any;
+          error?: string;
+        }>;
+      }>
+    ) => {
+      const { formIds, results } = action.payload;
+
+      // Remove successfully deleted forms
+      const successfulDeletions = results
+        .filter(result => result.success)
+        .map(result => result.formId);
+
+      state.forms = state.forms.filter(
+        form => !successfulDeletions.includes(form.id)
+      );
+
+      console.log('🗑️ Redux: Bulk deletion completed:', {
+        requested: formIds.length,
+        successful: successfulDeletions.length,
+        failed: results.filter(r => !r.success).length,
+      });
     },
 
     // Bulk actions - move multiple forms to trash
@@ -596,9 +655,22 @@ export const formsSlice = createSlice({
           form.isTrashed = false;
           form.daysRemaining = undefined;
         }
-      })
+      });
+    builder
       .addCase(deleteFormAsync.fulfilled, (state, action) => {
-        state.forms = state.forms.filter(form => form.id !== action.payload);
+        const { formId, details } = action.payload;
+
+        // Remove from state
+        state.forms = state.forms.filter(form => form.id !== formId);
+
+        // Clear any error state
+        state.error = null;
+
+        console.log(' Redux: Form deletion completed:', details);
+      })
+      .addCase(deleteFormAsync.rejected, (state, action) => {
+        state.error = action.payload as string;
+        console.error('❌ Redux: Form deletion failed:', action.payload);
       })
       .addCase(bulkTrashFormsAsync.fulfilled, (state, action) => {
         state.forms = state.forms.map(form =>
@@ -736,6 +808,8 @@ export const {
   clearError,
   toggleFavoriteOptimistic,
   clearLabelsError,
+  deleteFormCompletely,
+  bulkDeleteFormsCompletely,
 } = formsSlice.actions;
 
 // Export selectors
