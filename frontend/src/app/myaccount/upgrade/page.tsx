@@ -194,7 +194,7 @@ const UpgradePage = () => {
 
                 {/* Button container with mt-auto to push to bottom */}
                 <div className='mt-6'>
-                  <button className='w-full py-2 px-4 bg-gray-600 text-white rounded font-medium'>
+                  <button className='w-full py-2 px-4 bg-gray-600 text-white rounded font-medium cursor-pointer'>
                     Current
                   </button>
                 </div>

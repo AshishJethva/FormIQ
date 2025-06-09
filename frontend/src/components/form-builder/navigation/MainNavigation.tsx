@@ -80,7 +80,7 @@ export default function MainNavigation({
     setIsPublishing(true);
 
     try {
-      console.log('🚀 Publishing form for preview:', {
+      console.log(' Publishing form for preview:', {
         formId,
         currentStatus: form?.isPublished,
       });

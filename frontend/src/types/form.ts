@@ -375,7 +375,6 @@ export const getDefaultFieldConfig = (fieldType: FieldType): Partial<Field> => {
     case FieldType.HEADING:
       return {
         labelAlignment: 'LEFT',
-        // No required or helpText for headings
       };
 
     case FieldType.SHORT_TEXT:

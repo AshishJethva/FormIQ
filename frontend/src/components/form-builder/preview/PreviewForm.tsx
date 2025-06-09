@@ -63,7 +63,7 @@ export default function PreviewForm({
   };
 
   const handleSubmit = () => {
-    console.log('🚀 Preview form submitting with files:', {
+    console.log(' Preview form submitting with files:', {
       formData,
       fileData,
       totalFiles: Object.values(fileData).reduce(

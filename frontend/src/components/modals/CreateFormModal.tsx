@@ -237,28 +237,63 @@ export default function CreateFormModal() {
             {/* Use template card */}
             <div onClick={isCreating ? undefined : handleUseTemplate}>
               <div
-                className={`bg-white rounded-lg shadow-md hover:shadow-xl hover:border-blue-500 transition-shadow border border-gray-200 overflow-hidden flex flex-col h-full ${
+                className={`bg-white rounded-lg shadow-md hover:shadow-xl hover:border-orange-500 transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full relative ${
                   isCreating
                     ? 'opacity-50 cursor-not-allowed'
-                    : 'cursor-pointer'
+                    : 'cursor-pointer hover:scale-[1.02]'
                 }`}
               >
-                <div className='bg-[#FFEBDD] p-12 flex items-center justify-center'>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    width='48'
-                    height='48'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='#FF6100'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
-                    <line x1='3' y1='9' x2='21' y2='9' />
-                    <line x1='9' y1='21' x2='9' y2='9' />
-                  </svg>
+                {/* Popular Badge */}
+                <div className='absolute -top-1 -right-1 z-10'>
+                  <div className='bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-medium px-2 py-0.5 rounded-full shadow-sm border border-orange-400'>
+                    POPULAR
+                  </div>
+                </div>
+
+                <div className='bg-gradient-to-br from-[#FFF8F0] via-[#FFFBF5] to-[#FFF4E6] p-12 flex items-center justify-center relative'>
+                  {/* Subtle background pattern */}
+                  <div className='absolute inset-0 opacity-10'>
+                    <div className='absolute top-3 left-3 w-6 h-6 border-2 border-orange-300 rounded'></div>
+                    <div className='absolute bottom-3 right-3 w-4 h-4 bg-orange-200 rounded-full'></div>
+                    <div className='absolute top-1/2 left-6 w-3 h-3 border border-orange-300 rounded transform rotate-45'></div>
+                    <div className='absolute top-6 right-1/2 w-2 h-2 bg-orange-300 rounded'></div>
+                  </div>
+
+                  {/* Template Icon */}
+                  <div className='relative'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='48'
+                      height='48'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='#EA580C'
+                      strokeWidth='1.5'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      className='drop-shadow-sm'
+                    >
+                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
+                      <line x1='3' y1='9' x2='21' y2='9' />
+                      <line x1='9' y1='21' x2='9' y2='9' />
+                      <rect
+                        x='12'
+                        y='12'
+                        width='6'
+                        height='3'
+                        rx='1'
+                        fill='#EA580C'
+                      />
+                      <rect
+                        x='12'
+                        y='16'
+                        width='4'
+                        height='2'
+                        rx='0.5'
+                        fill='#FB923C'
+                      />
+                    </svg>
+                  </div>
                 </div>
                 <div className='p-5 flex flex-col flex-grow'>
                   <h2 className='text-xl font-semibold text-center text-[#102035] mb-2'>
@@ -267,7 +302,39 @@ export default function CreateFormModal() {
                   <p className='text-sm text-gray-700 text-center'>
                     Choose from premade forms
                   </p>
+                  <div className='mt-3 flex justify-center'>
+                    <div className='flex items-center space-x-1'>
+                      <div className='w-2 h-2 bg-orange-400 rounded-full'></div>
+                      <div className='w-2 h-2 bg-orange-300 rounded-full'></div>
+                      <div className='w-2 h-2 bg-orange-200 rounded-full'></div>
+                      <span className='text-xs text-orange-600 ml-2 font-medium'>
+                        Beautiful Templates
+                      </span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Info Section */}
+          <div className='mt-12 text-center'>
+            <p className='text-sm text-gray-500 mb-4'>
+              All forms include advanced features like conditional logic, file
+              uploads, and analytics
+            </p>
+            <div className='flex items-center justify-center space-x-6 text-xs text-gray-400'>
+              <div className='flex items-center'>
+                <div className='w-2 h-2 bg-green-400 rounded-full mr-2'></div>
+                Unlimited fields
+              </div>
+              <div className='flex items-center'>
+                <div className='w-2 h-2 bg-blue-400 rounded-full mr-2'></div>
+                Real-time responses
+              </div>
+              <div className='flex items-center'>
+                <div className='w-2 h-2 bg-purple-400 rounded-full mr-2'></div>
+                Custom branding
               </div>
             </div>
           </div>

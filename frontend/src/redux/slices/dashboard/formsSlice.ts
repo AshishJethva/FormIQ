@@ -1,10 +1,18 @@
 // src/redux/slices/dashboard/formsSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { formsService } from '@/services/forms';
+import { formsService, CreateFormData } from '@/services/forms';
 import { labelsService } from '@/services/labels';
 import type { RootState } from '../../store';
 
-// Define interface for forms (same as before)
+interface EnhancedCreateFormData extends CreateFormData {
+  template?: {
+    title: string;
+    description?: string;
+    pages: any[];
+    settings: any;
+  };
+}
+
 export interface Form {
   id: string;
   name: string;
@@ -19,6 +27,7 @@ export interface Form {
   isTrashed: boolean;
   labels: string[];
   daysRemaining?: number;
+  trashedAt?: string;
 }
 
 export interface Label {
@@ -26,6 +35,7 @@ export interface Label {
   name: string;
   color: string;
   createdAt: number;
+  userId: string;
 }
 
 interface FormsState {
@@ -48,9 +58,9 @@ interface FormsState {
     sortOrder: 'asc' | 'desc';
     labels: string[];
   };
+  selectedForms: string[];
 }
 
-// Async thunks (existing ones plus new rename functionality)
 export const fetchForms = createAsyncThunk(
   'forms/fetchForms',
   async (
@@ -68,28 +78,22 @@ export const fetchForms = createAsyncThunk(
       sortOrder?: 'asc' | 'desc';
       page?: number;
       limit?: number;
-    } = {}
+    } = {},
+    { rejectWithValue }
   ) => {
-    // DEBUG: Log what the thunk receives
-    console.log('🎯 Redux fetchForms thunk called with:', filters);
-
-    if (filters.labels) {
-      console.log('🏷️ Labels in Redux thunk:', {
-        labels: filters.labels,
-        type: typeof filters.labels,
-        isArray: Array.isArray(filters.labels),
-        length: filters.labels.length,
-        values: filters.labels,
-      });
-    } else {
-      console.log('❌ No labels in Redux thunk filters');
+    try {
+      const response = await formsService.getForms(filters);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to fetch forms'
+      );
     }
-    const response = await formsService.getForms(filters);
-    return response;
   }
 );
 
-// NEW: Add rename form async thunk
 export const renameFormAsync = createAsyncThunk(
   'forms/renameForm',
   async (
@@ -143,8 +147,6 @@ export const deleteFormAsync = createAsyncThunk(
   'forms/deleteFormCompletely',
   async (formId: string, { rejectWithValue }) => {
     try {
-      console.log('🗑️ Redux: Starting comprehensive form deletion:', formId);
-
       const result = await formsService.deleteForm(formId);
 
       return {
@@ -197,35 +199,53 @@ export const bulkRemoveLabelFromFormsAsync = createAsyncThunk(
 
 export const createFormAsync = createAsyncThunk(
   'forms/createForm',
-  async (
-    data: { name?: string; description?: string },
-    { rejectWithValue }
-  ) => {
+  async (formData: EnhancedCreateFormData, { rejectWithValue }) => {
     try {
-      const response = await formsService.createForm({
-        name: data.name || 'Form',
-        description: data.description,
-      });
-      return response.data;
+      if (formData.template) {
+        const basicFormData = {
+          name: formData.name,
+          description: formData.description || formData.template.description,
+        };
+
+        const response = await formsService.createForm(basicFormData);
+        const createdForm = response.data;
+
+        const updateData = {
+          title: formData.template.title,
+          description: formData.template.description,
+          pages: formData.template.pages,
+          settings: formData.template.settings,
+        };
+
+        await formsService.updateForm(createdForm.id, updateData);
+
+        // Return the form with template structure applied
+        return {
+          ...createdForm,
+          ...updateData,
+        };
+      } else {
+        // Regular form creation
+        const response = await formsService.createForm(formData);
+        return response.data;
+      }
     } catch (error: any) {
+      console.error('Create form error:', error);
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to create form'
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to create form'
       );
     }
   }
 );
 
-// Async thunks for labels (same as before)
+// Async thunks for labels
 export const fetchLabels = createAsyncThunk(
   'forms/fetchLabels',
   async (searchTerm: string | undefined, { rejectWithValue }) => {
     try {
-      console.log(
-        'Redux: Fetching labels...',
-        searchTerm ? `search: "${searchTerm}"` : 'all'
-      );
       const response = await labelsService.getLabels(searchTerm);
-      console.log('Redux: Labels fetched successfully:', response);
       return response;
     } catch (error: any) {
       console.error('Redux: Error fetching labels:', error);
@@ -301,6 +321,7 @@ const initialState: FormsState = {
     sortOrder: 'desc',
     labels: [],
   },
+  selectedForms: [],
 };
 
 // Create the slice
@@ -308,7 +329,6 @@ export const formsSlice = createSlice({
   name: 'forms',
   initialState,
   reducers: {
-    // Update all forms
     updateForms: (state, action: PayloadAction<Form[]>) => {
       state.forms = action.payload;
     },
@@ -318,7 +338,6 @@ export const formsSlice = createSlice({
       state.labels = action.payload;
     },
 
-    // NEW: Rename form optimistically
     renameFormOptimistic: (
       state,
       action: PayloadAction<{ formId: string; newName: string }>
@@ -329,7 +348,6 @@ export const formsSlice = createSlice({
       }
     },
 
-    // Toggle favorite status for a form
     toggleFavorite: (state, action: PayloadAction<string>) => {
       const form = state.forms.find(form => form.id === action.payload);
       if (form) {
@@ -337,7 +355,6 @@ export const formsSlice = createSlice({
       }
     },
 
-    // Archive a form
     archiveForm: (state, action: PayloadAction<string>) => {
       const form = state.forms.find(form => form.id === action.payload);
       if (form) {
@@ -500,6 +517,7 @@ export const formsSlice = createSlice({
         name: action.payload.name,
         color: action.payload.color,
         createdAt: Date.now(),
+        userId: '',
       };
       state.labels.push(newLabel);
     },
@@ -580,6 +598,30 @@ export const formsSlice = createSlice({
       state.currentFilters = { ...state.currentFilters, ...action.payload };
     },
 
+    clearFilters: state => {
+      state.currentFilters = initialState.currentFilters;
+    },
+
+    setSelectedForms: (state, action: PayloadAction<string[]>) => {
+      state.selectedForms = action.payload;
+    },
+
+    toggleFormSelection: (state, action: PayloadAction<string>) => {
+      const formId = action.payload;
+      if (state.selectedForms.includes(formId)) {
+        state.selectedForms = state.selectedForms.filter(id => id !== formId);
+      } else {
+        state.selectedForms.push(formId);
+      }
+    },
+
+    selectAllForms: state => {
+      state.selectedForms = state.forms.map(form => form.id);
+    },
+    clearSelection: state => {
+      state.selectedForms = [];
+    },
+
     clearError: state => {
       state.error = null;
     },
@@ -609,8 +651,17 @@ export const formsSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || 'Failed to fetch forms';
       })
+      .addCase(createFormAsync.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(createFormAsync.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.forms.unshift(action.payload);
+      })
+      .addCase(createFormAsync.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       })
       .addCase(toggleFormFavorite.fulfilled, (state, action) => {
         const form = state.forms.find(
@@ -632,7 +683,6 @@ export const formsSlice = createSlice({
       })
       .addCase(renameFormAsync.rejected, (state, action) => {
         state.error = action.payload as string;
-        // Optionally revert optimistic update here if you implement it
       })
 
       .addCase(archiveFormAsync.fulfilled, (state, action) => {
@@ -655,18 +705,16 @@ export const formsSlice = createSlice({
           form.isTrashed = false;
           form.daysRemaining = undefined;
         }
-      });
-    builder
+      })
       .addCase(deleteFormAsync.fulfilled, (state, action) => {
-        const { formId, details } = action.payload;
+        state.forms = state.forms.filter(
+          form => form.id !== action.payload.formId
+        );
+        state.selectedForms = state.selectedForms.filter(
+          id => id !== action.payload.formId
+        );
 
-        // Remove from state
-        state.forms = state.forms.filter(form => form.id !== formId);
-
-        // Clear any error state
         state.error = null;
-
-        console.log(' Redux: Form deletion completed:', details);
       })
       .addCase(deleteFormAsync.rejected, (state, action) => {
         state.error = action.payload as string;
@@ -775,7 +823,6 @@ export const formsSlice = createSlice({
         }));
         state.labelsError = null;
       })
-
       .addCase(deleteLabelAsync.rejected, (state, action) => {
         console.log('Redux: deleteLabelAsync.rejected', action.payload);
         state.labelsError =
@@ -788,7 +835,7 @@ export const formsSlice = createSlice({
 export const {
   updateForms,
   updateLabels,
-  renameFormOptimistic, // NEW: Export the new action
+  renameFormOptimistic,
   toggleFavorite,
   archiveForm,
   trashForm,

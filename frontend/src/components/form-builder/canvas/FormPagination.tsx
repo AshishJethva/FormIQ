@@ -70,7 +70,7 @@ export default function FormPagination() {
         )}
       </div>
 
-      {!isPreviewMode && !ThankYouPage && <AddNewPageButton className='ml-2' />}
+      {!isPreviewMode && !ThankYouPage && <AddNewPageButton className='ml-2 cursor-pointer' />}
     </div>
   );
 }

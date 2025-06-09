@@ -17,7 +17,7 @@ export const debugFormSubmission = (
 ) => {
   req.startTime = Date.now();
 
-  console.log('🚀 FORM SUBMISSION REQUEST DEBUG:', {
+  console.log(' FORM SUBMISSION REQUEST DEBUG:', {
     timestamp: new Date().toISOString(),
     method: req.method,
     url: req.originalUrl,

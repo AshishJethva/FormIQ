@@ -103,7 +103,7 @@ router.post(
 
         isAIGenerated: true,
         aiPrompt: sanitizedPrompt,
-        aiModel: 'gemini-2.0-flash-exp',
+        aiModel: 'gemini-2.0-flash-lite',
         aiGenerationMetadata: {
           generationTime: result.generationTime,
           version: '2.0', // Enhanced version with logo

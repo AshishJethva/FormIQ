@@ -29,7 +29,7 @@ export const validateFileType = (
     acceptAttribute === 'undefined' ||
     acceptAttribute === 'null'
   ) {
-    console.log('✅ No restrictions or wildcard - file accepted');
+    console.log(' No restrictions or wildcard - file accepted');
 
     // Still check for dangerous file types
     if (isDangerousFileType(file)) {
@@ -54,7 +54,7 @@ export const validateFileType = (
 
     // If accept is just "image/*", allow all images
     if (acceptAttribute === 'image/*') {
-      console.log('✅ Image field accepts all images');
+      console.log(' Image field accepts all images');
       return { isValid: true };
     }
   }
@@ -72,7 +72,7 @@ export const validateFileType = (
     console.log(`🔍 Checking against: "${allowedType}"`);
 
     if (checkTypeMatch(allowedType, file)) {
-      console.log(`✅ File matches type: ${allowedType}`);
+      console.log(` File matches type: ${allowedType}`);
       return { isValid: true };
     }
   }
@@ -345,7 +345,7 @@ export const validateFile = (
     return typeResult;
   }
 
-  console.log('✅ File validation passed:', file.name);
+  console.log(' File validation passed:', file.name);
   return { isValid: true };
 };
 

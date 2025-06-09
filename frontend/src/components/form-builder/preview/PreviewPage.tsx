@@ -1018,7 +1018,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     setIsSubmitting(true);
 
     try {
-      console.log('🚀 Submitting form with enhanced field types:', {
+      console.log(' Submitting form with enhanced field types:', {
         formId,
         dataKeys: Object.keys(formData),
         fileKeys: Object.keys(fileData),

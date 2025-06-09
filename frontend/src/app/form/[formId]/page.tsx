@@ -543,7 +543,7 @@ export default function PublicFormPage() {
       // Prepare file data for submission
       const preparedFileData = prepareFileDataForSubmission(fileData);
 
-      console.log('🚀 Public form submitting with files:', {
+      console.log(' Public form submitting with files:', {
         formData,
         fileData: preparedFileData,
         totalFiles: Object.values(preparedFileData).reduce(

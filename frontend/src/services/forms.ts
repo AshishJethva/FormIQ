@@ -68,7 +68,7 @@ const mapSortOptionToBackend = (
 export const formsService = {
   async getForms(filters: FormFilters = {}) {
     // DEBUG: Log the incoming filters
-    console.log('🚀 formsService.getForms called with filters:', filters);
+    console.log(' formsService.getForms called with filters:', filters);
 
     // Map frontend sort option to backend format
     let sortBy = filters.sortBy;

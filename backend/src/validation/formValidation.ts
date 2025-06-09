@@ -280,20 +280,6 @@ export const pageSchema = z.object({
   fields: z.array(fieldSchema).default([]),
 });
 
-export const logoSchema = z
-  .object({
-    src: z.string().url('Logo source must be a valid URL').nullable(),
-    type: z.enum(['uploaded', 'url']).nullable(),
-    alignment: z.enum(['LEFT', 'CENTER', 'RIGHT']).default('CENTER'),
-    size: z
-      .number()
-      .min(5, 'Logo size must be at least 5%')
-      .max(100, 'Logo size cannot exceed 100%')
-      .default(50),
-    publicId: z.string().optional(),
-  })
-  .nullable();
-
 export const settingsSchema = z.object({
   submitButtonText: z
     .string()
@@ -314,6 +300,308 @@ export const settingsSchema = z.object({
   collectIpAddress: z.boolean().default(true),
   enableCaptcha: z.boolean().default(false),
 });
+
+export const createFormSchemaWithTemplate = z.object({
+  name: z
+    .string()
+    .min(1, 'Form name is required')
+    .max(200, 'Form name cannot exceed 200 characters')
+    .refine(name => name.trim().length >= 2, {
+      message: 'Form name must be at least 2 characters long',
+    }),
+
+  description: z
+    .string()
+    .max(1000, 'Description cannot exceed 1000 characters')
+    .optional(),
+
+  // Template structure for creating forms from templates
+  template: z
+    .object({
+      title: z.string().min(1, 'Template title is required').optional(),
+      description: z.string().optional(),
+      pages: z
+        .array(pageSchema)
+        .min(1, 'Template must have at least one page')
+        .optional(),
+      settings: settingsSchema.optional(),
+    })
+    .optional(),
+});
+
+// Template validation helpers
+export const validateTemplateStructure = (template: any): boolean => {
+  if (!template || typeof template !== 'object') {
+    return false;
+  }
+
+  // Validate pages structure
+  if (template.pages && Array.isArray(template.pages)) {
+    for (const page of template.pages) {
+      if (!page.id || !Array.isArray(page.fields)) {
+        return false;
+      }
+
+      // Validate each field in the page
+      for (const field of page.fields) {
+        if (!field.id || !field.type || !field.label) {
+          return false;
+        }
+
+        // Validate field-specific requirements
+        const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
+        if (choiceFields.includes(field.type)) {
+          if (
+            !field.options ||
+            !Array.isArray(field.options) ||
+            field.options.length === 0
+          ) {
+            return false;
+          }
+
+          // Validate options structure
+          for (const option of field.options) {
+            if (!option.label || !option.value) {
+              return false;
+            }
+          }
+        }
+
+        // Validate number field constraints
+        if (field.type === 'number') {
+          if (
+            field.min !== undefined &&
+            field.max !== undefined &&
+            field.min > field.max
+          ) {
+            return false;
+          }
+        }
+
+        // Validate text field constraints
+        if (['shortText', 'longText', 'paragraph'].includes(field.type)) {
+          if (
+            field.minLength !== undefined &&
+            field.maxLength !== undefined &&
+            field.minLength > field.maxLength
+          ) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  return true;
+};
+
+// Predefined template validation
+export const TEMPLATE_CATEGORIES = [
+  'Business',
+  'Survey',
+  'Registration',
+  'E-commerce',
+  'Education',
+  'Events',
+  'HR',
+  'Marketing',
+  'Hospitality',
+] as const;
+
+export const validateTemplateCategory = (category: string): boolean => {
+  return TEMPLATE_CATEGORIES.includes(category as any);
+};
+
+// Template field count validation
+export const validateTemplateFieldCount = (
+  template: any
+): { isValid: boolean; fieldCount: number } => {
+  let fieldCount = 0;
+
+  if (template.pages && Array.isArray(template.pages)) {
+    fieldCount = template.pages.reduce((total: number, page: any) => {
+      return total + (page.fields ? page.fields.length : 0);
+    }, 0);
+  }
+
+  return {
+    isValid: fieldCount > 0 && fieldCount <= 50, // Reasonable limits
+    fieldCount,
+  };
+};
+
+// Generate template preview data
+export const generateTemplatePreview = (template: any): string => {
+  if (!template || !template.pages) {
+    return 'Empty template';
+  }
+
+  const totalFields = template.pages.reduce((total: number, page: any) => {
+    return total + (page.fields ? page.fields.length : 0);
+  }, 0);
+
+  const fieldTypes = new Set();
+  template.pages.forEach((page: any) => {
+    if (page.fields) {
+      page.fields.forEach((field: any) => {
+        fieldTypes.add(field.type);
+      });
+    }
+  });
+
+  const hasRequiredFields = template.pages.some(
+    (page: any) =>
+      page.fields && page.fields.some((field: any) => field.required)
+  );
+
+  let preview = `${totalFields} fields`;
+
+  if (fieldTypes.size > 0) {
+    const typeArray = Array.from(fieldTypes).slice(0, 3);
+    preview += ` (${typeArray.join(', ')}${fieldTypes.size > 3 ? '...' : ''})`;
+  }
+
+  if (hasRequiredFields) {
+    preview += ' - includes required fields';
+  }
+
+  return preview;
+};
+
+// Template sanitization
+export const sanitizeTemplate = (template: any): any => {
+  if (!template) return null;
+
+  return {
+    title: template.title ? String(template.title).trim() : undefined,
+    description: template.description
+      ? String(template.description).trim()
+      : undefined,
+    pages: Array.isArray(template.pages)
+      ? template.pages.map((page: any) => ({
+          id: page.id || require('uuid').v4(),
+          fields: Array.isArray(page.fields)
+            ? page.fields.map((field: any) => {
+                const sanitizedField: any = {
+                  id: field.id || require('uuid').v4(),
+                  type: field.type,
+                  label: String(field.label || '').trim(),
+                  labelAlignment: field.labelAlignment || 'LEFT',
+                };
+
+                // Only add properties for non-heading fields
+                if (field.type !== 'heading') {
+                  sanitizedField.required = Boolean(field.required);
+                  sanitizedField.helpText = String(field.helpText || '');
+                }
+
+                // Add field-specific properties
+                if (field.placeholder)
+                  sanitizedField.placeholder = String(field.placeholder);
+                if (field.options && Array.isArray(field.options)) {
+                  sanitizedField.options = field.options.map((opt: any) => ({
+                    label: String(opt.label || ''),
+                    value: String(opt.value || ''),
+                  }));
+                }
+                if (field.min !== undefined)
+                  sanitizedField.min = Number(field.min);
+                if (field.max !== undefined)
+                  sanitizedField.max = Number(field.max);
+                if (field.step !== undefined)
+                  sanitizedField.step = Number(field.step);
+                if (field.minLength !== undefined)
+                  sanitizedField.minLength = Number(field.minLength);
+                if (field.maxLength !== undefined)
+                  sanitizedField.maxLength = Number(field.maxLength);
+                if (field.rows !== undefined)
+                  sanitizedField.rows = Number(field.rows);
+                if (field.multiple !== undefined)
+                  sanitizedField.multiple = Boolean(field.multiple);
+                if (field.accept) sanitizedField.accept = String(field.accept);
+
+                // Handle special field configurations
+                if (field.fillBlankTemplate) {
+                  sanitizedField.fillBlankTemplate = {
+                    beforeText: String(
+                      field.fillBlankTemplate.beforeText || ''
+                    ),
+                    blankPlaceholder: String(
+                      field.fillBlankTemplate.blankPlaceholder || ''
+                    ),
+                    afterText: String(field.fillBlankTemplate.afterText || ''),
+                  };
+                }
+
+                if (
+                  field.productListConfig &&
+                  field.productListConfig.products
+                ) {
+                  sanitizedField.productListConfig = {
+                    products: field.productListConfig.products.map(
+                      (product: any) => ({
+                        id: String(product.id || ''),
+                        name: String(product.name || ''),
+                        price: Number(product.price || 0),
+                        quantity: Number(product.quantity || 1),
+                      })
+                    ),
+                  };
+                }
+
+                return sanitizedField;
+              })
+            : [],
+        }))
+      : [],
+    settings: template.settings
+      ? {
+          submitButtonText: String(
+            template.settings.submitButtonText || 'Submit'
+          ),
+          defaultLabelAlignment:
+            template.settings.defaultLabelAlignment || 'LEFT',
+          thankyouMessage: String(
+            template.settings.thankyouMessage ||
+              'Thank you for your submission!'
+          ),
+          defaultRequiredField: Boolean(template.settings.defaultRequiredField),
+          showLogo: Boolean(template.settings.showLogo),
+          isEnabled:
+            template.settings.isEnabled !== undefined
+              ? Boolean(template.settings.isEnabled)
+              : true,
+          allowMultipleSubmissions:
+            template.settings.allowMultipleSubmissions !== undefined
+              ? Boolean(template.settings.allowMultipleSubmissions)
+              : true,
+          allowMultipleEmailSubmissions:
+            template.settings.allowMultipleEmailSubmissions !== undefined
+              ? Boolean(template.settings.allowMultipleEmailSubmissions)
+              : true,
+          collectIpAddress:
+            template.settings.collectIpAddress !== undefined
+              ? Boolean(template.settings.collectIpAddress)
+              : true,
+          enableCaptcha: Boolean(template.settings.enableCaptcha),
+        }
+      : undefined,
+  };
+};
+
+export const logoSchema = z
+  .object({
+    src: z.string().url('Logo source must be a valid URL').nullable(),
+    type: z.enum(['uploaded', 'url']).nullable(),
+    alignment: z.enum(['LEFT', 'CENTER', 'RIGHT']).default('CENTER'),
+    size: z
+      .number()
+      .min(5, 'Logo size must be at least 5%')
+      .max(100, 'Logo size cannot exceed 100%')
+      .default(50),
+    publicId: z.string().optional(),
+  })
+  .nullable();
 
 export const updateFormSchema = z.object({
   title: z

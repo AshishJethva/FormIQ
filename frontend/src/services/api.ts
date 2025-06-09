@@ -44,7 +44,7 @@ const apiService = {
 
 export const submitForm = async (formId: string, formData: any) => {
   try {
-    console.log('🚀 Submitting form:', {
+    console.log(' Submitting form:', {
       formId,
       dataKeys: Object.keys(formData || {}),
     });

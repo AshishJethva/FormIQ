@@ -1,7 +1,7 @@
 'use client';
 
 import type { StoreDispatch, RootState } from '@/redux/store';
-import type { ResetPasswordRequest } from '@/dependencies/yup';
+import type { ResetPasswordRequest } from '@/dependencies/zod';
 
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,7 +10,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import { resetPasswordSchema } from '@/dependencies/yup';
+import { resetPasswordSchema } from '@/dependencies/zod';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-//apis
 import { resetPassword } from '@/lib/api';
 
 const ResetPasswordPage = () => {
@@ -104,7 +103,11 @@ const ResetPasswordPage = () => {
             )}
           />
 
-          <Button className='w-full' disabled={isLoading} type='submit'>
+          <Button
+            className='w-full cursor-pointer'
+            disabled={isLoading}
+            type='submit'
+          >
             {isLoading ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />

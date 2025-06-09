@@ -122,7 +122,7 @@ export default function FileUploadField({
       };
     }
 
-    console.log('✅ File validation passed');
+    console.log(' File validation passed');
     return { isValid: true };
   };
 

@@ -431,7 +431,7 @@ router.post(
   protect,
   validate(createFormSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { name } = req.body;
+    const { name, template } = req.body;
 
     const pageId = uuidv4();
     const userId = new mongoose.Types.ObjectId(req.user.id);
@@ -502,6 +502,44 @@ router.post(
       isArchived: form.isArchived,
       isTrashed: form.isTrashed,
     };
+
+    // If template is provided, use template structure
+    if (template && typeof template === 'object') {
+      // Override with template data
+      if (template.title) {
+        formData.title = template.title;
+      }
+
+      if (template.description) {
+        formData.description = template.description;
+      }
+
+      if (template.pages && Array.isArray(template.pages)) {
+        // Ensure each page has a unique ID and proper structure
+        formData.pages = template.pages.map((page: any) => ({
+          id: page.id || uuidv4(),
+          fields: Array.isArray(page.fields)
+            ? page.fields.map((field: any) => ({
+                ...field,
+                id: field.id || uuidv4(), // Ensure field has unique ID
+              }))
+            : [],
+        }));
+
+        // Set selectedPageId to first page
+        if (formData.pages.length > 0) {
+          formData.selectedPageId = formData.pages[0].id;
+        }
+      }
+
+      if (template.settings && typeof template.settings === 'object') {
+        // Merge template settings with defaults
+        formData.settings = {
+          ...formData.settings,
+          ...template.settings,
+        };
+      }
+    }
 
     res.status(201).json({
       success: true,

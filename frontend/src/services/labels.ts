@@ -68,6 +68,7 @@ export interface LabelResponse {
   name: string;
   color: string;
   createdAt: number;
+  userId: string;
 }
 
 export interface ApiResponse<T> {

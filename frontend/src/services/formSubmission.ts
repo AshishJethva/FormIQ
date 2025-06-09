@@ -456,7 +456,7 @@ export const submitForm = async (
   fileData?: Record<string, any>
 ): Promise<FormSubmissionResult> => {
   try {
-    console.log('🚀 Submitting form with enhanced data:', {
+    console.log(' Submitting form with enhanced data:', {
       formId,
       dataKeys: Object.keys(formData || {}),
       fileKeys: Object.keys(fileData || {}),
