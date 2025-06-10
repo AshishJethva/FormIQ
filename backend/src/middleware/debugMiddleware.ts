@@ -17,23 +17,6 @@ export const debugFormSubmission = (
 ) => {
   req.startTime = Date.now();
 
-  console.log(' FORM SUBMISSION REQUEST DEBUG:', {
-    timestamp: new Date().toISOString(),
-    method: req.method,
-    url: req.originalUrl,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    contentType: req.get('Content-Type'),
-    contentLength: req.get('Content-Length'),
-    headers: {
-      'content-type': req.headers['content-type'],
-      'content-length': req.headers['content-length'],
-      'user-agent': req.headers['user-agent'],
-      origin: req.headers.origin,
-      referer: req.headers.referer,
-    },
-  });
-
   // Log request body details
   if (req.body) {
     console.log('📋 REQUEST BODY ANALYSIS:', {

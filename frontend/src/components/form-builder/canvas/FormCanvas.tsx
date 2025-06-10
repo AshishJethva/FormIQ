@@ -1127,7 +1127,7 @@ export default function FormCanvas() {
                   <button
                     type='button'
                     onClick={handleAddProduct}
-                    className='px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors'
+                    className='px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors cursor-pointer'
                   >
                     + Add Product
                   </button>
@@ -1210,7 +1210,7 @@ export default function FormCanvas() {
                             <button
                               type='button'
                               onClick={e => handleRemoveProduct(e, product.id)}
-                              className='w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors'
+                              className='w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors cursor-pointer'
                               title='Remove product'
                             >
                               ✕
@@ -1396,7 +1396,7 @@ export default function FormCanvas() {
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 5 }}
-                  className='ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md text-xs'
+                  className='ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md text-xs cursor-pointer'
                   onClick={() => handleRemovePage(currentPage.id)}
                 >
                   Remove Page
@@ -1459,7 +1459,7 @@ export default function FormCanvas() {
             {/* Show Back button on pages after the first */}
             {!isFirstPage && (
               <button
-                className='bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-8 rounded transition-colors mr-4'
+                className='bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-8 rounded transition-colors mr-4 cursor-pointer'
                 onClick={() => navigateToPage(currentPageIndex - 1)}
               >
                 Back
@@ -1469,7 +1469,7 @@ export default function FormCanvas() {
             {/* Show Next button on all pages except last */}
             {!isLastPage ? (
               <button
-                className='bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-8 rounded transition-colors'
+                className='bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-8 rounded transition-colors cursor-pointer'
                 onClick={() => navigateToPage(currentPageIndex + 1)}
               >
                 Next
@@ -1477,7 +1477,7 @@ export default function FormCanvas() {
             ) : (
               /* Show Submit button on last page */
               <button
-                className='bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-8 rounded transition-colors'
+                className='bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-8 rounded transition-colors cursor-pointer'
                 disabled={isPreviewMode}
               >
                 {form.settings?.submitButtonText || 'Submit'}

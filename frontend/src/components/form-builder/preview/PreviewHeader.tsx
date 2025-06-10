@@ -55,7 +55,7 @@ export default function PreviewHeader({
             <div className='flex space-x-2 flex-shrink-0'>
               <button
                 onClick={openInNewTab}
-                className='flex items-center px-3 py-1 bg-[#ff5e00] text-white text-sm rounded hover:bg-[#e51001] transition-colors shadow-sm'
+                className='flex items-center px-3 py-1 bg-[#ff5e00] text-white text-sm rounded hover:bg-[#e51001] transition-colors shadow-sm cursor-pointer'
                 title='Open form in new tab'
               >
                 <ExternalLink className='w-3 h-3' />
@@ -65,7 +65,7 @@ export default function PreviewHeader({
 
           <button
             onClick={onFillForm}
-            className='bg-[#F76101] hover:bg-[#E55301] text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm'
+            className='bg-[#F76101] hover:bg-[#E55301] text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer'
             title='Fill form with sample data'
           >
             Fill Form
@@ -78,7 +78,7 @@ export default function PreviewHeader({
             <div className='flex bg-white rounded-lg p-1 shadow-sm'>
               <button
                 onClick={() => onDeviceChange('phone')}
-                className={`p-2 rounded transition-colors ${
+                className={`p-2 rounded transition-colors cursor-pointer ${
                   selectedDevice === 'phone'
                     ? 'bg-blue-500 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -90,7 +90,7 @@ export default function PreviewHeader({
 
               <button
                 onClick={() => onDeviceChange('tablet')}
-                className={`p-2 rounded transition-colors ${
+                className={`p-2 rounded transition-colors cursor-pointer ${
                   selectedDevice === 'tablet'
                     ? 'bg-blue-500 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -102,7 +102,7 @@ export default function PreviewHeader({
 
               <button
                 onClick={() => onDeviceChange('desktop')}
-                className={`p-2 rounded transition-colors ${
+                className={`p-2 rounded transition-colors cursor-pointer ${
                   selectedDevice === 'desktop'
                     ? 'bg-blue-500 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-gray-100'

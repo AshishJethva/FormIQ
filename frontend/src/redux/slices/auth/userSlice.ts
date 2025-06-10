@@ -69,7 +69,7 @@ const logInUser =
 
         // Set cookie for middleware to redirect
         setCookie('otp_verification_pending', true, {
-          maxAge: 60 * 60 * 24 * 7,
+          maxAge: 60 * 60 * 24 * 30,
           secure: true,
           httpOnly: false,
           sameSite: 'strict',
@@ -96,7 +96,7 @@ const logInUser =
       }
 
       setCookie('token', userObj.token, {
-        maxAge: 60 * 60 * 24 * 7,
+        maxAge: 60 * 60 * 24 * 30,
         secure: true,
         httpOnly: false,
         sameSite: 'strict',
@@ -165,7 +165,7 @@ const registerUser =
       }
 
       setCookie('otp_verification_pending', true, {
-        maxAge: 60 * 60 * 24 * 7,
+        maxAge: 60 * 60 * 24 * 30,
         secure: true,
         httpOnly: false,
         sameSite: 'strict',

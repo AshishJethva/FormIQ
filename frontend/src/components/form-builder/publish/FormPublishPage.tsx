@@ -255,7 +255,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
             <motion.button
               onClick={handleTogglePublish}
               disabled={isToggling}
-              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              className={`px-6 py-3 rounded-lg font-medium transition-all cursor-pointer ${
                 isPublished
                   ? 'bg-red-500 hover:bg-red-600 text-white'
                   : 'bg-green-500 hover:bg-green-600 text-white'
@@ -278,11 +278,8 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
               <span className='text-orange-800 text-sm'>
                 Form is published but disabled. Enable it in
                 <button
-                  className='ml-1 underline font-medium hover:text-orange-900 hover:cursor-pointer'
-                  onClick={() =>
-                    // (window.location.href = `/build/${formId}/settings`)
-                    router.push(`/build/${formId}/settings`)
-                  }
+                  className='ml-1 underline font-medium hover:text-orange-900 hover:cursor-pointer cursor-pointer'
+                  onClick={() => router.push(`/build/${formId}/settings`)}
                 >
                   Settings
                 </button>{' '}
@@ -339,7 +336,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
             <div className='flex space-x-4'>
               <motion.button
                 onClick={handleCopyLink}
-                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
+                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all cursor-pointer ${
                   copied
                     ? 'bg-green-500 text-white'
                     : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -354,7 +351,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
               <motion.button
                 onClick={handleOpenInNewTab}
                 disabled={!isAccessible}
-                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
+                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all cursor-pointer ${
                   isAccessible
                     ? 'bg-green-500 hover:bg-green-600 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'

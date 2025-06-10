@@ -200,7 +200,7 @@ export default function MainNavigation({
         {tabs.map(tab => (
           <button
             key={tab}
-            className={`px-8 py-2 text-lg font-medium transition-colors relative ${
+            className={`px-8 py-2 text-lg font-medium transition-colors cursor-pointer relative ${
               activeTab === tab
                 ? 'bg-[#F9B568] text-white'
                 : 'opacity-60 hover:opacity-100 text-white hover:text-[#FFFFFF] hover:bg-[#F9B568]'

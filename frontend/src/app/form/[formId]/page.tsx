@@ -979,7 +979,7 @@ export default function PublicFormPage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <Input
-                  // placeholder='First Name'
+                  placeholder='First Name'
                   value={value.firstName || ''}
                   onChange={e =>
                     handleInputChange(field.id, {

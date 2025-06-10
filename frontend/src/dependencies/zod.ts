@@ -1,10 +1,13 @@
+// src/dependencies/zod.ts
+
 import { z } from 'zod';
 
 // Schema for login form validation
 export const loginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address' }),
+  email: z.string().trim().email({ message: 'Invalid email address' }),
   password: z
     .string()
+    .trim()
     .min(8, { message: 'Password must be at least 8 characters long' }),
 });
 export type LoginSchema = z.infer<typeof loginSchema>;
@@ -26,15 +29,16 @@ export const signupSchema = z
   .object({
     name: z
       .string()
+      .trim()
       .min(2, 'Name must be at least 2 characters')
       .max(50, 'Name must be less than 50 characters'),
     email: z.string().email('Invalid email address'),
     password: passwordSignUpSchema,
-    passwordConfirm: z.string(),
+    passwordConfirm: z.string().trim(),
   })
   .refine(data => data.password === data.passwordConfirm, {
     message: "Passwords don't match",
-    path: ['passwordConfirm'], // This shows the error on passwordConfirm field
+    path: ['passwordConfirm'],
   });
 export type SignupSchema = z.infer<typeof signupSchema>;
 
@@ -55,7 +59,7 @@ export const passwordSchema = z
           /[^A-Za-z0-9]/.test(password),
         'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
       ),
-    confirm_password: z.string().min(1, 'Please confirm your password'),
+    confirm_password: z.string().trim().min(1, 'Please confirm your password'),
   })
   .refine(data => data.new_password === data.confirm_password, {
     message: 'Passwords must match',
@@ -90,7 +94,7 @@ export const resetPasswordSchema = z
           /[^A-Za-z0-9]/.test(password),
         'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
       ),
-    confirm_password: z.string().min(1, 'Confirm password is required'),
+    confirm_password: z.string().trim().min(1, 'Confirm password is required'),
   })
   .refine(data => data.new_password === data.confirm_password, {
     message: 'Passwords must match',

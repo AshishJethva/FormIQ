@@ -26,7 +26,7 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
         {Array.from({ length: totalPages }).map((_, index) => (
           <button
             key={index}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+            className={`px-3 py-1 rounded-md text-sm font-medium cursor-pointer transition-colors ${
               index === currentPage
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -39,7 +39,7 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className='px-3 py-1 bg-orange-500 rounded-md text-white text-sm font-medium hover:bg-orange-600 transition-colors flex items-center'
+          className='px-3 py-1 bg-orange-500 rounded-md text-white text-sm font-medium hover:bg-orange-600 transition-colors flex items-center cursor-pointer'
           onClick={onAddPage}
         >
           <Plus className='w-3 h-3 mr-1' />
@@ -49,7 +49,7 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
 
       <div className='flex items-center space-x-2'>
         <button
-          className={`p-1 rounded-md ${
+          className={`p-1 rounded-md cursor-pointer ${
             isFirstPage
               ? 'text-gray-400 cursor-not-allowed'
               : 'text-gray-700 hover:bg-gray-200'
@@ -63,7 +63,7 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
           Page {currentPage + 1} of {totalPages}
         </span>
         <button
-          className={`p-1 rounded-md ${
+          className={`p-1 rounded-md cursor-pointer ${
             isLastPage
               ? 'text-gray-400 cursor-not-allowed'
               : 'text-gray-700 hover:bg-gray-200'

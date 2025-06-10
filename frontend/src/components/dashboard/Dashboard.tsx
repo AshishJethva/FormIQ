@@ -33,6 +33,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useFormData } from '@/hooks/useFormData';
+import { fetchUserProfile } from '@/redux/slices/userProfileSlice';
 
 // Define CustomLabel to match the Sidebar's interface
 interface CustomLabel {
@@ -40,6 +41,7 @@ interface CustomLabel {
   name: string;
   color: string;
   createdAt: number;
+  userId: string;
 }
 
 export default function DashboardPage() {
@@ -162,6 +164,7 @@ export default function DashboardPage() {
           description: formDescription,
         }) as any
       ).unwrap();
+      await dispatch(fetchUserProfile());
 
       toast.success('Form created successfully');
       setFormName('');
@@ -275,7 +278,7 @@ export default function DashboardPage() {
 
                 <div className='pt-4 flex justify-end'>
                   <Button
-                    className='bg-[#ff6100] hover:bg-[#E65700] text-white'
+                    className='bg-[#ff6100] hover:bg-[#E65700] text-white cursor-pointer'
                     onClick={handleCreateForm}
                     disabled={isCreatingForm || !formName.trim()}
                   >

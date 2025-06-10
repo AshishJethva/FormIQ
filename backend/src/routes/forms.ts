@@ -15,6 +15,48 @@ import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import Submission from '../models/Submission';
 import { deleteFormFiles } from '../services/cloudinaryService';
+import UserProfile from '../models/UserProfile';
+import ActivityLog from '../models/ActivityLog';
+
+// Helper function to log activity (add this near the top of the file)
+const logActivity = async (
+  userId: string,
+  action: string,
+  targetType: 'form' | 'submission' | 'account' | 'settings',
+  target?: string,
+  req?: Request,
+  metadata?: Record<string, any>
+) => {
+  try {
+    await ActivityLog.create({
+      userId: new mongoose.Types.ObjectId(userId),
+      action,
+      target,
+      targetType,
+      ipAddress: req?.ip || req?.connection?.remoteAddress,
+      userAgent: req?.get('User-Agent'),
+      metadata,
+    });
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+};
+
+// Helper function to update forms used count
+const updateFormsUsed = async (userId: string, increment: boolean = true) => {
+  try {
+    const userProfile = await UserProfile.findOne({ userId });
+    if (userProfile) {
+      if (increment) {
+        await userProfile.incrementFormsUsed();
+      } else {
+        await userProfile.decrementFormsUsed();
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update forms used count:', error);
+  }
+};
 
 const router = express.Router();
 
@@ -432,9 +474,18 @@ router.post(
   validate(createFormSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { name, template } = req.body;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    // Check if user can create more forms
+    const userProfile = await UserProfile.findOne({ userId });
+    if (userProfile && !userProfile.canCreateForms) {
+      throw new ApiError(
+        `Form limit reached. You can create up to ${userProfile.plan.formsLimit} forms with your ${userProfile.plan.type} plan.`,
+        403
+      );
+    }
 
     const pageId = uuidv4();
-    const userId = new mongoose.Types.ObjectId(req.user.id);
 
     // Generate unique title if duplicate exists
     let uniqueTitle = name || 'Form';
@@ -477,6 +528,15 @@ router.post(
         hour: '2-digit',
         minute: '2-digit',
       }),
+    });
+
+    // Update forms used count
+    await updateFormsUsed(req.user.id, true);
+
+    // Log activity
+    await logActivity(req.user.id, 'created form', 'form', form.title, req, {
+      formId: form._id.toString(),
+      template: !!template,
     });
 
     // Return form data in the format expected by frontend
@@ -733,6 +793,16 @@ router.patch(
       throw new ApiError('Form name must be less than 100 characters', 400);
     }
 
+    const oldForm = await Form.findOne({ _id: id, userId });
+    if (!oldForm) {
+      throw new ApiError(
+        'Form not found or you do not have permission to edit it',
+        404
+      );
+    }
+
+    const oldName = oldForm.title;
+
     // Find and update the form
     const form = await Form.findOneAndUpdate(
       {
@@ -749,20 +819,23 @@ router.patch(
       }
     );
 
-    if (!form) {
-      throw new ApiError(
-        'Form not found or you do not have permission to edit it',
-        404
-      );
-    }
+    // Log activity
+    await logActivity(
+      userId,
+      'renamed form',
+      'form',
+      `"${oldName}" to "${name.trim()}"`,
+      req,
+      { formId: id, oldName, newName: name.trim() }
+    );
 
     res.json({
       success: true,
       message: 'Form renamed successfully',
       data: {
-        id: form._id,
-        name: form.title,
-        lastEdited: form.updatedAt,
+        id: form!._id,
+        name: form!.title,
+        lastEdited: form!.updatedAt,
       },
     });
   })
@@ -939,7 +1012,7 @@ router.delete(
         ` Deleted ${deletedSubmissionsCount} submissions from database`
       );
     } catch (submissionError: any) {
-      console.error(`❌ Failed to delete submissions:`, submissionError);
+      console.error(`Failed to delete submissions:`, submissionError);
       throw new ApiError('Failed to delete form submissions', 500);
     }
 
@@ -948,15 +1021,32 @@ router.delete(
       const formDeleteResult = await Form.deleteOne({ _id: formId, userId });
 
       if (formDeleteResult.deletedCount === 0) {
-        console.log(`❌ Failed to delete form ${formId} from database`);
+        console.log(`Failed to delete form ${formId} from database`);
         throw new ApiError('Failed to delete form', 500);
       }
 
       console.log(` Form "${form.title}" deleted from database`);
     } catch (formError: any) {
-      console.error(`❌ Failed to delete form:`, formError);
+      console.error(`Failed to delete form:`, formError);
       throw new ApiError('Failed to delete form', 500);
     }
+
+    // Update forms used count
+    await updateFormsUsed(req.user.id, false);
+
+    // Log activity
+    await logActivity(
+      req.user.id,
+      'deleted form permanently',
+      'form',
+      form.title,
+      req,
+      {
+        formId: form._id.toString(),
+        submissionsDeleted: deletedSubmissionsCount,
+        filesDeleted: fileCleanupResult?.submissionFiles.successCount || 0,
+      }
+    );
 
     // Step 6: Prepare response with detailed results
     const response = {
@@ -1231,6 +1321,16 @@ router.patch(
 
     form.isPublished = isPublished;
     await form.save();
+
+    // Log activity
+    await logActivity(
+      req.user.id,
+      isPublished ? 'published form' : 'unpublished form',
+      'form',
+      form.title,
+      req,
+      { formId: form._id.toString() }
+    );
 
     res.status(200).json({
       success: true,

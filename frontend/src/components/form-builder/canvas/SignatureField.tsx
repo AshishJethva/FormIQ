@@ -188,7 +188,7 @@ export default function SignatureField({
               variant='outline'
               size='sm'
               onClick={clearSignature}
-              className='h-8 w-8 p-0'
+              className='h-8 w-8 p-0 cursor-pointer'
               title='Clear signature'
             >
               <Trash2 className='h-4 w-4' />

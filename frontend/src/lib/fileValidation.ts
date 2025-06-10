@@ -1,5 +1,4 @@
 // src/utils/fileValidation.ts
-
 export interface FileValidationResult {
   isValid: boolean;
   error?: string;

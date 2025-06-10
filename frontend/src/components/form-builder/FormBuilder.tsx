@@ -223,7 +223,7 @@ export default function FormBuilder() {
               dispatch(clearError());
               window.location.reload();
             }}
-            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2'
+            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2 cursor-pointer'
           >
             Try Again
           </button>
@@ -232,7 +232,7 @@ export default function FormBuilder() {
               dispatch(clearError());
               dispatch(initializeForm());
             }}
-            className='bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600'
+            className='bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 cursor-pointer'
           >
             Create New Form
           </button>
@@ -250,7 +250,7 @@ export default function FormBuilder() {
           <p className='text-gray-600 mb-4'>No form data available</p>
           <button
             onClick={() => dispatch(initializeForm())}
-            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'
+            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 cursor-pointer'
           >
             Initialize Form
           </button>

@@ -4,6 +4,7 @@ import appReducer from '@/redux/slices/appSlice';
 import formReducer from '@/redux/slices/dashboard/formsSlice';
 import formBuilderReducer from './slices/formBuilderSlice';
 import aiFormReducer from './slices/aiFormSlice';
+import userProfileReducer from './slices/userProfileSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
@@ -25,19 +26,13 @@ const userPersistConfig = {
   whitelist: ['user', 'token', 'isAuthenticated'],
 };
 
-const formsPersistConfig = {
-  key: 'forms',
-  storage,
-  // Only persist forms list data, not individual form details
-  whitelist: ['forms', 'labels', 'filters'],
-};
-
 const rootReducer = combineReducers({
-  forms: persistReducer(formsPersistConfig, formReducer),
+  forms: formReducer,
   app: appReducer,
   user: persistReducer(userPersistConfig, userReducer),
   formBuilder: formBuilderReducer,
   aiForm: aiFormReducer,
+  userProfile: userProfileReducer,
 });
 
 // Create the store without persisting formBuilder

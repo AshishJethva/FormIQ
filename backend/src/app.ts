@@ -3,19 +3,21 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import helmet from 'helmet';
+import { globalErrorHandler } from './utils/errorHandler';
+import { AppError } from './utils/appError';
+import rateLimit from 'express-rate-limit';
+import { errorHandler } from './utils/errorHandler';
+
 import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import formRoutes from './routes/forms';
 import labelRoutes from './routes/labels';
 import aiRoutes from './routes/ai';
-import { globalErrorHandler } from './utils/errorHandler';
-import { AppError } from './utils/appError';
 import uploadRoutes from './routes/upload';
-import rateLimit from 'express-rate-limit';
-import submissionRoutes from './routes/submissions';
 import publicRoutes from './routes/public';
-import { errorHandler } from './utils/errorHandler';
+import submissionRoutes from './routes/submissions';
 import aiEvaluationRoutes from './routes/aiEvaluation';
+import userProfileRoutes from './routes/userProfile';
 
 const app = express();
 
@@ -66,6 +68,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ai-evaluation', aiEvaluationRoutes);
+app.use('/api/user', userProfileRoutes);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

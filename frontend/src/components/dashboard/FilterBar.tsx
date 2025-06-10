@@ -20,8 +20,7 @@ export type SortOption =
   | 'creation-date'
   | 'last-edit'
   | 'last-submission'
-  | 'submission-count'
-  | 'unread';
+  | 'submission-count';
 
 interface FilterBarProps {
   activeSection?: string;
@@ -46,7 +45,6 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeSection = 'all' }) => {
     { id: 'last-edit', label: 'Last Edit' },
     { id: 'last-submission', label: 'Last Submission' },
     { id: 'submission-count', label: 'Submission Count' },
-    { id: 'unread', label: 'Unread' },
   ];
 
   // Map section to backend status
@@ -146,7 +144,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeSection = 'all' }) => {
       <div className='relative' ref={sortRef}>
         <Button
           variant='outline'
-          className='flex items-center bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors'
+          className='flex items-center bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer'
           onClick={() => setShowSortOptions(!showSortOptions)}
         >
           <ArrowUpDown className='h-4 w-4 mr-2 text-gray-500' />
@@ -189,7 +187,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeSection = 'all' }) => {
         {searchTerm && (
           <button
             onClick={handleClearSearch}
-            className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600'
+            className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer'
           >
             <X className='h-4 w-4' />
           </button>

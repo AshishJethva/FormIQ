@@ -266,6 +266,181 @@ export const formatSubmissionValueSimplified = (
   return formatSingleValueSimplified(value);
 };
 
+export const formatDisplayValueWithChoiceLabels = (
+  value: any,
+  fieldId: string,
+  formStructure: any
+): string => {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  // Get field definition from form structure for choice fields
+  let fieldDefinition = null;
+  if (fieldId && formStructure?.pages) {
+    for (const page of formStructure.pages) {
+      if (page?.fields) {
+        fieldDefinition = page.fields.find(
+          (field: any) => field.id === fieldId
+        );
+        if (fieldDefinition) break;
+      }
+    }
+  }
+
+  // Handle choice fields - convert value to label
+  if (
+    fieldDefinition &&
+    ['dropdown', 'singleChoice', 'multipleChoice'].includes(
+      fieldDefinition.type
+    )
+  ) {
+    if (typeof value === 'string') {
+      // Single choice - find the option with this value
+      const option = fieldDefinition.options?.find(
+        (opt: any) => opt.value === value
+      );
+      if (option) {
+        return option.label; // Return the actual label instead of value
+      }
+      // Fallback to original value if option not found
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      // Multiple choice - map each value to its label
+      const labels = value.map((val: string) => {
+        const option = fieldDefinition.options?.find(
+          (opt: any) => opt.value === val
+        );
+        return option ? option.label : val; // Return label instead of value
+      });
+      return labels.join(', ');
+    }
+  }
+
+  // Handle other field types (existing logic)
+  if (typeof value === 'string') {
+    // Handle signature fields
+    if (value.startsWith('data:image/')) {
+      return '[Digital Signature Captured]';
+    }
+    // Handle Cloudinary URLs
+    if (value.includes('cloudinary.com') || value.startsWith('http')) {
+      return value.trim();
+    }
+    return value.trim();
+  }
+
+  if (typeof value === 'number') {
+    return value.toString();
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(item => {
+        if (typeof item === 'object' && item !== null) {
+          if (item.label && item.value) {
+            return item.label;
+          }
+          if (item.firstName && item.lastName) {
+            return `${item.firstName} ${item.lastName}`;
+          }
+          if (item.originalName) {
+            return item.originalName;
+          }
+          return Object.values(item).join(' ');
+        }
+        return String(item);
+      })
+      .join(', ');
+  }
+
+  if (typeof value === 'object') {
+    // Handle file objects
+    if (value.url && typeof value.url === 'string') {
+      return value.url.trim();
+    }
+
+    // Handle complex objects (fullName, address, etc.)
+    if (value.firstName && value.lastName) {
+      return `${value.firstName} ${value.lastName}`.trim();
+    }
+
+    if (value.street || value.city || value.state || value.zipCode) {
+      const addressParts = [
+        value.street,
+        value.city,
+        value.state,
+        value.zipCode,
+        value.country,
+      ].filter(part => part && part.trim());
+      return addressParts.join(', ');
+    }
+
+    if (value.countryCode && value.number) {
+      return `${value.countryCode} ${value.number}`;
+    }
+
+    if (value.date || value.time) {
+      const datePart = value.date
+        ? new Date(value.date).toLocaleDateString()
+        : '';
+      const timePart = value.time || '';
+      return `${datePart} ${timePart}`.trim();
+    }
+
+    if (value.label && value.value !== undefined) {
+      return value.label;
+    }
+
+    // Handle fill blank template
+    if (value.beforeText && value.afterText && value.userInput) {
+      return `${value.beforeText} "${value.userInput}" ${value.afterText}`;
+    }
+
+    // Handle product list
+    if (value.selectedProducts && typeof value.selectedProducts === 'object') {
+      const products = [];
+      for (const [productId, quantity] of Object.entries(
+        value.selectedProducts
+      )) {
+        if (quantity && typeof quantity === 'number' && quantity > 0) {
+          const product = value.products?.find((p: any) => p.id === productId);
+          const productName = product?.name || `Product ${productId}`;
+          products.push(`${productName} (x${quantity})`);
+        }
+      }
+      return products.join(', ');
+    }
+
+    // Generic object handling
+    const meaningfulValues = Object.entries(value)
+      .filter(
+        ([key, val]) =>
+          val !== null &&
+          val !== undefined &&
+          val !== '' &&
+          !key.startsWith('_') &&
+          key !== 'id' &&
+          key !== 'createdAt' &&
+          key !== 'updatedAt'
+      )
+      .map(([, val]) =>
+        formatDisplayValueWithChoiceLabels(val, fieldId, formStructure)
+      )
+      .filter(val => val && val !== '');
+
+    return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
+  }
+
+  return String(value);
+};
+
 // Helper function to format single values
 const formatSingleValue = (value: any): string => {
   if (value === null || value === undefined || value === '') {
@@ -664,6 +839,173 @@ const generateSimplifiedCSVExport = (submissions: any[], form: any): string => {
   });
 
   console.log(' Simplified CSV generation completed');
+  return csvContent;
+};
+
+const generateEnhancedCSVExportWithLabels = (
+  submissions: any[],
+  form: any
+): string => {
+  if (!submissions || submissions.length === 0) {
+    return 'Submission Date,No Data\n"No submissions found",""';
+  }
+
+  console.log(
+    '📊 Generating Enhanced CSV with Choice Labels for',
+    submissions.length,
+    'submissions'
+  );
+
+  // Create field labels map from form structure
+  const fieldLabelsMap = createFieldLabelsMap(form);
+
+  // Get all unique field keys from submissions and files
+  const allFieldKeys = new Set<string>();
+  const fileFieldKeys = new Set<string>();
+
+  submissions.forEach(submission => {
+    // Regular data fields
+    if (submission.data && typeof submission.data === 'object') {
+      Object.keys(submission.data).forEach(key => {
+        if (key && typeof key === 'string' && key.trim().length > 0) {
+          allFieldKeys.add(key);
+        }
+      });
+    }
+
+    // File fields from files array
+    if (submission.files && Array.isArray(submission.files)) {
+      submission.files.forEach((file: any) => {
+        if (file.fieldId) {
+          fileFieldKeys.add(file.fieldId);
+          allFieldKeys.add(file.fieldId);
+        }
+      });
+    }
+  });
+
+  // Sort field keys for consistent column order
+  const sortedFieldKeys = Array.from(allFieldKeys).sort((a, b) => {
+    const commonFieldOrder = [
+      'name',
+      'fullName',
+      'firstName',
+      'lastName',
+      'email',
+      'emailAddress',
+      'phone',
+      'phoneNumber',
+      'company',
+      'subject',
+      'message',
+      'address',
+    ];
+
+    const aIndex = commonFieldOrder.findIndex(field =>
+      a.toLowerCase().includes(field.toLowerCase())
+    );
+    const bIndex = commonFieldOrder.findIndex(field =>
+      b.toLowerCase().includes(field.toLowerCase())
+    );
+
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    } else if (aIndex !== -1) {
+      return -1;
+    } else if (bIndex !== -1) {
+      return 1;
+    } else {
+      return a.localeCompare(b);
+    }
+  });
+
+  // Define CSV headers
+  const headers = [
+    'Submission Date',
+    ...sortedFieldKeys.map(key => getFieldDisplayLabel(key, fieldLabelsMap)),
+  ];
+
+  console.log('📝 CSV Headers:', headers);
+
+  // Generate CSV content
+  let csvContent = '';
+
+  // Add headers
+  csvContent += headers.map(header => escapeCSVValue(header)).join(',') + '\n';
+
+  // Add data rows
+  submissions.forEach((submission, index) => {
+    const rowData = [];
+
+    // First column: Submission Date
+    const formattedDate = formatSubmissionDate(
+      submission.submittedAt || submission.createdAt || ''
+    );
+    rowData.push(escapeCSVValue(formattedDate));
+
+    // Remaining columns: All form field values with choice label mapping
+    sortedFieldKeys.forEach(fieldKey => {
+      let fieldValue = '';
+
+      // Check if this is a file field
+      if (fileFieldKeys.has(fieldKey)) {
+        // Handle file fields - extract only Cloudinary URLs
+        const fieldFiles =
+          submission.files?.filter((file: any) => file.fieldId === fieldKey) ||
+          [];
+
+        if (fieldFiles.length > 0) {
+          const fileUrls = fieldFiles
+            .map((file: any) => file.url || '')
+            .filter(url => url.trim() !== '');
+          fieldValue = fileUrls.join('; ');
+        } else {
+          // Check data object for legacy file storage
+          const dataValue = submission.data?.[fieldKey];
+          if (dataValue) {
+            fieldValue = formatDisplayValueWithChoiceLabels(
+              dataValue,
+              fieldKey,
+              form
+            );
+          }
+        }
+      } else {
+        // Handle regular data fields with choice label mapping
+        const dataValue = submission.data?.[fieldKey];
+        fieldValue = formatDisplayValueWithChoiceLabels(
+          dataValue,
+          fieldKey,
+          form
+        );
+      }
+
+      rowData.push(escapeCSVValue(fieldValue));
+    });
+
+    // Add the complete row to CSV
+    csvContent += rowData.join(',') + '\n';
+
+    // Log first few rows for debugging
+    if (index < 2) {
+      console.log(`📄 Row ${index + 1} with choice labels:`, {
+        date: formattedDate,
+        sampleField: sortedFieldKeys[0]
+          ? {
+              key: sortedFieldKeys[0],
+              rawValue: submission.data?.[sortedFieldKeys[0]],
+              displayValue: formatDisplayValueWithChoiceLabels(
+                submission.data?.[sortedFieldKeys[0]],
+                sortedFieldKeys[0],
+                form
+              ),
+            }
+          : null,
+      });
+    }
+  });
+
+  console.log(' Enhanced CSV generation with choice labels completed');
   return csvContent;
 };
 
@@ -2832,7 +3174,10 @@ router.get(
     const { formId } = req.params;
     const { format = 'csv', dateFrom, dateTo, status, isRead } = req.query;
 
-    console.log('📊 Starting simplified CSV export for form:', formId);
+    console.log(
+      '📊 Starting enhanced CSV export with choice labels for form:',
+      formId
+    );
 
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
@@ -2846,10 +3191,10 @@ router.get(
 
     console.log(' Form found:', form.title);
 
-    // Build query for filtering
+    // Build query for filtering (existing logic)
     const query: any = { formId };
 
-    // Date range filter
+    // Apply existing filters...
     if (dateFrom || dateTo) {
       query.submittedAt = {};
       if (dateFrom) query.submittedAt.$gte = new Date(dateFrom as string);
@@ -2860,7 +3205,6 @@ router.get(
       }
     }
 
-    // Status filter
     if (
       status &&
       ['pending', 'processed', 'failed'].includes(status as string)
@@ -2868,14 +3212,11 @@ router.get(
       query.status = status;
     }
 
-    // Read status filter
     if (isRead !== undefined) {
       query.isRead = isRead === 'true';
     }
 
-    console.log('🔍 Query filters:', query);
-
-    // Fetch submissions with all data including files
+    // Fetch submissions
     const submissions = await Submission.find(query)
       .sort({ submittedAt: -1 })
       .lean();
@@ -2883,15 +3224,15 @@ router.get(
     console.log(`📋 Found ${submissions.length} submissions for export`);
 
     if (format === 'csv') {
-      // Generate simplified CSV with Cloudinary URLs only
-      const csvData = generateSimplifiedCSVExport(submissions, form);
+      // Generate enhanced CSV with choice field labels
+      const csvData = generateEnhancedCSVExportWithLabels(submissions, form);
 
       // Create filename
       const formTitleSafe = form.title.replace(/[^a-zA-Z0-9]/g, '_');
       const dateStamp = new Date().toISOString().split('T')[0];
-      const filename = `${formTitleSafe}-submissions-${dateStamp}.csv`;
+      const filename = `${formTitleSafe}-submissions-with-labels-${dateStamp}.csv`;
 
-      console.log('📤 Sending simplified CSV file:', filename);
+      console.log('Sending enhanced CSV file with choice labels:', filename);
 
       // Set headers for CSV download
       res.set({
@@ -2901,63 +3242,16 @@ router.get(
         'Content-Length': Buffer.byteLength(csvData, 'utf8').toString(),
       });
 
-      // Send CSV data
       res.status(200).send(csvData);
-    } else if (format === 'json') {
-      // JSON export with simplified structure
-      const formTitleSafe = form.title.replace(/[^a-zA-Z0-9]/g, '_');
-      const dateStamp = new Date().toISOString().split('T')[0];
-      const filename = `${formTitleSafe}-submissions-${dateStamp}.json`;
-
-      const fieldLabelsMap = createFieldLabelsMap(form);
-
-      const exportData = {
-        success: true,
-        export: {
-          form: {
-            id: form.id,
-            title: form.title,
-            description: form.description,
-            exportedAt: new Date().toISOString(),
-          },
-          fieldLabels: fieldLabelsMap,
-          submissions: submissions.map(submission => ({
-            id: submission._id,
-            submittedAt: submission.submittedAt,
-            status: submission.status,
-            isRead: submission.isRead,
-            data: submission.data,
-            files: submission.files || [],
-            fileCount: submission.files?.length || 0,
-          })),
-          summary: {
-            totalRecords: submissions.length,
-            recordsWithFiles: submissions.filter(
-              s => s.files && s.files.length > 0
-            ).length,
-            totalFiles: submissions.reduce(
-              (sum: number, s: any) => sum + (s.files?.length || 0),
-              0
-            ),
-          },
-        },
-      };
-
-      res.set({
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'no-cache',
-      });
-
-      res.status(200).json(exportData);
     } else {
+      // Handle other formats (existing logic)
       throw new ApiError(
         'Invalid export format. Supported formats: csv, json',
         400
       );
     }
 
-    console.log(' Simplified export completed successfully');
+    console.log(' Enhanced export with choice labels completed successfully');
   })
 );
 

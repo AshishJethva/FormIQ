@@ -1,34 +1,39 @@
+// src/components/dashboard/ProfileDropdown.tsx
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '@/redux/slices/auth/userSlice';
+import {
+  selectUserProfile,
+  fetchUserProfile,
+} from '@/redux/slices/userProfileSlice';
 import { toast } from 'sonner';
-import type { StoreDispatch } from '@/redux/store';
+import type { StoreDispatch, RootState } from '@/redux/store';
 
-interface ProfileDropdownProps {
-  userName: string;
-  userImage?: string | null;
-  planType?: string;
-  formsUsed?: number;
-  formsTotal?: number;
-}
-
-const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
-  userName = 'User',
-  userImage = null,
-  planType = 'STARTER',
-  formsUsed = 0,
-  formsTotal = 5,
-}) => {
+const ProfileDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const dispatch = useDispatch<StoreDispatch>();
+
+  // Get user profile from Redux
+  const userProfile = useSelector(selectUserProfile);
+  const isLoading = useSelector(
+    (state: RootState) => state.userProfile.isLoading
+  );
+
+  // Fetch user profile on component mount
+  useEffect(() => {
+    if (!userProfile && !isLoading) {
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, userProfile, isLoading]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -77,12 +82,24 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
     }
   };
 
+  // Default values if profile is not loaded
+  const userName = userProfile?.user.name || 'User';
+  const userImage =
+    userProfile?.profile.avatar?.src &&
+    userProfile.profile.avatar.src.trim() !== ''
+      ? userProfile.profile.avatar.src
+      : null;
+  const planType = userProfile?.profile.plan.type || 'STARTER';
+  const formsUsed = userProfile?.profile.plan.formsUsed || 0;
+  const formsTotal = userProfile?.profile.plan.formsLimit || 5;
+  const canCreateForms = userProfile?.profile.plan.canCreateForms ?? true;
+
   return (
     <div className='relative' ref={dropdownRef}>
       {/* Profile Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className='rounded-full border-2 border-[#ff6200] focus:outline-none focus:ring-offset-2 focus:ring-offset-[#102035] h-10 w-10 flex items-center justify-center'
+        className='rounded-full border-2 focus:outline-none focus:ring-offset-2 focus:ring-offset-[#102035] h-10 w-10 flex items-center justify-center cursor-pointer'
         aria-label='Open profile menu'
       >
         {userImage ? (
@@ -91,11 +108,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             alt={userName}
             width={40}
             height={40}
-            className='rounded-full'
+            className='rounded-full object-cover'
             priority
           />
         ) : (
-          <User className='h-6 w-6' />
+          <User className='h-6 w-6 ' />
         )}
       </button>
 
@@ -114,12 +131,12 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                   alt={userName}
                   width={48}
                   height={48}
-                  className='rounded-full mr-3'
+                  className='rounded-full mr-3 object-cover'
                   priority
                 />
               ) : (
-                <div className='h-12 w-12 border-2 border-[#ff6200] rounded-full mr-3 flex items-center justify-center'>
-                  <User className='text-black' />
+                <div className='h-12 w-12 border-2 border-[#102035] rounded-full mr-3 flex items-center justify-center'>
+                  <User className='text-[#102035]' />
                 </div>
               )}
               <div>
@@ -128,41 +145,63 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
               </div>
 
               {/* Plan Badge */}
-              {planType && (
-                <div className='ml-auto'>
-                  <span className='bg-green-500 text-white text-xs py-1 px-3 rounded-md font-medium'>
-                    {planType}
-                  </span>
-                </div>
-              )}
+              <div className='ml-auto'>
+                <span
+                  className={`text-white text-xs py-1 px-3 rounded-md font-medium ${
+                    planType === 'STARTER'
+                      ? 'bg-gray-500'
+                      : planType === 'BRONZE'
+                      ? 'bg-orange-500'
+                      : planType === 'SILVER'
+                      ? 'bg-blue-500'
+                      : 'bg-yellow-500'
+                  }`}
+                >
+                  {planType}
+                </span>
+              </div>
             </div>
 
             {/* Forms Usage Meter */}
-            {formsTotal > 0 && (
-              <div className='mt-3'>
-                <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                  <span>Forms</span>
-                  <span>
-                    {formsUsed} of {formsTotal} used
-                  </span>
-                </div>
-                <div className='h-2 bg-gray-200 rounded-full overflow-hidden'>
-                  <div
-                    className='h-full bg-gradient-to-r from-orange-500 to-orange-400'
-                    style={{ width: `${(formsUsed / formsTotal) * 100}%` }}
-                  ></div>
-                </div>
+            <div className='mt-3'>
+              <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                <span>Forms</span>
+                <span>
+                  {formsUsed} of {formsTotal} used
+                </span>
               </div>
-            )}
+              <div className='h-2 bg-gray-200 rounded-full overflow-hidden'>
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    formsUsed / formsTotal >= 0.9
+                      ? 'bg-gradient-to-r from-red-500 to-red-400'
+                      : formsUsed / formsTotal >= 0.7
+                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-400'
+                      : 'bg-gradient-to-r from-orange-500 to-orange-400'
+                  }`}
+                  style={{
+                    width: `${Math.min((formsUsed / formsTotal) * 100, 100)}%`,
+                  }}
+                ></div>
+              </div>
+              {!canCreateForms && (
+                <p className='text-xs text-red-600 mt-1'>
+                  Form limit reached. Upgrade to create more forms.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Upgrade Banner */}
-          <div className=' text-white py-3 text-center'>
+          <div className='text-white py-3 text-center'>
             <button
-              onClick={() => router.push('/myaccount/upgrade')}
-              className='w-5/6 bg-blue-700 hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors'
+              onClick={() => {
+                router.push('/myaccount/upgrade');
+                setIsOpen(false);
+              }}
+              className='w-5/6 bg-blue-700 hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors cursor-pointer'
             >
-              Upgrade Your Plan
+              {planType === 'STARTER' ? 'Upgrade Your Plan' : 'Manage Plan'}
             </button>
           </div>
 

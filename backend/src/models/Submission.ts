@@ -12,7 +12,6 @@ interface ISubmission extends Document {
   isRead: boolean;
   tags: string[];
   metadata?: Record<string, any>;
-  // New: File attachments array
   files?: Array<{
     fieldId: string;
     originalName: string;

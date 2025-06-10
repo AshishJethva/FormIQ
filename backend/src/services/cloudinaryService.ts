@@ -63,8 +63,19 @@ export const uploadBuffer = (
  * @param publicId - The public ID of the image to delete
  * @returns Promise with the deletion result
  */
-export const deleteImage = (publicId: string): Promise<any> => {
-  return cloudinary.uploader.destroy(publicId);
+export const deleteImage = async (publicId: string): Promise<void> => {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+
+    if (result.result !== 'ok') {
+      throw new Error(`Failed to delete image: ${result.result}`);
+    }
+
+    console.log(`Successfully deleted image with publicId: ${publicId}`);
+  } catch (error: any) {
+    console.error('Error deleting image from Cloudinary:', error);
+    throw new Error(`Failed to delete image: ${error.message}`);
+  }
 };
 
 /**

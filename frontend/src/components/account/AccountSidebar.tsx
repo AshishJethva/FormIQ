@@ -1,10 +1,10 @@
+// src/components/account/AccountSidebar.tsx
+
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-// Import only the icons we actually use
 import { UserIcon, SettingsIcon, ArrowUpCircle, ClockIcon } from 'lucide-react';
 
 interface SidebarItem {

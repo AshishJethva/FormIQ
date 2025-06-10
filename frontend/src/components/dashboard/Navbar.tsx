@@ -11,24 +11,8 @@ import {
 import Logo from '@/../public/Logo.png';
 import ProfileDropdown from './ProfileDropdown';
 import Link from 'next/link';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/redux/store';
+
 import { usePathname } from 'next/navigation';
-
-interface User {
-  name?: string;
-  profileImage?: string | null;
-  subscription?: {
-    plan?: string;
-  };
-  formsUsed?: number;
-  formsTotal?: number;
-}
-
-interface UserState {
-  user: User | null;
-  token: string | null;
-}
 
 export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<'templates' | 'support' | null>(
@@ -36,7 +20,6 @@ export default function Navbar() {
   );
   const pathname = usePathname();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { user } = useSelector((state: RootState) => state.user as UserState);
 
   // Get active page from pathname
   const getActivePage = (path: string) => {
@@ -270,7 +253,7 @@ export default function Navbar() {
           </Popover>
 
           {/* Pricing link */}
-          <Link href='/pricing'>
+          <Link href='/myaccount/upgrade'>
             <div
               className={`cursor-pointer relative ${
                 activePage === 'pricing'
@@ -285,13 +268,7 @@ export default function Navbar() {
           </Link>
 
           {/* Profile Dropdown */}
-          <ProfileDropdown
-            userName={user?.name || 'User'}
-            userImage={user?.profileImage || null}
-            planType={user?.subscription?.plan || 'STARTER'}
-            formsUsed={user?.formsUsed || 0}
-            formsTotal={user?.formsTotal || 5}
-          />
+          <ProfileDropdown />
         </div>
       </div>
     </header>

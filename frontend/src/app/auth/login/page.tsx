@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
@@ -18,6 +18,12 @@ export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // Clear the OTP verification pending cookie
+  useEffect(() => {
+    document.cookie =
+      'otp_verification_pending=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  }, []);
 
   const form = useForm<LoginRequest>({
     resolver: zodResolver(loginSchema),
@@ -157,7 +163,7 @@ export default function LoginPage() {
                   <div className='absolute inset-y-0 right-0 pr-3.5 flex items-center'>
                     <button
                       type='button'
-                      className='text-indigo-500 hover:text-indigo-600 focus:outline-none transition-colors p-1.5 rounded-full hover:bg-indigo-50'
+                      className='text-indigo-500 hover:text-indigo-600 focus:outline-none transition-colors p-1.5 rounded-full hover:bg-indigo-50 cursor-pointer'
                       onClick={togglePasswordVisibility}
                       aria-label={
                         showPassword ? 'Hide password' : 'Show password'
@@ -227,7 +233,7 @@ export default function LoginPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className={`w-full py-2 px-5 flex justify-center items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-base mt-6 ${
+                className={`w-full py-2 px-5 flex justify-center items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer focus:ring-indigo-500 text-base mt-6 ${
                   isLoading
                     ? 'opacity-90 cursor-not-allowed'
                     : 'hover:from-indigo-700 hover:to-purple-700'

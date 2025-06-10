@@ -88,7 +88,7 @@ class RateLimiter {
   }
 }
 
-const rateLimiter = new RateLimiter(10, 60000); // More conservative rate limiting
+const rateLimiter = new RateLimiter(100, 60000);
 
 export class AIEvaluationService {
   private genAI: GoogleGenerativeAI;

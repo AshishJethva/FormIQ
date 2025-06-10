@@ -50,8 +50,7 @@ export default function AddNewPageButton({
 
   return (
     <motion.button
-      className={`flex items-center space-x-2 mb-2 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors ${className}`}
-      // whileHover={{ scale: 1.02 }}
+      className={`flex items-center space-x-2 mb-2 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 cursor-pointer transition-colors ${className}`}
       whileTap={{ scale: 0.98 }}
       onClick={handleAddPage}
     >

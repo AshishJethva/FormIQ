@@ -672,7 +672,7 @@ export const formsSlice = createSlice({
         }
       })
 
-      // NEW: Handle rename form async actions
+      //  Handle rename form async actions
       .addCase(renameFormAsync.fulfilled, (state, action) => {
         const form = state.forms.find(
           form => form.id === action.payload.formId

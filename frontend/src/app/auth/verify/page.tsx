@@ -1,3 +1,4 @@
+// src/app/auth/verify/page.tsx
 'use client';
 
 import type { StoreDispatch } from '@/redux/store';
@@ -169,7 +170,7 @@ const OTPVerification: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
           onClick={handleBack}
-          className='flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6 transition-colors group'
+          className='flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6 transition-colors group cursor-pointer'
         >
           <ArrowLeft className='w-4 h-4 group-hover:-translate-x-1 transition-transform' />
           <span className='text-sm font-medium'>Back</span>
@@ -270,7 +271,7 @@ const OTPVerification: React.FC = () => {
                     exit={{ opacity: 0, y: -10 }}
                     onClick={handleResend}
                     disabled={isResending}
-                    className='flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors group'
+                    className='flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors group cursor-pointer'
                   >
                     <RefreshCw
                       className={`w-4 h-4 transition-transform ${
@@ -290,9 +291,9 @@ const OTPVerification: React.FC = () => {
               transition={{ delay: 0.9 }}
             >
               <Button
-                className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
+                className={`w-full h-12 text-base font-semibold transition-all duration-300 cursor-pointer ${
                   isComplete && !isLoading
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    ? 'bg-gradient-to-r cursor-pointer from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
                 disabled={!isComplete || isLoading}

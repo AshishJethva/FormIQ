@@ -582,7 +582,7 @@ const FormsList: React.FC<FormsListProps> = ({
           <Button
             variant='outline'
             size='sm'
-            className='text-green-600 border-gray-300 hover:bg-green-50'
+            className='text-green-600 border-gray-300 hover:bg-green-50 cursor-pointer'
             onClick={() => handleBulkAction('Restore')}
           >
             <RotateCcw className='mr-2 h-4 w-4' />
@@ -592,7 +592,7 @@ const FormsList: React.FC<FormsListProps> = ({
           <Button
             variant='outline'
             size='sm'
-            className='text-red-600 border-gray-300 hover:bg-red-50'
+            className='text-red-600 border-gray-300 hover:bg-red-50 cursor-pointer'
             onClick={() => handleBulkAction('Delete Permanently')}
           >
             <Trash2 className='mr-2 h-4 w-4' />
@@ -608,7 +608,7 @@ const FormsList: React.FC<FormsListProps> = ({
           <Button
             variant='outline'
             size='sm'
-            className='text-green-600 border-gray-300 hover:bg-green-50'
+            className='text-green-600 border-gray-300 hover:bg-green-50 cursor-pointer'
             onClick={() => handleBulkAction('Restore')}
           >
             <RotateCcw className='mr-2 h-4 w-4' />
@@ -617,7 +617,7 @@ const FormsList: React.FC<FormsListProps> = ({
           <Button
             variant='outline'
             size='sm'
-            className='text-red-600 border-gray-300 hover:bg-red-50'
+            className='text-red-600 border-gray-300 hover:bg-red-50 cursor-pointer'
             onClick={() => handleBulkAction('Move to Trash')}
           >
             <Trash2 className='mr-2 h-4 w-4' />
@@ -632,7 +632,7 @@ const FormsList: React.FC<FormsListProps> = ({
         <Button
           variant='outline'
           size='sm'
-          className='text-gray-700 border-gray-300 hover:bg-gray-100'
+          className='text-gray-700 border-gray-300 hover:bg-gray-100 cursor-pointer'
           onClick={() => handleBulkAction('Label as')}
         >
           <Tag className='mr-2 h-4 w-4' />
@@ -641,7 +641,7 @@ const FormsList: React.FC<FormsListProps> = ({
         <Button
           variant='outline'
           size='sm'
-          className='text-gray-700 border-gray-300 hover:bg-gray-100'
+          className='text-gray-700 border-gray-300 hover:bg-gray-100 cursor-pointer'
           onClick={() => handleBulkAction('Archive')}
         >
           <Archive className='mr-2 h-4 w-4' />
@@ -650,7 +650,7 @@ const FormsList: React.FC<FormsListProps> = ({
         <Button
           variant='outline'
           size='sm'
-          className='text-red-600 border-gray-300 hover:bg-red-50'
+          className='text-red-600 border-gray-300 hover:bg-red-50 cursor-pointer'
           onClick={() => handleBulkAction('Move to Trash')}
         >
           <Trash2 className='mr-2 h-4 w-4' />
@@ -733,7 +733,7 @@ const FormsList: React.FC<FormsListProps> = ({
             <Button
               variant='ghost'
               size='sm'
-              className='text-gray-500 hover:bg-gray-100'
+              className='text-gray-500 hover:bg-gray-100 cursor-pointer'
               onClick={handleDeselectAll}
             >
               Cancel
@@ -774,7 +774,7 @@ const FormsList: React.FC<FormsListProps> = ({
 
               <button
                 onClick={e => handleToggleFavorite(e, form.id)}
-                className='focus:outline-none'
+                className='focus:outline-none cursor-pointer'
               >
                 <Star
                   className={`h-5 w-5 transition-colors ${
@@ -863,7 +863,7 @@ const FormsList: React.FC<FormsListProps> = ({
                   <Button
                     variant='ghost'
                     size='sm'
-                    className='h-8 w-8 p-0 hover:bg-gray-200'
+                    className='h-8 w-8 p-0 hover:bg-gray-200 cursor-pointer'
                     onClick={e => e.stopPropagation()}
                   >
                     <MoreHorizontal className='h-4 w-4' />
@@ -1133,6 +1133,7 @@ const FormsList: React.FC<FormsListProps> = ({
           <DialogFooter>
             <Button
               variant='outline'
+              className='cursor-pointer'
               onClick={() => {
                 setShowLabelDialog(false);
                 setLabelOperations({});
@@ -1140,6 +1141,7 @@ const FormsList: React.FC<FormsListProps> = ({
             >
               Cancel
             </Button>
+
             <Button
               onClick={handleApplyLabels}
               disabled={
@@ -1147,8 +1149,8 @@ const FormsList: React.FC<FormsListProps> = ({
               }
               className={
                 labels.length === 0 || Object.keys(labelOperations).length === 0
-                  ? 'opacity-50'
-                  : ''
+                  ? 'opacity-50 cursor-pointer'
+                  : 'cursor-pointer'
               }
             >
               Apply Changes

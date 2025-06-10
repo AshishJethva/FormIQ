@@ -46,7 +46,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
             <span className='mr-4'>{userData.accountType}</span>
             <button
               onClick={handleUpgradeAccount}
-              className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors'
+              className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
             >
               Upgrade Account
             </button>
@@ -66,7 +66,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
         value={
           <button
             onClick={handleResetPassword}
-            className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+            className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
           >
             Reset Password
           </button>
@@ -108,7 +108,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
           userData.phoneNumber || (
             <button
               onClick={handleAddPhone}
-              className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors'
+              className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
             >
               Add Phone Number
             </button>

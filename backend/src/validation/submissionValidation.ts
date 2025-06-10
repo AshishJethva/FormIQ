@@ -23,14 +23,14 @@ const FormDataSchema = z
       z.array(z.string()),
       z
         .object({
-          firstName: z.string().optional(),
-          lastName: z.string().optional(),
-          street: z.string().optional(),
-          city: z.string().optional(),
-          state: z.string().optional(),
-          zipCode: z.string().optional(),
-          date: z.string().optional(),
-          time: z.string().optional(),
+          firstName: z.string().trim().optional(),
+          lastName: z.string().trim().optional(),
+          street: z.string().trim().optional(),
+          city: z.string().trim().optional(),
+          state: z.string().trim().optional(),
+          zipCode: z.string().trim().optional(),
+          date: z.string().trim().optional(),
+          time: z.string().trim().optional(),
         })
         .passthrough(), // Allow additional properties
       z.null(),

@@ -1,33 +1,35 @@
+// src/app/myaccount/page.tsx
+
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Info, CheckCircle, X } from 'lucide-react';
-
-interface UserData {
-  accountType: string;
-  username: string;
-  name: string;
-  email: string;
-  avatar: string | null;
-  phoneNumber: string | null;
-  website: string | null;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { Info, User } from 'lucide-react';
+import { deleteAvatar } from '@/redux/slices/userProfileSlice';
+import {
+  fetchUserProfile,
+  updateBasicInfo,
+  updateProfileDetails,
+  uploadAvatar,
+  requestPasswordReset,
+  selectUserProfile,
+  selectIsLoading,
+  clearError,
+} from '@/redux/slices/userProfileSlice';
+import { toast } from 'sonner';
+import type { StoreDispatch } from '@/redux/store';
 
 export default function AccountPage() {
   const router = useRouter();
-  const [userData, setUserData] = useState<UserData>({
-    accountType: 'Free',
-    username: 'procoder1501',
-    name: 'Ashish Coder',
-    email: 'procoder1501@gmail.com',
-    avatar: null,
-    phoneNumber: null,
-    website: null,
-  });
+  const dispatch = useDispatch<StoreDispatch>();
 
-  // State for edit modes
+  // Redux state
+  const userProfile = useSelector(selectUserProfile);
+  const isLoading = useSelector(selectIsLoading);
+
+  // Local state for edit modes
   const [editMode, setEditMode] = useState<Record<string, boolean>>({
     name: false,
     email: false,
@@ -39,22 +41,11 @@ export default function AccountPage() {
 
   // State for form fields
   const [formData, setFormData] = useState({
-    name: userData.name,
-    email: userData.email,
-    username: userData.username,
-    phoneNumber: userData.phoneNumber || '',
-    website: userData.website || '',
-  });
-
-  // State for notifications
-  const [notification, setNotification] = useState<{
-    show: boolean;
-    message: string;
-    type: 'success' | 'error' | 'info';
-  }>({
-    show: false,
-    message: '',
-    type: 'info',
+    name: '',
+    email: '',
+    username: '',
+    phoneNumber: '',
+    website: '',
   });
 
   // State for password reset
@@ -62,24 +53,84 @@ export default function AccountPage() {
 
   // State for avatar upload
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch user profile on component mount
+  useEffect(() => {
+    if (!userProfile) {
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, userProfile]);
+
+  // Update form data when userProfile changes
+  useEffect(() => {
+    if (userProfile) {
+      setFormData({
+        name: userProfile.user.name || '',
+        email: userProfile.user.email || '',
+        username: userProfile.profile.username || '',
+        phoneNumber: userProfile.profile.phoneNumber || '',
+        website: userProfile.profile.website || '',
+      });
+    }
+  }, [userProfile]);
+
+  // Clear error when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   // Start edit mode for a field
   const startEditing = (field: keyof typeof editMode) => {
     setEditMode({ ...editMode, [field]: true });
-    setFormData({
-      ...formData,
-      [field]: field in userData ? userData[field as keyof UserData] || '' : '',
-    });
+    if (userProfile) {
+      const value =
+        field === 'name' || field === 'email'
+          ? userProfile.user[field] || ''
+          : userProfile.profile[field as keyof typeof userProfile.profile] ||
+            '';
+
+      setFormData({
+        ...formData,
+        [field]: typeof value === 'string' ? value : '',
+      });
+    }
   };
 
   // Cancel edit mode for a field
   const cancelEditing = (field: keyof typeof editMode) => {
     setEditMode({ ...editMode, [field]: false });
-    setFormData({
-      ...formData,
-      [field]: field in userData ? userData[field as keyof UserData] || '' : '',
-    });
+    if (userProfile) {
+      const value =
+        field === 'name' || field === 'email'
+          ? userProfile.user[field] || ''
+          : userProfile.profile[field as keyof typeof userProfile.profile] ||
+            '';
+
+      setFormData({
+        ...formData,
+        [field]: typeof value === 'string' ? value : '',
+      });
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!userProfile?.profile.avatar?.src) return;
+
+    try {
+      const confirmed = window.confirm(
+        'Are you sure you want to delete your avatar?'
+      );
+      if (!confirmed) return;
+
+      await dispatch(deleteAvatar()).unwrap();
+      toast.success('Avatar deleted successfully!');
+    } catch (error: any) {
+      toast.error(error || 'Failed to delete avatar');
+    }
   };
 
   // Handle form input changes
@@ -92,34 +143,50 @@ export default function AccountPage() {
   };
 
   // Handle save for a field
-  const saveField = (field: keyof typeof userData) => {
-    // In a real app, you would send this to your API
-    setUserData({
-      ...userData,
-      [field]: formData[field as keyof typeof formData],
-    });
-    setEditMode({ ...editMode, [field]: false });
+  const saveField = async (field: keyof typeof formData) => {
+    try {
+      if (field === 'name' || field === 'email') {
+        await dispatch(updateBasicInfo({ [field]: formData[field] })).unwrap();
+      } else {
+        await dispatch(
+          updateProfileDetails({ [field]: formData[field] || null })
+        ).unwrap();
+      }
 
-    // Show success notification
-    showNotification(
-      `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully!`,
-      'success'
-    );
+      setEditMode({ ...editMode, [field]: false });
+      toast.success(
+        `${
+          field.charAt(0).toUpperCase() + field.slice(1)
+        } updated successfully!`
+      );
+    } catch (error: any) {
+      toast.error(error || `Failed to update ${field}`);
+    }
   };
 
   // Handle password reset
-  const handleResetPassword = () => {
-    // In a real app, you would call your API to send a reset email
-    setPasswordResetSent(true);
-    showNotification('Password reset link sent to your email!', 'success');
+  const handleResetPassword = async () => {
+    if (!userProfile?.user.email) return;
+
+    try {
+      await dispatch(requestPasswordReset(userProfile.user.email)).unwrap();
+      setPasswordResetSent(true);
+      toast.success('Password reset link sent to your email!');
+    } catch (error: any) {
+      toast.error(error || 'Failed to send reset email');
+    }
   };
 
   // Handle resend email
-  const handleResendEmail = () => {
-    showNotification(
-      'Password reset link has been resent to your email!',
-      'success'
-    );
+  const handleResendEmail = async () => {
+    if (!userProfile?.user.email) return;
+
+    try {
+      await dispatch(requestPasswordReset(userProfile.user.email)).unwrap();
+      toast.success('Password reset link has been resent to your email!');
+    } catch (error: any) {
+      toast.error(error || 'Failed to resend reset email');
+    }
   };
 
   // Handle cancel password reset
@@ -127,9 +194,17 @@ export default function AccountPage() {
     setPasswordResetSent(false);
   };
 
+  // Handle avatar upload trigger
+  const handleAvatarUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   // Handle avatar upload
   const handleAvatarClick = () => {
-    if (fileInputRef.current) {
+    // Only trigger file input if not in edit mode
+    if (!editMode.avatar && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
@@ -137,36 +212,71 @@ export default function AccountPage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
 
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Avatar file size must be less than 5MB');
+        // Reset the input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select a valid image file');
+        // Reset the input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      setAvatarFile(file);
+
+      const reader = new FileReader();
       reader.onload = event => {
         if (event.target && typeof event.target.result === 'string') {
           setAvatarPreview(event.target.result);
         }
       };
-
       reader.readAsDataURL(file);
       setEditMode({ ...editMode, avatar: true });
     }
   };
 
   // Save avatar
-  const saveAvatar = () => {
-    if (avatarPreview) {
-      // In a real app, you would upload the file to your storage
-      setUserData({
-        ...userData,
-        avatar: avatarPreview,
-      });
+  const saveAvatar = async () => {
+    if (!avatarFile) return;
+
+    try {
+      await dispatch(uploadAvatar(avatarFile)).unwrap();
       setEditMode({ ...editMode, avatar: false });
-      showNotification('Avatar updated successfully!', 'success');
+      setAvatarPreview(null);
+      setAvatarFile(null);
+
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      toast.success('Avatar updated successfully!');
+    } catch (error: any) {
+      toast.error(error || 'Failed to upload avatar');
     }
   };
 
   // Cancel avatar upload
   const cancelAvatarUpload = () => {
     setAvatarPreview(null);
+    setAvatarFile(null);
     setEditMode({ ...editMode, avatar: false });
+
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Handle upgrade account
@@ -174,66 +284,52 @@ export default function AccountPage() {
     router.push('/myaccount/upgrade');
   };
 
-  // Show notification
-  const showNotification = (
-    message: string,
-    type: 'success' | 'error' | 'info'
-  ) => {
-    setNotification({
-      show: true,
-      message,
-      type,
-    });
+  if (!userProfile && isLoading) {
+    return (
+      <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
+        <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
+          <div className='animate-pulse'>
+            <div className='py-8 px-10 border-b border-gray-200'>
+              <div className='h-8 bg-gray-200 rounded w-1/2'></div>
+            </div>
+            <div className='p-10 space-y-6'>
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className='flex items-center py-6 border-b border-gray-200'
+                >
+                  <div className='w-1/3'>
+                    <div className='h-4 bg-gray-200 rounded w-20'></div>
+                  </div>
+                  <div className='w-2/3 flex justify-between items-center'>
+                    <div className='h-4 bg-gray-200 rounded w-32'></div>
+                    <div className='h-6 bg-gray-200 rounded w-12'></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-      setNotification({
-        show: false,
-        message: '',
-        type: 'info',
-      });
-    }, 5000);
-  };
-
-  // Close notification
-  const closeNotification = () => {
-    setNotification({
-      show: false,
-      message: '',
-      type: 'info',
-    });
-  };
+  if (!userProfile) {
+    return (
+      <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
+        <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
+          <div className='py-8 px-10 text-center'>
+            <p className='text-gray-500'>
+              Failed to load user profile. Please try refreshing the page.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
-      {/* Notification */}
-      {notification.show && (
-        <div
-          className={`fixed top-5 right-5 max-w-md py-4 px-6 rounded-lg shadow-lg flex items-center justify-between z-50 transition-all transform ${
-            notification.type === 'success'
-              ? 'bg-green-50 border-l-4 border-green-500 text-green-700'
-              : notification.type === 'error'
-              ? 'bg-red-50 border-l-4 border-red-500 text-red-700'
-              : 'bg-blue-50 border-l-4 border-blue-500 text-blue-700'
-          }`}
-        >
-          <div className='flex items-center'>
-            {notification.type === 'success' && (
-              <CheckCircle className='h-5 w-5 mr-3' />
-            )}
-            {notification.type === 'error' && <X className='h-5 w-5 mr-3' />}
-            {notification.type === 'info' && <Info className='h-5 w-5 mr-3' />}
-            <p>{notification.message}</p>
-          </div>
-          <button
-            onClick={closeNotification}
-            className='ml-4 text-gray-500 hover:text-gray-700'
-          >
-            <X className='h-4 w-4' />
-          </button>
-        </div>
-      )}
-
       <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
         <div className='py-8 px-10 border-b border-gray-200'>
           <h1 className='text-2xl font-semibold text-navy-900 mb-1'>
@@ -253,13 +349,16 @@ export default function AccountPage() {
             <div className='w-2/3 flex justify-between items-center'>
               <div className='flex items-center'>
                 <span className='text-[15px] text-gray-800 mr-4'>
-                  {userData.accountType}
+                  {userProfile.profile.plan.type}
                 </span>
                 <button
                   onClick={handleUpgradeAccount}
-                  className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors'
+                  className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                  disabled={isLoading}
                 >
-                  Upgrade Account
+                  {userProfile.profile.plan.type === 'STARTER'
+                    ? 'Upgrade Account'
+                    : 'Manage Plan'}
                 </button>
               </div>
             </div>
@@ -281,17 +380,20 @@ export default function AccountPage() {
                     value={formData.username}
                     onChange={handleInputChange}
                     className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={isLoading}
                   />
                   <div className='mt-3 flex space-x-2'>
                     <button
                       onClick={() => saveField('username')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                      disabled={isLoading}
                     >
-                      Save
+                      {isLoading ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={() => cancelEditing('username')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
@@ -300,11 +402,12 @@ export default function AccountPage() {
               ) : (
                 <>
                   <div className='text-[15px] text-gray-800'>
-                    {userData.username}
+                    {userProfile.profile.username}
                   </div>
                   <button
                     onClick={() => startEditing('username')}
-                    className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                    disabled={isLoading}
                   >
                     Edit
                   </button>
@@ -327,17 +430,20 @@ export default function AccountPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={isLoading}
                   />
                   <div className='mt-3 flex space-x-2'>
                     <button
                       onClick={() => saveField('email')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                      disabled={isLoading}
                     >
-                      Save
+                      {isLoading ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={() => cancelEditing('email')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
@@ -346,11 +452,12 @@ export default function AccountPage() {
               ) : (
                 <>
                   <div className='text-[15px] text-gray-800 flex items-center'>
-                    <span>{userData.email}</span>
+                    <span>{userProfile.user.email}</span>
                   </div>
                   <button
                     onClick={() => startEditing('email')}
-                    className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                    disabled={isLoading}
                   >
                     Edit
                   </button>
@@ -376,18 +483,22 @@ export default function AccountPage() {
                     <div className='ml-3'>
                       <p className='text-sm text-blue-700'>
                         Your password reset email was sent to{' '}
-                        <span className='font-medium'>{userData.email}</span>
+                        <span className='font-medium'>
+                          {userProfile.user.email}
+                        </span>
                       </p>
                       <div className='mt-2 text-sm'>
                         <button
                           onClick={handleResendEmail}
-                          className='text-blue-600 hover:text-blue-800 font-medium mr-3'
+                          className='text-blue-600 hover:text-blue-800 font-medium mr-3 cursor-pointer disabled:opacity-50'
+                          disabled={isLoading}
                         >
-                          Resend Email
+                          {isLoading ? 'Sending...' : 'Resend Email'}
                         </button>
                         <button
                           onClick={handleCancelReset}
-                          className='text-red-600 hover:text-red-800 font-medium'
+                          className='text-red-600 hover:text-red-800 font-medium cursor-pointer'
+                          disabled={isLoading}
                         >
                           Cancel
                         </button>
@@ -398,9 +509,10 @@ export default function AccountPage() {
               ) : (
                 <button
                   onClick={handleResetPassword}
-                  className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                  className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer disabled:opacity-50'
+                  disabled={isLoading}
                 >
-                  Reset Password
+                  {isLoading ? 'Sending...' : 'Reset Password'}
                 </button>
               )}
             </div>
@@ -420,17 +532,20 @@ export default function AccountPage() {
                     value={formData.name}
                     onChange={handleInputChange}
                     className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={isLoading}
                   />
                   <div className='mt-3 flex space-x-2'>
                     <button
                       onClick={() => saveField('name')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                      disabled={isLoading}
                     >
-                      Save
+                      {isLoading ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={() => cancelEditing('name')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
@@ -439,11 +554,12 @@ export default function AccountPage() {
               ) : (
                 <>
                   <div className='text-[15px] text-gray-800'>
-                    {userData.name}
+                    {userProfile.user.name}
                   </div>
                   <button
                     onClick={() => startEditing('name')}
-                    className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                    disabled={isLoading}
                   >
                     Edit
                   </button>
@@ -459,66 +575,88 @@ export default function AccountPage() {
             </div>
             <div className='w-2/3 flex justify-between items-center'>
               <div>
-                <div
-                  onClick={handleAvatarClick}
-                  className='bg-gray-100 rounded-full p-2 inline-block cursor-pointer hover:bg-gray-200 transition-colors'
-                >
-                  {editMode.avatar && avatarPreview ? (
-                    <Image
-                      src={avatarPreview}
-                      alt='Avatar Preview'
-                      width={64}
-                      height={64}
-                      className='rounded-full object-cover w-16 h-16'
-                    />
-                  ) : userData.avatar ? (
-                    <Image
-                      src={userData.avatar}
-                      alt='Avatar'
-                      width={64}
-                      height={64}
-                      className='rounded-full object-cover w-16 h-16'
-                    />
-                  ) : (
-                    <div className='w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-500'>
-                      {userData.name
-                        .split(' ')
-                        .map(n => n[0])
-                        .join('')
-                        .toUpperCase()}
-                    </div>
-                  )}
+                <div className='flex items-center space-x-4'>
+                  <div
+                    onClick={handleAvatarClick}
+                    className='bg-gray-100 rounded-full p-2 inline-block cursor-pointer hover:bg-gray-200 transition-colors'
+                  >
+                    {editMode.avatar && avatarPreview ? (
+                      <Image
+                        src={avatarPreview}
+                        alt='Avatar Preview'
+                        width={64}
+                        height={64}
+                        className='rounded-full object-cover w-16 h-16'
+                      />
+                    ) : userProfile.profile.avatar?.src &&
+                      userProfile.profile.avatar.src.trim() !== '' ? (
+                      <Image
+                        src={userProfile.profile.avatar.src}
+                        alt='User Avatar'
+                        width={64}
+                        height={64}
+                        className='rounded-full object-cover w-16 h-16'
+                      />
+                    ) : (
+                      <div className='w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-500'>
+                        <User className='w-8 h-8' />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Show delete button if avatar exists and not in edit mode */}
+                  {userProfile.profile.avatar?.src &&
+                    userProfile.profile.avatar.src.trim() !== '' &&
+                    !editMode.avatar && (
+                      <button
+                        onClick={handleDeleteAvatar}
+                        className='text-red-600 hover:text-red-800 text-sm font-medium cursor-pointer disabled:opacity-50'
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Deleting...' : 'Delete'}
+                      </button>
+                    )}
                 </div>
+
                 <input
                   type='file'
                   ref={fileInputRef}
                   onChange={handleAvatarChange}
                   className='hidden'
                   accept='image/*'
+                  disabled={isLoading}
                 />
+
                 {editMode.avatar && avatarPreview && (
                   <div className='mt-3 flex space-x-2'>
                     <button
                       onClick={saveAvatar}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                      disabled={isLoading}
                     >
-                      Save
+                      {isLoading ? 'Uploading...' : 'Save'}
                     </button>
                     <button
                       onClick={cancelAvatarUpload}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
                   </div>
                 )}
               </div>
+
               {!editMode.avatar && (
                 <button
-                  onClick={() => startEditing('avatar')}
-                  className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                  onClick={handleAvatarUpload}
+                  className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                  disabled={isLoading}
                 >
-                  Edit
+                  {userProfile.profile.avatar?.src &&
+                  userProfile.profile.avatar.src.trim() !== ''
+                    ? 'Change'
+                    : 'Upload'}
                 </button>
               )}
             </div>
@@ -535,23 +673,26 @@ export default function AccountPage() {
               {editMode.phoneNumber ? (
                 <div className='flex-grow'>
                   <input
-                    type='number'
+                    type='tel'
                     name='phoneNumber'
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     placeholder='+1 (555) 123-4567'
                     className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={isLoading}
                   />
                   <div className='mt-3 flex space-x-2'>
                     <button
                       onClick={() => saveField('phoneNumber')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                      disabled={isLoading}
                     >
-                      Save
+                      {isLoading ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={() => cancelEditing('phoneNumber')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
@@ -559,14 +700,15 @@ export default function AccountPage() {
                 </div>
               ) : (
                 <>
-                  {userData.phoneNumber ? (
+                  {userProfile.profile.phoneNumber ? (
                     <>
                       <div className='text-[15px] text-gray-800'>
-                        {userData.phoneNumber}
+                        {userProfile.profile.phoneNumber}
                       </div>
                       <button
                         onClick={() => startEditing('phoneNumber')}
-                        className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                        className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                        disabled={isLoading}
                       >
                         Edit
                       </button>
@@ -574,7 +716,8 @@ export default function AccountPage() {
                   ) : (
                     <button
                       onClick={() => startEditing('phoneNumber')}
-                      className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors'
+                      className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Add Phone Number
                     </button>
@@ -599,17 +742,20 @@ export default function AccountPage() {
                     onChange={handleInputChange}
                     placeholder='https://example.com'
                     className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={isLoading}
                   />
                   <div className='mt-3 flex space-x-2'>
                     <button
                       onClick={() => saveField('website')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                      disabled={isLoading}
                     >
-                      Save
+                      {isLoading ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={() => cancelEditing('website')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors'
+                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
+                      disabled={isLoading}
                     >
                       Cancel
                     </button>
@@ -617,21 +763,22 @@ export default function AccountPage() {
                 </div>
               ) : (
                 <>
-                  {userData.website ? (
+                  {userProfile.profile.website ? (
                     <>
                       <div className='text-[15px] text-gray-800'>
                         <a
-                          href={userData.website}
+                          href={userProfile.profile.website}
                           target='_blank'
                           rel='noopener noreferrer'
                           className='text-blue-600 hover:underline'
                         >
-                          {userData.website}
+                          {userProfile.profile.website}
                         </a>
                       </div>
                       <button
                         onClick={() => startEditing('website')}
-                        className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                        className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                        disabled={isLoading}
                       >
                         Edit
                       </button>
@@ -641,7 +788,8 @@ export default function AccountPage() {
                       <div className='text-[15px] text-gray-500'>-</div>
                       <button
                         onClick={() => startEditing('website')}
-                        className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+                        className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                        disabled={isLoading}
                       >
                         Edit
                       </button>

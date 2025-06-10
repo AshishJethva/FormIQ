@@ -1219,14 +1219,14 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
                       setCurrentPageIndex(0);
                       setErrors({});
                     }}
-                    className='w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md transition-colors font-medium'
+                    className='w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md transition-colors font-medium cursor-pointer'
                   >
                     Submit Another Response
                   </button>
 
                   <button
                     onClick={() => window.open(shareableLink, '_blank')}
-                    className='w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-md transition-colors font-medium'
+                    className='w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-md transition-colors font-medium cursor-pointer'
                   >
                     Open Form in New Tab
                   </button>

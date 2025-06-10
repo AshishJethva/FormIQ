@@ -25,7 +25,7 @@ interface TabProps {
 // Tab component for the panel
 const Tab: React.FC<TabProps> = ({ isSelected, onClick, label }) => (
   <button
-    className={`py-2 text-sm font-medium leading-5 transition-colors ${
+    className={`py-2 text-sm font-medium leading-5 cursor-pointer transition-colors ${
       isSelected
         ? 'text-orange-500 border-b-2 border-orange-500'
         : 'text-gray-400 hover:text-gray-300'
@@ -71,13 +71,13 @@ const SavedImage: React.FC<SavedImageProps> = ({
 
       <div className='absolute inset-0 bg-black bg-opacity-60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2'>
         <button
-          className='p-2 bg-blue-500 rounded-full hover:bg-blue-600 transition-colors'
+          className='p-2 bg-blue-500 rounded-full hover:bg-blue-600 transition-colors cursor-pointer'
           onClick={onSelect}
         >
           <CheckCircle className='w-4 h-4 text-white' />
         </button>
         <button
-          className='p-2 bg-red-500 rounded-full hover:bg-red-600 transition-colors'
+          className='p-2 bg-red-500 rounded-full hover:bg-red-600 transition-colors cursor-pointer'
           onClick={onDelete}
         >
           <Trash2 className='w-4 h-4 text-white' />
@@ -556,7 +556,7 @@ export default function LogoPropertiesPanel({
             <h3 className='font-medium flex items-center'>Logo Properties</h3>
             <button
               onClick={onClose}
-              className='text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700'
+              className='text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700 cursor-pointer'
             >
               <X className='h-5 w-5' />
             </button>
@@ -606,7 +606,7 @@ export default function LogoPropertiesPanel({
                   </div>
                   <button
                     onClick={handleRemoveLogo}
-                    className='text-orange-500 text-sm hover:text-orange-400'
+                    className='text-orange-500 text-sm hover:text-orange-400 cursor-pointer'
                   >
                     Remove Logo
                   </button>
@@ -655,7 +655,7 @@ export default function LogoPropertiesPanel({
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className='mx-auto mb-3 flex items-center justify-center w-12 h-12 rounded-full bg-blue-500 text-white'
+                        className='mx-auto mb-3 flex items-center justify-center w-12 h-12 rounded-full bg-blue-500 text-white cursor-pointer'
                         onClick={handleUploadClick}
                         disabled={isUploading}
                       >
@@ -728,7 +728,7 @@ export default function LogoPropertiesPanel({
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             type='submit'
-                            className='px-4 py-2 bg-blue-500 text-white rounded-r-md hover:bg-blue-600 transition-colors'
+                            className='px-4 py-2 bg-blue-500 text-white rounded-r-md hover:bg-blue-600 transition-colors cursor-pointer'
                           >
                             <Link className='w-4 h-4' />
                           </motion.button>
@@ -789,7 +789,7 @@ export default function LogoPropertiesPanel({
                 {/* Size presets */}
                 <div className='flex justify-between mt-4'>
                   <button
-                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600'
+                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 cursor-pointer'
                     onClick={() => {
                       setLogoSize(25);
                       if (logo) {
@@ -800,7 +800,7 @@ export default function LogoPropertiesPanel({
                     Small
                   </button>
                   <button
-                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600'
+                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 cursor-pointer'
                     onClick={() => {
                       setLogoSize(50);
                       if (logo) {
@@ -811,7 +811,7 @@ export default function LogoPropertiesPanel({
                     Medium
                   </button>
                   <button
-                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600'
+                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 cursor-pointer'
                     onClick={() => {
                       setLogoSize(75);
                       if (logo) {
@@ -822,7 +822,7 @@ export default function LogoPropertiesPanel({
                     Large
                   </button>
                   <button
-                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600'
+                    className='px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 cursor-pointer'
                     onClick={() => {
                       setLogoSize(100);
                       if (logo) {
@@ -840,7 +840,7 @@ export default function LogoPropertiesPanel({
                 <h4 className='text-lg font-medium mb-3'>Alignment</h4>
                 <div className='flex space-x-2'>
                   <button
-                    className={`flex-1 py-2 px-4 rounded-md ${
+                    className={`flex-1 py-2 px-4 rounded-md cursor-pointer ${
                       logoAlignment === 'LEFT'
                         ? 'bg-blue-500 text-white'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -850,7 +850,7 @@ export default function LogoPropertiesPanel({
                     LEFT
                   </button>
                   <button
-                    className={`flex-1 py-2 px-4 rounded-md ${
+                    className={`flex-1 py-2 px-4 rounded-md cursor-pointer ${
                       logoAlignment === 'CENTER'
                         ? 'bg-blue-500 text-white'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -860,7 +860,7 @@ export default function LogoPropertiesPanel({
                     CENTER
                   </button>
                   <button
-                    className={`flex-1 py-2 px-4 rounded-md ${
+                    className={`flex-1 py-2 px-4 rounded-md cursor-pointer ${
                       logoAlignment === 'RIGHT'
                         ? 'bg-blue-500 text-white'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'

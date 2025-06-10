@@ -80,7 +80,11 @@ const VerifyOTPPage = () => {
             )}
           />
 
-          <Button className='w-full cursor-pointer' disabled={isLoading} type='submit'>
+          <Button
+            className='w-full cursor-pointer'
+            disabled={isLoading}
+            type='submit'
+          >
             {isLoading ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -95,7 +99,7 @@ const VerifyOTPPage = () => {
         <div className='text-center text-sm'>
           Didn&apos;t receive the code?{' '}
           <Button
-            className='p-0 text-primary hover:underline underline-offset-4'
+            className='p-0 text-primary hover:underline underline-offset-4 cursor-pointer'
             variant='link'
             onClick={() => {
               // Add resend code logic here

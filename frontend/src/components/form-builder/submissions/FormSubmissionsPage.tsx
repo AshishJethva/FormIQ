@@ -2102,7 +2102,7 @@ const FormSubmissionsPage: React.FC = () => {
                     size='sm'
                     variant='outline'
                     onClick={handleDownloadSignature}
-                    className='flex items-center gap-2 hover:bg-purple-50 hover:border-purple-300'
+                    className='flex items-center gap-2 hover:bg-purple-50 hover:border-purple-300 cursor-pointer'
                   >
                     <Download className='w-4 h-4' />
                     Download Signature
@@ -2175,7 +2175,7 @@ const FormSubmissionsPage: React.FC = () => {
                         newWindow.document.close();
                       }
                     }}
-                    className='flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300'
+                    className='flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 cursor-pointer'
                   >
                     <Eye className='w-4 h-4' />
                     View Full Size
@@ -2392,7 +2392,7 @@ const FormSubmissionsPage: React.FC = () => {
           disabled={downloadingCsv || !hasSubmissions}
           className={`
           bg-[#102035] hover:bg-slate-700 font-semibold text-white
-          flex items-center gap-2 disabled:opacity-50
+          flex items-center gap-2 disabled:opacity-50 cursor-pointer
           ${
             downloadingCsv
               ? 'cursor-wait'
@@ -2705,7 +2705,7 @@ const FormSubmissionsPage: React.FC = () => {
                             e.stopPropagation();
                             handleToggleRead(submission.id, submission.isRead);
                           }}
-                          className='p-1 hover:bg-gray-200 rounded-full cursor-pointer transition-colors'
+                          className='p-1 hover:bg-gray-200 rounded-full cursor-pointer transition-colors cursor-pointer'
                           title={
                             submission.isRead
                               ? 'Mark as unread'
@@ -2729,7 +2729,7 @@ const FormSubmissionsPage: React.FC = () => {
                               e.stopPropagation();
                               confirmDelete(submission.id);
                             }}
-                            className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors'
+                            className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors cursor-pointer'
                             title='Delete submission'
                           >
                             <Trash2 className='w-4 h-4' />
@@ -2762,7 +2762,7 @@ const FormSubmissionsPage: React.FC = () => {
                     fetchSubmissions(pagination.current - 1, pagination.limit)
                   }
                   disabled={pagination.current === 1}
-                  className='border-gray-300 hover:bg-gray-50'
+                  className='border-gray-300 hover:bg-gray-50 cursor-pointer'
                 >
                   Previous
                 </Button>
@@ -2776,7 +2776,7 @@ const FormSubmissionsPage: React.FC = () => {
                     fetchSubmissions(pagination.current + 1, pagination.limit)
                   }
                   disabled={pagination.current === pagination.pages}
-                  className='border-gray-300 hover:bg-gray-50'
+                  className='border-gray-300 hover:bg-gray-50 cursor-pointer'
                 >
                   Next
                 </Button>
@@ -2790,7 +2790,7 @@ const FormSubmissionsPage: React.FC = () => {
       <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
         <DialogContent
           style={{
-            width: '50vw',
+            width: '55vw',
             height: '90vh',
             maxWidth: '95vw',
             maxHeight: '90vh',
@@ -2922,7 +2922,7 @@ const FormSubmissionsPage: React.FC = () => {
                       onClick={() =>
                         handleViewAIEvaluation(selectedSubmission.id)
                       }
-                      className='ml-auto text-green-700 border-green-300 hover:bg-green-100'
+                      className='ml-auto text-green-700 border-green-300 hover:bg-green-100 cursor-pointer'
                     >
                       View Full Analysis
                     </Button>
@@ -3219,7 +3219,7 @@ const FormSubmissionsPage: React.FC = () => {
                                                   downloadingFileId ===
                                                   file.publicId
                                                 }
-                                                className='px-3 py-2 hover:bg-green-50 hover:border-green-300'
+                                                className='px-3 py-2 hover:bg-green-50 hover:border-green-300 cursor-pointer'
                                                 title={`Download ${file.originalName}`}
                                               >
                                                 {downloadingFileId ===
@@ -3244,7 +3244,7 @@ const FormSubmissionsPage: React.FC = () => {
                                                     fieldId
                                                   )
                                                 }
-                                                className='px-3 py-2 text-red-600 hover:bg-red-50 hover:border-red-300'
+                                                className='px-3 py-2 text-red-600 hover:bg-red-50 hover:border-red-300 cursor-pointer'
                                                 title={`Delete ${file.originalName}`}
                                               >
                                                 <Trash2 className='w-4 h-4' />
@@ -3280,7 +3280,7 @@ const FormSubmissionsPage: React.FC = () => {
                         onClick={() =>
                           evaluateSubmissionWithAI(selectedSubmission)
                         }
-                        className='bg-purple-500 hover:bg-purple-600 text-white border-purple-500'
+                        className='bg-purple-500 hover:bg-purple-600 text-white border-purple-500 cursor-pointer'
                       >
                         <Brain className='w-4 h-4 mr-2' />
                         Start AI Evaluation
@@ -3427,7 +3427,7 @@ const FormSubmissionsPage: React.FC = () => {
       >
         <DialogContent
           style={{
-            width: '50vw',
+            width: '55vw',
             height: '90vh',
             maxWidth: '95vw',
             maxHeight: '90vh',

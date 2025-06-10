@@ -11,19 +11,19 @@ export interface Field {
   propertiesPanelOpen?: boolean;
   placeholder?: string;
 
-  //  NEW: Text field properties
+  //   Text field properties
   minLength?: number;
   maxLength?: number;
 
-  //  NEW: Number field properties
+  //   Number field properties
   min?: number;
   max?: number;
   step?: number;
 
-  //  NEW: Textarea properties
+  //   Textarea properties
   rows?: number;
 
-  //  NEW: File upload properties
+  //   File upload properties
   multiple?: boolean;
   accept?: string;
 }
@@ -61,7 +61,7 @@ export enum FieldType {
   FILL_BLANK = 'fillBlank',
   PRODUCT_LIST = 'productList',
 
-  //  NEW: Added 10 new field types
+  //   Added 10 new field types
   SHORT_TEXT = 'shortText',
   LONG_TEXT = 'longText',
   PARAGRAPH = 'paragraph',
@@ -129,7 +129,7 @@ export interface Form {
   trashedAt?: Date;
 }
 
-//  NEW: JWT Payload interface
+//   JWT Payload interface
 export interface JwtPayload {
   id: string;
   email: string;
@@ -137,7 +137,7 @@ export interface JwtPayload {
   exp: number;
 }
 
-//  NEW: User interface
+//   User interface
 export interface User {
   id: string;
   email: string;
@@ -147,7 +147,7 @@ export interface User {
   changedPasswordAfter: (timestamp: number) => boolean;
 }
 
-//  NEW: API Response interfaces
+//   API Response interfaces
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -164,7 +164,7 @@ export interface PaginatedResponse<T = any> extends ApiResponse<T> {
   };
 }
 
-//  NEW: Submission interfaces
+//   Submission interfaces
 export interface SubmissionData {
   [fieldId: string]: any;
 }
@@ -185,7 +185,7 @@ export interface Submission {
   updatedAt: Date;
 }
 
-//  NEW: Field validation rules
+//   Field validation rules
 export interface FieldValidationRule {
   fieldId: string;
   fieldType: FieldType;
@@ -198,14 +198,14 @@ export interface FieldValidationRule {
   options?: string[];
 }
 
-//  NEW: Form validation context
+//   Form validation context
 export interface FormValidationContext {
   form: Form;
   fieldRules: FieldValidationRule[];
   submissionData: SubmissionData;
 }
 
-//  NEW: Validation result
+//   Validation result
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
@@ -413,7 +413,7 @@ export interface WebhookPayload {
   signature?: string;
 }
 
-//  NEW: Integration interfaces
+//   Integration interfaces
 export interface Integration {
   id: string;
   name: string;
@@ -429,7 +429,7 @@ export interface IntegrationConfig {
   [key: string]: any;
 }
 
-//  NEW: Template interfaces
+//   Template interfaces
 export interface FormTemplate {
   id: string;
   name: string;

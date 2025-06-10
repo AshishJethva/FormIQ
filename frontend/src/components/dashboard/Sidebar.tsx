@@ -271,9 +271,9 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     <div className='w-70 bg-[#F3F3FE] border-r border-gray-200 overflow-y-auto'>
       {/* Create button */}
       <div className='p-4 bg-white' id='create-button'>
-        <div className='relative'>
+        <div className='relative cursor-pointer'>
           <Button
-            className='w-full bg-[#ff6100] hover:bg-[#E65700] text-white shadow-sm hover:shadow-md transition-all duration-200'
+            className='w-full bg-[#ff6100] hover:bg-[#E65700] text-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer'
             onClick={handleCreateClick}
           >
             <Plus className=' h-3 w-3 ' />
@@ -323,7 +323,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
             <Button
               variant='ghost'
               size='icon'
-              className='h-6 w-6 p-0 hover:bg-gray-200 rounded-full'
+              className='h-6 w-6 p-0 hover:bg-gray-200 rounded-full cursor-pointer'
               onClick={e => {
                 e.stopPropagation();
                 setShowLabelModal(true);
@@ -353,7 +353,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                       <Button
                         variant='ghost'
                         size='icon'
-                        className='absolute right-1 top-1 h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-transparent'
+                        className='absolute right-1 top-1 h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-transparent cursor-pointer'
                         onClick={handleClearSearch}
                       >
                         <X className='h-3 w-3' />
@@ -383,7 +383,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                     <Button
                       variant='ghost'
                       size='sm'
-                      className='mt-1 h-6 text-xs text-blue-600 hover:text-blue-700'
+                      className='mt-1 h-6 text-xs text-blue-600 hover:text-blue-700 cursor-pointer'
                       onClick={handleClearSearch}
                     >
                       Clear search
@@ -437,7 +437,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                             <Button
                               variant='ghost'
                               size='icon'
-                              className='h-6 w-6 p-0 hover:bg-gray-200'
+                              className='h-6 w-6 p-0 hover:bg-gray-200 cursor-pointer'
                               onClick={e => e.stopPropagation()}
                             >
                               <MoreVertical className='h-3 w-3 text-gray-500' />
@@ -581,6 +581,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
               <Button
                 type='button'
                 variant='outline'
+                className='cursor-pointer'
                 onClick={() => {
                   setShowLabelModal(false);
                   setNewLabelName('');
@@ -591,11 +592,12 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
               >
                 Cancel
               </Button>
+
               <Button
                 type='submit'
                 disabled={isCreatingLabel}
                 className={cn(
-                  'bg-blue-600 hover:bg-blue-700 text-white',
+                  'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer',
                   isCreatingLabel ? 'opacity-80' : ''
                 )}
               >

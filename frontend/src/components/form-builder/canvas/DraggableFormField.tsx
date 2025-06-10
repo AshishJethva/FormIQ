@@ -148,21 +148,21 @@ const DraggableFormField: React.FC<DraggableFormFieldProps> = ({
         {!isPreviewMode && (
           <div className='absolute -right-1 top-0 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 hover:opacity-100'>
             <button
-              className='bg-gray-100 hover:bg-gray-200 p-1.5 rounded text-gray-600 hover:text-gray-800'
+              className='bg-gray-100 hover:bg-gray-200 p-1.5 rounded text-gray-600 hover:text-gray-800 cursor-pointer'
               onClick={onSettingsClick}
               title='Settings'
             >
               <Settings size={14} />
             </button>
             <button
-              className='bg-gray-100 hover:bg-gray-200 p-1.5 rounded text-gray-600 hover:text-gray-800'
+              className='bg-gray-100 hover:bg-gray-200 p-1.5 rounded text-gray-600 hover:text-gray-800 cursor-pointer'
               onClick={onDuplicateClick}
               title='Duplicate'
             >
               <Copy size={14} />
             </button>
             <button
-              className='bg-gray-100 hover:bg-red-100 p-1.5 rounded text-gray-600 hover:text-red-500'
+              className='bg-gray-100 hover:bg-red-100 p-1.5 rounded text-gray-600 hover:text-red-500 cursor-pointer'
               onClick={onDeleteClick}
               title='Delete'
             >

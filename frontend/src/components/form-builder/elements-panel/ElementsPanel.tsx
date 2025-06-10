@@ -48,7 +48,7 @@ export default function ElementsPanel() {
       {!isPanelExpanded ? (
         <div className='fixed left-0 top-[25%] -translate-y-1/2 z-50'>
           <button
-            className='flex items-center bg-[#2C2F4A] text-white pr-4 pl-4 py-3.5 rounded-r-full shadow-lg hover:bg-[#1f2237] transition-all'
+            className='flex items-center bg-[#2C2F4A] text-white pr-4 pl-4 py-3.5 rounded-r-full shadow-lg hover:bg-[#1f2237] transition-all cursor-pointer'
             onClick={togglePanel}
           >
             <span className='mr-6 font-medium'>Add Element</span>
@@ -62,7 +62,7 @@ export default function ElementsPanel() {
           <div className='flex justify-between items-center p-4 border-b border-gray-700'>
             <h2 className='font-semibold text-lg'>Form Elements</h2>
             <button
-              className='text-white hover:text-white transition-colors'
+              className='text-white hover:text-white transition-colors cursor-pointer'
               onClick={togglePanel}
             >
               <X className='h-5 w-5 text-white' />

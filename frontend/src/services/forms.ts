@@ -55,11 +55,9 @@ const mapSortOptionToBackend = (
     case 'last-edit':
       return { sortBy: 'updatedAt', sortOrder: 'desc' };
     case 'last-submission':
-      return { sortBy: 'updatedAt', sortOrder: 'desc' }; // Backend doesn't have lastSubmission field
+      return { sortBy: 'updatedAt', sortOrder: 'desc' };
     case 'submission-count':
       return { sortBy: 'submissions', sortOrder: 'desc' };
-    case 'unread':
-      return { sortBy: 'updatedAt', sortOrder: 'desc' }; // Backend doesn't track unread
     default:
       return { sortBy: 'createdAt', sortOrder: 'desc' };
   }
@@ -67,7 +65,7 @@ const mapSortOptionToBackend = (
 
 export const formsService = {
   async getForms(filters: FormFilters = {}) {
-    // DEBUG: Log the incoming filters
+    // Log the incoming filters
     console.log(' formsService.getForms called with filters:', filters);
 
     // Map frontend sort option to backend format
@@ -113,23 +111,6 @@ export const formsService = {
         delete params[key as keyof typeof params];
       }
     });
-
-    // DEBUG: Log params after removing undefined values
-    console.log('🧹 Params after cleanup:', params);
-
-    // DEBUG: Check if labels is still present
-    if (params.labels) {
-      console.log('🏷️ Labels param details:', {
-        type: typeof params.labels,
-        isArray: Array.isArray(params.labels),
-        value: params.labels,
-        length: Array.isArray(params.labels) ? params.labels.length : 'N/A',
-      });
-    } else {
-      console.log('❌ No labels param in final params');
-    }
-
-    console.log('🔗 Final params being sent to API:', params);
 
     const response = await api.get('/forms', {
       params,

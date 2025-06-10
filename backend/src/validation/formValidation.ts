@@ -59,7 +59,6 @@ export const fieldSchema = z
       .optional(),
     labelAlignment: z.enum(['LEFT', 'RIGHT']).default('LEFT'),
 
-    //  NEW: Choice field options
     options: z
       .array(
         z.object({
@@ -69,7 +68,6 @@ export const fieldSchema = z
       )
       .optional(),
 
-    //  NEW: Default values for all field types
     defaultValue: z
       .union([
         z.string(),
@@ -88,32 +86,32 @@ export const fieldSchema = z
       ])
       .optional(),
 
-    //  NEW: Number field constraints
+    //   Number field constraints
     min: z.number().optional(),
     max: z.number().optional(),
     step: z.number().optional(),
 
-    //  NEW: Text field constraints
+    //   Text field constraints
     minLength: z.number().min(0).optional(),
     maxLength: z.number().min(1).optional(),
 
-    //  NEW: Textarea properties
+    //   Textarea properties
     rows: z.number().min(1).max(20).optional(),
 
-    //  NEW: File upload properties
+    //   File upload properties
     multiple: z.boolean().optional(),
     accept: z.string().optional(),
 
-    //  NEW: Fill blank template properties
+    //   Fill blank template properties
     fillBlankTemplate: z
       .object({
         beforeText: z.string().max(500).optional(),
         blankPlaceholder: z.string().max(100).optional(),
-        afterText: z.string().max(500).optional(),
+        afterText: z.string().trim().max(500).optional(),
       })
       .optional(),
 
-    //  NEW: Product list configuration
+    //   Product list configuration
     productListConfig: z
       .object({
         products: z
@@ -318,7 +316,7 @@ export const createFormSchemaWithTemplate = z.object({
   // Template structure for creating forms from templates
   template: z
     .object({
-      title: z.string().min(1, 'Template title is required').optional(),
+      title: z.string().trim().min(1, 'Template title is required').optional(),
       description: z.string().optional(),
       pages: z
         .array(pageSchema)

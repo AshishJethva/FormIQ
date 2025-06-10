@@ -1323,7 +1323,7 @@ Generate the form configuration now:`;
     return config;
   }
 
-  //  NEW: Generate contextual signature instructions
+  //   Generate contextual signature instructions
   private generateSignatureInstructions(label: string, prompt: string): string {
     const lowerLabel = label.toLowerCase();
     const lowerPrompt = prompt.toLowerCase();
@@ -1358,7 +1358,7 @@ Generate the form configuration now:`;
     return 'Please provide your digital signature below';
   }
 
-  //  NEW: Generate contextual fill blank templates
+  //   Generate contextual fill blank templates
   private generateFillBlankTemplate(
     label: string,
     prompt: string,
@@ -1425,7 +1425,7 @@ Generate the form configuration now:`;
     };
   }
 
-  //  NEW: Generate contextual products based on form purpose
+  //   Generate contextual products based on form purpose
   private generateContextualProducts(
     label: string,
     prompt: string

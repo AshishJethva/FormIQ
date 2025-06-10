@@ -10,8 +10,11 @@ export function middleware(request: NextRequest) {
 
   // Handle OTP verification
   if (otp_verification_pending) {
-    // Don't redirect if already on the verify page
-    if (pathname === '/auth/verify') {
+    if (
+      pathname === '/auth/verify' ||
+      pathname === '/auth/login' ||
+      pathname === '/auth/signup'
+    ) {
       return NextResponse.next();
     }
     return NextResponse.redirect(new URL('/auth/verify', request.url));
@@ -33,6 +36,10 @@ export function middleware(request: NextRequest) {
     '/settings',
     '/forms',
     '/build',
+    '/ai',
+    '/templates/',
+    '/myaccount',
+    '/payment',
   ];
   const isProtectedPath = protectedPaths.some(path =>
     pathname.startsWith(path)
@@ -52,7 +59,8 @@ export function middleware(request: NextRequest) {
     authPaths.includes(pathname) &&
     token &&
     token !== 'undefined' &&
-    token !== 'null'
+    token !== 'null' &&
+    !otp_verification_pending
   ) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
@@ -63,5 +71,3 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
-
-

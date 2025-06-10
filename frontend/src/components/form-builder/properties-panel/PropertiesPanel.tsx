@@ -323,7 +323,7 @@ export default function PropertiesPanel() {
             </h3>
             <button
               onClick={handleClosePanel}
-              className='text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700'
+              className='text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700 cursor-pointer'
             >
               <X className='h-5 w-5' />
             </button>
@@ -357,7 +357,7 @@ export default function PropertiesPanel() {
               </Label>
               <div className='flex space-x-2'>
                 <button
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     labelAlignment === 'LEFT'
                       ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -368,7 +368,7 @@ export default function PropertiesPanel() {
                 </button>
 
                 <button
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     labelAlignment === 'RIGHT'
                       ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -463,7 +463,7 @@ export default function PropertiesPanel() {
                   </Label>
                   <button
                     onClick={addOption}
-                    className='text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors'
+                    className='text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors cursor-pointer'
                   >
                     + Add Option
                   </button>
@@ -483,7 +483,7 @@ export default function PropertiesPanel() {
                       {options.length > 1 && (
                         <button
                           onClick={() => removeOption(index)}
-                          className='text-red-400 hover:text-red-300 p-1 hover:bg-red-900/20 rounded transition-colors'
+                          className='text-red-400 hover:text-red-300 p-1 hover:bg-red-900/20 rounded transition-colors cursor-pointer'
                           title='Remove option'
                         >
                           ✕
@@ -572,7 +572,7 @@ export default function PropertiesPanel() {
             {/* Action Buttons */}
             <div className='flex flex-wrap gap-2 border-t border-gray-700 mt-6 pt-6'>
               <button
-                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600'
+                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600 cursor-pointer'
                 onClick={handleDuplicateField}
               >
                 <Copy size={14} className='mr-1.5' />
@@ -580,7 +580,7 @@ export default function PropertiesPanel() {
               </button>
 
               <button
-                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-red-900/40 text-red-400 hover:bg-red-900/60'
+                className='flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors bg-red-900/40 text-red-400 hover:bg-red-900/60 cursor-pointer'
                 onClick={handleDeleteField}
               >
                 <Trash size={14} className='mr-1.5' />

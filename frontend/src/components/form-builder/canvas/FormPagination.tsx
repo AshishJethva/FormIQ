@@ -39,7 +39,7 @@ export default function FormPagination() {
           return (
             <motion.button
               key={page.id || `page-${index}`}
-              className={`px-4 py-2 mx-1 rounded-md transition-colors ${
+              className={`px-4 py-2 mx-1 rounded-md transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-blue-100 text-blue-700 font-medium'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -56,7 +56,7 @@ export default function FormPagination() {
         {form.pages.length > 0 && (
           <motion.button
             key='thank-you'
-            className={`px-4 py-2 mx-1 rounded-md transition-colors ${
+            className={`px-4 py-2 mx-1 rounded-md transition-colors cursor-pointer ${
               currentPageIndex === form.pages.length
                 ? 'bg-blue-100 text-blue-700 font-medium'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -70,7 +70,9 @@ export default function FormPagination() {
         )}
       </div>
 
-      {!isPreviewMode && !ThankYouPage && <AddNewPageButton className='ml-2 cursor-pointer' />}
+      {!isPreviewMode && !ThankYouPage && (
+        <AddNewPageButton className='ml-2 cursor-pointer' />
+      )}
     </div>
   );
 }

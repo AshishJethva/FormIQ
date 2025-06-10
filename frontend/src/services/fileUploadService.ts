@@ -700,7 +700,7 @@ export const getFileTypeIcon = (mimeType: string): string => {
 };
 
 /**
- *  NEW: Get file download URL with authentication
+ *   Get file download URL with authentication
  * @param fileUrl - Original file URL
  * @param fileName - Suggested filename for download
  * @returns Promise with secure download URL or blob

@@ -152,7 +152,7 @@ export type RegularField = Field & {
   helpText: string;
 };
 
-//  NEW: Specific field type interfaces
+//   Specific field type interfaces
 export interface DropdownField extends Field {
   type: FieldType.DROPDOWN;
   options: { label: string; value: string }[];
@@ -235,7 +235,7 @@ export interface PublicFormAccess {
   isTrashed?: boolean;
 }
 
-//  NEW: Field validation helpers
+//   Field validation helpers
 export interface FieldValidationRule {
   type: 'required' | 'minLength' | 'maxLength' | 'min' | 'max' | 'pattern';
   value?: any;
@@ -247,7 +247,7 @@ export interface FieldValidationResult {
   errors: string[];
 }
 
-//  NEW: Field type categories for organization
+//   Field type categories for organization
 export const FIELD_CATEGORIES = {
   BASIC: [
     FieldType.SHORT_TEXT,
@@ -275,7 +275,7 @@ export const FIELD_CATEGORIES = {
   SPECIAL: [FieldType.FILL_BLANK, FieldType.PRODUCT_LIST],
 } as const;
 
-//  NEW: Helper functions
+//   Helper functions
 export const getFieldCategory = (
   fieldType: FieldType
 ): keyof typeof FIELD_CATEGORIES => {
@@ -339,7 +339,7 @@ export const supportsAccept = (fieldType: FieldType): boolean => {
   return isFileField(fieldType);
 };
 
-//  NEW: Field type display names
+//   Field type display names
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   [FieldType.HEADING]: 'Heading',
   [FieldType.SHORT_TEXT]: 'Short Text',
@@ -363,7 +363,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   [FieldType.PRODUCT_LIST]: 'Product List',
 };
 
-//  NEW: Default field configurations
+//   Default field configurations
 export const getDefaultFieldConfig = (fieldType: FieldType): Partial<Field> => {
   const baseConfig: Partial<Field> = {
     labelAlignment: 'LEFT',
@@ -463,7 +463,7 @@ export const getDefaultFieldConfig = (fieldType: FieldType): Partial<Field> => {
   }
 };
 
-//  NEW: Utility functions
+//   Utility functions
 export const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'Unknown';
   try {
@@ -569,3 +569,109 @@ export const validateField = (
     errors,
   };
 };
+
+// ==================== USER PROFILE TYPES ====================
+export interface UserProfile {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  profile: {
+    username: string;
+    phoneNumber?: string;
+    website?: string;
+    avatar?: {
+      src: string;
+      publicId: string;
+      uploadedAt: string;
+    };
+    plan: {
+      type: 'STARTER' | 'BRONZE' | 'SILVER' | 'GOLD';
+      formsLimit: number;
+      formsUsed: number;
+      canCreateForms: boolean;
+      remainingForms: number;
+    };
+  };
+  settings: UserSettings;
+}
+
+export interface UserSettings {
+  timezone: string;
+  language: string;
+  darkMode: boolean;
+  notifications: {
+    email: boolean;
+    browser: boolean;
+    mobile: boolean;
+  };
+  emailPreferences: {
+    updates: boolean;
+    marketing: boolean;
+    newsletter: boolean;
+  };
+}
+
+// ==================== ACTIVITY LOG TYPES ====================
+export interface ActivityLog {
+  id: string;
+  date: string;
+  time: string;
+  action: string;
+  target: string;
+  ipAddress?: string;
+  timestamp: number;
+}
+
+export interface ActivityFilters {
+  page?: number;
+  limit?: number;
+  targetType?: 'form' | 'submission' | 'account' | 'settings';
+  action?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
+
+// ==================== REDUX STATE TYPES ====================
+export interface UserProfileState {
+  profile: UserProfile | null;
+  settings: UserSettings | null;
+  activityLogs: ActivityLog[];
+  isLoading: boolean;
+  isSettingsLoading: boolean;
+  isActivityLoading: boolean;
+  error: string | null;
+  settingsError: string | null;
+  activityError: string | null;
+  activityPagination: {
+    current: number;
+    pages: number;
+    total: number;
+    limit: number;
+  } | null;
+}
+
+// ==================== REQUEST/RESPONSE TYPES ====================
+export interface UpdateBasicInfoRequest {
+  name?: string;
+  email?: string;
+}
+
+export interface UpdateProfileDetailsRequest {
+  username?: string;
+  phoneNumber?: string;
+  website?: string;
+}
+
+// ==================== COMPONENT PROP TYPES ====================
+export interface PlanLimitModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentPlan: string;
+  formsUsed: number;
+  formsLimit: number;
+}

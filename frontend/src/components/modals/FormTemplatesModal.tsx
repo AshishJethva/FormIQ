@@ -1,2019 +1,3 @@
-// // src/components/modals/FormTemplatesModal.tsx
-// 'use client';
-
-// import React, { useState } from 'react';
-// import {
-//   X,
-//   ArrowLeft,
-//   Loader2,
-//   Star,
-//   Zap,
-//   Users,
-//   Clock,
-//   CheckCircle,
-//   Sparkles,
-// } from 'lucide-react';
-// import { useRouter } from 'next/navigation';
-// import { useDispatch } from 'react-redux';
-// import { toast } from 'sonner';
-// import { createFormAsync } from '@/redux/slices/dashboard/formsSlice';
-// import { StoreDispatch } from '@/redux/store';
-// import { motion, AnimatePresence } from 'framer-motion';
-
-// interface Template {
-//   id: string;
-//   name: string;
-//   description: string;
-//   category: string;
-//   image: string;
-//   fields: number;
-//   preview: string;
-//   structure: any;
-//   popular?: boolean;
-//   new?: boolean;
-//   premium?: boolean;
-// }
-
-// const FORM_TEMPLATES: Template[] = [
-//   {
-//     id: 'appointment-request',
-//     name: 'Appointment Request Form',
-//     description: 'Schedule appointments with clients efficiently',
-//     category: 'Business',
-//     image: '/templates/appointment.png',
-//     fields: 8,
-//     preview: 'Perfect for medical practices, salons, consultancy services',
-//     popular: true,
-//     structure: {
-//       title: 'Appointment Request Form',
-//       description: 'Let us know how we can help you!',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'heading-1',
-//               type: 'heading',
-//               label: 'Personal Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Full Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'phone',
-//               type: 'phone',
-//               label: 'Contact Number',
-//               required: true,
-//               helpText: 'We may need to contact you',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'Confirmation will be sent here',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'appointment',
-//               type: 'appointment',
-//               label: 'Preferred Date & Time',
-//               required: true,
-//               helpText: 'Select your preferred appointment slot',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'service-type',
-//               type: 'dropdown',
-//               label: 'Service Type',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Consultation', value: 'consultation' },
-//                 { label: 'Follow-up', value: 'followup' },
-//                 { label: 'New Patient', value: 'new-patient' },
-//               ],
-//             },
-//             {
-//               id: 'additional-info',
-//               type: 'paragraph',
-//               label: 'Additional Information',
-//               required: false,
-//               helpText: 'Any special requirements or notes',
-//               labelAlignment: 'LEFT',
-//               rows: 4,
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Book Appointment',
-//         thankyouMessage:
-//           'Thank you! Your appointment request has been received. We will contact you soon to confirm.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: true,
-//         allowMultipleEmailSubmissions: true,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-//   {
-//     id: 'feedback-form',
-//     name: 'Feedback Form',
-//     description: 'Collect valuable feedback from your customers',
-//     category: 'Survey',
-//     image: '/templates/feedback.png',
-//     fields: 6,
-//     preview: 'Great for customer satisfaction and service improvement',
-//     new: true,
-//     structure: {
-//       title: 'Feedback Form',
-//       description:
-//         'We would love to hear your thoughts, suggestions, concerns or problems with anything so we can improve!',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'feedback-type',
-//               type: 'singleChoice',
-//               label: 'Feedback Type',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Compliment', value: 'compliment' },
-//                 { label: 'Suggestion', value: 'suggestion' },
-//                 { label: 'Complaint', value: 'complaint' },
-//               ],
-//             },
-//             {
-//               id: 'rating',
-//               type: 'singleChoice',
-//               label: 'Overall Rating',
-//               required: true,
-//               helpText: 'How would you rate your experience?',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: '⭐⭐⭐⭐⭐ Excellent', value: '5' },
-//                 { label: '⭐⭐⭐⭐ Good', value: '4' },
-//                 { label: '⭐⭐⭐ Average', value: '3' },
-//                 { label: '⭐⭐ Poor', value: '2' },
-//                 { label: '⭐ Very Poor', value: '1' },
-//               ],
-//             },
-//             {
-//               id: 'feedback-text',
-//               type: 'paragraph',
-//               label: 'Describe Your Feedback',
-//               required: true,
-//               helpText: 'Please provide detailed feedback',
-//               labelAlignment: 'LEFT',
-//               rows: 5,
-//             },
-//             {
-//               id: 'name',
-//               type: 'shortText',
-//               label: 'Name',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//               placeholder: 'Your name',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email',
-//               required: false,
-//               helpText: 'Optional - for follow-up if needed',
-//               labelAlignment: 'LEFT',
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Submit Feedback',
-//         thankyouMessage:
-//           'Thank you for your valuable feedback! We appreciate your input.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: true,
-//         allowMultipleEmailSubmissions: true,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-//   {
-//     id: 'information-request',
-//     name: 'Information Request Form',
-//     description: 'Handle inquiries and information requests professionally',
-//     category: 'Business',
-//     image: '/templates/information.png',
-//     fields: 7,
-//     preview: 'Perfect for lead generation and customer inquiries',
-//     structure: {
-//       title: 'Information Request',
-//       description: 'Get in touch with us for more information',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'heading-1',
-//               type: 'heading',
-//               label: 'Contact Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email',
-//               required: true,
-//               helpText: 'We will respond to this email address',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'phone',
-//               type: 'phone',
-//               label: 'Phone Number',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'company',
-//               type: 'shortText',
-//               label: 'Company/Organization',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//               placeholder: 'Company name',
-//             },
-//             {
-//               id: 'inquiry-type',
-//               type: 'dropdown',
-//               label: 'Type of Inquiry',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'General Information', value: 'general' },
-//                 { label: 'Product Demo', value: 'demo' },
-//                 { label: 'Pricing', value: 'pricing' },
-//                 { label: 'Partnership', value: 'partnership' },
-//                 { label: 'Support', value: 'support' },
-//               ],
-//             },
-//             {
-//               id: 'message',
-//               type: 'paragraph',
-//               label: 'Requesting Information Regarding',
-//               required: true,
-//               helpText: 'Please provide details about your inquiry',
-//               labelAlignment: 'LEFT',
-//               rows: 4,
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Send Request',
-//         thankyouMessage:
-//           'Thank you for your inquiry! We will get back to you within 24 hours.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: true,
-//         allowMultipleEmailSubmissions: true,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-//   {
-//     id: 'customer-registration',
-//     name: 'Customer Registration Form',
-//     description: 'Streamline new customer onboarding process',
-//     category: 'Registration',
-//     image: '/templates/registration.png',
-//     fields: 8,
-//     preview: 'Ideal for membership signups and customer accounts',
-//     popular: true,
-//     structure: {
-//       title: 'New Customer Registration Form',
-//       description: 'Join our community today!',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'heading-1',
-//               type: 'heading',
-//               label: 'Customer Details',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Full Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'This will be your login email',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'phone',
-//               type: 'phone',
-//               label: 'Phone Number',
-//               required: true,
-//               helpText: 'For account verification',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'address',
-//               type: 'address',
-//               label: 'Address',
-//               required: true,
-//               helpText: 'Complete address for delivery/billing',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'date-of-birth',
-//               type: 'datePicker',
-//               label: 'Date of Birth',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'preferences',
-//               type: 'multipleChoice',
-//               label: 'Communication Preferences',
-//               required: false,
-//               helpText: 'How would you like to hear from us?',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Email Newsletter', value: 'newsletter' },
-//                 { label: 'SMS Updates', value: 'sms' },
-//                 { label: 'Promotional Offers', value: 'promotions' },
-//               ],
-//             },
-//             {
-//               id: 'terms',
-//               type: 'singleChoice',
-//               label: 'Terms and Conditions',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 {
-//                   label: 'I agree to the Terms and Conditions',
-//                   value: 'agree',
-//                 },
-//               ],
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Register',
-//         thankyouMessage:
-//           'Welcome! Your registration was successful. Check your email for confirmation.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: false,
-//         allowMultipleEmailSubmissions: false,
-//         collectIpAddress: true,
-//         enableCaptcha: true,
-//       },
-//     },
-//   },
-//   {
-//     id: 'product-order',
-//     name: 'Product Order Form',
-//     description: 'Enable customers to place orders easily',
-//     category: 'E-commerce',
-//     image: '/templates/order.png',
-//     fields: 6,
-//     preview: 'Perfect for online stores and product catalogs',
-//     premium: true,
-//     structure: {
-//       title: 'Product Order Form',
-//       description: 'Place your order easily with our simple form',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'heading-1',
-//               type: 'heading',
-//               label: 'Select Products',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'products',
-//               type: 'productList',
-//               label: 'Choose Your Products',
-//               required: true,
-//               helpText: 'Select products and quantities',
-//               labelAlignment: 'LEFT',
-//               productListConfig: {
-//                 products: [
-//                   {
-//                     id: '1',
-//                     name: 'Premium T-Shirt',
-//                     price: 29.99,
-//                     quantity: 1,
-//                   },
-//                   { id: '2', name: 'Classic Jeans', price: 59.99, quantity: 1 },
-//                   { id: '3', name: 'Running Shoes', price: 89.99, quantity: 1 },
-//                 ],
-//               },
-//             },
-//             {
-//               id: 'customer-info',
-//               type: 'heading',
-//               label: 'Customer Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'customer-name',
-//               type: 'fullName',
-//               label: 'Full Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'shipping-address',
-//               type: 'address',
-//               label: 'Shipping Address',
-//               required: true,
-//               helpText: 'Where should we deliver your order?',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'special-instructions',
-//               type: 'paragraph',
-//               label: 'Special Instructions',
-//               required: false,
-//               helpText: 'Any special delivery instructions',
-//               labelAlignment: 'LEFT',
-//               rows: 3,
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Place Order',
-//         thankyouMessage:
-//           'Order received! We will process your order and contact you with shipping details.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: true,
-//         allowMultipleEmailSubmissions: true,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-//   {
-//     id: 'course-registration',
-//     name: 'Course Registration Form',
-//     description: 'Manage course enrollments efficiently',
-//     category: 'Education',
-//     image: '/templates/course.png',
-//     fields: 9,
-//     preview: 'Great for educational institutions and training centers',
-//     structure: {
-//       title: 'Course Registration Form',
-//       description: 'Enroll in your preferred course today',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'heading-1',
-//               type: 'heading',
-//               label: 'Student Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'student-name',
-//               type: 'fullName',
-//               label: 'Student Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'Course materials will be sent here',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'phone',
-//               type: 'phone',
-//               label: 'Contact Number',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'course-selection',
-//               type: 'dropdown',
-//               label: 'Select Course',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Web Development Bootcamp', value: 'web-dev' },
-//                 { label: 'Data Science Fundamentals', value: 'data-science' },
-//                 { label: 'Digital Marketing', value: 'digital-marketing' },
-//                 { label: 'UI/UX Design', value: 'uiux-design' },
-//               ],
-//             },
-//             {
-//               id: 'schedule-preference',
-//               type: 'singleChoice',
-//               label: 'Schedule Preference',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Weekdays (Mon-Fri)', value: 'weekdays' },
-//                 { label: 'Weekends (Sat-Sun)', value: 'weekends' },
-//                 { label: 'Evening Classes', value: 'evening' },
-//               ],
-//             },
-//             {
-//               id: 'experience-level',
-//               type: 'singleChoice',
-//               label: 'Experience Level',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Beginner', value: 'beginner' },
-//                 { label: 'Intermediate', value: 'intermediate' },
-//                 { label: 'Advanced', value: 'advanced' },
-//               ],
-//             },
-//             {
-//               id: 'goals',
-//               type: 'paragraph',
-//               label: 'Learning Goals',
-//               required: false,
-//               helpText: 'What do you hope to achieve from this course?',
-//               labelAlignment: 'LEFT',
-//               rows: 4,
-//             },
-//             {
-//               id: 'emergency-contact',
-//               type: 'shortText',
-//               label: 'Emergency Contact',
-//               required: false,
-//               helpText: 'Name and phone number',
-//               labelAlignment: 'LEFT',
-//               placeholder: 'Name, Phone',
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Register for Course',
-//         thankyouMessage:
-//           'Registration successful! You will receive course details and payment instructions soon.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: false,
-//         allowMultipleEmailSubmissions: false,
-//         collectIpAddress: true,
-//         enableCaptcha: true,
-//       },
-//     },
-//   },
-//   {
-//     id: 'event-registration',
-//     name: 'Event Registration Form',
-//     description: 'Manage event attendee registrations',
-//     category: 'Events',
-//     image: '/templates/event.png',
-//     fields: 8,
-//     preview: 'Perfect for conferences, workshops, and social events',
-//     new: true,
-//     structure: {
-//       title: 'Event Registration Form',
-//       description: 'Register for our upcoming event',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'attendee-info',
-//               type: 'heading',
-//               label: 'Attendee Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Full Name',
-//               required: true,
-//               helpText: 'As it should appear on your badge',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'Event updates will be sent here',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'organization',
-//               type: 'shortText',
-//               label: 'Organization/Company',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//               placeholder: 'Company name',
-//             },
-//             {
-//               id: 'job-title',
-//               type: 'shortText',
-//               label: 'Job Title',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//               placeholder: 'Your job title',
-//             },
-//             {
-//               id: 'ticket-type',
-//               type: 'singleChoice',
-//               label: 'Ticket Type',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Regular Ticket - $99', value: 'regular' },
-//                 { label: 'Student Ticket - $49', value: 'student' },
-//                 { label: 'VIP Ticket - $199', value: 'vip' },
-//               ],
-//             },
-//             {
-//               id: 'dietary-requirements',
-//               type: 'multipleChoice',
-//               label: 'Dietary Requirements',
-//               required: false,
-//               helpText: 'Select all that apply',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Vegetarian', value: 'vegetarian' },
-//                 { label: 'Vegan', value: 'vegan' },
-//                 { label: 'Gluten-free', value: 'gluten-free' },
-//                 { label: 'No dietary restrictions', value: 'none' },
-//               ],
-//             },
-//             {
-//               id: 'special-needs',
-//               type: 'paragraph',
-//               label: 'Special Accommodations',
-//               required: false,
-//               helpText: 'Any accessibility needs or special requests',
-//               labelAlignment: 'LEFT',
-//               rows: 3,
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Register for Event',
-//         thankyouMessage:
-//           'Registration confirmed! Check your email for event details and payment instructions.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: false,
-//         allowMultipleEmailSubmissions: false,
-//         collectIpAddress: true,
-//         enableCaptcha: true,
-//       },
-//     },
-//   },
-//   {
-//     id: 'job-application',
-//     name: 'Job Application Form',
-//     description: 'Streamline your hiring process',
-//     category: 'HR',
-//     image: '/templates/job.png',
-//     fields: 12,
-//     preview: 'Comprehensive form for job applications and recruitment',
-//     popular: true,
-//     structure: {
-//       title: 'Job Application Form',
-//       description: 'Apply for your dream job with us',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'personal-info',
-//               type: 'heading',
-//               label: 'Personal Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Full Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'phone',
-//               type: 'phone',
-//               label: 'Phone Number',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'address',
-//               type: 'address',
-//               label: 'Current Address',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'position-applied',
-//               type: 'dropdown',
-//               label: 'Position Applied For',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Software Engineer', value: 'software-engineer' },
-//                 { label: 'Product Manager', value: 'product-manager' },
-//                 { label: 'UI/UX Designer', value: 'designer' },
-//                 { label: 'Marketing Specialist', value: 'marketing' },
-//                 { label: 'Sales Representative', value: 'sales' },
-//               ],
-//             },
-//             {
-//               id: 'experience-years',
-//               type: 'dropdown',
-//               label: 'Years of Experience',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Less than 1 year', value: '0-1' },
-//                 { label: '1-3 years', value: '1-3' },
-//                 { label: '3-5 years', value: '3-5' },
-//                 { label: '5-10 years', value: '5-10' },
-//                 { label: '10+ years', value: '10+' },
-//               ],
-//             },
-//             {
-//               id: 'current-salary',
-//               type: 'number',
-//               label: 'Current Salary (Annual)',
-//               required: false,
-//               helpText: 'Optional - in USD',
-//               labelAlignment: 'LEFT',
-//               min: 0,
-//             },
-//             {
-//               id: 'expected-salary',
-//               type: 'number',
-//               label: 'Expected Salary (Annual)',
-//               required: false,
-//               helpText: 'Optional - in USD',
-//               labelAlignment: 'LEFT',
-//               min: 0,
-//             },
-//             {
-//               id: 'availability',
-//               type: 'datePicker',
-//               label: 'Available Start Date',
-//               required: true,
-//               helpText: 'When can you start?',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'resume',
-//               type: 'fileUpload',
-//               label: 'Resume/CV',
-//               required: true,
-//               helpText: 'Upload your resume (PDF preferred)',
-//               labelAlignment: 'LEFT',
-//               accept: '.pdf,.doc,.docx',
-//             },
-//             {
-//               id: 'cover-letter',
-//               type: 'paragraph',
-//               label: 'Cover Letter',
-//               required: true,
-//               helpText: 'Tell us why you are the perfect fit for this role',
-//               labelAlignment: 'LEFT',
-//               rows: 6,
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Submit Application',
-//         thankyouMessage:
-//           'Thank you for your application! We will review it and get back to you within 5 business days.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: false,
-//         allowMultipleEmailSubmissions: false,
-//         collectIpAddress: true,
-//         enableCaptcha: true,
-//       },
-//     },
-//   },
-//   {
-//     id: 'survey-form',
-//     name: 'Customer Survey Form',
-//     description: 'Gather insights from your customers',
-//     category: 'Survey',
-//     image: '/templates/survey.png',
-//     fields: 10,
-//     preview: 'Comprehensive survey for market research and feedback',
-//     structure: {
-//       title: 'Customer Survey Form',
-//       description: 'Help us serve you better by sharing your thoughts',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'demographics',
-//               type: 'heading',
-//               label: 'About You',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'age-group',
-//               type: 'singleChoice',
-//               label: 'Age Group',
-//               required: false,
-//               helpText: 'Optional',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: '18-25', value: '18-25' },
-//                 { label: '26-35', value: '26-35' },
-//                 { label: '36-45', value: '36-45' },
-//                 { label: '46-55', value: '46-55' },
-//                 { label: '56+', value: '56+' },
-//               ],
-//             },
-//             {
-//               id: 'customer-type',
-//               type: 'singleChoice',
-//               label: 'Customer Type',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'First-time customer', value: 'first-time' },
-//                 { label: 'Returning customer', value: 'returning' },
-//                 { label: 'Long-term customer (1+ years)', value: 'long-term' },
-//               ],
-//             },
-//             {
-//               id: 'satisfaction',
-//               type: 'singleChoice',
-//               label: 'Overall Satisfaction',
-//               required: true,
-//               helpText: 'How satisfied are you with our service?',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Very Satisfied', value: 'very-satisfied' },
-//                 { label: 'Satisfied', value: 'satisfied' },
-//                 { label: 'Neutral', value: 'neutral' },
-//                 { label: 'Dissatisfied', value: 'dissatisfied' },
-//                 { label: 'Very Dissatisfied', value: 'very-dissatisfied' },
-//               ],
-//             },
-//             {
-//               id: 'service-quality',
-//               type: 'singleChoice',
-//               label: 'Service Quality Rating',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Excellent', value: 'excellent' },
-//                 { label: 'Good', value: 'good' },
-//                 { label: 'Fair', value: 'fair' },
-//                 { label: 'Poor', value: 'poor' },
-//               ],
-//             },
-//             {
-//               id: 'features-used',
-//               type: 'multipleChoice',
-//               label: 'Features/Services Used',
-//               required: false,
-//               helpText: 'Select all that apply',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Customer Support', value: 'support' },
-//                 { label: 'Online Platform', value: 'platform' },
-//                 { label: 'Mobile App', value: 'mobile' },
-//                 { label: 'In-store Service', value: 'instore' },
-//                 { label: 'Delivery Service', value: 'delivery' },
-//               ],
-//             },
-//             {
-//               id: 'recommendation',
-//               type: 'singleChoice',
-//               label: 'Likelihood to Recommend',
-//               required: true,
-//               helpText: 'How likely are you to recommend us to others?',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Very Likely', value: 'very-likely' },
-//                 { label: 'Likely', value: 'likely' },
-//                 { label: 'Neutral', value: 'neutral' },
-//                 { label: 'Unlikely', value: 'unlikely' },
-//                 { label: 'Very Unlikely', value: 'very-unlikely' },
-//               ],
-//             },
-//             {
-//               id: 'improvements',
-//               type: 'paragraph',
-//               label: 'Suggestions for Improvement',
-//               required: false,
-//               helpText: 'What can we do better?',
-//               labelAlignment: 'LEFT',
-//               rows: 4,
-//             },
-//             {
-//               id: 'additional-comments',
-//               type: 'paragraph',
-//               label: 'Additional Comments',
-//               required: false,
-//               helpText: 'Any other feedback you would like to share',
-//               labelAlignment: 'LEFT',
-//               rows: 3,
-//             },
-//             {
-//               id: 'contact-email',
-//               type: 'email',
-//               label: 'Email (Optional)',
-//               required: false,
-//               helpText: 'For follow-up if needed',
-//               labelAlignment: 'LEFT',
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Submit Survey',
-//         thankyouMessage:
-//           'Thank you for your valuable feedback! Your responses help us improve our services.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: false,
-//         allowMultipleEmailSubmissions: false,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-//   {
-//     id: 'contact-form',
-//     name: 'Contact Us Form',
-//     description: 'Simple contact form for general inquiries',
-//     category: 'Business',
-//     image: '/templates/contact.png',
-//     fields: 5,
-//     preview: 'Essential contact form for any website',
-//     structure: {
-//       title: 'Contact Us',
-//       description: 'Get in touch with our team',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Your Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'We will respond to this email',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'subject',
-//               type: 'shortText',
-//               label: 'Subject',
-//               required: true,
-//               helpText: 'Brief subject of your inquiry',
-//               labelAlignment: 'LEFT',
-//               placeholder: 'What is this regarding?',
-//             },
-//             {
-//               id: 'message',
-//               type: 'paragraph',
-//               label: 'Message',
-//               required: true,
-//               helpText: 'Please provide details about your inquiry',
-//               labelAlignment: 'LEFT',
-//               rows: 5,
-//             },
-//             {
-//               id: 'contact-method',
-//               type: 'singleChoice',
-//               label: 'Preferred Contact Method',
-//               required: false,
-//               helpText: 'How would you like us to respond?',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Email', value: 'email' },
-//                 { label: 'Phone Call', value: 'phone' },
-//               ],
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Send Message',
-//         thankyouMessage:
-//           'Thank you for contacting us! We will get back to you within 24 hours.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: true,
-//         allowMultipleEmailSubmissions: true,
-//         collectIpAddress: true,
-//         enableCaptcha: true,
-//       },
-//     },
-//   },
-//   {
-//     id: 'newsletter-signup',
-//     name: 'Newsletter Signup Form',
-//     description: 'Build your email list with style',
-//     category: 'Marketing',
-//     image: '/templates/newsletter.png',
-//     fields: 4,
-//     preview: 'Simple and effective newsletter subscription form',
-//     structure: {
-//       title: 'Join Our Newsletter',
-//       description: 'Stay updated with our latest news and offers',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'full-name',
-//               type: 'fullName',
-//               label: 'Your Name',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'We respect your privacy and will never spam you',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'interests',
-//               type: 'multipleChoice',
-//               label: 'What interests you?',
-//               required: false,
-//               helpText: 'Select topics you want to hear about',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Product Updates', value: 'products' },
-//                 { label: 'Industry News', value: 'news' },
-//                 { label: 'Tips & Tutorials', value: 'tips' },
-//                 { label: 'Special Offers', value: 'offers' },
-//                 { label: 'Company News', value: 'company' },
-//               ],
-//             },
-//             {
-//               id: 'frequency',
-//               type: 'singleChoice',
-//               label: 'Email Frequency',
-//               required: false,
-//               helpText: 'How often would you like to hear from us?',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Weekly', value: 'weekly' },
-//                 { label: 'Bi-weekly', value: 'biweekly' },
-//                 { label: 'Monthly', value: 'monthly' },
-//               ],
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Subscribe',
-//         thankyouMessage:
-//           'Welcome to our newsletter! Check your email for a confirmation link.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: false,
-//         allowMultipleEmailSubmissions: false,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-//   {
-//     id: 'booking-form',
-//     name: 'Hotel Booking Form',
-//     description: 'Streamline hotel reservations',
-//     category: 'Hospitality',
-//     image: '/templates/booking.png',
-//     fields: 10,
-//     preview: 'Complete booking form for hotels and accommodations',
-//     structure: {
-//       title: 'Hotel Booking Form',
-//       description: 'Reserve your perfect stay with us',
-//       pages: [
-//         {
-//           id: 'page-1',
-//           fields: [
-//             {
-//               id: 'guest-info',
-//               type: 'heading',
-//               label: 'Guest Information',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'guest-name',
-//               type: 'fullName',
-//               label: 'Primary Guest Name',
-//               required: true,
-//               helpText: 'Name on the reservation',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'email',
-//               type: 'email',
-//               label: 'Email Address',
-//               required: true,
-//               helpText: 'Booking confirmation will be sent here',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'phone',
-//               type: 'phone',
-//               label: 'Phone Number',
-//               required: true,
-//               helpText: 'For booking confirmations',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'booking-details',
-//               type: 'heading',
-//               label: 'Booking Details',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'check-in',
-//               type: 'datePicker',
-//               label: 'Check-in Date',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'check-out',
-//               type: 'datePicker',
-//               label: 'Check-out Date',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//             },
-//             {
-//               id: 'room-type',
-//               type: 'dropdown',
-//               label: 'Room Type',
-//               required: true,
-//               helpText: '',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Standard Room - $99/night', value: 'standard' },
-//                 { label: 'Deluxe Room - $149/night', value: 'deluxe' },
-//                 { label: 'Suite - $249/night', value: 'suite' },
-//                 {
-//                   label: 'Presidential Suite - $499/night',
-//                   value: 'presidential',
-//                 },
-//               ],
-//             },
-//             {
-//               id: 'guests',
-//               type: 'number',
-//               label: 'Number of Guests',
-//               required: true,
-//               helpText: 'Total number of guests',
-//               labelAlignment: 'LEFT',
-//               min: 1,
-//               max: 8,
-//             },
-//             {
-//               id: 'special-requests',
-//               type: 'multipleChoice',
-//               label: 'Special Requests',
-//               required: false,
-//               helpText: 'Select all that apply',
-//               labelAlignment: 'LEFT',
-//               options: [
-//                 { label: 'Airport Pickup', value: 'pickup' },
-//                 { label: 'Late Check-in', value: 'late-checkin' },
-//                 { label: 'High Floor Room', value: 'high-floor' },
-//                 { label: 'Quiet Room', value: 'quiet' },
-//                 { label: 'Extra Towels', value: 'towels' },
-//               ],
-//             },
-//             {
-//               id: 'additional-notes',
-//               type: 'paragraph',
-//               label: 'Additional Notes',
-//               required: false,
-//               helpText: 'Any special requirements or requests',
-//               labelAlignment: 'LEFT',
-//               rows: 3,
-//             },
-//           ],
-//         },
-//       ],
-//       settings: {
-//         submitButtonText: 'Book Now',
-//         thankyouMessage:
-//           'Booking request received! We will confirm your reservation within 2 hours.',
-//         defaultLabelAlignment: 'LEFT',
-//         defaultRequiredField: false,
-//         showLogo: true,
-//         isEnabled: true,
-//         allowMultipleSubmissions: true,
-//         allowMultipleEmailSubmissions: true,
-//         collectIpAddress: true,
-//         enableCaptcha: false,
-//       },
-//     },
-//   },
-// ];
-
-// const categoryIcons = {
-//   Business: Users,
-//   Survey: Star,
-//   Registration: CheckCircle,
-//   'E-commerce': Zap,
-//   Education: Star,
-//   Events: Users,
-//   HR: Users,
-//   Marketing: Sparkles,
-//   Hospitality: Clock,
-// };
-
-// const categoryColors = {
-//   Business: 'from-blue-500 to-blue-600',
-//   Survey: 'from-purple-500 to-purple-600',
-//   Registration: 'from-green-500 to-green-600',
-//   'E-commerce': 'from-orange-500 to-orange-600',
-//   Education: 'from-indigo-500 to-indigo-600',
-//   Events: 'from-pink-500 to-pink-600',
-//   HR: 'from-teal-500 to-teal-600',
-//   Marketing: 'from-yellow-500 to-yellow-600',
-//   Hospitality: 'from-red-500 to-red-600',
-// };
-
-// export default function FormTemplatesModal() {
-//   const router = useRouter();
-//   const dispatch: StoreDispatch = useDispatch();
-//   const [isCreating, setIsCreating] = useState(false);
-//   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-//   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
-
-//   const handleClose = () => {
-//     router.push('/dashboard');
-//   };
-
-//   const handleBack = () => {
-//     router.back();
-//   };
-
-//   const generateUniqueFormName = (templateName: string) => {
-//     const now = new Date();
-//     const timestamp = now.toLocaleString('en-US', {
-//       month: 'short',
-//       day: '2-digit',
-//       hour: '2-digit',
-//       minute: '2-digit',
-//       hour12: true,
-//     });
-//     return `${templateName} - ${timestamp}`;
-//   };
-
-//   const handleUseTemplate = async (template: Template) => {
-//     setIsCreating(true);
-//     setSelectedTemplate(template.id);
-
-//     try {
-//       const uniqueName = generateUniqueFormName(template.name);
-
-//       // Create form with template structure
-//       const result = await dispatch(
-//         createFormAsync({
-//           name: uniqueName,
-//           description: template.description,
-//           template: template.structure,
-//         })
-//       ).unwrap();
-
-//       const formId = result.id;
-//       toast.success(`${template.name} created successfully`);
-
-//       // Redirect to form builder with the new form
-//       router.push(`/build/${formId}`);
-//     } catch (error: any) {
-//       console.error('Failed to create form from template:', error);
-//       toast.error('Failed to create form', {
-//         description: error.message || 'Please try again',
-//       });
-//     } finally {
-//       setIsCreating(false);
-//       setSelectedTemplate(null);
-//     }
-//   };
-
-//   const getTemplatesByCategory = () => {
-//     const categories: Record<string, Template[]> = {};
-//     FORM_TEMPLATES.forEach(template => {
-//       if (!categories[template.category]) {
-//         categories[template.category] = [];
-//       }
-//       categories[template.category].push(template);
-//     });
-//     return categories;
-//   };
-
-//   const templatesByCategory = getTemplatesByCategory();
-//   const popularTemplates = FORM_TEMPLATES.filter(t => t.popular);
-
-//   return (
-//     <div className='fixed inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-auto z-50'>
-//       <div className='min-h-screen flex flex-col'>
-//         {/* Enhanced Header */}
-//         <div className='relative overflow-hidden'>
-//           {/* Background Pattern */}
-//           <div className='absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 opacity-90'></div>
-//           <div className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="4"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")] opacity-30'></div>
-
-//           <div className='relative p-6 flex items-center border-b border-white/20 backdrop-blur-xl'>
-//             <button
-//               onClick={handleBack}
-//               disabled={isCreating}
-//               className='flex items-center cursor-pointer text-white/90 hover:text-white transition-all duration-200 ml-2 px-4 py-2 rounded-xl hover:bg-white/10 backdrop-blur-sm'
-//             >
-//               <ArrowLeft size={20} className='mr-2' />
-//               <span className='font-medium'>Back</span>
-//             </button>
-
-//             <div className='flex-grow'></div>
-
-//             <button
-//               onClick={handleClose}
-//               disabled={isCreating}
-//               className='p-3 mr-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20'
-//               aria-label='Close'
-//             >
-//               <X size={24} className='text-white' />
-//             </button>
-//           </div>
-
-//           {/* Hero Section */}
-//           <div className='relative px-6 py-16 text-center text-white'>
-//             <motion.div
-//               initial={{ opacity: 0, y: 30 }}
-//               animate={{ opacity: 1, y: 0 }}
-//               transition={{ duration: 0.8 }}
-//             >
-//               <div className='inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-2 mb-6'>
-//                 <Sparkles size={18} className='text-yellow-300' />
-//                 <span className='text-sm font-medium'>
-//                   Professional Templates
-//                 </span>
-//               </div>
-
-//               <h1 className='text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent'>
-//                 Choose Your Perfect Template
-//               </h1>
-
-//               <p className='text-xl md:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed'>
-//                 Start with a professionally designed template and customize it
-//                 to match your brand. All templates are fully responsive,
-//                 accessible, and conversion-optimized.
-//               </p>
-
-//               <div className='flex flex-wrap justify-center gap-6 mt-10'>
-//                 <div className='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20'>
-//                   <CheckCircle size={18} className='text-green-300' />
-//                   <span className='text-sm'>Mobile Responsive</span>
-//                 </div>
-//                 <div className='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20'>
-//                   <Zap size={18} className='text-yellow-300' />
-//                   <span className='text-sm'>Instant Setup</span>
-//                 </div>
-//                 <div className='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20'>
-//                   <Star size={18} className='text-orange-300' />
-//                   <span className='text-sm'>Professionally Designed</span>
-//                 </div>
-//               </div>
-//             </motion.div>
-//           </div>
-//         </div>
-
-//         {/* Main Content */}
-//         <div className='flex-grow px-6 py-12'>
-//           <div
-//             style={{
-//               display: 'flex',
-//               flexDirection: 'column',
-//               alignItems: 'center',
-//               width: '100%',
-//             }}
-//           >
-//             <div className='max-w-7xl mx-auto w-full'>
-//               {/* Popular Templates Section */}
-//               {popularTemplates.length > 0 && (
-//                 <motion.div
-//                   initial={{ opacity: 0, y: 20 }}
-//                   animate={{ opacity: 1, y: 0 }}
-//                   transition={{ duration: 0.6, delay: 0.2 }}
-//                   className='mb-16'
-//                 >
-//                   {/* Popular Templates Header */}
-//                   <div className='flex items-center gap-3 mb-8 justify-center'>
-//                     <div className='flex items-center justify-center w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl shadow-lg'>
-//                       <Star className='w-6 h-6 text-white' />
-//                     </div>
-//                     <div>
-//                       <h2 className='text-3xl font-bold text-gray-900'>
-//                         Popular Templates
-//                       </h2>
-//                       <p className='text-gray-600'>Most loved by our users</p>
-//                     </div>
-//                   </div>
-
-//                   {/* CRITICAL: Popular Templates Grid with inline styles */}
-//                   <div
-//                     style={{
-//                       display: 'flex',
-//                       flexWrap: 'wrap',
-//                       justifyContent: 'center',
-//                       gap: '2rem',
-//                       width: '100%',
-//                       margin: '0 auto',
-//                       padding: '0',
-//                     }}
-//                   >
-//                     {popularTemplates.map((template, index) => (
-//                       <TemplateCard
-//                         key={template.id}
-//                         template={template}
-//                         index={index}
-//                         isCreating={isCreating}
-//                         selectedTemplate={selectedTemplate}
-//                         hoveredTemplate={hoveredTemplate}
-//                         onHover={setHoveredTemplate}
-//                         onUse={handleUseTemplate}
-//                         featured={true}
-//                       />
-//                     ))}
-//                   </div>
-//                 </motion.div>
-//               )}
-
-//               {/* Templates by Category */}
-//               {Object.entries(templatesByCategory).map(
-//                 ([category, templates], categoryIndex) => {
-//                   const IconComponent =
-//                     categoryIcons[category as keyof typeof categoryIcons] ||
-//                     Users;
-//                   const gradientColor =
-//                     categoryColors[category as keyof typeof categoryColors] ||
-//                     'from-gray-500 to-gray-600';
-
-//                   return (
-//                     <motion.div
-//                       key={category}
-//                       initial={{ opacity: 0, y: 20 }}
-//                       animate={{ opacity: 1, y: 0 }}
-//                       transition={{
-//                         duration: 0.6,
-//                         delay: 0.3 + categoryIndex * 0.1,
-//                       }}
-//                       className='mb-16'
-//                     >
-//                       {/* Category Header */}
-//                       <div className='flex items-center gap-3 mb-8 justify-center'>
-//                         <div
-//                           className={`flex items-center justify-center w-12 h-12 bg-gradient-to-r ${gradientColor} rounded-xl shadow-lg`}
-//                         >
-//                           <IconComponent className='w-6 h-6 text-white' />
-//                         </div>
-//                         <div className='flex items-center gap-3'>
-//                           <h2 className='text-3xl font-bold text-gray-900'>
-//                             {category}
-//                           </h2>
-//                           <span className='bg-gray-100 text-gray-600 text-sm font-semibold px-3 py-1 rounded-full'>
-//                             {templates.length} templates
-//                           </span>
-//                         </div>
-//                       </div>
-
-//                       {/* CRITICAL: Category Templates Grid with inline styles */}
-//                       <div
-//                         style={{
-//                           display: 'flex',
-//                           flexWrap: 'wrap',
-//                           justifyContent: 'center',
-//                           gap: '2rem',
-//                           width: '100%',
-//                           margin: '0 auto',
-//                           padding: '0',
-//                         }}
-//                       >
-//                         {templates.map((template, index) => (
-//                           <TemplateCard
-//                             key={template.id}
-//                             template={template}
-//                             index={index}
-//                             isCreating={isCreating}
-//                             selectedTemplate={selectedTemplate}
-//                             hoveredTemplate={hoveredTemplate}
-//                             onHover={setHoveredTemplate}
-//                             onUse={handleUseTemplate}
-//                           />
-//                         ))}
-//                       </div>
-//                     </motion.div>
-//                   );
-//                 }
-//               )}
-
-//               {/* Footer CTA - Keep exactly as you have it */}
-//               <motion.div
-//                 initial={{ opacity: 0, y: 20 }}
-//                 animate={{ opacity: 1, y: 0 }}
-//                 transition={{ duration: 0.6, delay: 0.8 }}
-//                 className='text-center mt-20 py-16 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl border border-blue-100'
-//               >
-//                 <div className='max-w-2xl mx-auto'>
-//                   <div className='inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mb-6'>
-//                     <Sparkles className='w-8 h-8 text-white' />
-//                   </div>
-
-//                   <h3 className='text-3xl font-bold text-gray-900 mb-4'>
-//                     Can&apos;t find what you&apos;re looking for?
-//                   </h3>
-
-//                   <p className='text-lg text-gray-600 mb-8'>
-//                     Create a custom form from scratch or let our AI build one
-//                     for you
-//                   </p>
-
-//                   <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-//                     <button
-//                       onClick={() => router.push('/dashboard')}
-//                       className='px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm'
-//                     >
-//                       Start from Scratch
-//                     </button>
-
-//                     <button
-//                       onClick={() => router.push('/ai/form-builder')}
-//                       className='px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-//                     >
-//                       Try AI Form Generator
-//                     </button>
-//                   </div>
-//                 </div>
-//               </motion.div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// // Enhanced Template Card Component
-// interface TemplateCardProps {
-//   template: Template;
-//   index: number;
-//   isCreating: boolean;
-//   selectedTemplate: string | null;
-//   hoveredTemplate: string | null;
-//   onHover: (id: string | null) => void;
-//   onUse: (template: Template) => void;
-//   featured?: boolean;
-// }
-
-// function TemplateCard({
-//   template,
-//   index,
-//   isCreating,
-//   selectedTemplate,
-//   hoveredTemplate,
-//   onHover,
-//   onUse,
-//   featured = false,
-// }: TemplateCardProps) {
-//   const isHovered = hoveredTemplate === template.id;
-//   const isSelected = selectedTemplate === template.id;
-
-//   return (
-//     <motion.div
-//       initial={{ opacity: 0, y: 30 }}
-//       animate={{ opacity: 1, y: 0 }}
-//       transition={{ duration: 0.5, delay: index * 0.1 }}
-//       style={{
-//         width: '320px',
-//         maxWidth: '320px',
-//         minWidth: '320px',
-//         height: '520px', // Slightly increased for better proportions
-//         flexShrink: 0,
-//         flexGrow: 0,
-//         margin: '0',
-//         position: 'relative',
-//         background: 'white',
-//         borderRadius: '1.5rem',
-//         boxShadow:
-//           '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-//         border: '1px solid #f3f4f6',
-//         overflow: 'hidden',
-//         transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-//         display: 'flex',
-//         flexDirection: 'column',
-//       }}
-//       className={`group ${featured ? 'ring-2 ring-yellow-200' : ''}`}
-//       onMouseEnter={() => onHover(template.id)}
-//       onMouseLeave={() => onHover(null)}
-//     >
-//       {/* Background Gradient Overlay */}
-//       <div className='absolute inset-0 bg-gradient-to-br from-blue-50/20 via-white/10 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500'></div>
-
-//       {/* Template Preview Section */}
-//       <div
-//         className='relative bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center overflow-hidden'
-//         style={{ height: '200px', flexShrink: 0 }}
-//       >
-//         {/* Animated Background Pattern */}
-//         <div className='absolute inset-0 opacity-30'>
-//           <div className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%239CA3AF" fill-opacity="0.1" fill-rule="evenodd"%3E%3Cpath d="m0 40v-40h40v40z"/%3E%3C/g%3E%3C/svg%3E")]'></div>
-//         </div>
-
-//         {/* Form Preview Mockup */}
-//         <motion.div
-//           className='relative w-36 h-44 bg-white rounded-lg shadow-xl transform perspective-1000 group-hover:scale-105 group-hover:rotate-y-3 transition-transform duration-500'
-//           animate={{
-//             rotateY: isHovered ? 5 : 0,
-//             scale: isHovered ? 1.05 : 1,
-//           }}
-//           transition={{ duration: 0.3 }}
-//         >
-//           <div className='p-4 h-full flex flex-col'>
-//             {/* Form Header */}
-//             <div className='h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded mb-3'></div>
-
-//             {/* Form Fields Simulation */}
-//             <div className='space-y-2 flex-grow'>
-//               {Array.from({ length: Math.min(template.fields, 6) }, (_, i) => (
-//                 <motion.div
-//                   key={i}
-//                   className={`h-2 rounded ${
-//                     i % 3 === 0
-//                       ? 'bg-gray-300 w-full'
-//                       : i % 3 === 1
-//                       ? 'bg-gray-200 w-3/4'
-//                       : 'bg-gray-100 w-5/6'
-//                   }`}
-//                   initial={{ opacity: 0, x: -10 }}
-//                   animate={{ opacity: 1, x: 0 }}
-//                   transition={{ delay: i * 0.1 }}
-//                 />
-//               ))}
-
-//               {template.fields > 6 && (
-//                 <div className='text-xs text-gray-400 text-center pt-1'>
-//                   +{template.fields - 6} more fields
-//                 </div>
-//               )}
-//             </div>
-
-//             {/* Form Button */}
-//             <div className='mt-3 h-2.5 bg-gradient-to-r from-blue-400 to-blue-500 rounded'></div>
-//           </div>
-//         </motion.div>
-
-//         {/* Badges */}
-//         <div className='absolute top-3 right-3 flex flex-col gap-2'>
-//           {template.popular && (
-//             <span className='bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1'>
-//               <Star size={10} fill='currentColor' />
-//               Popular
-//             </span>
-//           )}
-//           {template.new && (
-//             <span className='bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm'>
-//               New
-//             </span>
-//           )}
-//           {template.premium && (
-//             <span className='bg-purple-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1'>
-//               <Sparkles size={10} fill='currentColor' />
-//               Pro
-//             </span>
-//           )}
-//         </div>
-
-//         {/* Category Badge */}
-//         <div className='absolute top-3 left-3'>
-//           <span className='bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-3 py-1 rounded-full shadow-sm border border-white/50'>
-//             {template.category}
-//           </span>
-//         </div>
-//       </div>
-
-//       {/* Template Information */}
-//       <div
-//         style={{
-//           padding: '24px',
-//           height: '320px',
-//           display: 'flex',
-//           flexDirection: 'column',
-//         }}
-//       >
-//         <div
-//           style={{
-//             height: '60px',
-//             marginBottom: '12px',
-//             display: 'flex',
-//             alignItems: 'flex-start',
-//             justifyContent: 'space-between',
-//           }}
-//         >
-//           <h3
-//             style={{
-//               fontSize: '20px',
-//               fontWeight: '700',
-//               color: '#111827',
-//               lineHeight: '28px',
-//               height: '56px', // Exactly 2 lines
-//               overflow: 'hidden',
-//               display: '-webkit-box',
-//               WebkitLineClamp: 2,
-//               WebkitBoxOrient: 'vertical',
-//               flex: 1,
-//               marginRight: '8px',
-//             }}
-//             className='group-hover:text-blue-600 transition-colors duration-300'
-//           >
-//             {template.name}
-//           </h3>
-//           <span
-//             style={{
-//               fontSize: '14px',
-//               color: '#6b7280',
-//               backgroundColor: '#f3f4f6',
-//               padding: '4px 8px',
-//               borderRadius: '6px',
-//               whiteSpace: 'nowrap',
-//               flexShrink: 0,
-//             }}
-//           >
-//             {template.fields} fields
-//           </span>
-//         </div>
-
-//         <div style={{ height: '50px', marginBottom: '16px' }}>
-//           <p
-//             style={{
-//               fontSize: '14px',
-//               color: '#4b5563',
-//               lineHeight: '20px',
-//               height: '40px', // Exactly 2 lines
-//               overflow: 'hidden',
-//               display: '-webkit-box',
-//               WebkitLineClamp: 2,
-//               WebkitBoxOrient: 'vertical',
-//             }}
-//           >
-//             {template.description}
-//           </p>
-//         </div>
-
-//         <div style={{ height: '50px', marginBottom: '24px' }}>
-//           <p
-//             style={{
-//               fontSize: '12px',
-//               color: '#6b7280',
-//               fontStyle: 'italic',
-//               lineHeight: '18px',
-//               height: '36px', // Exactly 2 lines
-//               overflow: 'hidden',
-//               display: '-webkit-box',
-//               WebkitLineClamp: 2,
-//               WebkitBoxOrient: 'vertical',
-//             }}
-//           >
-//             {template.preview}
-//           </p>
-//         </div>
-
-//         {/* Spacer - TAKES UP REMAINING SPACE */}
-//         <div style={{ flex: 1 }}></div>
-
-//         {/* Action Button - FIXED AT BOTTOM */}
-//         <div style={{ height: '48px' }}>
-//           <motion.button
-//             onClick={() => onUse(template)}
-//             disabled={isCreating}
-//             style={{
-//               width: '100%',
-//               height: '100%',
-//               padding: '12px 16px',
-//               borderRadius: '12px',
-//               fontWeight: '600',
-//               border: 'none',
-//               cursor: isCreating ? 'not-allowed' : 'pointer',
-//               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-//               background:
-//                 isCreating && isSelected
-//                   ? '#dbeafe'
-//                   : isCreating
-//                   ? '#f3f4f6'
-//                   : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-//               color:
-//                 isCreating && isSelected
-//                   ? '#2563eb'
-//                   : isCreating
-//                   ? '#9ca3af'
-//                   : 'white',
-//             }}
-//             whileHover={!isCreating ? { scale: 1.02 } : {}}
-//             whileTap={!isCreating ? { scale: 0.98 } : {}}
-//           >
-//             {isCreating && isSelected ? (
-//               <div
-//                 style={{
-//                   display: 'flex',
-//                   alignItems: 'center',
-//                   justifyContent: 'center',
-//                   gap: '8px',
-//                 }}
-//               >
-//                 <Loader2
-//                   style={{ width: '16px', height: '16px' }}
-//                   className='animate-spin'
-//                 />
-//                 <span>Creating...</span>
-//               </div>
-//             ) : (
-//               <div
-//                 style={{
-//                   display: 'flex',
-//                   alignItems: 'center',
-//                   justifyContent: 'center',
-//                   gap: '8px',
-//                 }}
-//               >
-//                 <span>Use Template</span>
-//                 <motion.div
-//                   animate={{ x: isHovered ? 4 : 0 }}
-//                   transition={{ duration: 0.2 }}
-//                 >
-//                   <ArrowLeft
-//                     style={{
-//                       width: '16px',
-//                       height: '16px',
-//                       transform: 'rotate(180deg)',
-//                     }}
-//                   />
-//                 </motion.div>
-//               </div>
-//             )}
-//           </motion.button>
-//         </div>
-//       </div>
-
-//       {/* Hover Effect Overlay */}
-//       <motion.div
-//         className='absolute inset-0 bg-gradient-to-r from-blue-600/3 to-purple-600/3 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none'
-//         animate={{
-//           opacity: isHovered ? 1 : 0,
-//         }}
-//       />
-
-//       {/* Loading Overlay */}
-//       <AnimatePresence>
-//         {isCreating && isSelected && (
-//           <motion.div
-//             initial={{ opacity: 0 }}
-//             animate={{ opacity: 1 }}
-//             exit={{ opacity: 0 }}
-//             className='absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-20'
-//           >
-//             <div className='text-center'>
-//               <motion.div
-//                 animate={{ rotate: 360 }}
-//                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-//                 className='w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4'
-//               />
-//               <p className='text-blue-600 font-semibold'>
-//                 Creating your form...
-//               </p>
-//             </div>
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-//     </motion.div>
-//   );
-// }
-
 // src/components/modals/FormTemplatesModal.tsx
 'use client';
 
@@ -2035,6 +19,7 @@ import { toast } from 'sonner';
 import { createFormAsync } from '@/redux/slices/dashboard/formsSlice';
 import { StoreDispatch } from '@/redux/store';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fetchUserProfile } from '@/redux/slices/userProfileSlice';
 
 interface Template {
   id: string;
@@ -5108,6 +3093,7 @@ export default function FormTemplatesModal() {
           template: template.structure,
         })
       ).unwrap();
+      await dispatch(fetchUserProfile());
 
       const formId = result.id;
       toast.success(`${template.name} created successfully`);
@@ -5365,14 +3351,14 @@ export default function FormTemplatesModal() {
                   <div className='flex flex-col sm:flex-row gap-4 justify-center'>
                     <button
                       onClick={() => router.push('/dashboard')}
-                      className='px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm'
+                      className='px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm cursor-pointer'
                     >
                       Start from Scratch
                     </button>
 
                     <button
                       onClick={() => router.push('/ai/form-builder')}
-                      className='px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                      className='px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 cursor-pointer'
                     >
                       Try AI Form Generator
                     </button>
@@ -5421,7 +3407,7 @@ function TemplateCard({
         width: '320px',
         maxWidth: '320px',
         minWidth: '320px',
-        height: '520px', // Slightly increased for better proportions
+        height: '520px',
         flexShrink: 0,
         flexGrow: 0,
         margin: '0',
@@ -5432,7 +3418,7 @@ function TemplateCard({
           '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         border: '1px solid #f3f4f6',
         overflow: 'hidden',
-        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -5441,12 +3427,15 @@ function TemplateCard({
       onMouseLeave={() => onHover(null)}
     >
       {/* Background Gradient Overlay */}
-      <div className='absolute inset-0 bg-gradient-to-br from-blue-50/20 via-white/10 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500'></div>
+      <div
+        className='absolute inset-0 bg-gradient-to-br from-blue-50/20 via-white/10 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300'
+        style={{ zIndex: 1 }}
+      ></div>
 
       {/* Template Preview Section */}
       <div
         className='relative bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center overflow-hidden'
-        style={{ height: '200px', flexShrink: 0 }}
+        style={{ height: '200px', flexShrink: 0, zIndex: 2 }}
       >
         {/* Animated Background Pattern */}
         <div className='absolute inset-0 opacity-30'>
@@ -5455,12 +3444,13 @@ function TemplateCard({
 
         {/* Form Preview Mockup */}
         <motion.div
-          className='relative w-36 h-44 bg-white rounded-lg shadow-xl transform perspective-1000 group-hover:scale-105 group-hover:rotate-y-3 transition-transform duration-500'
-          animate={{
-            rotateY: isHovered ? 5 : 0,
-            scale: isHovered ? 1.05 : 1,
+          className='relative w-36 h-44 bg-white rounded-lg shadow-xl transition-transform duration-300'
+          style={{
+            transform: isHovered
+              ? 'scale(1.05) rotateY(5deg)'
+              : 'scale(1) rotateY(0deg)',
+            transformStyle: 'preserve-3d',
           }}
-          transition={{ duration: 0.3 }}
         >
           <div className='p-4 h-full flex flex-col'>
             {/* Form Header */}
@@ -5471,16 +3461,17 @@ function TemplateCard({
               {Array.from({ length: Math.min(template.fields, 6) }, (_, i) => (
                 <motion.div
                   key={i}
-                  className={`h-2 rounded ${
+                  className={`h-2 rounded transition-all duration-300 ${
                     i % 3 === 0
                       ? 'bg-gray-300 w-full'
                       : i % 3 === 1
                       ? 'bg-gray-200 w-3/4'
                       : 'bg-gray-100 w-5/6'
                   }`}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
+                  style={{
+                    opacity: 1,
+                    transform: `translateX(0px)`,
+                  }}
                 />
               ))}
 
@@ -5497,7 +3488,10 @@ function TemplateCard({
         </motion.div>
 
         {/* Badges */}
-        <div className='absolute top-3 right-3 flex flex-col gap-2'>
+        <div
+          className='absolute top-3 right-3 flex flex-col gap-2'
+          style={{ zIndex: 3 }}
+        >
           {template.popular && (
             <span className='bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1'>
               <Star size={10} fill='currentColor' />
@@ -5518,7 +3512,7 @@ function TemplateCard({
         </div>
 
         {/* Category Badge */}
-        <div className='absolute top-3 left-3'>
+        <div className='absolute top-3 left-3' style={{ zIndex: 3 }}>
           <span className='bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-3 py-1 rounded-full shadow-sm border border-white/50'>
             {template.category}
           </span>
@@ -5532,6 +3526,8 @@ function TemplateCard({
           height: '320px',
           display: 'flex',
           flexDirection: 'column',
+          position: 'relative',
+          zIndex: 2,
         }}
       >
         <div
@@ -5549,15 +3545,16 @@ function TemplateCard({
               fontWeight: '700',
               color: '#111827',
               lineHeight: '28px',
-              height: '56px', // Exactly 2 lines
+              height: '56px',
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               flex: 1,
               marginRight: '8px',
+              transition: 'color 0.3s ease',
             }}
-            className='group-hover:text-blue-600 transition-colors duration-300'
+            className='group-hover:text-blue-600'
           >
             {template.name}
           </h3>
@@ -5582,7 +3579,7 @@ function TemplateCard({
               fontSize: '14px',
               color: '#4b5563',
               lineHeight: '20px',
-              height: '40px', // Exactly 2 lines
+              height: '40px',
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -5600,7 +3597,7 @@ function TemplateCard({
               color: '#6b7280',
               fontStyle: 'italic',
               lineHeight: '18px',
-              height: '36px', // Exactly 2 lines
+              height: '36px',
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -5615,7 +3612,7 @@ function TemplateCard({
         <div style={{ flex: 1 }}></div>
 
         {/* Action Button - FIXED AT BOTTOM */}
-        <div style={{ height: '48px' }}>
+        <div style={{ height: '48px', position: 'relative', zIndex: 10 }}>
           <motion.button
             onClick={() => onUse(template)}
             disabled={isCreating}
@@ -5627,7 +3624,7 @@ function TemplateCard({
               fontWeight: '600',
               border: 'none',
               cursor: isCreating ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'all 0.3s ease',
               background:
                 isCreating && isSelected
                   ? '#dbeafe'
@@ -5640,10 +3637,14 @@ function TemplateCard({
                   : isCreating
                   ? '#9ca3af'
                   : 'white',
+              transform: 'translateZ(0)',
+              pointerEvents: isCreating ? 'none' : 'auto',
             }}
-            className={!isCreating ? 'hover:cursor-pointer' : ''}
-            whileHover={!isCreating ? { scale: 1.02 } : {}}
-            whileTap={!isCreating ? { scale: 0.98 } : {}}
+            className={
+              !isCreating
+                ? 'hover:shadow-lg hover:scale-105 hover:cursor-pointer cursor-pointer'
+                : 'cursor-pointer'
+            }
           >
             {isCreating && isSelected ? (
               <div
@@ -5670,18 +3671,17 @@ function TemplateCard({
                 }}
               >
                 <span>Use Template</span>
-                <motion.div
-                  animate={{ x: isHovered ? 4 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ArrowLeft
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      transform: 'rotate(180deg)',
-                    }}
-                  />
-                </motion.div>
+
+                <ArrowLeft
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    transform: `rotate(180deg) ${
+                      isHovered ? 'translateX(4px)' : 'translateX(0px)'
+                    }`,
+                    transition: 'transform 0.2s ease',
+                  }}
+                />
               </div>
             )}
           </motion.button>
@@ -5690,9 +3690,10 @@ function TemplateCard({
 
       {/* Hover Effect Overlay */}
       <motion.div
-        className='absolute inset-0 bg-gradient-to-r from-blue-600/3 to-purple-600/3 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none'
-        animate={{
+        className='absolute inset-0 bg-gradient-to-r from-blue-600/3 to-purple-600/3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none'
+        style={{
           opacity: isHovered ? 1 : 0,
+          zIndex: 1,
         }}
       />
 
@@ -5703,7 +3704,8 @@ function TemplateCard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className='absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-20'
+            className='absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center'
+            style={{ zIndex: 20 }}
           >
             <div className='text-center'>
               <motion.div

@@ -1,3 +1,5 @@
+// src/app/myaccount/upgrade/page.tsx
+
 'use client';
 
 import React, { useState } from 'react';
@@ -107,7 +109,7 @@ const UpgradePage = () => {
             onClick={() =>
               setNotification({ show: false, message: '', type: 'success' })
             }
-            className='ml-4 text-gray-500 hover:text-gray-700'
+            className='ml-4 text-gray-500 hover:text-gray-700 cursor-pointer'
           >
             <X className='h-4 w-4' />
           </button>
@@ -126,7 +128,7 @@ const UpgradePage = () => {
           <div className='mb-8 flex justify-center'>
             <div className='bg-gray-100 rounded-full p-1 flex items-center'>
               <button
-                className={`px-6 py-2 rounded-full ${
+                className={`px-6 py-2 cursor-pointer rounded-full ${
                   billingCycle === 'monthly'
                     ? 'bg-white shadow-sm'
                     : 'text-gray-600'
@@ -136,7 +138,7 @@ const UpgradePage = () => {
                 Monthly
               </button>
               <button
-                className={`px-6 py-2 rounded-full ${
+                className={`px-6 py-2 cursor-pointer rounded-full ${
                   billingCycle === 'yearly'
                     ? 'bg-white shadow-sm'
                     : 'text-gray-600'
@@ -255,7 +257,7 @@ const UpgradePage = () => {
                 {/* Button container with mt-auto to push to bottom */}
                 <div className='mt-6'>
                   <button
-                    className='w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded font-medium transition-colors'
+                    className='w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded cursor-pointer font-medium transition-colors'
                     onClick={() => handleUpgrade('Bronze')}
                   >
                     Upgrade
@@ -321,7 +323,7 @@ const UpgradePage = () => {
                 {/* Button container with mt-auto to push to bottom */}
                 <div className='mt-6'>
                   <button
-                    className='w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium transition-colors'
+                    className='w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium transition-colors cursor-pointer'
                     onClick={() => handleUpgrade('Silver')}
                   >
                     Upgrade
@@ -384,7 +386,7 @@ const UpgradePage = () => {
                 {/* Button container with mt-auto to push to bottom */}
                 <div className='mt-6'>
                   <button
-                    className='w-full py-2 px-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded font-medium transition-colors'
+                    className='w-full py-2 px-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded cursor-pointer font-medium transition-colors'
                     onClick={() => handleUpgrade('Gold')}
                   >
                     Upgrade
