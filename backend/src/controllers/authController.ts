@@ -7,6 +7,13 @@ import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';
 import { UserPayload } from '../types/index';
 import { sendOTPEmail } from '../utils/email';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/ApiError';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import PasswordResetToken from '../models/PasswordResetToken';
+import { sendPasswordResetEmail } from '../services/emailService';
+import { emailSchema, resetPasswordSchema } from '../validation/authValidation';
 
 // Helper function to sign JWT token
 
@@ -348,3 +355,198 @@ export const logout = (req: Request, res: Response) => {
     .status(200)
     .json({ status: 'success', message: 'Logged out successfully' });
 };
+
+export const forgotPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    // Validate email
+    const validation = emailSchema.safeParse(req.body);
+    if (!validation.success) {
+      throw new ApiError(validation.error.errors[0].message, 400);
+    }
+
+    const { email } = validation.data;
+
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({
+        success: true,
+        message:
+          'If the email exists in our system, you will receive a password reset link.',
+      });
+    }
+
+    // Generate secure random token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    // Delete any existing reset tokens for this user
+    await PasswordResetToken.deleteMany({ userId: user._id });
+
+    // Create new reset token (expires in 1 hour)
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await PasswordResetToken.create({
+      userId: user._id,
+      token: hashedToken,
+      email: user.email,
+      expiresAt,
+    });
+
+    // Send password reset email
+    try {
+      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+        expiresIn: '1 hour',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Password reset link has been sent to your email address.',
+      });
+    } catch (error) {
+      // Clean up the token if email sending fails
+      await PasswordResetToken.deleteOne({ userId: user._id });
+
+      console.error('Password reset email error:', error);
+      throw new ApiError(
+        'Failed to send password reset email. Please try again.',
+        500
+      );
+    }
+  }
+);
+
+export const verifyResetToken = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { token, email } = req.query;
+
+    if (!token || !email) {
+      throw new ApiError(
+        'Invalid reset link. Token and email are required.',
+        400
+      );
+    }
+
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token as string)
+      .digest('hex');
+
+    // Find valid reset token
+    const resetToken = await PasswordResetToken.findOne({
+      token: hashedToken,
+      email: (email as string).toLowerCase(),
+      isUsed: false,
+    }).populate('userId', 'name email');
+
+    if (!resetToken) {
+      throw new ApiError('Invalid or expired reset link.', 400);
+    }
+
+    if (resetToken.isExpired()) {
+      // Clean up expired token
+      await PasswordResetToken.deleteOne({ _id: resetToken._id });
+      throw new ApiError(
+        'Reset link has expired. Please request a new one.',
+        400
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Reset token is valid.',
+      data: {
+        email: resetToken.email,
+        name: (resetToken.userId as any).name,
+      },
+    });
+  }
+);
+
+export const resetPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { token, email, new_password, confirm_password } = req.body;
+
+    if (!token || !email) {
+      throw new ApiError(
+        'Invalid reset request. Token and email are required.',
+        400
+      );
+    }
+
+    // Validate password data
+    const validation = resetPasswordSchema.safeParse({
+      new_password,
+      confirm_password,
+    });
+
+    if (!validation.success) {
+      throw new ApiError(validation.error.errors[0].message, 400);
+    }
+
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find valid reset token
+    const resetToken = await PasswordResetToken.findOne({
+      token: hashedToken,
+      email: email.toLowerCase(),
+      isUsed: false,
+    }).populate('userId');
+
+    if (!resetToken) {
+      throw new ApiError('Invalid or expired reset link.', 400);
+    }
+
+    if (resetToken.isExpired()) {
+      // Clean up expired token
+      await PasswordResetToken.deleteOne({ _id: resetToken._id });
+      throw new ApiError(
+        'Reset link has expired. Please request a new one.',
+        400
+      );
+    }
+
+    const user = resetToken.userId as any;
+    if (!user) {
+      throw new ApiError('User not found.', 404);
+    }
+
+    // Hash the new password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(
+      validation.data.new_password,
+      saltRounds
+    );
+
+    // Update user password
+    await User.findByIdAndUpdate(user._id, {
+      password: hashedPassword,
+      updatedAt: new Date(),
+    });
+
+    // Mark reset token as used
+    await resetToken.markAsUsed();
+
+    // Delete all other reset tokens for this user
+    await PasswordResetToken.deleteMany({
+      userId: user._id,
+      _id: { $ne: resetToken._id },
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        'Password has been reset successfully. You can now login with your new password.',
+    });
+  }
+);

@@ -1,4 +1,5 @@
-// src/redux/slices/formBuilderSlice.ts
+// src/redux/slices/formBuilder/formBuilderSlice.ts
+
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 import { Form, Field, FieldType, FormSettings, LogoState } from '@/types/form';

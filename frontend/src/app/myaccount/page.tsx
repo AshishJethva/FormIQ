@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { Info, User } from 'lucide-react';
-import { deleteAvatar } from '@/redux/slices/userProfileSlice';
+import { deleteAvatar } from '@/redux/slices/userProfile/userProfileSlice';
 import {
   fetchUserProfile,
   updateBasicInfo,
@@ -17,7 +17,7 @@ import {
   selectUserProfile,
   selectIsLoading,
   clearError,
-} from '@/redux/slices/userProfileSlice';
+} from '@/redux/slices/userProfile/userProfileSlice';
 import { toast } from 'sonner';
 import type { StoreDispatch } from '@/redux/store';
 

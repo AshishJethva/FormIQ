@@ -11,7 +11,7 @@ import {
   initializeForm,
   loadFormAsync,
   clearError,
-} from '@/redux/slices/formBuilderSlice';
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import FormBuilderHeader from './navigation/FormBuilderHeader';
 import MainNavigation from './navigation/MainNavigation';
 import ElementsPanel from './elements-panel/ElementsPanel';

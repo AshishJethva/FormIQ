@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { ArrowLeft, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
-import { generateFormWithAI, clearError } from '@/redux/slices/aiFormSlice';
+import { generateFormWithAI, clearError } from '@/redux/slices/ai/aiFormSlice';
 import { RootState, StoreDispatch } from '@/redux/store';
 
 export default function AIFormBuilderPage() {
@@ -66,7 +66,7 @@ export default function AIFormBuilderPage() {
       // Redirect to form builder with the generated form ID
       setTimeout(() => {
         router.push(`/build/${result.id}`);
-      }, 1000);
+      }, 500);
     } catch (error: any) {
       toast.error('Failed to generate form', {
         description: error || 'Please try again with a different description',

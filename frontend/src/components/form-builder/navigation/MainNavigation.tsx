@@ -7,7 +7,7 @@ import { RootState, AppDispatch } from '@/redux/store';
 import {
   publishFormAsync,
   setPreviewMode,
-} from '@/redux/slices/formBuilderSlice';
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';

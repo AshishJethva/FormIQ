@@ -1,4 +1,5 @@
-// src/redux/slices/userProfileSlice.ts
+// src/redux/slices/userProfile/userProfileSlice.ts
+
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import userProfileService, {
   UserProfile,
@@ -6,7 +7,7 @@ import userProfileService, {
   ActivityLog,
   ActivityFilters,
 } from '@/services/userProfile';
-import type { RootState } from '../store';
+import type { RootState } from '../../store';
 
 interface UserProfileState {
   profile: UserProfile | null;

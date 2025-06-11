@@ -4,7 +4,10 @@
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { addPage, setCurrentPageIndex } from '@/redux/slices/formBuilderSlice';
+import {
+  addPage,
+  setCurrentPageIndex,
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import { toast } from 'sonner';
 import { RootState } from '@/redux/store';
 

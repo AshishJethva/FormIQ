@@ -1,7 +1,12 @@
 // src/redux/slices/dashboard/formsSlice.ts
+
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { formsService, CreateFormData } from '@/services/forms';
 import { labelsService } from '@/services/labels';
+import {
+  incrementFormsUsed,
+  decrementFormsUsed,
+} from '@/redux/slices/userProfile/userProfileSlice';
 import type { RootState } from '../../store';
 
 interface EnhancedCreateFormData extends CreateFormData {
@@ -137,17 +142,26 @@ export const trashFormAsync = createAsyncThunk(
 
 export const restoreFormAsync = createAsyncThunk(
   'forms/restoreForm',
-  async (formId: string) => {
+  async (formId: string, { dispatch }) => {
     await formsService.restoreForm(formId);
+    dispatch(incrementFormsUsed());
     return formId;
   }
 );
 
 export const deleteFormAsync = createAsyncThunk(
   'forms/deleteFormCompletely',
-  async (formId: string, { rejectWithValue }) => {
+  async (formId: string, { rejectWithValue, dispatch, getState }) => {
     try {
+      const state = getState() as RootState;
+      const form = state.forms.forms.find(f => f.id === formId);
+
       const result = await formsService.deleteForm(formId);
+
+      // Only decrement if the form was not already trashed (permanent deletion)
+      if (form && !form.isTrashed) {
+        dispatch(decrementFormsUsed());
+      }
 
       return {
         formId,
@@ -199,8 +213,22 @@ export const bulkRemoveLabelFromFormsAsync = createAsyncThunk(
 
 export const createFormAsync = createAsyncThunk(
   'forms/createForm',
-  async (formData: EnhancedCreateFormData, { rejectWithValue }) => {
+  async (formData: EnhancedCreateFormData, { rejectWithValue, getState }) => {
     try {
+      // Check form limits before creating
+      const state = getState() as RootState;
+      const userProfile = state.userProfile.profile;
+
+      if (userProfile && !userProfile.profile.plan.canCreateForms) {
+        const planType = userProfile.profile.plan.type;
+        const formsUsed = userProfile.profile.plan.formsUsed;
+        const formsLimit = userProfile.profile.plan.formsLimit;
+
+        return rejectWithValue(
+          `Form limit reached! You've used ${formsUsed} of ${formsLimit} forms available in your ${planType} plan. Upgrade to create more forms.`
+        );
+      }
+
       if (formData.template) {
         const basicFormData = {
           name: formData.name,
@@ -227,6 +255,7 @@ export const createFormAsync = createAsyncThunk(
       } else {
         // Regular form creation
         const response = await formsService.createForm(formData);
+
         return response.data;
       }
     } catch (error: any) {
@@ -718,7 +747,7 @@ export const formsSlice = createSlice({
       })
       .addCase(deleteFormAsync.rejected, (state, action) => {
         state.error = action.payload as string;
-        console.error('❌ Redux: Form deletion failed:', action.payload);
+        console.error('Redux: Form deletion failed:', action.payload);
       })
       .addCase(bulkTrashFormsAsync.fulfilled, (state, action) => {
         state.forms = state.forms.map(form =>
@@ -759,7 +788,7 @@ export const formsSlice = createSlice({
         });
       })
 
-      // Fetch labels (same as before)
+      // Fetch labels
       .addCase(fetchLabels.pending, state => {
         state.labelsLoading = true;
         state.labelsError = null;

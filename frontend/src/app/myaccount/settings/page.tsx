@@ -530,7 +530,7 @@ import {
   selectIsSettingsLoading,
   selectSettingsError,
   clearSettingsError,
-} from '@/redux/slices/userProfileSlice';
+} from '@/redux/slices/userProfile/userProfileSlice';
 import { toast } from 'sonner';
 import type { StoreDispatch } from '@/redux/store';
 

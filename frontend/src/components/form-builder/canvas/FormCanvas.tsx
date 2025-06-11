@@ -16,7 +16,7 @@ import {
   setCurrentPageIndex,
   loadFormAsync,
   setSelectedPageId,
-} from '@/redux/slices/formBuilderSlice';
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import { FieldType, Field } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Image, Upload } from 'lucide-react';

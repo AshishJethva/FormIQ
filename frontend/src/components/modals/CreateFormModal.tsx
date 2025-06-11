@@ -1,70 +1,97 @@
-// src/modals/CreateFormModal.tsx
+// src/components/modals/CreateFormModal.tsx
 'use client';
 
-import React, { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Loader2, CreditCard, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { toast } from 'sonner';
-import { createFormAsync } from '@/redux/slices/dashboard/formsSlice';
+import { fetchUserProfile } from '@/redux/slices/userProfile/userProfileSlice';
+import { useCreateForm } from '@/hooks/useCreateForm';
 import { StoreDispatch } from '@/redux/store';
-import { fetchUserProfile } from '@/redux/slices/userProfileSlice';
 
 export default function CreateFormModal() {
   const router = useRouter();
   const dispatch: StoreDispatch = useDispatch();
 
-  const [isCreating, setIsCreating] = useState(false);
+  const {
+    createForm,
+    isCreating,
+    canCreateForms: originalCanCreateForms,
+    formsLimit,
+    planType: originalPlanType,
+    isApproachingLimit: originalIsApproachingLimit,
+  } = useCreateForm();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // CRITICAL FIX: Freeze the UI state during form creation
+  const [frozenUIState, setFrozenUIState] = useState<{
+    canCreateForms: boolean;
+    isCreating: boolean;
+    isApproachingLimit: boolean;
+    planType: string;
+  } | null>(null);
+
+  // Use frozen state during creation, original state otherwise
+  const canCreateForms =
+    frozenUIState?.canCreateForms ?? originalCanCreateForms;
+  const effectiveIsCreating = frozenUIState?.isCreating ?? isCreating;
+  const isApproachingLimit =
+    frozenUIState?.isApproachingLimit ?? originalIsApproachingLimit;
+  const planType = frozenUIState?.planType ?? originalPlanType;
+
+  // Force refresh user profile when modal opens to get latest data
+  useEffect(() => {
+    const refreshProfile = async () => {
+      setIsRefreshing(true);
+      await dispatch(fetchUserProfile());
+      setIsRefreshing(false);
+    };
+    refreshProfile();
+  }, [dispatch]);
 
   // Handle back/close actions
   const handleClose = () => {
     router.push('/dashboard');
   };
 
-  // Generate unique form name with timestamp
-  const generateUniqueFormName = () => {
-    const now = new Date();
-    const timestamp = now.toLocaleString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-    return `Form - ${timestamp}`;
+  // Smart form creation with comprehensive limit checking
+  const handleCreateFormWithChecks = async (
+    formType: 'scratch' | 'ai' | 'template'
+  ) => {
+    // Proceed based on form type
+    switch (formType) {
+      case 'scratch':
+        return await handleStartFromScratch();
+      case 'ai':
+        return handleAIFormGenerator();
+      case 'template':
+        return handleUseTemplate();
+    }
   };
 
   // Handle form creation and redirect to form builder
   const handleStartFromScratch = async () => {
-    setIsCreating(true);
+    // CRITICAL FIX: Freeze the UI state before starting creation
+    setFrozenUIState({
+      canCreateForms: originalCanCreateForms,
+      isCreating: true,
+      isApproachingLimit: originalIsApproachingLimit,
+      planType: originalPlanType,
+    });
 
     try {
-      // Generate a unique form name with timestamp
-      const uniqueName = generateUniqueFormName();
-
-      // Create form via Redux action
-      const result = await dispatch(
-        createFormAsync({
-          name: uniqueName,
-          description: '',
-        })
-      ).unwrap();
-      await dispatch(fetchUserProfile());
-
-      // Get the form ID from the result
-      const formId = result.id;
-
-      toast.success('Form created successfully');
-
-      // Redirect to form builder with the new form ID
-      router.push(`/build/${formId}`);
-    } catch (error: any) {
-      console.error('Failed to create form:', error);
-      toast.error('Failed to create form', {
-        description: error.message || 'Please try again',
+      // Use the hook which handles all the logic including state updates
+      await createForm({
+        redirectTo: 'build',
+        showToast: true,
       });
-    } finally {
-      setIsCreating(false);
+
+      // SUCCESS: Don't unfreeze UI state here - let the redirect handle it
+      // The UI will remain stable until the user navigates away
+    } catch {
+      // ERROR: Only unfreeze on error so user can try again
+      setFrozenUIState(null);
     }
   };
 
@@ -78,6 +105,18 @@ export default function CreateFormModal() {
     router.push('/templates/form');
   };
 
+  // Show loading state while refreshing profile data
+  if (isRefreshing && !effectiveIsCreating) {
+    return (
+      <div className='fixed inset-0 bg-[#F3F3FE] overflow-auto z-50'>
+        <div className='min-h-screen flex flex-col items-center justify-center'>
+          <Loader2 className='w-8 h-8 animate-spin text-blue-600 mb-4' />
+          <p className='text-gray-600'>Loading latest data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='fixed inset-0 bg-[#F3F3FE] overflow-auto z-50'>
       <div className='min-h-screen flex flex-col'>
@@ -85,7 +124,7 @@ export default function CreateFormModal() {
         <div className='p-4 flex items-center'>
           <button
             onClick={handleClose}
-            disabled={isCreating}
+            disabled={effectiveIsCreating}
             className='flex items-center cursor-pointer text-black font-medium hover:text-gray-900 transition-colors ml-6 mt-6 px-2.5 py-2 rounded-full bg-[#DADEF3] shadow-sm'
           >
             <svg
@@ -109,13 +148,33 @@ export default function CreateFormModal() {
 
           <button
             onClick={handleClose}
-            disabled={isCreating}
+            disabled={effectiveIsCreating}
             className='p-2 mr-6 mt-6 rounded-full bg-[#6C73A8] transition-colors cursor-pointer'
             aria-label='Close'
           >
             <X size={24} className='text-white' />
           </button>
         </div>
+
+        {/* Warning Banner for Form Limits - Only show if originally disabled */}
+        {!canCreateForms && (
+          <div className='mx-8 mb-4 bg-red-50 border border-red-200 rounded-md p-4 flex items-center text-red-800'>
+            <CreditCard className='h-5 w-5 mr-3 flex-shrink-0' />
+            <div className='flex-1'>
+              <p className='font-medium'>Form Creation Disabled</p>
+              <p className='text-sm mt-1'>
+                You&apos;ve used all {formsLimit} forms in your {planType} plan.
+                Upgrade to continue creating forms.
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/myaccount/upgrade')}
+              className='ml-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors cursor-pointer'
+            >
+              Upgrade Plan
+            </button>
+          </div>
+        )}
 
         {/* Main content */}
         <div className='flex-grow flex flex-col items-center justify-center px-4 pb-55 pt-6'>
@@ -132,16 +191,22 @@ export default function CreateFormModal() {
 
           <div className='grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-3xl'>
             {/* Start from scratch card */}
-            <div onClick={isCreating ? undefined : handleStartFromScratch}>
+            <div
+              onClick={
+                effectiveIsCreating || !canCreateForms
+                  ? undefined
+                  : () => handleCreateFormWithChecks('scratch')
+              }
+            >
               <div
                 className={`bg-white rounded-lg shadow-md hover:shadow-xl hover:border-blue-500 transition-shadow border border-gray-200 overflow-hidden flex flex-col h-full ${
-                  isCreating
+                  effectiveIsCreating || !canCreateForms
                     ? 'opacity-50 cursor-not-allowed'
                     : 'cursor-pointer'
                 }`}
               >
                 <div className='bg-[#E6EAFF] p-12 flex items-center justify-center'>
-                  {isCreating ? (
+                  {effectiveIsCreating ? (
                     <Loader2 className='w-12 h-12 text-[#4F6AF5] animate-spin' />
                   ) : (
                     <svg
@@ -161,27 +226,41 @@ export default function CreateFormModal() {
                 </div>
                 <div className='p-5 flex flex-col flex-grow'>
                   <h2 className='text-xl font-semibold text-center text-[#102035] mb-2'>
-                    {isCreating ? 'Creating...' : 'Start from scratch'}
+                    {effectiveIsCreating ? 'Creating...' : 'Start from scratch'}
                   </h2>
                   <p className='text-sm text-gray-700 text-center'>
-                    {isCreating
+                    {effectiveIsCreating
                       ? 'Please wait while we create your form'
+                      : !canCreateForms
+                      ? 'Upgrade plan to create forms'
                       : 'A blank slate is all you need'}
                   </p>
+                  {!canCreateForms && (
+                    <div className='mt-2 text-center'>
+                      <span className='text-xs bg-red-500 text-white px-2 py-1 rounded'>
+                        Limit Reached
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* AI Form Generator card */}
-            <div onClick={isCreating ? undefined : handleAIFormGenerator}>
+            <div
+              onClick={
+                effectiveIsCreating || !canCreateForms
+                  ? undefined
+                  : () => handleCreateFormWithChecks('ai')
+              }
+            >
               <div
                 className={`bg-white rounded-lg shadow-md hover:shadow-xl hover:border-purple-500 transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full relative ${
-                  isCreating
+                  effectiveIsCreating || !canCreateForms
                     ? 'opacity-50 cursor-not-allowed'
                     : 'cursor-pointer hover:scale-[1.02]'
                 }`}
               >
-                {/* Professional Hot Badge */}
                 <div className='absolute -top-1 -right-1 z-10'>
                   <div className='bg-gradient-to-r from-purple-600 to-purple-700 text-white text-xs font-medium px-2 py-0.5 rounded-full shadow-sm border border-purple-500'>
                     NEW
@@ -189,14 +268,12 @@ export default function CreateFormModal() {
                 </div>
 
                 <div className='bg-gradient-to-br from-[#FAFAFF] via-[#F8FAFF] to-[#F3F4FF] p-12 flex items-center justify-center relative'>
-                  {/* Subtle background pattern */}
                   <div className='absolute inset-0 opacity-5'>
                     <div className='absolute top-4 left-4 w-8 h-8 border border-purple-200 rounded transform rotate-45'></div>
                     <div className='absolute bottom-4 right-4 w-6 h-6 border border-purple-200 rounded-full'></div>
                     <div className='absolute top-1/2 right-6 w-4 h-4 border border-purple-200 rounded transform rotate-12'></div>
                   </div>
 
-                  {/* Professional AI Icon */}
                   <div className='relative'>
                     <svg
                       xmlns='http://www.w3.org/2000/svg'
@@ -230,22 +307,36 @@ export default function CreateFormModal() {
                     AI Form Generator
                   </h2>
                   <p className='text-sm text-gray-700 text-center'>
-                    Let AI create your form from description
+                    {!canCreateForms
+                      ? 'Upgrade plan to use AI'
+                      : 'Let AI create your form from description'}
                   </p>
+                  {!canCreateForms && (
+                    <div className='mt-2 text-center'>
+                      <span className='text-xs bg-red-500 text-white px-2 py-1 rounded'>
+                        Limit Reached
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Use template card */}
-            <div onClick={isCreating ? undefined : handleUseTemplate}>
+            <div
+              onClick={
+                effectiveIsCreating || !canCreateForms
+                  ? undefined
+                  : () => handleCreateFormWithChecks('template')
+              }
+            >
               <div
                 className={`bg-white rounded-lg shadow-md hover:shadow-xl hover:border-orange-500 transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col h-full relative ${
-                  isCreating
+                  effectiveIsCreating || !canCreateForms
                     ? 'opacity-50 cursor-not-allowed'
                     : 'cursor-pointer hover:scale-[1.02]'
                 }`}
               >
-                {/* Popular Badge */}
                 <div className='absolute -top-1 -right-1 z-10'>
                   <div className='bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-medium px-2 py-0.5 rounded-full shadow-sm border border-orange-400'>
                     POPULAR
@@ -253,7 +344,6 @@ export default function CreateFormModal() {
                 </div>
 
                 <div className='bg-gradient-to-br from-[#FFF8F0] via-[#FFFBF5] to-[#FFF4E6] p-12 flex items-center justify-center relative'>
-                  {/* Subtle background pattern */}
                   <div className='absolute inset-0 opacity-10'>
                     <div className='absolute top-3 left-3 w-6 h-6 border-2 border-orange-300 rounded'></div>
                     <div className='absolute bottom-3 right-3 w-4 h-4 bg-orange-200 rounded-full'></div>
@@ -261,7 +351,6 @@ export default function CreateFormModal() {
                     <div className='absolute top-6 right-1/2 w-2 h-2 bg-orange-300 rounded'></div>
                   </div>
 
-                  {/* Template Icon */}
                   <div className='relative'>
                     <svg
                       xmlns='http://www.w3.org/2000/svg'
@@ -302,43 +391,56 @@ export default function CreateFormModal() {
                     Use template
                   </h2>
                   <p className='text-sm text-gray-700 text-center'>
-                    Choose from premade forms
+                    {!canCreateForms
+                      ? 'Upgrade plan to use templates'
+                      : 'Choose from premade forms'}
                   </p>
-                  <div className='mt-3 flex justify-center'>
-                    <div className='flex items-center space-x-1'>
-                      <div className='w-2 h-2 bg-orange-400 rounded-full'></div>
-                      <div className='w-2 h-2 bg-orange-300 rounded-full'></div>
-                      <div className='w-2 h-2 bg-orange-200 rounded-full'></div>
-                      <span className='text-xs text-orange-600 ml-2 font-medium'>
-                        Beautiful Templates
+                  {!canCreateForms ? (
+                    <div className='mt-2 text-center'>
+                      <span className='text-xs bg-red-500 text-white px-2 py-1 rounded'>
+                        Limit Reached
                       </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div className='mt-3 flex justify-center'>
+                      <div className='flex items-center space-x-1'>
+                        <div className='w-2 h-2 bg-orange-400 rounded-full'></div>
+                        <div className='w-2 h-2 bg-orange-300 rounded-full'></div>
+                        <div className='w-2 h-2 bg-orange-200 rounded-full'></div>
+                        <span className='text-xs text-orange-600 ml-2 font-medium'>
+                          Beautiful Templates
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Additional Info Section */}
-          <div className='mt-12 text-center'>
-            <p className='text-sm text-gray-500 mb-4'>
-              All forms include advanced features like conditional logic, file
-              uploads, and analytics
-            </p>
-            <div className='flex items-center justify-center space-x-6 text-xs text-gray-400'>
-              <div className='flex items-center'>
-                <div className='w-2 h-2 bg-green-400 rounded-full mr-2'></div>
-                Unlimited fields
+          <div className='mt-8 text-center'>
+            {/* Plan upgrade nudge - Only show if approaching limit but can still create */}
+            {canCreateForms && planType === 'STARTER' && isApproachingLimit && (
+              <div className='mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg max-w-md mx-auto'>
+                <div className='flex items-center justify-center mb-2'>
+                  <Zap className='w-5 h-5 text-blue-600 mr-2' />
+                  <span className='font-medium text-blue-900'>
+                    Unlock More Features
+                  </span>
+                </div>
+                <p className='text-sm text-blue-700 mb-3'>
+                  Upgrade to create unlimited forms with advanced features like
+                  payment processing, file uploads, and priority support.
+                </p>
+                <button
+                  onClick={() => router.push('/myaccount/upgrade')}
+                  className='w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors cursor-pointer'
+                >
+                  See Upgrade Options
+                </button>
               </div>
-              <div className='flex items-center'>
-                <div className='w-2 h-2 bg-blue-400 rounded-full mr-2'></div>
-                Real-time responses
-              </div>
-              <div className='flex items-center'>
-                <div className='w-2 h-2 bg-purple-400 rounded-full mr-2'></div>
-                Custom branding
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

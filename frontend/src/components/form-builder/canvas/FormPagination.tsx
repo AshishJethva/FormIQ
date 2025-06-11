@@ -4,7 +4,7 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { motion } from 'framer-motion';
-import { setCurrentPage } from '@/redux/slices/formBuilderSlice';
+import { setCurrentPage } from '@/redux/slices/formBuilder/formBuilderSlice';
 import AddNewPageButton from './AddNewPageButton';
 import ThankYouPage from './ThankYouPage';
 

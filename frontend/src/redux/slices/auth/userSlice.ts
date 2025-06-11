@@ -1,10 +1,9 @@
 'use client';
 
-import { User } from '@/types/redux';
 import type { LoginRequest, RegistrationRequest } from '@/types/auth/actions';
 import type { StoreDispatch } from '@/redux/store';
 
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { toast } from 'sonner';
 import { setCookie, deleteCookie } from 'cookies-next';
 
@@ -12,9 +11,29 @@ import { validateToken as ValidateToken } from '@/lib/auth/actions';
 import { login, register, verifyOtp, logout } from '@/lib/auth/actions';
 import { setAuthLoading } from '@/redux/slices/appSlice';
 
-const initialState: User = {
-  token: null,
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface UserState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+const initialState: UserState = {
   user: null,
+  token: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
 };
 
 const userSlice = createSlice({
@@ -27,10 +46,66 @@ const userSlice = createSlice({
     toggleUser: (state, action) => {
       state.user = action.payload;
     },
+    loginStart: state => {
+      state.isLoading = true;
+      state.error = null;
+    },
+    loginSuccess: (
+      state,
+      action: PayloadAction<{ user: User; token: string }>
+    ) => {
+      state.isLoading = false;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.isAuthenticated = true;
+      state.error = null;
+    },
+    loginFailure: (state, action: PayloadAction<string>) => {
+      state.isLoading = false;
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      state.error = action.payload;
+    },
+    logout: state => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      state.isLoading = false;
+      state.error = null;
+    },
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
+    clearError: state => {
+      state.error = null;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+    // Add this action to handle token refresh without triggering redirects
+    refreshToken: (state, action: PayloadAction<string>) => {
+      state.token = action.payload;
+      if (action.payload) {
+        state.isAuthenticated = true;
+      }
+    },
   },
 });
 
 const { toggleToken, toggleUser } = userSlice.actions;
+
+export const {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+  updateUser,
+  clearError,
+  setLoading,
+  refreshToken,
+} = userSlice.actions;
 
 const validateToken = (token: string) => async (dispatch: StoreDispatch) => {
   try {
@@ -242,4 +317,11 @@ export {
   toggleUser,
   verifyOTP,
 };
+
+export const selectUser = (state: { user: UserState }) => state.user.user;
+export const selectToken = (state: { user: UserState }) => state.user.token;
+export const selectIsLoading = (state: { user: UserState }) =>
+  state.user.isLoading;
+export const selectError = (state: { user: UserState }) => state.user.error;
+
 export default userSlice.reducer;

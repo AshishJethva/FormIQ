@@ -1,6 +1,6 @@
+// src/app/page.tsx
 import { redirect } from 'next/navigation';
 
-// Redirect root to dashboard
-export default function Home() {
+export default async function Home() {
   redirect('/dashboard');
 }

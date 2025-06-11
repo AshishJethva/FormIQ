@@ -4,7 +4,7 @@
 import { Link, Monitor, Smartphone, Tablet, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { setPreviewMode } from '@/redux/slices/formBuilderSlice';
+import { setPreviewMode } from '@/redux/slices/formBuilder/formBuilderSlice';
 
 interface PreviewHeaderProps {
   shareableLink: string;

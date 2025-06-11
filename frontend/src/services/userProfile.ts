@@ -247,6 +247,39 @@ export const userProfileService = {
       );
     }
   },
+
+  // Verify password reset token
+  async verifyPasswordResetToken(token: string, email: string) {
+    try {
+      const response = await api.get('/auth/verify-reset-token', {
+        params: { token, email },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to verify reset token:', error);
+      throw new Error(
+        error.response?.data?.message || 'Invalid or expired reset token'
+      );
+    }
+  },
+
+  // Reset password with token
+  async resetPasswordWithToken(data: {
+    token: string;
+    email: string;
+    new_password: string;
+    confirm_password: string;
+  }) {
+    try {
+      const response = await api.post('/auth/reset-password', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to reset password:', error);
+      throw new Error(
+        error.response?.data?.message || 'Failed to reset password'
+      );
+    }
+  },
 };
 
 export default userProfileService;

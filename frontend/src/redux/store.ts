@@ -2,9 +2,9 @@
 import userReducer from './slices/auth/userSlice';
 import appReducer from '@/redux/slices/appSlice';
 import formReducer from '@/redux/slices/dashboard/formsSlice';
-import formBuilderReducer from './slices/formBuilderSlice';
-import aiFormReducer from './slices/aiFormSlice';
-import userProfileReducer from './slices/userProfileSlice';
+import formBuilderReducer from './slices/formBuilder/formBuilderSlice';
+import aiFormReducer from './slices/ai/aiFormSlice';
+import userProfileReducer from './slices/userProfile/userProfileSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';

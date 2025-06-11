@@ -19,7 +19,6 @@ import { toast } from 'sonner';
 import { createFormAsync } from '@/redux/slices/dashboard/formsSlice';
 import { StoreDispatch } from '@/redux/store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchUserProfile } from '@/redux/slices/userProfileSlice';
 
 interface Template {
   id: string;
@@ -3093,7 +3092,6 @@ export default function FormTemplatesModal() {
           template: template.structure,
         })
       ).unwrap();
-      await dispatch(fetchUserProfile());
 
       const formId = result.id;
       toast.success(`${template.name} created successfully`);

@@ -131,18 +131,6 @@ router.post(
           savedForm.settings?.allowMultipleEmailSubmissions,
       });
 
-      console.log('🎉 Form created successfully with AI generation:', {
-        formId: savedForm._id,
-        title: savedForm.title,
-        hasLogo: !!savedForm.logo,
-        logoAlignment: savedForm.logo?.alignment,
-        logoSize: savedForm.logo?.size,
-        showLogo: savedForm.settings?.showLogo,
-        allowMultipleSubmissions: savedForm.settings?.allowMultipleSubmissions,
-        allowMultipleEmailSubmissions:
-          savedForm.settings?.allowMultipleEmailSubmissions,
-      });
-
       res.status(201).json({
         success: true,
         message: 'Form generated successfully with logo',

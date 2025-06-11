@@ -1,4 +1,4 @@
-// frontend/src/components/dashboard/CreateFormButton.tsx - Updated with plan limits
+// frontend/src/components/dashboard/CreateFormButton.tsx
 'use client';
 
 import React from 'react';
@@ -7,7 +7,7 @@ import { useDispatch } from 'react-redux';
 import { Plus } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { createFormAsync } from '@/redux/slices/dashboard/formsSlice';
-import { fetchUserProfile, incrementFormsUsed } from '@/redux/slices/userProfileSlice';
+import { incrementFormsUsed } from '@/redux/slices/userProfile/userProfileSlice';
 import { toast } from 'sonner';
 import type { StoreDispatch } from '@/redux/store';
 
@@ -33,7 +33,7 @@ const CreateFormButton: React.FC<CreateFormButtonProps> = ({
               label: 'Upgrade',
               onClick: () => router.push('/myaccount/upgrade'),
             },
-            duration: 5000,
+            duration: 2000,
           }
         );
         return;
@@ -47,9 +47,6 @@ const CreateFormButton: React.FC<CreateFormButtonProps> = ({
         })
       ).unwrap();
 
-      await dispatch(fetchUserProfile()); // Refresh user profile after form creation
-
-      // Update forms used count in user profile
       dispatch(incrementFormsUsed());
 
       // Navigate to form builder
@@ -65,7 +62,7 @@ const CreateFormButton: React.FC<CreateFormButtonProps> = ({
             label: 'Upgrade Plan',
             onClick: () => router.push('/myaccount/upgrade'),
           },
-          duration: 5000,
+          duration: 2000,
         });
       } else {
         toast.error('Failed to create form. Please try again.');

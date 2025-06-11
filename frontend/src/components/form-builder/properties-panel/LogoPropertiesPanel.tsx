@@ -6,7 +6,10 @@ import { X, Upload, Link, Trash2, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
-import { updateLogo, removeLogo } from '@/redux/slices/formBuilderSlice';
+import {
+  updateLogo,
+  removeLogo,
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { apiConfig } from '@/config/api';

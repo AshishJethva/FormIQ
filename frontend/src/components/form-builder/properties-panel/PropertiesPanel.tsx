@@ -9,7 +9,7 @@ import {
   duplicateField,
   togglePropertiesPanel,
   updateFormSettings,
-} from '@/redux/slices/formBuilderSlice';
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, Trash, Copy, Settings as SettingsIcon } from 'lucide-react';

@@ -7,7 +7,7 @@ import { ItemTypes } from '@/types/dragTypes';
 import { FieldType } from '@/types/form';
 import { ChevronsRight } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { addField } from '@/redux/slices/formBuilderSlice';
+import { addField } from '@/redux/slices/formBuilder/formBuilderSlice';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 

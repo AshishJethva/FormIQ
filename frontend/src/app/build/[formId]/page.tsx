@@ -12,7 +12,7 @@ import {
   initializeForm,
   loadFormAsync,
   setFormTitle,
-} from '@/redux/slices/formBuilderSlice';
+} from '@/redux/slices/formBuilder/formBuilderSlice';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 

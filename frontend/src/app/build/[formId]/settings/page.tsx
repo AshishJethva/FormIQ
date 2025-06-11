@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useParams } from 'next/navigation';
-import { loadFormAsync } from '@/redux/slices/formBuilderSlice';
+import { loadFormAsync } from '@/redux/slices/formBuilder/formBuilderSlice';
 import FormBuilder from '@/components/form-builder/FormBuilder';
 import { AppDispatch } from '@/redux/store';
 

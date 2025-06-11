@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/redux/store';
-import { publishFormAsync } from '@/redux/slices/formBuilderSlice';
+import { publishFormAsync } from '@/redux/slices/formBuilder/formBuilderSlice';
 import {
   Link as LinkIcon,
   Copy,

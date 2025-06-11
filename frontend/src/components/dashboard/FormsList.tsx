@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useDeletion } from '@/hooks/useDeletion';
 import { formsService } from '@/services/forms';
+import { fetchUserProfile } from '@/redux/slices/userProfile/userProfileSlice';
 import {
   Star,
   MoreHorizontal,
@@ -56,6 +57,8 @@ import {
   renameFormOptimistic,
 } from '@/redux/slices/dashboard/formsSlice';
 
+import { decrementFormsUsed } from '@/redux/slices/userProfile/userProfileSlice';
+
 import {
   Dialog,
   DialogContent,
@@ -90,6 +93,7 @@ const FormsList: React.FC<FormsListProps> = ({
   const isLoading = useSelector(selectFormsLoading);
   const error = useSelector(selectFormsError);
 
+  const [deletingFormIds, setDeletingFormIds] = useState<string[]>([]);
   const [selectedForms, setSelectedForms] = useState<string[]>([]);
   const [showLabelDialog, setShowLabelDialog] = useState(false);
   const [labelOperations, setLabelOperations] = useState<
@@ -167,6 +171,10 @@ const FormsList: React.FC<FormsListProps> = ({
   const performDeletion = async () => {
     setIsDeletingCustom(true);
 
+    // Add form IDs to deletion loading state
+    const formIdsToDelete = itemsToDelete.map(item => item.id);
+    setDeletingFormIds(formIdsToDelete);
+
     try {
       let successCount = 0;
       let failCount = 0;
@@ -176,11 +184,22 @@ const FormsList: React.FC<FormsListProps> = ({
         try {
           await formsService.deleteForm(item.id);
           successCount++;
+
+          // Decrement form count for each successfully deleted form
+          const form = forms.find(f => f.id === item.id);
+          if (form && !form.isTrashed) {
+            dispatch(decrementFormsUsed());
+          }
         } catch (error: any) {
           console.error(`Failed to delete form ${item.id}:`, error);
           failCount++;
           errors.push(`${item.name}: ${error.message}`);
         }
+      }
+
+      // Refresh user profile after successful deletions to sync the count
+      if (successCount > 0) {
+        await dispatch(fetchUserProfile() as any);
       }
 
       if (successCount === itemsToDelete.length) {
@@ -190,13 +209,14 @@ const FormsList: React.FC<FormsListProps> = ({
           } Permanently Deleted`,
           {
             description:
-              'Successfully removed all forms, submissions, and associated files',
-            duration: 2000,
+              'Successfully removed all forms, submissions, and associated files. Form count updated.',
+            duration: 3000,
+            icon: <Trash2 className='w-5 h-5' />,
           }
         );
       } else if (successCount > 0) {
-        toast.warning('Partial Success', {
-          description: `${successCount} forms deleted, ${failCount} failed. Check console for details.`,
+        toast.warning('⚠️ Partial Success', {
+          description: `${successCount} forms deleted, ${failCount} failed. Form count updated for successful deletions.`,
           duration: 10000,
         });
       } else {
@@ -219,6 +239,7 @@ const FormsList: React.FC<FormsListProps> = ({
       setIsDeletingCustom(false);
       setShowDeleteConfirmModal(false);
       setItemsToDelete([]);
+      setDeletingFormIds([]);
     }
   };
 
@@ -263,13 +284,19 @@ const FormsList: React.FC<FormsListProps> = ({
         }) as any
       ).unwrap();
 
-      toast.success('Form renamed successfully');
+      toast.success('✅ Form Renamed Successfully', {
+        description: `Form renamed to "${renameValue.trim()}"`,
+        duration: 2000,
+      });
       triggerRefetch();
 
       setRenamingFormId(null);
       setRenameValue('');
     } catch {
-      toast.error('Failed to rename form');
+      toast.error('❌ Failed to Rename Form', {
+        description: 'Please try again or contact support',
+        duration: 3000,
+      });
       triggerRefetch();
       handleRenameCancel();
     }
@@ -368,13 +395,15 @@ const FormsList: React.FC<FormsListProps> = ({
 
     try {
       await dispatch(toggleFormFavorite(formId) as any).unwrap();
-      toast.success('Form favorite status updated');
+      toast.success('⭐ Favorite Status Updated', {
+        duration: 2000,
+      });
       if (activeSection === 'Favorites') {
         triggerRefetch();
       }
     } catch {
       dispatch(toggleFormFavorite(formId) as any);
-      toast.error('Failed to update favorite status');
+      toast.error('❌ Failed to Update Favorite Status');
     }
   };
 
@@ -399,19 +428,28 @@ const FormsList: React.FC<FormsListProps> = ({
 
         case 'Move to Trash':
           await dispatch(trashFormAsync(formId) as any).unwrap();
-          toast.success('Form moved to Trash');
+          toast.success('🗑️ Form Moved to Trash', {
+            description: 'Form will be permanently deleted after 30 days',
+            duration: 2000,
+          });
           triggerRefetch();
           break;
 
         case 'Archive':
           await dispatch(archiveFormAsync(formId) as any).unwrap();
-          toast.success('Form archived');
+          toast.success('📦 Form Archived', {
+            description: 'Form moved to archive section',
+            duration: 2000,
+          });
           triggerRefetch();
           break;
 
         case 'Restore':
           await dispatch(restoreFormAsync(formId) as any).unwrap();
-          toast.success('Form restored');
+          toast.success('↩️ Form Restored', {
+            description: 'Form is now available in main section',
+            duration: 2000,
+          });
           triggerRefetch();
           break;
 
@@ -443,7 +481,7 @@ const FormsList: React.FC<FormsListProps> = ({
       }
     } catch (error: any) {
       console.error('Action failed:', error);
-      toast.error(`Failed to ${action.toLowerCase()}`, {
+      toast.error(`❌ Failed to ${action.toLowerCase()}`, {
         description: error.message || 'An unexpected error occurred',
         duration: 3000,
       });
@@ -455,13 +493,19 @@ const FormsList: React.FC<FormsListProps> = ({
       switch (action) {
         case 'Move to Trash':
           await dispatch(bulkTrashFormsAsync(selectedForms) as any).unwrap();
-          toast.success(`${selectedForms.length} forms moved to Trash`);
+          toast.success(`🗑️ ${selectedForms.length} Forms Moved to Trash`, {
+            description: 'Forms will be permanently deleted after 30 days',
+            duration: 3000,
+          });
           triggerRefetch();
           break;
 
         case 'Archive':
           await dispatch(bulkArchiveFormsAsync(selectedForms) as any).unwrap();
-          toast.success(`${selectedForms.length} forms archived`);
+          toast.success(`📦 ${selectedForms.length} Forms Archived`, {
+            description: 'Forms moved to archive section',
+            duration: 3000,
+          });
           triggerRefetch();
           break;
 
@@ -469,7 +513,10 @@ const FormsList: React.FC<FormsListProps> = ({
           for (const formId of selectedForms) {
             await dispatch(restoreFormAsync(formId) as any).unwrap();
           }
-          toast.success(`${selectedForms.length} forms restored`);
+          toast.success(`↩️ ${selectedForms.length} Forms Restored`, {
+            description: 'Forms are now available in main section',
+            duration: 3000,
+          });
           triggerRefetch();
           break;
 
@@ -490,7 +537,7 @@ const FormsList: React.FC<FormsListProps> = ({
 
       setSelectedForms([]);
     } catch (error: any) {
-      toast.error(`Bulk ${action.toLowerCase()} failed`, {
+      toast.error(`❌ Bulk ${action.toLowerCase()} Failed`, {
         description: error.message || 'An unexpected error occurred',
         duration: 3000,
       });
@@ -526,13 +573,21 @@ const FormsList: React.FC<FormsListProps> = ({
 
       await Promise.all([...addPromises, ...removePromises]);
 
-      toast.success('Labels updated successfully');
+      toast.success('🏷️ Labels Updated Successfully', {
+        description: `Labels applied to ${selectedForms.length} form${
+          selectedForms.length > 1 ? 's' : ''
+        }`,
+        duration: 2000,
+      });
       setLabelOperations({});
       setShowLabelDialog(false);
 
       triggerRefetch();
     } catch {
-      toast.error('Failed to update labels');
+      toast.error('❌ Failed to Update Labels', {
+        description: 'Please try again or contact support',
+        duration: 3000,
+      });
     }
   };
 
@@ -594,9 +649,19 @@ const FormsList: React.FC<FormsListProps> = ({
             size='sm'
             className='text-red-600 border-gray-300 hover:bg-red-50 cursor-pointer'
             onClick={() => handleBulkAction('Delete Permanently')}
+            disabled={isDeletingCustom || deletingFormIds.length > 0}
           >
-            <Trash2 className='mr-2 h-4 w-4' />
-            Delete Permanently
+            {isDeletingCustom || deletingFormIds.length > 0 ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className='mr-2 h-4 w-4' />
+                Delete Permanently
+              </>
+            )}
           </Button>
         </>
       );
@@ -755,14 +820,21 @@ const FormsList: React.FC<FormsListProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
             className={`flex items-center p-3 border rounded-md transition-all duration-200 cursor-pointer select-none
-              ${
-                selectedForms.includes(form.id)
-                  ? 'border-blue-500 bg-[#EDF8FF] shadow-sm'
-                  : 'border-gray-200'
-              }
-              ${clickedFormId === form.id ? 'bg-blue-50' : ''}
-              hover:bg-[#F3F3FE] hover:border-gray-300 hover:shadow-sm`}
-            onClick={e => handleFormClick(e, form.id)}
+            ${
+              selectedForms.includes(form.id)
+                ? 'border-blue-500 bg-[#EDF8FF] shadow-sm'
+                : 'border-gray-200'
+            }
+            ${clickedFormId === form.id ? 'bg-blue-50' : ''}
+            ${
+              deletingFormIds.includes(form.id)
+                ? 'opacity-50 pointer-events-none'
+                : ''
+            }
+      hover:bg-[#F3F3FE] hover:border-gray-300 hover:shadow-sm`}
+            onClick={e =>
+              !deletingFormIds.includes(form.id) && handleFormClick(e, form.id)
+            }
           >
             <div className='flex items-center space-x-3 min-w-0'>
               <Checkbox
@@ -915,12 +987,16 @@ const FormsList: React.FC<FormsListProps> = ({
                           onClick={() =>
                             handleFormAction('Delete Permanently', form.id)
                           }
-                          disabled={isDeleting}
+                          disabled={
+                            isDeleting || deletingFormIds.includes(form.id)
+                          }
                           className={`text-red-600 border-gray-300 hover:bg-red-50 ${
-                            isDeleting ? 'opacity-50 cursor-not-allowed' : ''
+                            isDeleting || deletingFormIds.includes(form.id)
+                              ? 'opacity-50 cursor-not-allowed'
+                              : ''
                           }`}
                         >
-                          {isDeleting ? (
+                          {deletingFormIds.includes(form.id) ? (
                             <>
                               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                               Deleting...
@@ -1159,7 +1235,7 @@ const FormsList: React.FC<FormsListProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Custom Deletion Confirmation Modal -  VERSION */}
+      {/* Custom Deletion Confirmation Modal */}
       <AlertDialog
         open={showDeleteConfirmModal}
         onOpenChange={setShowDeleteConfirmModal}
@@ -1172,7 +1248,6 @@ const FormsList: React.FC<FormsListProps> = ({
             </AlertDialogTitle>
           </AlertDialogHeader>
 
-          {/* : Use a separate container instead of AlertDialogDescription to avoid nesting issues */}
           <div className='text-gray-700 space-y-4 px-6'>
             <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
               <span className='font-semibold text-red-800 mb-3 flex items-center gap-2'>
@@ -1227,7 +1302,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </span>
               <span className='text-gray-700 mt-2 block'>
                 All data will be permanently removed from our servers and cannot
-                be recovered.
+                be recovered. Your form count will be updated automatically.
               </span>
             </div>
 

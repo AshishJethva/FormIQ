@@ -17,6 +17,8 @@ import {
   Circle,
   PlusSquare,
   Loader2,
+  CreditCard,
+  Zap,
 } from 'lucide-react';
 
 // Import Redux actions and selectors
@@ -29,11 +31,17 @@ import {
   selectFormsLoading,
 } from '@/redux/slices/dashboard/formsSlice';
 
+// Import user profile selectors
+import {
+  fetchUserProfile,
+  selectUserProfile,
+  incrementFormsUsed,
+} from '@/redux/slices/userProfile/userProfileSlice';
+
 // Import UI components
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useFormData } from '@/hooks/useFormData';
-import { fetchUserProfile } from '@/redux/slices/userProfileSlice';
 
 // Define CustomLabel to match the Sidebar's interface
 interface CustomLabel {
@@ -58,6 +66,7 @@ export default function DashboardPage() {
   // Redux selectors
   const forms = useSelector(selectForms);
   const formsLoading = useSelector(selectFormsLoading);
+  const userProfile = useSelector(selectUserProfile);
 
   // Local state for UI
   const [activeSection, setActiveSection] = useState('All');
@@ -68,14 +77,21 @@ export default function DashboardPage() {
   const [formDescription, setFormDescription] = useState('');
   const [isCreatingForm, setIsCreatingForm] = useState(false);
 
-  // : Single function to fetch forms for current section
+  // Get plan information
+  const canCreateForms = userProfile?.profile.plan.canCreateForms ?? true;
+  const formsUsed = userProfile?.profile.plan.formsUsed ?? 0;
+  const formsLimit = userProfile?.profile.plan.formsLimit ?? 5;
+  const planType = userProfile?.profile.plan.type ?? 'STARTER';
+  const remainingForms = formsLimit - formsUsed;
+
+  useEffect(() => {
+    // Re-fetch user profile when component mounts or when forms change
+    dispatch(fetchUserProfile());
+  }, [dispatch, forms.length]); // Re-fetch when forms count changes
+
+  // Single function to fetch forms for current section
   const fetchFormsForCurrentSection = useCallback(() => {
     let filters: any = {};
-
-    console.log(
-      '🔄 fetchFormsForCurrentSection called with activeSection:',
-      activeSection
-    );
 
     switch (activeSection) {
       case 'All':
@@ -97,12 +113,6 @@ export default function DashboardPage() {
         if (activeSection.startsWith('label-')) {
           const labelId = activeSection.replace('label-', '');
 
-          console.log('🏷️ Processing label section:', {
-            activeSection,
-            extractedLabelId: labelId,
-            labelIdTrimmed: labelId.trim(),
-          });
-
           // Ensure labelId is valid
           if (labelId && labelId.trim()) {
             filters = {
@@ -111,7 +121,7 @@ export default function DashboardPage() {
             };
             console.log(' Created filters for label:', filters);
           } else {
-            console.error('❌ Invalid label ID extracted:', labelId);
+            console.error('Invalid label ID extracted:', labelId);
             filters = { status: 'all' };
           }
         } else {
@@ -121,6 +131,127 @@ export default function DashboardPage() {
 
     dispatch(fetchForms(filters) as any);
   }, [activeSection, dispatch]);
+
+  // Combined form creation with limit checking and user-friendly messages
+  const handleCreateForm = async () => {
+    if (!formName.trim()) {
+      toast.error('Form name is required');
+      return;
+    }
+
+    // Get fresh user profile data before creating
+    await dispatch(fetchUserProfile());
+    const currentProfile = userProfile;
+    const canCreate = currentProfile?.profile.plan.canCreateForms ?? true;
+    const planType = currentProfile?.profile.plan.type ?? 'STARTER';
+    const formsLimit = currentProfile?.profile.plan.formsLimit ?? 5;
+    const formsUsed = currentProfile?.profile.plan.formsUsed ?? 0;
+    const remainingForms = formsLimit - formsUsed;
+
+    // Check if user can create more forms BEFORE attempting creation
+    if (!canCreate) {
+      const upgradeAction = {
+        label: planType === 'STARTER' ? 'Upgrade Now' : 'Manage Plan',
+        onClick: () => router.push('/myaccount/upgrade'),
+      };
+
+      if (planType === 'STARTER') {
+        toast.error('🚫 Form Limit Reached!', {
+          description: `You've reached your ${planType} plan limit of ${formsLimit} forms. Upgrade to create unlimited forms with advanced features!`,
+          action: upgradeAction,
+          duration: 8000,
+          icon: <CreditCard className='w-5 h-5' />,
+        });
+      } else {
+        toast.error('📊 Form Limit Reached!', {
+          description: `You've used all ${formsLimit} forms in your ${planType} plan. Upgrade for more forms or delete unused ones.`,
+          action: upgradeAction,
+          duration: 6000,
+          icon: <AlertCircle className='w-5 h-5' />,
+        });
+      }
+      return;
+    }
+
+    // Show warning when approaching limit (but still allow creation)
+    if (remainingForms <= 2 && remainingForms > 0) {
+      const isLastForm = remainingForms === 1;
+
+      toast.warning(
+        isLastForm ? '⚠️ Last Form Available!' : '⚠️ Almost at Limit!',
+        {
+          description: isLastForm
+            ? `This will be your last form in the ${planType} plan. Consider upgrading for unlimited forms.`
+            : `Only ${remainingForms} forms left in your ${planType} plan. Consider upgrading soon.`,
+          action: {
+            label: 'Upgrade',
+            onClick: () => router.push('/myaccount/upgrade'),
+          },
+          duration: 2000,
+          icon: <Zap className='w-5 h-5' />,
+        }
+      );
+    }
+
+    setIsCreatingForm(true);
+
+    try {
+      const result = await dispatch(
+        createFormAsync({
+          name: formName,
+          description: formDescription,
+        }) as any
+      ).unwrap();
+
+      // CRITICAL FIX: Update the form count immediately to prevent bad UX
+      dispatch(incrementFormsUsed());
+
+      // Success message with updated count
+      const newFormsUsed = formsUsed + 1;
+      const newRemainingForms = formsLimit - newFormsUsed;
+
+      toast.success('Form Created Successfully!', {
+        description: `You have ${newRemainingForms} forms remaining in your ${planType} plan.`,
+        duration: 2000,
+      });
+
+      setFormName('');
+      setFormDescription('');
+      handleSectionChange('All');
+
+      // Small delay to ensure state is updated before refreshing
+      setTimeout(() => {
+        dispatch(fetchUserProfile());
+        fetchFormsForCurrentSection();
+      }, 100);
+
+      return result;
+    } catch (error: any) {
+      // Handle specific error cases with user-friendly messages
+      if (error.includes?.('Form limit reached')) {
+        const upgradeAction = {
+          label: 'Upgrade Plan',
+          onClick: () => router.push('/myaccount/upgrade'),
+        };
+
+        toast.error('🚫 Cannot Create Form!', {
+          description: error,
+          action: upgradeAction,
+          duration: 6000,
+          icon: <CreditCard className='w-5 h-5' />,
+        });
+      } else {
+        toast.error('❌ Failed to Create Form', {
+          description:
+            error.message ||
+            'Something went wrong. Please try again or contact support.',
+          duration: 4000,
+        });
+      }
+    } finally {
+      setIsCreatingForm(false);
+    }
+  };
 
   // If Escape key is pressed, close the modal
   useEffect(() => {
@@ -147,41 +278,6 @@ export default function DashboardPage() {
     console.log('Section changed from', activeSection, 'to', section);
     setActiveSection(section);
     setActiveSectionData(data || null);
-  };
-
-  const handleCreateForm = async () => {
-    if (!formName.trim()) {
-      toast.error('Form name is required');
-      return;
-    }
-
-    setIsCreatingForm(true);
-
-    try {
-      await dispatch(
-        createFormAsync({
-          name: formName,
-          description: formDescription,
-        }) as any
-      ).unwrap();
-      await dispatch(fetchUserProfile());
-
-      toast.success('Form created successfully');
-      setFormName('');
-      setFormDescription('');
-      handleSectionChange('All');
-
-      // Refresh forms list
-      setTimeout(() => {
-        fetchFormsForCurrentSection();
-      }, 100);
-    } catch (error: any) {
-      toast.error('Failed to create form', {
-        description: error.message || 'Please try again',
-      });
-    } finally {
-      setIsCreatingForm(false);
-    }
   };
 
   // Check if there are forms in the current section
@@ -240,12 +336,102 @@ export default function DashboardPage() {
       return (
         <>
           <div className='bg-white border-b border-gray-200 px-6 py-4'>
-            <div className='flex items-center'>
-              <PlusSquare className='h-5 w-5 text-green-500 mr-2' />
-              <h1 className='text-xl font-semibold'>Create New Form</h1>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center'>
+                <PlusSquare className='h-5 w-5 text-green-500 mr-2' />
+                <h1 className='text-xl font-semibold'>Create New Form</h1>
+              </div>
+
+              {/* Plan Status Indicator */}
+              <div className='flex items-center space-x-3'>
+                <div
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    canCreateForms
+                      ? remainingForms <= 2
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {canCreateForms
+                    ? `${remainingForms} forms remaining`
+                    : 'Form limit reached'}
+                </div>
+                <span
+                  className={`text-xs py-1 px-3 rounded-md font-medium ${
+                    planType === 'STARTER'
+                      ? 'bg-gray-500 text-white'
+                      : planType === 'BRONZE'
+                      ? 'bg-orange-500 text-white'
+                      : planType === 'SILVER'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-yellow-500 text-white'
+                  }`}
+                >
+                  {planType}
+                </span>
+              </div>
             </div>
           </div>
+
           <main className='flex-1 overflow-y-auto p-6'>
+            {/* Warning banner for low remaining forms */}
+            {canCreateForms && remainingForms <= 2 && (
+              <div
+                className={`border rounded-md mb-6 p-4 flex items-center ${
+                  remainingForms === 0
+                    ? 'bg-red-50 border-red-200 text-red-800'
+                    : remainingForms === 1
+                    ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}
+              >
+                <AlertCircle className='h-5 w-5 mr-2 flex-shrink-0' />
+                <div className='flex-1'>
+                  <p className='font-medium'>
+                    {remainingForms === 0
+                      ? "You've reached your form limit!"
+                      : remainingForms === 1
+                      ? 'This is your last available form!'
+                      : "You're almost at your form limit!"}
+                  </p>
+                  <p className='text-sm mt-1'>
+                    {remainingForms === 0
+                      ? `Delete unused forms or upgrade your ${planType} plan to create more forms.`
+                      : `Consider upgrading your ${planType} plan for unlimited forms and premium features.`}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push('/myaccount/upgrade')}
+                  size='sm'
+                  className='ml-4 bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                >
+                  {planType === 'STARTER' ? 'Upgrade Now' : 'Manage Plan'}
+                </Button>
+              </div>
+            )}
+
+            {/* Form limit reached banner */}
+            {!canCreateForms && (
+              <div className='bg-red-50 border border-red-200 rounded-md mb-6 p-4 flex items-center text-red-800'>
+                <CreditCard className='h-5 w-5 mr-2 flex-shrink-0' />
+                <div className='flex-1'>
+                  <p className='font-medium'>Form Creation Disabled</p>
+                  <p className='text-sm mt-1'>
+                    You&apos;ve used all {formsLimit} forms in your {planType}{' '}
+                    plan. Upgrade to continue creating forms.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push('/myaccount/upgrade')}
+                  size='sm'
+                  className='ml-4 bg-red-600 hover:bg-red-700 cursor-pointer'
+                >
+                  Upgrade Plan
+                </Button>
+              </div>
+            )}
+
             <div className='bg-white border border-gray-200 rounded-md p-6 max-w-3xl mx-auto'>
               <h2 className='text-lg font-semibold mb-4'>Form Details</h2>
 
@@ -258,7 +444,10 @@ export default function DashboardPage() {
                     type='text'
                     value={formName}
                     onChange={e => setFormName(e.target.value)}
-                    className='w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={!canCreateForms}
+                    className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      !canCreateForms ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     placeholder='Enter form name'
                   />
                 </div>
@@ -270,7 +459,10 @@ export default function DashboardPage() {
                   <textarea
                     value={formDescription}
                     onChange={e => setFormDescription(e.target.value)}
-                    className='w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    disabled={!canCreateForms}
+                    className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      !canCreateForms ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     rows={3}
                     placeholder='Describe your form'
                   ></textarea>
@@ -278,17 +470,25 @@ export default function DashboardPage() {
 
                 <div className='pt-4 flex justify-end'>
                   <Button
-                    className='bg-[#ff6100] hover:bg-[#E65700] text-white cursor-pointer'
-                    onClick={handleCreateForm}
-                    disabled={isCreatingForm || !formName.trim()}
+                    className={`text-white cursor-pointer ${
+                      canCreateForms
+                        ? 'bg-[#ff6100] hover:bg-[#E65700]'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
+                    onClick={canCreateForms ? handleCreateForm : undefined}
+                    disabled={
+                      isCreatingForm || !formName.trim() || !canCreateForms
+                    }
                   >
                     {isCreatingForm ? (
                       <>
                         <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                         Creating...
                       </>
-                    ) : (
+                    ) : canCreateForms ? (
                       'Create Form'
+                    ) : (
+                      'Form Limit Reached'
                     )}
                   </Button>
                 </div>

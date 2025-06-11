@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setFormTitle } from '@/redux/slices/formBuilderSlice';
+import { setFormTitle } from '@/redux/slices/formBuilder/formBuilderSlice';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import LOGO from '@/../public/Logo.png';

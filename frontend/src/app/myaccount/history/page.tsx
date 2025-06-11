@@ -692,7 +692,7 @@ import {
   selectIsActivityLoading,
   selectActivityError,
   clearActivityError,
-} from '@/redux/slices/userProfileSlice';
+} from '@/redux/slices/userProfile/userProfileSlice';
 import type { StoreDispatch } from '@/redux/store';
 import type { ActivityFilters } from '@/services/userProfile';
 

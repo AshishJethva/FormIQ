@@ -1,3 +1,4 @@
+// src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
@@ -8,7 +9,19 @@ export function middleware(request: NextRequest) {
     'otp_verification_pending'
   )?.value;
 
-  // Handle OTP verification
+  if (
+    pathname === '/auth/forgot-password' ||
+    pathname === '/auth/reset-password' ||
+    pathname.startsWith('/auth/forgot-password/') ||
+    pathname.startsWith('/auth/reset-password/')
+  ) {
+    // Add a special header to indicate this is a password reset page
+    const response = NextResponse.next();
+    response.headers.set('x-allow-password-reset', 'true');
+    return response;
+  }
+
+  // PRIORITY 2: Handle OTP verification
   if (otp_verification_pending) {
     if (
       pathname === '/auth/verify' ||
@@ -20,7 +33,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/verify', request.url));
   }
 
-  // If at root path, always redirect
+  // PRIORITY 3: Root path redirect
   if (pathname === '/' || pathname === '') {
     if (token && token !== 'undefined' && token !== 'null') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -29,7 +42,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Handle protected paths
+  // PRIORITY 4: Protected paths
   const protectedPaths = [
     '/dashboard',
     '/profile',
@@ -41,9 +54,11 @@ export function middleware(request: NextRequest) {
     '/myaccount',
     '/payment',
   ];
+
   const isProtectedPath = protectedPaths.some(path =>
     pathname.startsWith(path)
   );
+
   if (
     isProtectedPath &&
     (!token || token === 'undefined' || token === 'null')
@@ -53,8 +68,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Handle auth paths when user is already logged in
+  // PRIORITY 5: Auth paths when logged in (EXCLUDING password reset paths)
   const authPaths = ['/auth/login', '/auth/signup', '/auth/verify'];
+
   if (
     authPaths.includes(pathname) &&
     token &&
