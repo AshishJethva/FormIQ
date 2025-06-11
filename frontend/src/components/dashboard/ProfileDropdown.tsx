@@ -11,7 +11,7 @@ import { logoutUser } from '@/redux/slices/auth/userSlice';
 import {
   selectUserProfile,
   fetchUserProfile,
-} from '@/redux/slices/userProfileSlice';
+} from '@/redux/slices/userProfile/userProfileSlice';
 import { toast } from 'sonner';
 import type { StoreDispatch, RootState } from '@/redux/store';
 
