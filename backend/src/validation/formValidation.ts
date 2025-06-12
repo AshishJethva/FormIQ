@@ -958,6 +958,47 @@ export const validationHelpers = {
     return emailRegex.test(email);
   },
 
+  isValidNameField: (value: string): boolean => {
+    if (!value || value.trim().length < 2) return false;
+
+    // Only letters, spaces, apostrophes, and hyphens
+    const namePattern = /^[a-zA-Z\s'-]+$/;
+    if (!namePattern.test(value)) return false;
+
+    // No consecutive spaces
+    if (value.includes('  ')) return false;
+
+    return true;
+  },
+
+  // Clean input for name fields
+  cleanNameInput: (input: string): string => {
+    // Remove any characters that aren't letters, spaces, apostrophes, or hyphens
+    const filtered = input.replace(/[^a-zA-Z\s'-]/g, '');
+
+    // Replace multiple consecutive spaces with a single space
+    const cleaned = filtered.replace(/\s+/g, ' ');
+
+    // Remove leading and trailing spaces
+    return cleaned.trim();
+  },
+
+  // Check if a key press should be allowed for name fields
+  isValidNameKeyPress: (key: string): boolean => {
+    // Allow letters, space, apostrophe, hyphen, and control keys
+    return (
+      /^[a-zA-Z\s'-]$/.test(key) ||
+      [
+        'Backspace',
+        'Delete',
+        'Tab',
+        'Enter',
+        'ArrowLeft',
+        'ArrowRight',
+      ].includes(key)
+    );
+  },
+
   isValidPhone: (phone: string): boolean => {
     const cleanPhone = phone.replace(/\D/g, '');
     return cleanPhone.length >= 10 && cleanPhone.length <= 15;

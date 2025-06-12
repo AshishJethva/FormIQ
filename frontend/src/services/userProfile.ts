@@ -62,6 +62,13 @@ export interface UserProfile {
       newsletter: boolean;
     };
   };
+  // Add account details with real IP
+  accountDetails?: {
+    lastIpAddress: string;
+    lastSeenDate: string;
+    creationDate: string;
+    updateDate: string;
+  };
 }
 
 export interface UserSettings {
@@ -101,6 +108,17 @@ export interface ActivityFilters {
 }
 
 export const userProfileService = {
+  upgradePlan: async (data: { plan: string; billing: string }) => {
+    try {
+      const response = await api.post('/payment/upgrade-plan', data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message || 'Failed to upgrade plan'
+      );
+    }
+  },
+
   // Get full user profile
   async getUserProfile(): Promise<UserProfile> {
     try {

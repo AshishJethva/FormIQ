@@ -3,7 +3,7 @@ import express from 'express';
 import { Request, Response } from 'express';
 import Form from '../models/Form';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import mongoose from 'mongoose';
 
 const router = express.Router();

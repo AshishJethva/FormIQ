@@ -3,7 +3,7 @@ import express from 'express';
 import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import User from '../models/User';
 import UserProfile from '../models/UserProfile';
 import UserSettings from '../models/UserSettings';
@@ -456,21 +456,35 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
 
-    const [user, profile, totalForms, totalSubmissions, recentActivity] =
-      await Promise.all([
-        User.findById(userId).select('createdAt'),
-        UserProfile.findOne({ userId }),
-        Form.countDocuments({ userId, isTrashed: false }),
-        Form.aggregate([
-          { $match: { userId, isTrashed: false } },
-          { $group: { _id: null, total: { $sum: '$submissions' } } },
-        ]),
-        ActivityLog.find({ userId })
-          .sort({ createdAt: -1 })
-          .limit(5)
-          .select('action createdAt')
-          .lean(),
-      ]);
+    const [
+      user,
+      profile,
+      totalForms,
+      totalSubmissions,
+      recentActivity,
+      lastIpActivity,
+    ] = await Promise.all([
+      User.findById(userId).select('createdAt'),
+      UserProfile.findOne({ userId }),
+      Form.countDocuments({ userId, isTrashed: false }),
+      Form.aggregate([
+        { $match: { userId, isTrashed: false } },
+        { $group: { _id: null, total: { $sum: '$submissions' } } },
+      ]),
+      ActivityLog.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('action createdAt')
+        .lean(),
+      // Get the most recent activity log with an IP address
+      ActivityLog.findOne({
+        userId,
+        ipAddress: { $exists: true, $ne: null, $nin: ['', null] },
+      })
+        .sort({ createdAt: -1 })
+        .select('ipAddress createdAt')
+        .lean(),
+    ]);
 
     const stats = {
       accountAge: user
@@ -483,6 +497,8 @@ router.get(
       planType: profile?.plan.type || 'STARTER',
       formsUsed: profile?.plan.formsUsed || 0,
       formsLimit: profile?.plan.formsLimit || 5,
+      lastIpAddress: lastIpActivity?.ipAddress || 'Not available',
+      lastSeenDate: lastIpActivity?.createdAt || new Date(),
       recentActivity: recentActivity.map(activity => ({
         action: activity.action,
         date: activity.createdAt.toLocaleDateString(),

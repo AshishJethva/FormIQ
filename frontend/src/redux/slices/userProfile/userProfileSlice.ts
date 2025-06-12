@@ -28,6 +28,21 @@ interface UserProfileState {
 }
 
 // Async thunks
+export const upgradePlan = createAsyncThunk(
+  'userProfile/upgradePlan',
+  async (
+    { plan, billing }: { plan: string; billing: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await userProfileService.upgradePlan({ plan, billing });
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const fetchUserProfile = createAsyncThunk(
   'userProfile/fetchProfile',
   async (_, { rejectWithValue }) => {
@@ -158,6 +173,12 @@ const userProfileSlice = createSlice({
   name: 'userProfile',
   initialState,
   reducers: {
+    planUpgraded: (state, action: PayloadAction<any>) => {
+      if (state.profile) {
+        state.profile.profile.plan = action.payload.plan;
+      }
+    },
+
     clearError: state => {
       state.error = null;
     },
@@ -207,6 +228,21 @@ const userProfileSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(upgradePlan.pending, state => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(upgradePlan.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (state.profile) {
+          state.profile.profile.plan = action.payload.plan;
+        }
+      })
+      .addCase(upgradePlan.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+
       // Fetch user profile
       .addCase(fetchUserProfile.pending, state => {
         state.isLoading = true;

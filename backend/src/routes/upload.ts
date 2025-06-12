@@ -5,7 +5,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage, Options } from 'multer-storage-cloudinary';
 import dotenv from 'dotenv';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import {
   uploadFormFile,
   uploadMultipleFiles,

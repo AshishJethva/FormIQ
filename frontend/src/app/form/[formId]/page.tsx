@@ -333,16 +333,61 @@ export default function PublicFormPage() {
 
         if (field.type === FieldType.FULL_NAME) {
           if (typeof value === 'object') {
-            if (!value.firstName || !value.lastName) {
+            const firstName = value?.firstName?.trim() || '';
+            const lastName = value?.lastName?.trim() || '';
+
+            // Check if both names are provided
+            if (!firstName || !lastName) {
               return 'Both first and last name are required';
             }
-          } else if (typeof value === 'string' && value.trim().length < 2) {
-            return 'Full name must be at least 2 characters';
+
+            // Check for only letters, spaces, apostrophes, and hyphens
+            const namePattern = /^[a-zA-Z\s'-]+$/;
+            if (!namePattern.test(firstName)) {
+              return 'First name can only contain letters, spaces, apostrophes, and hyphens';
+            }
+            if (!namePattern.test(lastName)) {
+              return 'Last name can only contain letters, spaces, apostrophes, and hyphens';
+            }
+
+            // Check minimum length (at least 2 characters each)
+            if (firstName.length < 2) {
+              return 'First name must be at least 2 characters long';
+            }
+            if (lastName.length < 2) {
+              return 'Last name must be at least 2 characters long';
+            }
+
+            // Check for excessive spaces
+            if (firstName.includes('  ') || lastName.includes('  ')) {
+              return 'Names cannot contain multiple consecutive spaces';
+            }
           }
         }
 
         if (field.type === FieldType.ADDRESS) {
           if (typeof value === 'object') {
+            const city = value?.city?.trim() || '';
+            const state = value?.state?.trim() || '';
+
+            // Validate city name (no numbers)
+            if (city && !/^[a-zA-Z\s'-]+$/.test(city)) {
+              return 'City name can only contain letters, spaces, apostrophes, and hyphens';
+            }
+
+            // Validate state name (no numbers)
+            if (state && !/^[a-zA-Z\s'-]+$/.test(state)) {
+              return 'State/Province name can only contain letters, spaces, apostrophes, and hyphens';
+            }
+
+            // Check for minimum length if provided
+            if (city && city.length < 2) {
+              return 'City name must be at least 2 characters long';
+            }
+            if (state && state.length < 2) {
+              return 'State/Province name must be at least 2 characters long';
+            }
+
             if (!value.street || !value.city || !value.state) {
               return 'Street address, city, and state are required';
             }
@@ -979,36 +1024,70 @@ export default function PublicFormPage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <Input
+                  type='text'
                   placeholder='First Name'
                   value={value.firstName || ''}
-                  onChange={e =>
+                  onChange={e => {
+                    // Only allow letters, spaces, and common name characters
+                    const input = e.target.value;
+                    const filteredInput = input.replace(/[^a-zA-Z\s'-]/g, '');
+                    // Remove multiple consecutive spaces
+                    const cleanedInput = filteredInput.replace(/\s+/g, ' ');
+
                     handleInputChange(field.id, {
                       ...value,
-                      firstName: e.target.value,
-                    })
-                  }
+                      firstName: cleanedInput,
+                    });
+                  }}
+                  onKeyPress={e => {
+                    // Prevent numbers and special characters except apostrophe and hyphen
+                    if (
+                      !/^[a-zA-Z\s'-]$/.test(e.key) &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
                   className={`w-full ${
                     error
                       ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
                       : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
+                  maxLength={50}
                 />
               </div>
               <div>
                 <Input
+                  type='text'
                   placeholder='Last Name'
                   value={value.lastName || ''}
-                  onChange={e =>
+                  onChange={e => {
+                    // Only allow letters, spaces, and common name characters
+                    const input = e.target.value;
+                    const filteredInput = input.replace(/[^a-zA-Z\s'-]/g, '');
+                    // Remove multiple consecutive spaces
+                    const cleanedInput = filteredInput.replace(/\s+/g, ' ');
+
                     handleInputChange(field.id, {
                       ...value,
-                      lastName: e.target.value,
-                    })
-                  }
+                      lastName: cleanedInput,
+                    });
+                  }}
+                  onKeyPress={e => {
+                    // Prevent numbers and special characters except apostrophe and hyphen
+                    if (
+                      !/^[a-zA-Z\s'-]$/.test(e.key) &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
                   className={`w-full ${
                     error
                       ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
                       : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
+                  maxLength={50}
                 />
               </div>
             </div>
@@ -1027,6 +1106,7 @@ export default function PublicFormPage() {
             </label>
             <div className='space-y-3'>
               <Input
+                type='text'
                 placeholder='Street Address'
                 value={value.street || ''}
                 onChange={e =>
@@ -1043,37 +1123,73 @@ export default function PublicFormPage() {
               />
               <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
                 <Input
+                  type='text'
                   placeholder='City'
                   value={value.city || ''}
-                  onChange={e =>
+                  onChange={e => {
+                    // Only allow letters, spaces, apostrophes, and hyphens for city names
+                    const input = e.target.value;
+                    const filteredInput = input.replace(/[^a-zA-Z\s'-]/g, '');
+                    // Remove multiple consecutive spaces
+                    const cleanedInput = filteredInput.replace(/\s+/g, ' ');
+
                     handleInputChange(field.id, {
                       ...value,
-                      city: e.target.value,
-                    })
-                  }
+                      city: cleanedInput,
+                    });
+                  }}
+                  onKeyPress={e => {
+                    // Prevent numbers and special characters except apostrophe and hyphen
+                    if (
+                      !/^[a-zA-Z\s'-]$/.test(e.key) &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
                   className={`w-full ${
                     error
                       ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
                       : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
+                  maxLength={50}
                 />
                 <Input
+                  type='text'
                   placeholder='State/Province'
                   value={value.state || ''}
-                  onChange={e =>
+                  onChange={e => {
+                    // Only allow letters, spaces, apostrophes, and hyphens for state names
+                    const input = e.target.value;
+                    const filteredInput = input.replace(/[^a-zA-Z\s'-]/g, '');
+                    // Remove multiple consecutive spaces
+                    const cleanedInput = filteredInput.replace(/\s+/g, ' ');
+
                     handleInputChange(field.id, {
                       ...value,
-                      state: e.target.value,
-                    })
-                  }
+                      state: cleanedInput,
+                    });
+                  }}
+                  onKeyPress={e => {
+                    // Prevent numbers and special characters except apostrophe and hyphen
+                    if (
+                      !/^[a-zA-Z\s'-]$/.test(e.key) &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
                   className={`w-full ${
                     error
                       ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
                       : 'focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400'
                   }`}
+                  maxLength={50}
                 />
               </div>
+
               <Input
+                type='number'
                 placeholder='ZIP/Postal Code (Optional)'
                 value={value.zipCode || ''}
                 onChange={e =>

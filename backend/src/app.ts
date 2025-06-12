@@ -18,6 +18,7 @@ import publicRoutes from './routes/public';
 import submissionRoutes from './routes/submissions';
 import aiEvaluationRoutes from './routes/aiEvaluation';
 import userProfileRoutes from './routes/userProfile';
+import paymentRoutes from './routes/payment';
 
 const app = express();
 
@@ -39,7 +40,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000', 
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   })
 );
@@ -69,6 +70,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ai-evaluation', aiEvaluationRoutes);
 app.use('/api/user', userProfileRoutes);
+app.use('/api/payment', paymentRoutes);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

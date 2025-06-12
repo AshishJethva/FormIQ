@@ -88,7 +88,6 @@ export interface Field {
 }
 
 export enum FieldType {
-  // Original fields
   HEADING = 'heading',
   FULL_NAME = 'fullName',
   EMAIL = 'email',

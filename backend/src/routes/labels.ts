@@ -6,7 +6,7 @@ import Label from '../models/Label';
 import Form from '../models/Form';
 import { validate } from '../middleware/validation';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import {
   createLabelSchema,
   updateLabelSchema,

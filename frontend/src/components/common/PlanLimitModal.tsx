@@ -1,4 +1,5 @@
 // frontend/src/components/common/PlanLimitModal.tsx - Modal for plan limits
+
 'use client';
 
 import React from 'react';

@@ -1,7 +1,7 @@
 // src/middleware/formStatusCheck.ts - Middleware to check if form is enabled
 import { Request, Response, NextFunction } from 'express';
 import Form from '../models/Form';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import mongoose from 'mongoose';
 
 interface FormStatusRequest extends Request {

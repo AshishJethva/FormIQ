@@ -8,7 +8,7 @@ import { catchAsync } from '../utils/catchAsync';
 import { UserPayload } from '../types/index';
 import { sendOTPEmail } from '../utils/email';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import PasswordResetToken from '../models/PasswordResetToken';

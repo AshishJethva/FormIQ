@@ -29,6 +29,13 @@ export default function AccountPage() {
   const userProfile = useSelector(selectUserProfile);
   const isLoading = useSelector(selectIsLoading);
 
+  const [loadingStates, setLoadingStates] = useState({
+    passwordReset: false,
+    avatarDelete: false,
+    avatarUpload: false,
+    resendEmail: false,
+  });
+
   // Local state for edit modes
   const [editMode, setEditMode] = useState<Record<string, boolean>>({
     name: false,
@@ -126,10 +133,13 @@ export default function AccountPage() {
       );
       if (!confirmed) return;
 
+      setLoadingStates(prev => ({ ...prev, avatarDelete: true }));
       await dispatch(deleteAvatar()).unwrap();
       toast.success('Avatar deleted successfully!');
     } catch (error: any) {
       toast.error(error || 'Failed to delete avatar');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, avatarDelete: false }));
     }
   };
 
@@ -169,11 +179,14 @@ export default function AccountPage() {
     if (!userProfile?.user.email) return;
 
     try {
+      setLoadingStates(prev => ({ ...prev, passwordReset: true }));
       await dispatch(requestPasswordReset(userProfile.user.email)).unwrap();
       setPasswordResetSent(true);
       toast.success('Password reset link sent to your email!');
     } catch (error: any) {
       toast.error(error || 'Failed to send reset email');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, passwordReset: false }));
     }
   };
 
@@ -182,10 +195,13 @@ export default function AccountPage() {
     if (!userProfile?.user.email) return;
 
     try {
+      setLoadingStates(prev => ({ ...prev, resendEmail: true }));
       await dispatch(requestPasswordReset(userProfile.user.email)).unwrap();
       toast.success('Password reset link has been resent to your email!');
     } catch (error: any) {
       toast.error(error || 'Failed to resend reset email');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, resendEmail: false }));
     }
   };
 
@@ -251,6 +267,7 @@ export default function AccountPage() {
     if (!avatarFile) return;
 
     try {
+      setLoadingStates(prev => ({ ...prev, avatarUpload: true }));
       await dispatch(uploadAvatar(avatarFile)).unwrap();
       setEditMode({ ...editMode, avatar: false });
       setAvatarPreview(null);
@@ -264,6 +281,8 @@ export default function AccountPage() {
       toast.success('Avatar updated successfully!');
     } catch (error: any) {
       toast.error(error || 'Failed to upload avatar');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, avatarUpload: false }));
     }
   };
 
@@ -491,14 +510,16 @@ export default function AccountPage() {
                         <button
                           onClick={handleResendEmail}
                           className='text-blue-600 hover:text-blue-800 font-medium mr-3 cursor-pointer disabled:opacity-50'
-                          disabled={isLoading}
+                          disabled={loadingStates.resendEmail}
                         >
-                          {isLoading ? 'Sending...' : 'Resend Email'}
+                          {loadingStates.resendEmail
+                            ? 'Sending...'
+                            : 'Resend Email'}
                         </button>
                         <button
                           onClick={handleCancelReset}
                           className='text-red-600 hover:text-red-800 font-medium cursor-pointer'
-                          disabled={isLoading}
+                          disabled={loadingStates.resendEmail}
                         >
                           Cancel
                         </button>
@@ -510,9 +531,11 @@ export default function AccountPage() {
                 <button
                   onClick={handleResetPassword}
                   className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer disabled:opacity-50'
-                  disabled={isLoading}
+                  disabled={loadingStates.passwordReset}
                 >
-                  {isLoading ? 'Sending...' : 'Reset Password'}
+                  {loadingStates.passwordReset
+                    ? 'Sending...'
+                    : 'Reset Password'}
                 </button>
               )}
             </div>
@@ -611,9 +634,9 @@ export default function AccountPage() {
                       <button
                         onClick={handleDeleteAvatar}
                         className='text-red-600 hover:text-red-800 text-sm font-medium cursor-pointer disabled:opacity-50'
-                        disabled={isLoading}
+                        disabled={loadingStates.avatarDelete}
                       >
-                        {isLoading ? 'Deleting...' : 'Delete'}
+                        {loadingStates.avatarDelete ? 'Deleting...' : 'Delete'}
                       </button>
                     )}
                 </div>
@@ -624,7 +647,7 @@ export default function AccountPage() {
                   onChange={handleAvatarChange}
                   className='hidden'
                   accept='image/*'
-                  disabled={isLoading}
+                  disabled={loadingStates.avatarUpload}
                 />
 
                 {editMode.avatar && avatarPreview && (
@@ -632,14 +655,14 @@ export default function AccountPage() {
                     <button
                       onClick={saveAvatar}
                       className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
-                      disabled={isLoading}
+                      disabled={loadingStates.avatarUpload}
                     >
-                      {isLoading ? 'Uploading...' : 'Save'}
+                      {loadingStates.avatarUpload ? 'Uploading...' : 'Save'}
                     </button>
                     <button
                       onClick={cancelAvatarUpload}
                       className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
+                      disabled={loadingStates.avatarUpload}
                     >
                       Cancel
                     </button>
@@ -651,7 +674,7 @@ export default function AccountPage() {
                 <button
                   onClick={handleAvatarUpload}
                   className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                  disabled={isLoading}
+                  disabled={loadingStates.avatarUpload}
                 >
                   {userProfile.profile.avatar?.src &&
                   userProfile.profile.avatar.src.trim() !== ''

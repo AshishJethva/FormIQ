@@ -1,4 +1,5 @@
 // src/models/UserProfile.ts
+
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUserProfile extends Document {
@@ -15,8 +16,11 @@ export interface IUserProfile extends Document {
     type: 'STARTER' | 'BRONZE' | 'SILVER' | 'GOLD';
     formsLimit: number;
     formsUsed: number;
+    canCreateForms: boolean;
+    remainingForms: number;
     upgradeDate?: Date;
     expiresAt?: Date;
+    billingCycle?: 'monthly' | 'yearly';
   };
   createdAt: Date;
   updatedAt: Date;
@@ -83,10 +87,21 @@ const UserProfileSchema = new Schema<IUserProfile>(
       formsUsed: {
         type: Number,
         default: 0,
-        min: 0,
+      },
+      canCreateForms: {
+        type: Boolean,
+        default: true,
+      },
+      remainingForms: {
+        type: Number,
+        default: 5,
       },
       upgradeDate: Date,
       expiresAt: Date,
+      billingCycle: {
+        type: String,
+        enum: ['monthly', 'yearly'],
+      },
     },
   },
   {
@@ -138,5 +153,17 @@ UserProfileSchema.methods.upgradePlan = function (
   }
   return this.save();
 };
+
+// Pre-save middleware to calculate remaining forms
+UserProfileSchema.pre('save', function (next) {
+  if (this.plan) {
+    this.plan.remainingForms = Math.max(
+      0,
+      this.plan.formsLimit - this.plan.formsUsed
+    );
+    this.plan.canCreateForms = this.plan.formsUsed < this.plan.formsLimit;
+  }
+  next();
+});
 
 export default mongoose.model<IUserProfile>('UserProfile', UserProfileSchema);

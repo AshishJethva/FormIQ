@@ -5,7 +5,7 @@ import { protect } from '../middleware/protect';
 import Submission from '../models/Submission';
 import Form from '../models/Form';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import mongoose from 'mongoose';
 import {
   debugFormSubmission,
@@ -687,161 +687,6 @@ const formatValueCloudinaryOnly = (value: any): string => {
   return String(value).trim();
 };
 
-// Enhanced CSV export function - Cloudinary links only
-const generateSimplifiedCSVExport = (submissions: any[], form: any): string => {
-  if (!submissions || submissions.length === 0) {
-    return 'Submission Date,No Data\n"No submissions found",""';
-  }
-
-  console.log(
-    '📊 Generating Simplified CSV for',
-    submissions.length,
-    'submissions'
-  );
-
-  // Create field labels map from form structure
-  const fieldLabelsMap = createFieldLabelsMap(form);
-
-  // Get all unique field keys from submissions and files
-  const allFieldKeys = new Set<string>();
-  const fileFieldKeys = new Set<string>();
-
-  submissions.forEach(submission => {
-    // Regular data fields
-    if (submission.data && typeof submission.data === 'object') {
-      Object.keys(submission.data).forEach(key => {
-        if (key && typeof key === 'string' && key.trim().length > 0) {
-          allFieldKeys.add(key);
-        }
-      });
-    }
-
-    // File fields from files array
-    if (submission.files && Array.isArray(submission.files)) {
-      submission.files.forEach((file: any) => {
-        if (file.fieldId) {
-          fileFieldKeys.add(file.fieldId);
-          allFieldKeys.add(file.fieldId);
-        }
-      });
-    }
-  });
-
-  // Sort field keys for consistent column order
-  const sortedFieldKeys = Array.from(allFieldKeys).sort((a, b) => {
-    const commonFieldOrder = [
-      'name',
-      'fullName',
-      'firstName',
-      'lastName',
-      'email',
-      'emailAddress',
-      'phone',
-      'phoneNumber',
-      'company',
-      'subject',
-      'message',
-      'address',
-      'signature',
-    ];
-
-    const aIndex = commonFieldOrder.findIndex(field =>
-      a.toLowerCase().includes(field.toLowerCase())
-    );
-    const bIndex = commonFieldOrder.findIndex(field =>
-      b.toLowerCase().includes(field.toLowerCase())
-    );
-
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex;
-    } else if (aIndex !== -1) {
-      return -1;
-    } else if (bIndex !== -1) {
-      return 1;
-    } else {
-      return a.localeCompare(b);
-    }
-  });
-
-  // Define CSV headers
-  const headers = [
-    'Submission Date',
-    ...sortedFieldKeys.map(key => getFieldDisplayLabel(key, fieldLabelsMap)),
-  ];
-
-  console.log('📝 CSV Headers:', headers);
-
-  // Generate CSV content
-  let csvContent = '';
-
-  // Add headers
-  csvContent += headers.map(header => escapeCSVValue(header)).join(',') + '\n';
-
-  // Add data rows
-  submissions.forEach((submission, index) => {
-    const rowData = [];
-
-    // First column: Submission Date
-    const formattedDate = formatSubmissionDate(
-      submission.submittedAt || submission.createdAt || ''
-    );
-    rowData.push(escapeCSVValue(formattedDate));
-
-    // Remaining columns: All form field values
-    sortedFieldKeys.forEach(fieldKey => {
-      let fieldValue = '';
-
-      // Check if this is a file field
-      if (fileFieldKeys.has(fieldKey)) {
-        // Handle file fields - extract only Cloudinary URLs
-        const fieldFiles =
-          submission.files?.filter((file: any) => file.fieldId === fieldKey) ||
-          [];
-
-        if (fieldFiles.length > 0) {
-          // Get only the URLs, no file details
-          const fileUrls = fieldFiles
-            .map((file: any) => file.url || '')
-            .filter(url => url.trim() !== '');
-
-          fieldValue = fileUrls.join('; ');
-        } else {
-          // Check data object for legacy file storage
-          const dataValue = submission.data?.[fieldKey];
-          if (dataValue) {
-            fieldValue = extractCloudinaryUrlOnly(dataValue);
-          }
-        }
-      } else {
-        // Handle regular data fields
-        const dataValue = submission.data?.[fieldKey];
-        fieldValue = formatSubmissionValueCloudinaryOnly(dataValue, fieldKey);
-      }
-
-      rowData.push(escapeCSVValue(fieldValue));
-    });
-
-    // Add the complete row to CSV
-    csvContent += rowData.join(',') + '\n';
-
-    // Log first few rows for debugging
-    if (index < 2) {
-      console.log(`📄 Row ${index + 1}:`, {
-        date: formattedDate,
-        sampleField: sortedFieldKeys[0]
-          ? {
-              key: sortedFieldKeys[0],
-              value: submission.data?.[sortedFieldKeys[0]],
-            }
-          : null,
-      });
-    }
-  });
-
-  console.log(' Simplified CSV generation completed');
-  return csvContent;
-};
-
 const generateEnhancedCSVExportWithLabels = (
   submissions: any[],
   form: any
@@ -1007,170 +852,6 @@ const generateEnhancedCSVExportWithLabels = (
 
   console.log(' Enhanced CSV generation with choice labels completed');
   return csvContent;
-};
-
-// Extract only Cloudinary URLs from various data formats
-const extractCloudinaryUrlOnly = (value: any): string => {
-  if (!value) return '';
-
-  // Direct URL string
-  if (typeof value === 'string') {
-    // If it's a Cloudinary URL, return it
-    if (value.includes('cloudinary.com') || value.startsWith('http')) {
-      return value.trim();
-    }
-
-    //  : Handle base64 signature data - return meaningful text
-    if (value.startsWith('data:image/')) {
-      return '[Digital Signature Captured]';
-    }
-
-    return '';
-  }
-
-  // File object with URL
-  if (typeof value === 'object' && value !== null) {
-    if (value.url && typeof value.url === 'string') {
-      return value.url.trim();
-    }
-
-    // Array of file objects
-    if (Array.isArray(value)) {
-      const urls = value
-        .map(item => {
-          if (item && typeof item === 'object' && item.url) {
-            return item.url.trim();
-          }
-          //  : Handle base64 signatures in file arrays
-          if (typeof item === 'string' && item.startsWith('data:image/')) {
-            return '[Digital Signature Captured]';
-          }
-          return '';
-        })
-        .filter(url => url !== '');
-      return urls.join('; ');
-    }
-  }
-
-  return '';
-};
-
-// Format submission values with Cloudinary URLs only for files/signatures
-const formatSubmissionValueCloudinaryOnly = (
-  value: any,
-  fieldKey: string
-): string => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-
-  // Check if field is likely a signature/file field based on name
-  const isFileField =
-    fieldKey.toLowerCase().includes('signature') ||
-    fieldKey.toLowerCase().includes('image') ||
-    fieldKey.toLowerCase().includes('file') ||
-    fieldKey.toLowerCase().includes('upload') ||
-    fieldKey.toLowerCase().includes('photo') ||
-    fieldKey.toLowerCase().includes('document');
-
-  if (isFileField) {
-    return extractCloudinaryUrlOnly(value);
-  }
-
-  //  : Handle signature fields - return meaningful indicator
-  if (typeof value === 'string' && value.startsWith('data:image/')) {
-    return '[Digital Signature Captured]';
-  }
-
-  // Handle file objects - extract only URLs
-  if (typeof value === 'object' && value !== null) {
-    // Single file object
-    if (value.url && typeof value.url === 'string') {
-      return value.url.trim();
-    }
-
-    // Array of files
-    if (Array.isArray(value)) {
-      const urls = value
-        .map(item => extractCloudinaryUrlOnly(item))
-        .filter(url => url !== '');
-
-      if (urls.length > 0) {
-        return urls.join('; ');
-      }
-    }
-
-    // Complex objects (fullName, address, etc.) - not file-related
-    if (value.firstName && value.lastName) {
-      return `${value.firstName} ${value.lastName}`.trim();
-    }
-
-    if (value.street || value.city || value.state || value.zipCode) {
-      const addressParts = [
-        value.street,
-        value.city,
-        value.state,
-        value.zipCode,
-        value.country,
-      ].filter(part => part && part.trim());
-      return addressParts.join(', ');
-    }
-
-    if (value.countryCode && value.number) {
-      return `${value.countryCode} ${value.number}`;
-    }
-
-    if (value.date && value.time) {
-      const datePart = value.date
-        ? new Date(value.date).toLocaleDateString()
-        : '';
-      const timePart = value.time || '';
-      return `${datePart} ${timePart}`.trim();
-    }
-
-    if (value.label && value.value !== undefined) {
-      return value.label;
-    }
-
-    // Handle fill blank template
-    if (value.beforeText && value.afterText && value.userInput) {
-      return `${value.beforeText} "${value.userInput}" ${value.afterText}`;
-    }
-
-    // Handle product list
-    if (value.selectedProducts && typeof value.selectedProducts === 'object') {
-      const products = [];
-      for (const [productId, quantity] of Object.entries(
-        value.selectedProducts
-      )) {
-        if (quantity && typeof quantity === 'number' && quantity > 0) {
-          const product = value.products?.find((p: any) => p.id === productId);
-          const productName = product?.name || `Product ${productId}`;
-          products.push(`${productName} (x${quantity})`);
-        }
-      }
-      return products.join(', ');
-    }
-
-    // Generic object handling
-    const meaningfulValues = Object.entries(value)
-      .filter(
-        ([key, val]) =>
-          val !== null &&
-          val !== undefined &&
-          val !== '' &&
-          !key.startsWith('_') &&
-          key !== 'id' &&
-          key !== 'createdAt' &&
-          key !== 'updatedAt'
-      )
-      .map(([, val]) => formatSingleValue(val))
-      .filter(val => val && val !== '');
-
-    return meaningfulValues.length > 0 ? meaningfulValues.join(', ') : '';
-  }
-
-  return formatSingleValue(value);
 };
 
 // Helper function to format single values (simplified)
@@ -1463,21 +1144,49 @@ function validateSubmissionData(
           case 'fullName':
             if (fieldValue) {
               if (typeof fieldValue === 'object') {
-                if (
-                  !fieldValue.firstName?.trim() ||
-                  !fieldValue.lastName?.trim()
-                ) {
+                const firstName = fieldValue.firstName?.trim() || '';
+                const lastName = fieldValue.lastName?.trim() || '';
+
+                if (!firstName || !lastName) {
                   errors.push(
                     `${field.label || field.id} requires both first and last name`
                   );
+                } else {
+                  // Validate name format (only letters, spaces, apostrophes, hyphens)
+                  const namePattern = /^[a-zA-Z\s'-]+$/;
+
+                  if (!namePattern.test(firstName)) {
+                    errors.push(
+                      `${field.label || field.id} first name can only contain letters, spaces, apostrophes, and hyphens`
+                    );
+                  }
+
+                  if (!namePattern.test(lastName)) {
+                    errors.push(
+                      `${field.label || field.id} last name can only contain letters, spaces, apostrophes, and hyphens`
+                    );
+                  }
+
+                  // Check minimum length
+                  if (firstName.length < 2) {
+                    errors.push(
+                      `${field.label || field.id} first name must be at least 2 characters long`
+                    );
+                  }
+
+                  if (lastName.length < 2) {
+                    errors.push(
+                      `${field.label || field.id} last name must be at least 2 characters long`
+                    );
+                  }
+
+                  // Check for excessive spaces
+                  if (firstName.includes('  ') || lastName.includes('  ')) {
+                    errors.push(
+                      `${field.label || field.id} names cannot contain multiple consecutive spaces`
+                    );
+                  }
                 }
-              } else if (
-                typeof fieldValue === 'string' &&
-                fieldValue.trim().length < 2
-              ) {
-                errors.push(
-                  `${field.label || field.id} must be at least 2 characters long`
-                );
               }
             }
             break;
@@ -1492,6 +1201,44 @@ function validateSubmissionData(
                 errors.push(
                   `${field.label || field.id} requires street address, city, and state`
                 );
+              } else {
+                // Validate city and state don't contain numbers
+                const city = fieldValue.city?.trim() || '';
+                const state = fieldValue.state?.trim() || '';
+                const country = fieldValue.country?.trim() || '';
+
+                const namePattern = /^[a-zA-Z\s'-]+$/;
+
+                if (city && !namePattern.test(city)) {
+                  errors.push(
+                    `${field.label || field.id} city name can only contain letters, spaces, apostrophes, and hyphens`
+                  );
+                }
+
+                if (state && !namePattern.test(state)) {
+                  errors.push(
+                    `${field.label || field.id} state/province name can only contain letters, spaces, apostrophes, and hyphens`
+                  );
+                }
+
+                if (country && !namePattern.test(country)) {
+                  errors.push(
+                    `${field.label || field.id} country name can only contain letters, spaces, apostrophes, and hyphens`
+                  );
+                }
+
+                // Check minimum lengths
+                if (city.length < 2) {
+                  errors.push(
+                    `${field.label || field.id} city name must be at least 2 characters long`
+                  );
+                }
+
+                if (state.length < 2) {
+                  errors.push(
+                    `${field.label || field.id} state/province name must be at least 2 characters long`
+                  );
+                }
               }
             }
             break;

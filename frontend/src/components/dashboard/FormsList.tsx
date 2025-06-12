@@ -284,7 +284,7 @@ const FormsList: React.FC<FormsListProps> = ({
         }) as any
       ).unwrap();
 
-      toast.success('✅ Form Renamed Successfully', {
+      toast.success(' Form Renamed Successfully', {
         description: `Form renamed to "${renameValue.trim()}"`,
         duration: 2000,
       });

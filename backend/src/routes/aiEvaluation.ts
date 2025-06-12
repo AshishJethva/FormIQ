@@ -5,7 +5,7 @@ import Form from '../models/Form';
 import Submission from '../models/Submission';
 import { protect } from '../middleware/protect';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/apiBasicError';
 import mongoose from 'mongoose';
 
 const router = express.Router();
