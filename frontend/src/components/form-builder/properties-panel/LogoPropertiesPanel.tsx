@@ -460,8 +460,6 @@ export default function LogoPropertiesPanel({
             size: finalSize,
           })
         );
-
-        console.log('Final logo size updated:', finalSize);
       }
     };
 

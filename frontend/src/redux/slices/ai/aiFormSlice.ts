@@ -26,8 +26,6 @@ export const generateFormWithAI = createAsyncThunk(
         throw new Error('No authentication token found');
       }
 
-      console.log('🤖 Generating form with AI prompt:', prompt);
-
       const response = await axios.post(
         `${apiConfig.url}/ai/generate-form`,
         { prompt },
@@ -39,7 +37,6 @@ export const generateFormWithAI = createAsyncThunk(
         }
       );
 
-      console.log(' AI form generation successful:', response.data);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(

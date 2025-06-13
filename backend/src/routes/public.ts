@@ -42,18 +42,14 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    console.log(`📄 Public form request for ID: ${id}`);
-
     // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.log(`❌ Invalid ObjectId format: ${id}`);
       throw new ApiError('Invalid form ID format', 400);
     }
 
     const form = await Form.findById(id);
 
     if (!form) {
-      console.log(`❌ Form not found: ${id}`);
       throw new ApiError('Form not found', 404);
     }
 
@@ -61,17 +57,14 @@ router.get(
     const { available, reason } = checkFormAvailability(form);
 
     if (!available) {
-      console.log(`❌ Form not available: ${id} - ${reason}`);
       throw new ApiError(reason, 403);
     }
 
     // Increment view count
     try {
       await Form.findByIdAndUpdate(id, { $inc: { views: 1 } });
-      console.log(`📊 Incremented view count for form: ${id}`);
     } catch (viewError) {
-      console.log('⚠️ Error incrementing view count:', viewError);
-      // Don't fail the request if view count update fails
+      console.error('⚠️ Error incrementing view count:', viewError);
     }
 
     // Return only necessary data for public form
@@ -94,17 +87,6 @@ router.get(
       updatedAt: form.updatedAt,
       publishedAt: form.publishedAt,
     };
-
-    console.log(`Successfully retrieved public form:`, {
-      id: form.id,
-      title: form.title,
-      pagesCount: publicFormData.pages.length,
-      lastUpdated: form.updatedAt,
-      totalFields: publicFormData.pages.reduce(
-        (total, page) => total + (page.fields?.length || 0),
-        0
-      ),
-    });
 
     // Set cache headers for better performance
     res.set({
@@ -130,18 +112,14 @@ router.post(
     const { id } = req.params;
     const submissionData = req.body;
 
-    console.log(`📝 Form submission attempt for ID: ${id}`);
-
     // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.log(`❌ Invalid ObjectId format: ${id}`);
       throw new ApiError('Invalid form ID format', 400);
     }
 
     const form = await Form.findById(id);
 
     if (!form) {
-      console.log(`❌ Form not found: ${id}`);
       throw new ApiError('Form not found', 404);
     }
 
@@ -149,7 +127,6 @@ router.post(
     const { available, reason } = checkFormAvailability(form);
 
     if (!available) {
-      console.log(`❌ Form submission blocked: ${id} - ${reason}`);
       throw new ApiError(reason, 403);
     }
 
@@ -158,7 +135,6 @@ router.post(
     );
 
     if (!hasFields) {
-      console.log(`❌ Form has no fields: ${id}`);
       throw new ApiError('Form has no fields to submit', 400);
     }
 
@@ -188,7 +164,6 @@ router.post(
     try {
       // Increment submission count
       await Form.findByIdAndUpdate(id, { $inc: { submissions: 1 } });
-      console.log(`📊 Incremented submission count for form: ${id}`);
 
       res.status(200).json({
         success: true,
@@ -210,8 +185,6 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    console.log(`📊 Public stats request for ID: ${id}`);
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new ApiError('Invalid form ID format', 400);
     }
@@ -226,7 +199,6 @@ router.get(
     const { available, reason } = checkFormAvailability(form);
 
     if (!available) {
-      console.log(`❌ Form stats not available: ${id} - ${reason}`);
       throw new ApiError(reason, 403);
     }
 
@@ -285,8 +257,6 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    console.log(`🔍 Form status check for ID: ${id}`);
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new ApiError('Invalid form ID format', 400);
     }
@@ -304,10 +274,6 @@ router.get(
 
     // Check form availability
     const { available, reason } = checkFormAvailability(form);
-
-    console.log(
-      `📋 Form status: ${id} - Available: ${available}, Reason: ${reason}`
-    );
 
     res.status(200).json({
       success: true,

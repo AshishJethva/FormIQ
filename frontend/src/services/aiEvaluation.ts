@@ -228,11 +228,6 @@ class AIEvaluationService {
 
         // Calculate delay with exponential backoff
         const delay = baseDelay * Math.pow(2, attempt);
-        console.log(
-          `⏳ Retrying AI operation in ${delay}ms (attempt ${attempt + 1}/${
-            maxRetries + 1
-          })`
-        );
 
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -244,8 +239,6 @@ class AIEvaluationService {
   // Evaluate a single submission
   async evaluateSubmission(submissionId: string): Promise<EvaluationResponse> {
     try {
-      console.log('🤖 Starting AI evaluation for submission:', submissionId);
-
       if (!submissionId || submissionId.trim() === '') {
         return {
           success: false,
@@ -268,13 +261,6 @@ class AIEvaluationService {
 
       const result = await this.retryOperation(operation);
 
-      console.log(' AI evaluation completed successfully:', {
-        submissionId,
-        formType: result.data?.formType,
-        status: result.data?.status,
-        evaluationTime: result.metadata?.evaluationTime,
-      });
-
       return result;
     } catch (error: any) {
       console.error('❌ AI evaluation failed:', error);
@@ -294,11 +280,6 @@ class AIEvaluationService {
     submissionIds: string[]
   ): Promise<BatchEvaluationResponse> {
     try {
-      console.log(' Starting batch AI evaluation:', {
-        formId,
-        submissionCount: submissionIds.length,
-      });
-
       if (!formId || !submissionIds || submissionIds.length === 0) {
         return {
           success: false,
@@ -331,14 +312,6 @@ class AIEvaluationService {
       };
 
       const result = await this.retryOperation(operation, 1); // Fewer retries for batch operations
-
-      console.log(' Batch AI evaluation completed:', {
-        formId,
-        totalEvaluations: result.metadata?.totalEvaluations,
-        successful: result.metadata?.successful,
-        failed: result.metadata?.failed,
-        totalTime: result.metadata?.totalTime,
-      });
 
       return result;
     } catch (error: any) {

@@ -1,4 +1,4 @@
-// frontend/src/components/common/PlanLimitModal.tsx - Modal for plan limits
+// frontend/src/components/common/PlanLimitModal.tsx
 
 'use client';
 

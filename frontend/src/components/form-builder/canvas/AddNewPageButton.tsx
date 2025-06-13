@@ -26,8 +26,6 @@ export default function AddNewPageButton({
   const handleAddPage = () => {
     if (!form) return;
 
-    console.log('🆕 Adding new page. Current pages:', form.pages.length);
-
     // Add the new page
     dispatch(addPage());
 
@@ -35,7 +33,6 @@ export default function AddNewPageButton({
     const newPageIndex = form.pages.length; // Index of the new page
     dispatch(setCurrentPageIndex(newPageIndex));
 
-    console.log(' New page added and navigated to index:', newPageIndex);
     toast.success(`Page ${newPageIndex + 1} added successfully`);
   };
 

@@ -235,12 +235,6 @@ function cleanFormData(formData: SubmitFormData): SubmitFormData {
     }
   }
 
-  console.log('🧹 Form data cleaning:', {
-    originalFields: Object.keys(formData).length,
-    cleanedFields: Object.keys(cleaned).length,
-    removedFields: Object.keys(formData).filter(key => !(key in cleaned)),
-  });
-
   return cleaned;
 }
 
@@ -269,11 +263,6 @@ function cleanFileData(fileData?: FileData): FileData {
     }
   }
 
-  console.log('🧹 File data cleaning:', {
-    originalFields: Object.keys(fileData).length,
-    cleanedFields: Object.keys(cleaned).length,
-  });
-
   return cleaned;
 }
 
@@ -282,8 +271,6 @@ function cleanFileData(fileData?: FileData): FileData {
  */
 export const getPublicForm = async (formId: string) => {
   try {
-    console.log('📋 Fetching public form:', formId);
-
     const response = await axios.get(
       `${apiConfig.url}/public/forms/${formId}`,
       {
@@ -312,12 +299,6 @@ export const getPublicForm = async (formId: string) => {
 
       throw error;
     }
-
-    console.log(' Public form loaded:', {
-      title: response.data.data?.title,
-      pages: response.data.data?.pages?.length || 0,
-      lastUpdated: response.data.data?.updatedAt,
-    });
 
     return response.data;
   } catch (error: any) {
@@ -365,12 +346,6 @@ export const validateFormBeforeSubmission = (
   if (!formStructure?.pages || !Array.isArray(formStructure.pages)) {
     return { isValid: true, errors: [] };
   }
-
-  console.log('🔍 Client-side validation started:', {
-    formDataKeys: Object.keys(formData || {}),
-    fileDataKeys: Object.keys(fileData || {}),
-    pagesCount: formStructure.pages.length,
-  });
 
   formStructure.pages.forEach((page: any) => {
     if (!page.fields || !Array.isArray(page.fields)) return;
@@ -438,12 +413,6 @@ export const validateFormBeforeSubmission = (
     });
   });
 
-  console.log(' Client-side validation completed:', {
-    isValid: errors.length === 0,
-    errorCount: errors.length,
-    errors: errors.slice(0, 3),
-  });
-
   return { isValid: errors.length === 0, errors };
 };
 
@@ -456,18 +425,6 @@ export const submitForm = async (
   fileData?: Record<string, any>
 ): Promise<FormSubmissionResult> => {
   try {
-    console.log(' Submitting form with enhanced data:', {
-      formId,
-      dataKeys: Object.keys(formData || {}),
-      fileKeys: Object.keys(fileData || {}),
-      totalFiles: fileData
-        ? Object.values(fileData).reduce((total: number, files: any) => {
-            if (Array.isArray(files)) return total + files.length;
-            return total + (files ? 1 : 0);
-          }, 0)
-        : 0,
-    });
-
     // Prepare submission payload
     const submissionPayload: any = {
       data: formData || {},
@@ -489,7 +446,6 @@ export const submitForm = async (
       }
     );
 
-    console.log('Form submission successful:', response.data);
     return {
       success: true,
       data: {

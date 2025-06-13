@@ -504,12 +504,6 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
     return 'Submission Date,No Data\n"No submissions found",""';
   }
 
-  console.log(
-    '📊 Generating CSV with Cloudinary URLs only for',
-    submissions.length,
-    'submissions'
-  );
-
   // Create field labels map from form structure
   const fieldLabelsMap = createFieldLabelsMap(form);
 
@@ -579,8 +573,6 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
     ...sortedFieldKeys.map(key => getFieldDisplayLabel(key, fieldLabelsMap)),
   ];
 
-  console.log('📝 CSV Headers:', headers);
-
   // Generate CSV content
   let csvContent = '';
 
@@ -633,7 +625,6 @@ const generateEnhancedCSVExport = (submissions: any[], form: any): string => {
     csvContent += rowData.join(',') + '\n';
   });
 
-  console.log(' CSV generation completed successfully');
   return csvContent;
 };
 
@@ -694,12 +685,6 @@ const generateEnhancedCSVExportWithLabels = (
   if (!submissions || submissions.length === 0) {
     return 'Submission Date,No Data\n"No submissions found",""';
   }
-
-  console.log(
-    '📊 Generating Enhanced CSV with Choice Labels for',
-    submissions.length,
-    'submissions'
-  );
 
   // Create field labels map from form structure
   const fieldLabelsMap = createFieldLabelsMap(form);
@@ -770,8 +755,6 @@ const generateEnhancedCSVExportWithLabels = (
     ...sortedFieldKeys.map(key => getFieldDisplayLabel(key, fieldLabelsMap)),
   ];
 
-  console.log('📝 CSV Headers:', headers);
-
   // Generate CSV content
   let csvContent = '';
 
@@ -830,27 +813,8 @@ const generateEnhancedCSVExportWithLabels = (
 
     // Add the complete row to CSV
     csvContent += rowData.join(',') + '\n';
-
-    // Log first few rows for debugging
-    if (index < 2) {
-      console.log(`📄 Row ${index + 1} with choice labels:`, {
-        date: formattedDate,
-        sampleField: sortedFieldKeys[0]
-          ? {
-              key: sortedFieldKeys[0],
-              rawValue: submission.data?.[sortedFieldKeys[0]],
-              displayValue: formatDisplayValueWithChoiceLabels(
-                submission.data?.[sortedFieldKeys[0]],
-                sortedFieldKeys[0],
-                form
-              ),
-            }
-          : null,
-      });
-    }
   });
 
-  console.log(' Enhanced CSV generation with choice labels completed');
   return csvContent;
 };
 
@@ -894,12 +858,6 @@ function validateSubmissionData(
     return errors;
   }
 
-  console.log('🔍 Starting comprehensive validation:', {
-    pagesCount: pages.length,
-    submissionFields: Object.keys(submissionData || {}),
-    filesCount: files.length,
-  });
-
   pages.forEach((page, pageIndex) => {
     if (!page?.fields || !Array.isArray(page.fields)) return;
 
@@ -908,25 +866,11 @@ function validateSubmissionData(
 
       // Skip heading fields completely
       if (field.type === 'heading') {
-        console.log(`⏭️ Skipping heading field: ${field.label}`);
         return;
       }
 
       const fieldValue = submissionData[field.id];
       const fieldFiles = files.filter(file => file.fieldId === field.id);
-
-      console.log(`🔍 Validating field "${field.label}" (${field.type}):`, {
-        fieldId: field.id,
-        required: field.required,
-        hasValue:
-          fieldValue !== undefined && fieldValue !== null && fieldValue !== '',
-        hasFiles: fieldFiles.length > 0,
-        valueType: typeof fieldValue,
-        value:
-          typeof fieldValue === 'string' && fieldValue.length > 50
-            ? fieldValue.substring(0, 50) + '...'
-            : fieldValue,
-      });
 
       // Required field validation
       if (field.required === true) {
@@ -991,9 +935,6 @@ function validateSubmissionData(
         (Array.isArray(fieldValue) && fieldValue.length === 0);
 
       if (isEmpty && field.required !== true) {
-        console.log(
-          `⏭️ Skipping validation for empty non-required field: ${field.label}`
-        );
         return;
       }
 
@@ -1470,9 +1411,6 @@ function validateSubmissionData(
             break;
 
           default:
-            console.log(
-              `⚠️ Unknown field type: ${field.type} for field: ${field.label}`
-            );
             break;
         }
       } catch (validationError: any) {
@@ -1485,11 +1423,6 @@ function validateSubmissionData(
         );
       }
     });
-  });
-
-  console.log('Validation completed:', {
-    totalErrors: errors.length,
-    errors: errors.slice(0, 5), // Log first 5 errors
   });
 
   return errors;
@@ -1516,8 +1449,6 @@ router.get(
       status,
       isRead,
     } = req.query;
-
-    console.log('📡 Getting submissions with search:', { formId, search });
 
     // Validate formId
     if (!mongoose.Types.ObjectId.isValid(formId)) {
@@ -1562,7 +1493,7 @@ router.get(
     // Dynamic search across all form fields
     if (search && search.toString().trim()) {
       const searchTerm = search.toString().trim();
-      console.log('🔍 Building dynamic search for term:', searchTerm);
+      
 
       const searchFields = [];
 
@@ -1584,10 +1515,7 @@ router.get(
 
       // Add ALL dynamic form fields to search
       const dynamicFieldIds = getSearchableFieldIds(form);
-      console.log(
-        '🏷️ Adding dynamic fields to search:',
-        dynamicFieldIds.length
-      );
+     
 
       dynamicFieldIds.forEach(fieldId => {
         // Search in simple string fields
@@ -1614,11 +1542,7 @@ router.get(
       });
 
       query.$or = searchFields;
-      console.log(
-        '🔍 Created search query with',
-        searchFields.length,
-        'searchable fields'
-      );
+      
     }
 
     // Pagination
@@ -1639,10 +1563,7 @@ router.get(
       Submission.countDocuments(query),
     ]);
 
-    console.log(
-      `📊 Found ${submissions.length} submissions (${total} total) for search:`,
-      search
-    );
+    
 
     // Get submission statistics
     const stats = await Submission.aggregate([
@@ -1734,7 +1655,7 @@ router.post(
     const { formId } = req.params;
     const requestBody = req.body;
 
-    console.log('🎯 STARTING FORM SUBMISSION PROCESSING');
+  
 
     // STEP 1: Validate Form ID
     if (!mongoose.Types.ObjectId.isValid(formId)) {
@@ -1787,13 +1708,7 @@ router.post(
     const submissionData = requestBody.data || {};
     const fileData = requestBody.files || {};
 
-    console.log('📊 Extracted submission data:', {
-      dataFields: Object.keys(submissionData).length,
-      fileFields: Object.keys(fileData).length,
-      dataFieldIds: Object.keys(submissionData),
-      fileFieldIds: Object.keys(fileData),
-    });
-
+    
     // STEP 5: Process files
     const processedFiles: Array<{
       fieldId: string;
@@ -1810,7 +1725,7 @@ router.post(
       for (const [fieldId, value] of Object.entries(submissionData)) {
         // Check if this is a signature field with base64 data
         if (typeof value === 'string' && value.startsWith('data:image/')) {
-          console.log(`🖋️ Processing signature field: ${fieldId}`);
+         
 
           try {
             // Convert base64 to buffer
@@ -1841,9 +1756,7 @@ router.post(
               uploadedAt: new Date(),
             });
 
-            console.log(
-              ` Signature uploaded to Cloudinary: ${uploadResult.url}`
-            );
+            
           } catch (error) {
             console.error(
               `❌ Failed to upload signature for field ${fieldId}:`,
@@ -1899,17 +1812,7 @@ router.post(
       }
     }
 
-    console.log('📎 Processed files:', {
-      totalFiles: processedFiles.length,
-      totalSize: processedFiles.reduce((sum, file) => sum + file.size, 0),
-      filesByField: processedFiles.reduce(
-        (acc, file) => {
-          acc[file.fieldId] = (acc[file.fieldId] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>
-      ),
-    });
+   
 
     // STEP 6: Validate form structure and data
     const hasFormFields = form.pages?.some(
@@ -1918,9 +1821,9 @@ router.post(
     );
 
     if (!hasFormFields) {
-      console.log('ℹ️ Form has no fields - allowing submission');
+      console.error('Form has no fields - allowing submission');
     } else {
-      console.log('🔍 Validating submission against form structure');
+     
 
       const validationErrors = validateSubmissionData(
         submissionData,
@@ -1986,12 +1889,7 @@ router.post(
         },
       };
 
-      console.log('💾 Creating submission with payload:', {
-        formId: submissionPayload.formId,
-        dataFieldCount: Object.keys(submissionPayload.data).length,
-        fileCount: submissionPayload.files.length,
-        hasMetadata: !!submissionPayload.metadata,
-      });
+     
 
       const submission = await Submission.create(submissionPayload);
 
@@ -2001,13 +1899,7 @@ router.post(
         $set: { updatedAt: new Date() },
       });
 
-      console.log('FORM SUBMISSION COMPLETED SUCCESSFULLY:', {
-        submissionId: submission._id,
-        formId,
-        formTitle: form.title,
-        fileCount: processedFiles.length,
-        dataFieldCount: Object.keys(submissionData).length,
-      });
+     
 
       //  STEP 10: Return success response
       return res.status(201).json({
@@ -2333,7 +2225,7 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    console.log(`🗑️ STARTING SUBMISSION DELETION: ${id}`);
+  
 
     // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -2343,7 +2235,7 @@ router.delete(
     // Step 1: Find and verify submission
     const submission = await Submission.findById(id);
     if (!submission) {
-      console.log(`❌ Submission ${id} not found`);
+     
       throw new ApiError('Submission not found', 404);
     }
 
@@ -2353,13 +2245,11 @@ router.delete(
       userId: req.user.id,
     });
     if (!form) {
-      console.log(
-        `❌ User ${req.user.id} does not own form ${submission.formId}`
-      );
+      
       throw new ApiError('Not authorized to delete this submission', 403);
     }
 
-    console.log(`📋 Deleting submission from form: "${form.title}"`);
+   
 
     // Step 3: Collect all files to delete
     const filesToDelete: any[] = [];
@@ -2367,9 +2257,7 @@ router.delete(
     // Files from submission.files array
     if (submission.files && Array.isArray(submission.files)) {
       filesToDelete.push(...submission.files);
-      console.log(
-        `📁 Found ${submission.files.length} files in submission.files array`
-      );
+      
     }
 
     // Files from submission.data (legacy format and base64 signatures)
@@ -2408,20 +2296,16 @@ router.delete(
       });
     }
 
-    console.log(`📊 Total files to delete: ${filesToDelete.length}`);
+
 
     // Step 4: Delete files from Cloudinary
     let fileCleanupResult;
     if (filesToDelete.length > 0) {
       try {
-        console.log(`🧹 Starting file cleanup for submission...`);
+       
         fileCleanupResult = await deleteSubmissionFiles(filesToDelete);
 
-        console.log(` File cleanup completed:`, {
-          filesDeleted: fileCleanupResult.successCount,
-          filesFailed: fileCleanupResult.failureCount,
-          totalProcessed: fileCleanupResult.total,
-        });
+       
       } catch (fileError: any) {
         console.error(
           `⚠️ File cleanup failed (continuing with database cleanup):`,
@@ -2429,14 +2313,11 @@ router.delete(
         );
         // Continue with database cleanup even if file cleanup fails
       }
-    } else {
-      console.log(`ℹ️ No files to delete for this submission`);
-    }
-
+    } 
     // Step 5: Delete submission from database
     try {
       await Submission.findByIdAndDelete(id);
-      console.log(` Submission ${id} deleted from database`);
+     
     } catch (dbError: any) {
       console.error(`❌ Failed to delete submission from database:`, dbError);
       throw new ApiError('Failed to delete submission from database', 500);
@@ -2448,7 +2329,7 @@ router.delete(
         $inc: { submissions: -1 },
         $set: { updatedAt: new Date() },
       });
-      console.log(` Updated form submission count`);
+      
     } catch (countError: any) {
       console.warn(`⚠️ Failed to update form submission count:`, countError);
     }
@@ -2468,7 +2349,7 @@ router.delete(
       },
     };
 
-    console.log(`🎉 SUBMISSION DELETION COMPLETED:`, response.details);
+   
 
     res.status(200).json(response);
   })
@@ -2483,11 +2364,7 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const { submissionId, fieldId, publicId } = req.params;
 
-    console.log(`🗑️ DELETING INDIVIDUAL FILE FROM SUBMISSION:`, {
-      submissionId,
-      fieldId,
-      publicId: decodeURIComponent(publicId),
-    });
+    
 
     // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(submissionId)) {
@@ -2551,11 +2428,7 @@ router.delete(
       throw new ApiError('File not found in submission', 404);
     }
 
-    console.log(`📁 File found in ${fileLocation}:`, {
-      originalName: fileToDelete.originalName,
-      mimeType: fileToDelete.mimeType,
-      size: fileToDelete.size,
-    });
+    
 
     // Step 4: Delete file from Cloudinary
     let cloudinarySuccess = false;
@@ -2570,9 +2443,7 @@ router.delete(
       if (!cloudinarySuccess) {
         console.warn(`⚠️ Cloudinary deletion failed: ${deleteResult.error}`);
         // Continue with database cleanup even if Cloudinary fails
-      } else {
-        console.log(` File deleted from Cloudinary: ${decodedPublicId}`);
-      }
+      } 
     } catch (cloudinaryError: any) {
       console.error(`❌ Cloudinary deletion error:`, cloudinaryError);
       // Continue with database cleanup
@@ -2595,7 +2466,7 @@ router.delete(
           },
         });
 
-        console.log(` File removed from submission.files array`);
+       
         databaseSuccess = true;
       } else if (fileLocation === 'data_object') {
         // Update data object
@@ -2624,7 +2495,7 @@ router.delete(
           });
         }
 
-        console.log(` File removed from submission.data.${fieldId}`);
+        
         databaseSuccess = true;
       }
     } catch (dbError: any) {
@@ -2649,7 +2520,7 @@ router.delete(
       },
     };
 
-    console.log(`🎉 FILE DELETION COMPLETED:`, response.details);
+   
 
     res.status(200).json(response);
   })
@@ -2664,10 +2535,7 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const { submissionId, fieldId } = req.params;
 
-    console.log(`🗑️ DELETING ALL FILES FROM FIELD:`, {
-      submissionId,
-      fieldId,
-    });
+    
 
     // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(submissionId)) {
@@ -2717,9 +2585,7 @@ router.delete(
       throw new ApiError('No files found for this field', 404);
     }
 
-    console.log(
-      `📁 Found ${filesToDelete.length} files to delete for field ${fieldId}`
-    );
+   
 
     // Step 4: Delete files from Cloudinary
     const cloudinaryResults: Array<{
@@ -2768,7 +2634,7 @@ router.delete(
         },
       });
 
-      console.log(`All files removed from field ${fieldId} in database`);
+      
     } catch (dbError: any) {
       console.error(`❌ Database update failed:`, dbError);
       throw new ApiError('Failed to update submission in database', 500);
@@ -2790,7 +2656,7 @@ router.delete(
       },
     };
 
-    console.log(`🎉 FIELD FILES DELETION COMPLETED:`, response.details);
+   
 
     res.status(200).json(response);
   })
@@ -2921,10 +2787,7 @@ router.get(
     const { formId } = req.params;
     const { format = 'csv', dateFrom, dateTo, status, isRead } = req.query;
 
-    console.log(
-      '📊 Starting enhanced CSV export with choice labels for form:',
-      formId
-    );
+   
 
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
@@ -2936,7 +2799,7 @@ router.get(
       throw new ApiError('Form not found', 404);
     }
 
-    console.log(' Form found:', form.title);
+    
 
     // Build query for filtering (existing logic)
     const query: any = { formId };
@@ -2968,7 +2831,7 @@ router.get(
       .sort({ submittedAt: -1 })
       .lean();
 
-    console.log(`📋 Found ${submissions.length} submissions for export`);
+   
 
     if (format === 'csv') {
       // Generate enhanced CSV with choice field labels
@@ -2979,7 +2842,6 @@ router.get(
       const dateStamp = new Date().toISOString().split('T')[0];
       const filename = `${formTitleSafe}-submissions-with-labels-${dateStamp}.csv`;
 
-      console.log('Sending enhanced CSV file with choice labels:', filename);
 
       // Set headers for CSV download
       res.set({
@@ -2998,7 +2860,7 @@ router.get(
       );
     }
 
-    console.log(' Enhanced export with choice labels completed successfully');
+    
   })
 );
 

@@ -19,15 +19,7 @@ export const debugFormSubmission = (
 
   // Log request body details
   if (req.body) {
-    console.log('📋 REQUEST BODY ANALYSIS:', {
-      bodyType: typeof req.body,
-      bodySize: JSON.stringify(req.body).length,
-      bodyKeys: Object.keys(req.body || {}),
-      hasData: !!req.body.data,
-      hasFiles: !!req.body.files,
-      dataKeys: req.body.data ? Object.keys(req.body.data) : [],
-      fileKeys: req.body.files ? Object.keys(req.body.files) : [],
-    });
+   
 
     // Log sample of form data (first 3 fields)
     if (req.body.data) {
@@ -41,7 +33,7 @@ export const debugFormSubmission = (
               : value,
           ])
       );
-      console.log('📊 FORM DATA SAMPLE:', sampleData);
+      
     }
 
     // Log file data summary
@@ -56,7 +48,7 @@ export const debugFormSubmission = (
               : 'no file',
         ])
       );
-      console.log('📎 FILE DATA SUMMARY:', fileSummary);
+      
     }
   }
 
@@ -65,20 +57,13 @@ export const debugFormSubmission = (
   res.send = function (data: any) {
     const duration = req.startTime ? Date.now() - req.startTime : 0;
 
-    console.log('📤 FORM SUBMISSION RESPONSE:', {
-      statusCode: res.statusCode,
-      duration: `${duration}ms`,
-      responseSize: data ? JSON.stringify(data).length : 0,
-      success: res.statusCode < 400,
-    });
+   
 
     if (res.statusCode >= 400) {
       console.error('❌ FORM SUBMISSION ERROR RESPONSE:', {
         statusCode: res.statusCode,
         error: typeof data === 'string' ? data : JSON.stringify(data),
       });
-    } else {
-      console.log('FORM SUBMISSION SUCCESS');
     }
 
     return originalSend.call(this, data);
@@ -95,7 +80,7 @@ export const validateFormSubmissionRequest = (
   res: Response,
   next: NextFunction
 ) => {
-  console.log('🔍 VALIDATING FORM SUBMISSION REQUEST');
+  
 
   // Check content type
   const contentType = req.get('Content-Type');
@@ -130,7 +115,7 @@ export const validateFormSubmissionRequest = (
     });
   }
 
-  console.log('Request validation passed');
+  
   next();
 };
 
@@ -194,18 +179,11 @@ export const monitorFormSubmissionPerformance = (
     const end = process.hrtime.bigint();
     const duration = Number(end - start) / 1000000; // Convert to milliseconds
 
-    console.log('⏱️ PERFORMANCE METRICS:', {
-      url: req.originalUrl,
-      method: req.method,
-      statusCode: res.statusCode,
-      duration: `${duration.toFixed(2)}ms`,
-      bodySize: req.body ? JSON.stringify(req.body).length : 0,
-      formId: req.params.formId,
-    });
+  
 
     // Log slow requests
     if (duration > 5000) {
-      console.warn('🐌 SLOW REQUEST DETECTED:', {
+      console.warn('SLOW REQUEST DETECTED:', {
         duration: `${duration.toFixed(2)}ms`,
         url: req.originalUrl,
         formId: req.params.formId,

@@ -132,12 +132,6 @@ const formatDate = (dateString: string): string => {
 // Single, robust download function
 const downloadFile = async (file: FileData): Promise<void> => {
   try {
-    console.log('📥 Starting file download:', {
-      name: file.originalName,
-      url: file.url,
-      mimeType: file.mimeType,
-    });
-
     // Create download link immediately - most reliable method
     const a = document.createElement('a');
     a.href = file.url;
@@ -150,8 +144,6 @@ const downloadFile = async (file: FileData): Promise<void> => {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-
-    console.log(' File download initiated successfully');
   } catch (error) {
     console.error('❌ Download error:', error);
     toast.error('Download failed', {
@@ -482,6 +474,7 @@ const FileCard: React.FC<FileCardProps> = ({
                 alt={file.originalName}
                 width={32}
                 height={32}
+                priority
                 className='w-8 h-8 object-cover rounded cursor-pointer'
                 onClick={onView}
                 onError={() => setImageError(true)}
@@ -554,6 +547,7 @@ const FileCard: React.FC<FileCardProps> = ({
                 src={file.url}
                 alt={file.originalName}
                 fill
+                priority
                 className='object-cover cursor-pointer hover:scale-105 transition-transform'
                 onClick={onView}
                 onError={() => setImageError(true)}
@@ -693,10 +687,7 @@ const FileManager: React.FC<FileManagerProps> = ({
         return;
       }
 
-      // Otherwise use internal download logic
-      // Prevent duplicate downloads
       if (downloadInProgress.current.has(file.publicId)) {
-        console.log('Download already in progress for:', file.originalName);
         return;
       }
 
@@ -704,12 +695,9 @@ const FileManager: React.FC<FileManagerProps> = ({
         downloadInProgress.current.add(file.publicId);
         setInternalDownloadingFileId(file.publicId);
 
-        console.log('Starting download for:', file.originalName);
-
         await downloadFile(file);
       } catch (error: any) {
         console.error('Download failed:', error);
-        // Error is already handled in downloadFile function
       } finally {
         downloadInProgress.current.delete(file.publicId);
         setInternalDownloadingFileId(null);

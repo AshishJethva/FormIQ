@@ -24,7 +24,7 @@ export default function CreateFormModal() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // CRITICAL FIX: Freeze the UI state during form creation
+  // Freeze the UI state during form creation
   const [frozenUIState, setFrozenUIState] = useState<{
     canCreateForms: boolean;
     isCreating: boolean;

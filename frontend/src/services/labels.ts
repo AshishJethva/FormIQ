@@ -88,14 +88,7 @@ export const labelsService = {
         ? `/labels?search=${encodeURIComponent(search)}`
         : '/labels';
 
-      console.log(
-        'Fetching labels:',
-        search ? `with search: "${search}"` : 'all labels'
-      );
-
       const response = await api.get<ApiResponse<LabelResponse[]>>(url);
-
-      console.log('Labels fetch response:', response.data);
 
       if (!response.data || !response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch labels');
@@ -146,12 +139,11 @@ export const labelsService = {
   // Create new label
   async createLabel(data: CreateLabelRequest) {
     try {
-      console.log('Creating label with data:', data);
       const response = await api.post<ApiResponse<LabelResponse>>(
         '/labels',
         data
       );
-      console.log('Label creation response:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('Error creating label:', error);
@@ -166,12 +158,11 @@ export const labelsService = {
   // Update label
   async updateLabel(id: string, data: UpdateLabelRequest) {
     try {
-      console.log('Updating label:', id, 'with data:', data);
       const response = await api.put<ApiResponse<LabelResponse>>(
         `/labels/${id}`,
         data
       );
-      console.log('Label update response:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('Error updating label:', error);
@@ -186,9 +177,8 @@ export const labelsService = {
   // Delete label
   async deleteLabel(id: string) {
     try {
-      console.log('Deleting label:', id);
       const response = await api.delete<ApiResponse<null>>(`/labels/${id}`);
-      console.log('Label deletion response:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('Error deleting label:', error);

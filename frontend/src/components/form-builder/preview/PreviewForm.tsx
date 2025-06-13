@@ -63,18 +63,6 @@ export default function PreviewForm({
   };
 
   const handleSubmit = () => {
-    console.log(' Preview form submitting with files:', {
-      formData,
-      fileData,
-      totalFiles: Object.values(fileData).reduce(
-        (total: number, files: any) => {
-          if (Array.isArray(files)) return total + files.length;
-          return total + (files ? 1 : 0);
-        },
-        0
-      ),
-    });
-
     onSubmit();
   };
 

@@ -40,9 +40,8 @@ export interface VerifyPaymentData {
 class PaymentService {
   async createOrder(data: CreateOrderData) {
     try {
-      console.log('🛒 Creating payment order:', data);
       const response = await api.post('/payment/create-order', data);
-      console.log(' Payment order created:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('❌ Failed to create payment order:', error);
@@ -54,15 +53,8 @@ class PaymentService {
 
   async verifyPayment(data: VerifyPaymentData) {
     try {
-      console.log('🔍 Verifying payment:', {
-        orderId: data.razorpay_order_id,
-        paymentId: data.razorpay_payment_id,
-        plan: data.plan,
-        billing: data.billing,
-      });
-
       const response = await api.post('/payment/verify', data);
-      console.log(' Payment verified:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('❌ Payment verification failed:', error);
@@ -74,9 +66,8 @@ class PaymentService {
 
   async downgradeToStarter() {
     try {
-      console.log('📉 Downgrading to STARTER plan');
       const response = await api.post('/payment/downgrade-to-starter');
-      console.log(' Downgrade successful:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('❌ Downgrade failed:', error);
@@ -88,19 +79,16 @@ class PaymentService {
 
   async downloadReceipt(paymentId: string): Promise<Blob> {
     try {
-      console.log('📄 Downloading receipt for payment:', paymentId);
-
-      // ✅ Handle both real payment IDs and sample ID
+      //  Handle both real payment IDs and sample ID
       const response = await api.get(`/payment/receipt/${paymentId}`, {
         responseType: 'blob', // Important for file downloads
       });
 
-      console.log('✅ Receipt downloaded successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Receipt download failed:', error);
 
-      // ✅ Better error handling for different scenarios
+      //  Better error handling for different scenarios
       if (error.response?.status === 404) {
         throw new Error(
           'Payment record not found. Please check the payment ID.'

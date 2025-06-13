@@ -29,13 +29,9 @@ export const usePayment = () => {
         throw new Error('Failed to load payment system');
       }
 
-      console.log('💳 Initiating payment for:', planData);
-
       // Create payment order
       const orderResponse = await PaymentService.createOrder(planData);
       const order = orderResponse.data;
-
-      console.log('📄 Payment order created:', order);
 
       // Get user info for prefill
       const userName = userProfile?.user.name || 'User';
@@ -52,8 +48,6 @@ export const usePayment = () => {
         } Billing`,
         order_id: order.id,
         handler: async response => {
-          console.log('💳 Payment completed:', response);
-
           try {
             // Verify payment on backend
             await PaymentService.verifyPayment({
@@ -69,7 +63,7 @@ export const usePayment = () => {
 
             toast.success('🎉 Payment Successful!', {
               description: `Your ${planData.plan} plan is now active. Welcome to premium features!`,
-              duration: 5000,
+              duration: 3000,
             });
 
             // Redirect to account page
@@ -95,7 +89,6 @@ export const usePayment = () => {
         },
         modal: {
           ondismiss: () => {
-            console.log('💫 Payment modal dismissed');
             setProcessingPlan(null);
             toast.info('Payment Cancelled', {
               description:
@@ -105,7 +98,6 @@ export const usePayment = () => {
         },
       };
 
-      console.log('🚀 Opening Razorpay checkout');
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error: any) {
@@ -123,8 +115,6 @@ export const usePayment = () => {
     setIsDowngrading(true);
 
     try {
-      console.log('📉 Downgrading to STARTER plan');
-
       // Call downgrade API
       await PaymentService.downgradeToStarter();
 
@@ -149,8 +139,6 @@ export const usePayment = () => {
 
   const downloadReceipt = async (paymentId: string) => {
     try {
-      console.log('📄 Downloading receipt for payment:', paymentId);
-
       const receiptBlob = await PaymentService.downloadReceipt(paymentId);
 
       // Create download link
@@ -162,10 +150,6 @@ export const usePayment = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      toast.success('📄 Receipt Downloaded', {
-        description: 'Payment receipt has been downloaded successfully.',
-      });
     } catch (error: any) {
       console.error('❌ Receipt download failed:', error);
       toast.error('Download Failed', {

@@ -54,17 +54,11 @@ export default function FormBuilderPage() {
           });
 
           const formData = response.data.data;
-          console.log('Loaded form data:', formData);
 
           // Initialize form builder with loaded data
           dispatch(initializeForm());
           dispatch(setFormTitle(formData.title));
         } catch (fetchError: any) {
-          console.log(
-            'Form not found, might be a new form:',
-            fetchError.response?.status
-          );
-
           if (fetchError.response?.status === 404) {
             // Form doesn't exist yet - initialize with empty form
             dispatch(initializeForm());

@@ -44,22 +44,11 @@ export class AIFormGeneratorService {
         };
       }
 
-      console.log('🤖 Starting AI form generation:', {
-        userId,
-        promptLength: prompt.trim().length,
-        timestamp: new Date().toISOString(),
-        prompt: prompt.substring(0, 100) + '...',
-      });
-
       // Generate form config
       const systemPrompt = this.buildSystemPrompt(prompt.trim());
       const result = await this.model.generateContent(systemPrompt);
       const response = await result.response;
       const generatedText = response.text();
-
-      console.log('📝 AI response received, parsing...', {
-        responseLength: generatedText.length,
-      });
 
       // Parse response
       const parseResult = this.parseFormConfig(generatedText);
@@ -77,13 +66,6 @@ export class AIFormGeneratorService {
       formConfig = this.addUniqueIds(formConfig);
 
       const generationTime = Date.now() - startTime;
-
-      console.log(' AI Generation Success:', {
-        userId,
-        generationTime,
-        fieldCount: this.countFields(formConfig),
-        hasQuizFields: this.hasQuizFields(formConfig),
-      });
 
       return {
         success: true,
@@ -318,11 +300,8 @@ Generate the form configuration now:`;
   }
 
   private cleanFormConfigForMongoDB(config: any): any {
-    console.log('🧹 Cleaning form config for MongoDB compatibility...');
-
     // Detect if this is a quiz form
     const isQuizForm = this.detectQuizForm(config);
-    console.log(`🎯 Is quiz form: ${isQuizForm}`);
 
     if (config.pages && Array.isArray(config.pages)) {
       config.pages = config.pages.map((page: any) => ({
@@ -422,9 +401,6 @@ Generate the form configuration now:`;
                 // 🎯 CRITICAL: Handle correctAnswer properly
                 if (field.correctAnswer) {
                   cleanField.correctAnswer = String(field.correctAnswer);
-                  console.log(
-                    `Set correctAnswer from field: ${cleanField.correctAnswer}`
-                  );
                 } else {
                   // Find the option marked as correct
                   const correctOption = cleanField.options.find(
@@ -432,16 +408,10 @@ Generate the form configuration now:`;
                   );
                   if (correctOption) {
                     cleanField.correctAnswer = correctOption.value;
-                    console.log(
-                      `Set correctAnswer from isCorrect option: ${cleanField.correctAnswer}`
-                    );
                   } else if (isQuizForm) {
                     // For quiz forms, force a correct answer
                     cleanField.options[1].isCorrect = true; // Make second option correct
                     cleanField.correctAnswer = cleanField.options[1].value;
-                    console.log(
-                      `🎯 Forced correctAnswer for quiz field: ${cleanField.correctAnswer}`
-                    );
                   }
                 }
 
@@ -455,9 +425,6 @@ Generate the form configuration now:`;
                     );
                   cleanField.options = defaultOptions.options;
                   cleanField.correctAnswer = defaultOptions.correctAnswer;
-                  console.log(
-                    `🔧 Generated default options with correctAnswer: ${cleanField.correctAnswer}`
-                  );
                 }
               } else {
                 // Generate default options if missing
@@ -469,9 +436,6 @@ Generate the form configuration now:`;
                   );
                 cleanField.options = defaultOptions.options;
                 cleanField.correctAnswer = defaultOptions.correctAnswer;
-                console.log(
-                  `🆕 Created new options with correctAnswer: ${cleanField.correctAnswer}`
-                );
               }
             }
 
@@ -517,7 +481,6 @@ Generate the form configuration now:`;
       }));
     }
 
-    console.log(' Form config cleaned for MongoDB compatibility');
     return config;
   }
 
@@ -540,7 +503,6 @@ Generate the form configuration now:`;
     );
 
     if (hasQuizKeywords) {
-      console.log(`🎯 Quiz detected from title/description: ${formTitle}`);
       return true;
     }
 
@@ -565,7 +527,6 @@ Generate the form configuration now:`;
             if (
               questionPatterns.some(pattern => fieldLabel.includes(pattern))
             ) {
-              console.log(`🎯 Quiz detected from field label: ${field.label}`);
               return true;
             }
           }
@@ -710,9 +671,6 @@ Generate the form configuration now:`;
           publicId: logoResult.publicId,
         };
       } else {
-        console.log(
-          '⚠️ No appropriate professional logo found for this form type'
-        );
         return {
           success: false,
           error:
@@ -950,13 +908,6 @@ Generate the form configuration now:`;
           Math.floor(Math.random() * categoryData.logos.length)
         ];
 
-      console.log(' Found appropriate professional logo:', {
-        category: bestMatch.category,
-        matchScore: bestMatch.score,
-        logoUrl: selectedLogo.url,
-        description: selectedLogo.description,
-      });
-
       return {
         isAppropriate: true,
         logoUrl: selectedLogo.url,
@@ -982,7 +933,6 @@ Generate the form configuration now:`;
       (content.includes('business') || content.includes('professional'))
     ) {
       const businessLogo = professionalLogos.business.logos[0];
-      console.log(' Using fallback business logo for professional context');
 
       return {
         isAppropriate: true,
@@ -992,9 +942,6 @@ Generate the form configuration now:`;
       };
     }
 
-    console.log(
-      '❌ No appropriate professional logo found - will proceed without logo'
-    );
     return { isAppropriate: false };
   }
 
@@ -1128,7 +1075,7 @@ Generate the form configuration now:`;
           }
         }
 
-        //  ENHANCED: Validate new field types
+        // Validate new field types
         if (field.type === 'signature') {
           if (field.signatureConfig) {
             if (
@@ -1291,10 +1238,6 @@ Generate the form configuration now:`;
               if (isQuizForm && defaultOptionsWithAnswer.correctAnswer) {
                 enhancedField.correctAnswer =
                   defaultOptionsWithAnswer.correctAnswer;
-                console.log(' Added correct answer for quiz field:', {
-                  label: field.label,
-                  correctAnswer: enhancedField.correctAnswer,
-                });
               }
             } else if (isQuizForm && !field.correctAnswer) {
               // Find or set a correct answer for existing options
@@ -1308,10 +1251,6 @@ Generate the form configuration now:`;
                 enhancedField.options[0].isCorrect = true;
                 enhancedField.correctAnswer = enhancedField.options[0].value;
               }
-              console.log(' Set correct answer for existing options:', {
-                label: field.label,
-                correctAnswer: enhancedField.correctAnswer,
-              });
             }
           }
         }
@@ -1703,12 +1642,6 @@ Generate the form configuration now:`;
       lowerLabel.includes('true') ||
       lowerLabel.includes('false');
 
-    console.log(`🤔 Generating options for "${label}":`, {
-      isQuizField,
-      forceCorrectAnswer,
-      fieldType,
-    });
-
     if (lowerLabel.includes('experience') || lowerLabel.includes('level')) {
       const options = [
         { label: 'Beginner (0-2 years)', value: 'beginner' },
@@ -1777,7 +1710,6 @@ Generate the form configuration now:`;
       correctAnswer: isQuizField ? 'option2' : undefined,
     };
 
-    console.log(`Generated options:`, result);
     return result;
   }
 

@@ -302,8 +302,6 @@ export default function PublicFormPage() {
           },
         });
       }
-
-      console.log('Form loading error:', error.title, error.message);
     } finally {
       setLoading(false);
     }
@@ -569,7 +567,7 @@ export default function PublicFormPage() {
       }
       toast.error('Please fix the errors above', {
         description: 'Some required fields are missing or invalid.',
-        duration: 4000,
+        duration: 2000,
         style: {
           background: '#FEE2E2',
           borderColor: '#EF4444',
@@ -587,18 +585,6 @@ export default function PublicFormPage() {
     try {
       // Prepare file data for submission
       const preparedFileData = prepareFileDataForSubmission(fileData);
-
-      console.log(' Public form submitting with files:', {
-        formData,
-        fileData: preparedFileData,
-        totalFiles: Object.values(preparedFileData).reduce(
-          (total: number, files: any) => {
-            if (Array.isArray(files)) return total + files.length;
-            return total + (files ? 1 : 0);
-          },
-          0
-        ),
-      });
 
       // Submit form with both regular data and file data
       await handleFormSubmissionWithToasts(

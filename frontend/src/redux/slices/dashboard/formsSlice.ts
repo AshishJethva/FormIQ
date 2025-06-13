@@ -288,9 +288,7 @@ export const createLabelAsync = createAsyncThunk(
   'forms/createLabel',
   async (data: { name: string; color: string }, { rejectWithValue }) => {
     try {
-      console.log('Redux: Creating label...', data);
       const response = await labelsService.createLabel(data);
-      console.log('Redux: Label created successfully:', response);
       return response.data;
     } catch (error: any) {
       console.error('Redux: Error creating label:', error);
@@ -307,9 +305,8 @@ export const updateLabelAsync = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      console.log('Redux: Updating label...', id, data);
       const response = await labelsService.updateLabel(id, data);
-      console.log('Redux: Label updated successfully:', response);
+
       return response.data;
     } catch (error: any) {
       console.error('Redux: Error updating label:', error);
@@ -323,9 +320,8 @@ export const deleteLabelAsync = createAsyncThunk(
   'forms/deleteLabel',
   async (id: string, { rejectWithValue }) => {
     try {
-      console.log('Redux: Deleting label...', id);
       await labelsService.deleteLabel(id);
-      console.log('Redux: Label deleted successfully');
+
       return id;
     } catch (error: any) {
       console.error('Redux: Error deleting label:', error);
@@ -433,8 +429,7 @@ export const formsSlice = createSlice({
       // Remove form from state
       state.forms = state.forms.filter(form => form.id !== formId);
 
-      // Log the deletion details for debugging
-      console.log('🗑️ Redux: Form completely deleted:', {
+      console.log('Redux: Form completely deleted:', {
         formId,
         ...details,
       });
@@ -463,7 +458,7 @@ export const formsSlice = createSlice({
         form => !successfulDeletions.includes(form.id)
       );
 
-      console.log('🗑️ Redux: Bulk deletion completed:', {
+      console.log('Redux: Bulk deletion completed:', {
         requested: formIds.length,
         successful: successfulDeletions.length,
         failed: results.filter(r => !r.success).length,
@@ -794,13 +789,11 @@ export const formsSlice = createSlice({
         state.labelsError = null;
       })
       .addCase(fetchLabels.fulfilled, (state, action) => {
-        console.log('Redux: fetchLabels.fulfilled', action.payload);
         state.labelsLoading = false;
         state.labels = action.payload.data || [];
         state.labelsError = null;
       })
       .addCase(fetchLabels.rejected, (state, action) => {
-        console.log('Redux: fetchLabels.rejected', action.payload);
         state.labelsLoading = false;
         state.labelsError =
           (action.payload as string) || 'Failed to fetch labels';
@@ -811,19 +804,16 @@ export const formsSlice = createSlice({
 
       // Create label
       .addCase(createLabelAsync.fulfilled, (state, action) => {
-        console.log('Redux: createLabelAsync.fulfilled', action.payload);
         state.labels.unshift(action.payload);
         state.labelsError = null;
       })
       .addCase(createLabelAsync.rejected, (state, action) => {
-        console.log('Redux: createLabelAsync.rejected', action.payload);
         state.labelsError =
           (action.payload as string) || 'Failed to create label';
       })
 
       // Update label
       .addCase(updateLabelAsync.fulfilled, (state, action) => {
-        console.log('Redux: updateLabelAsync.fulfilled', action.payload);
         const index = state.labels.findIndex(
           label => label.id === action.payload.id
         );
@@ -833,14 +823,12 @@ export const formsSlice = createSlice({
         state.labelsError = null;
       })
       .addCase(updateLabelAsync.rejected, (state, action) => {
-        console.log('Redux: updateLabelAsync.rejected', action.payload);
         state.labelsError =
           (action.payload as string) || 'Failed to update label';
       })
 
       // Delete label
       .addCase(deleteLabelAsync.fulfilled, (state, action) => {
-        console.log('Redux: deleteLabelAsync.fulfilled', action.payload);
         state.labels = state.labels.filter(
           label => label.id !== action.payload
         );
@@ -853,7 +841,6 @@ export const formsSlice = createSlice({
         state.labelsError = null;
       })
       .addCase(deleteLabelAsync.rejected, (state, action) => {
-        console.log('Redux: deleteLabelAsync.rejected', action.payload);
         state.labelsError =
           (action.payload as string) || 'Failed to delete label';
       });

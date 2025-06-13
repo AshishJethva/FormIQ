@@ -38,12 +38,6 @@ const generateReceipt = (userId: string, plan: string): string => {
   // Format: [PlanCode][6-digit-userId][6-digit-timestamp] = 13 characters total
   const receipt = `${planCode}${shortUserId}${shortTimestamp}`;
 
-  console.log('📄 Generated receipt:', {
-    receipt,
-    length: receipt.length,
-    components: { planCode, shortUserId, shortTimestamp },
-  });
-
   // Double check it's under 40 characters
   return receipt.length > 40 ? receipt.substring(0, 40) : receipt;
 };
@@ -56,8 +50,6 @@ export const createPaymentOrder = async (
   try {
     const { plan, billing } = req.body;
     const userId = req.user?.id;
-
-    console.log('🛒 Creating payment order:', { plan, billing, userId });
 
     if (!userId) {
       return next(new ApiError('User not authenticated', 401));
@@ -84,14 +76,6 @@ export const createPaymentOrder = async (
     if (billing === 'yearly') {
       amount = planConfig.yearlyPrice;
     }
-
-    console.log('💰 Calculated amount:', {
-      plan,
-      billing,
-      amount,
-      monthlyPrice: planConfig.monthlyPrice,
-      yearlyPrice: planConfig.yearlyPrice,
-    });
 
     // Validate amount
     if (!amount || amount <= 0) {
@@ -129,12 +113,6 @@ export const createPaymentOrder = async (
       },
     };
 
-    console.log('📄 Order data prepared:', {
-      ...orderData,
-      receiptLength: receipt.length, // Log receipt length for debugging
-      notes: { ...orderData.notes, userId: 'hidden' },
-    });
-
     try {
       const result = await PaymentService.createOrder(orderData);
 
@@ -142,8 +120,6 @@ export const createPaymentOrder = async (
         console.error('❌ Invalid response from PaymentService:', result);
         return next(new ApiError('Failed to create payment order', 500));
       }
-
-      console.log(' Payment order created successfully');
 
       res
         .status(200)
@@ -181,14 +157,6 @@ export const verifyPayment = async (
     } = req.body;
     const userId = req.user?.id;
 
-    console.log('🔍 Verifying payment:', {
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      plan,
-      billing,
-      userId,
-    });
-
     if (!userId) {
       return next(new ApiError('User not authenticated', 401));
     }
@@ -211,13 +179,10 @@ export const verifyPayment = async (
     });
 
     if (!isValidPayment) {
-      console.log('❌ Payment verification failed - Invalid signature');
       return next(
         new ApiError('Payment verification failed - Invalid signature', 400)
       );
     }
-
-    console.log(' Payment signature verified');
 
     // Get payment details from Razorpay for additional verification
     try {
@@ -226,7 +191,6 @@ export const verifyPayment = async (
 
       // Verify payment status
       if (paymentDetails.status !== 'captured') {
-        console.log('❌ Payment not captured:', paymentDetails.status);
         return next(
           new ApiError(
             `Payment not successful. Status: ${paymentDetails.status}`,
@@ -234,11 +198,11 @@ export const verifyPayment = async (
           )
         );
       }
-
-      console.log(' Payment status verified:', paymentDetails.status);
     } catch (paymentError: any) {
-      console.log('⚠️ Could not fetch payment details:', paymentError.message);
-      // Continue with verification as signature was valid
+      console.error(
+        '⚠️ Could not fetch payment details:',
+        paymentError.message
+      );
     }
 
     // Get plan configuration
@@ -254,8 +218,6 @@ export const verifyPayment = async (
     if (!userProfile) {
       return next(new ApiError('User profile not found', 404));
     }
-
-    console.log('👤 Current user plan:', userProfile.plan);
 
     // Store the previous plan for logging
     const previousPlan = userProfile.plan.type;
@@ -278,7 +240,6 @@ export const verifyPayment = async (
     });
 
     await paymentRecord.save();
-    console.log(' Payment saved to history:', paymentRecord._id);
 
     // Calculate new plan details
     const now = new Date();
@@ -308,14 +269,6 @@ export const verifyPayment = async (
     };
 
     await userProfile.save();
-
-    console.log(' User plan upgraded:', {
-      fromPlan: previousPlan,
-      toPlan: plan,
-      newLimit: planConfig.formsLimit,
-      billing,
-      expiresAt,
-    });
 
     // Create response data
     const responseData = {
@@ -456,8 +409,6 @@ export const downgradeToStarter = async (
       return next(new ApiError('User not authenticated', 401));
     }
 
-    console.log('📉 Processing downgrade to STARTER for user:', userId);
-
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const userProfile = await UserProfile.findOne({ userId: userObjectId });
 
@@ -485,12 +436,6 @@ export const downgradeToStarter = async (
     };
 
     await userProfile.save();
-
-    console.log('✅ User downgraded successfully:', {
-      fromPlan: previousPlan,
-      toPlan: 'STARTER',
-      userId,
-    });
 
     const responseData = {
       success: true,
@@ -540,8 +485,6 @@ export const generatePDFReceipt = async (
       return next(new ApiError('Payment ID is required', 400));
     }
 
-    console.log('📄 Generating receipt for payment:', paymentId);
-
     const formatRupees = (amount: number): string => {
       return `₹${amount.toLocaleString('en-IN')}`;
     };
@@ -549,7 +492,7 @@ export const generatePDFReceipt = async (
     const userObjectId = new mongoose.Types.ObjectId(userId);
     let paymentRecord: any;
 
-    // ✅ Handle sample payment ID for testing
+    //  Handle sample payment ID for testing
     if (paymentId === 'sample_payment_id') {
       // Get user profile to create sample receipt with current plan
       const userProfile = await UserProfile.findOne({ userId: userObjectId });
@@ -568,9 +511,8 @@ export const generatePDFReceipt = async (
         status: 'completed',
         createdAt: userProfile?.plan?.upgradeDate || new Date(),
       };
-      console.log('📝 Using sample payment data for testing');
     } else {
-      // ✅ Get actual payment record from database
+      //  Get actual payment record from database
       paymentRecord = await PaymentHistory.findOne({
         _id: paymentId,
         userId: userObjectId, // Ensure user owns this payment
@@ -612,8 +554,8 @@ export const generatePDFReceipt = async (
     doc
       .fontSize(12)
       .text('FormIQ Technologies Pvt Ltd', 50, 150)
-      .text('123 Business Street', 50, 165)
-      .text('Ahmedabad, Gujarat 380001', 50, 180)
+      .text('123 Luxuria Business Hub', 50, 165)
+      .text('Surat, Gujarat 395007', 50, 180)
       .text('contact@formiq.com', 50, 195)
       .text('GST: 24XXXXX1234X1ZX', 50, 210);
 
@@ -705,8 +647,6 @@ export const generatePDFReceipt = async (
 
     // Finalize PDF
     doc.end();
-
-    console.log('✅ Receipt generated successfully for payment:', paymentId);
   } catch (error: any) {
     console.error('❌ Receipt generation error:', error);
     next(new ApiError(error.message || 'Failed to generate receipt', 500));

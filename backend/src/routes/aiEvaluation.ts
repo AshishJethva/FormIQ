@@ -51,12 +51,6 @@ const validateFormForEvaluation = (
       };
     }
 
-    console.log(' Form validation passed:', {
-      pagesCount: form.pages.length,
-      totalFields,
-      hasEvaluableFields,
-    });
-
     return { isValid: true };
   } catch (error: any) {
     console.error('❌ Form validation error:', error);
@@ -98,12 +92,6 @@ const validateSubmissionForEvaluation = (
       };
     }
 
-    console.log(' Submission validation passed:', {
-      fieldCount,
-      hasValidContent,
-      sampleFields: Object.keys(submission.data).slice(0, 3),
-    });
-
     return { isValid: true };
   } catch (error: any) {
     console.error('❌ Submission validation error:', error);
@@ -124,11 +112,6 @@ router.post(
     const { submissionId } = req.params;
     const startTime = Date.now();
 
-    console.log(
-      '🤖 Starting enhanced AI evaluation for submission:',
-      submissionId
-    );
-
     try {
       // Step 1: Validate submission ID format
       if (!mongoose.Types.ObjectId.isValid(submissionId)) {
@@ -140,14 +123,6 @@ router.post(
       if (!submission) {
         throw new ApiError('Submission not found', 404);
       }
-
-      console.log('📋 Found submission:', {
-        submissionId,
-        formId: submission.formId,
-        dataFields: Object.keys(submission.data || {}).length,
-        hasFiles: !!(submission.files && submission.files.length > 0),
-        submittedAt: submission.submittedAt,
-      });
 
       // Step 3: Validate submission data
       const submissionValidation = validateSubmissionForEvaluation(submission);
@@ -161,17 +136,6 @@ router.post(
         throw new ApiError('Form not found for this submission', 404);
       }
 
-      console.log('📋 Found form:', {
-        formId: form._id,
-        title: form.title,
-        pagesCount: form.pages?.length || 0,
-        totalFields:
-          form.pages?.reduce(
-            (sum, page) => sum + (page.fields?.length || 0),
-            0
-          ) || 0,
-      });
-
       // Step 5: Validate form structure
       const formValidation = validateFormForEvaluation(form);
       if (!formValidation.isValid) {
@@ -182,8 +146,6 @@ router.post(
       if (form.userId.toString() !== req.user.id) {
         throw new ApiError('Not authorized to evaluate this submission', 403);
       }
-
-      console.log(' All validations passed, starting AI evaluation');
 
       // Step 7: Perform enhanced AI evaluation with error recovery
       let evaluation;
@@ -210,19 +172,6 @@ router.post(
       }
 
       const evaluationTime = Date.now() - startTime;
-
-      console.log('🎉 AI evaluation completed:', {
-        submissionId,
-        formType: evaluation.formType,
-        sentiment: evaluation.sentiment,
-        status: evaluation.status,
-        evaluationTime: `${evaluationTime}ms`,
-        hasSpecificResults: !!(
-          evaluation.quizResults ||
-          evaluation.surveyResults ||
-          evaluation.feedbackResults
-        ),
-      });
 
       // Step 8: Return evaluation results with detailed metadata
       res.json({
@@ -287,12 +236,6 @@ router.post(
   asyncHandler(async (req, res) => {
     const { formId, submissionIds } = req.body;
     const startTime = Date.now();
-
-    console.log(' Starting enhanced batch AI evaluation:', {
-      formId,
-      submissionCount: submissionIds?.length || 0,
-      userId: req.user.id,
-    });
 
     try {
       // Step 1: Validate request parameters
@@ -364,12 +307,6 @@ router.post(
         );
       }
 
-      console.log(' Batch validation passed, processing evaluations:', {
-        formId,
-        formTitle: form.title,
-        submissionCount: submissions.length,
-      });
-
       // Step 7: Process evaluations with enhanced error handling
       const evaluations = [];
       const errors = [];
@@ -381,14 +318,6 @@ router.post(
         const submissionStartTime = Date.now();
 
         try {
-          console.log(
-            `🔄 Processing submission ${i + 1}/${submissions.length}:`,
-            {
-              submissionId: submission._id,
-              dataFieldCount: Object.keys(submission.data || {}).length,
-            }
-          );
-
           // Validate individual submission
           const submissionValidation =
             validateSubmissionForEvaluation(submission);
@@ -432,11 +361,6 @@ router.post(
           }
 
           const submissionTime = Date.now() - submissionStartTime;
-          console.log(` Submission ${i + 1} processed:`, {
-            submissionId: submission._id,
-            status: evaluation.status,
-            time: `${submissionTime}ms`,
-          });
 
           evaluations.push(evaluation);
         } catch (error: any) {
@@ -474,15 +398,6 @@ router.post(
       }
 
       const totalTime = Date.now() - startTime;
-
-      console.log('🎉 Enhanced batch evaluation completed:', {
-        formId,
-        totalSubmissions: submissions.length,
-        successful: successCount,
-        failed: failureCount,
-        totalTime: `${totalTime}ms`,
-        avgTimePerSubmission: `${Math.round(totalTime / submissions.length)}ms`,
-      });
 
       // Step 8: Return results with detailed metadata
       res.json({
@@ -689,8 +604,6 @@ router.post(
           400
         );
       }
-
-      console.log('🧪 Testing AI evaluation with sample data');
 
       const testSubmissionId = 'test_' + Date.now();
 

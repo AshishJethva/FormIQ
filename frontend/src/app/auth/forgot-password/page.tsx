@@ -1,7 +1,7 @@
 // src/app/auth/forgot-password/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,13 +16,6 @@ export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState('');
-
-  // Override any auth-based redirects for this specific page
-  useEffect(() => {
-    // This page should be accessible regardless of authentication status
-    // The usePasswordResetAccess hook handles the technical implementation
-    console.log('Forgot password page loaded - auth redirects disabled');
-  }, []);
 
   const {
     register,

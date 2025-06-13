@@ -234,8 +234,6 @@ const useAutoSave = (
         if (onSaveSuccess) {
           onSaveSuccess(response.data);
         }
-
-        console.log(' Form auto-saved successfully');
       } catch (error: any) {
         const errorMessage =
           error.response?.data?.message ||

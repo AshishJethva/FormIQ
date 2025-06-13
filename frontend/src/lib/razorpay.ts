@@ -11,7 +11,6 @@ export const loadRazorpayScript = (): Promise<boolean> => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.onload = () => {
-      console.log(' Razorpay script loaded successfully');
       resolve(true);
     };
     script.onerror = error => {

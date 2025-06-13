@@ -1,70 +1,3 @@
-// // src/components/form-builder/canvas/DropZone.tsx
-// import { useState } from 'react';
-// import { motion, AnimatePresence } from 'framer-motion';
-// import { useDrop } from 'react-dnd';
-// import { ItemTypes } from '@/types/dragTypes';
-// import { FieldType } from '@/types/form';
-
-// interface DropZoneProps {
-//   index: number;
-//   pageId: string;
-//   onDrop: (type: FieldType, index: number, pageId: string) => void;
-// }
-
-// export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
-//   const [isHovering, setIsHovering] = useState(false);
-
-//   const [{ isOver, canDrop }, drop] = useDrop(() => ({
-//     accept: ItemTypes.FORM_ELEMENT,
-//     canDrop: () => true, // Explicitly define canDrop function
-//     drop: (item: { fieldType: FieldType }) => {
-//       onDrop(item.fieldType, index, pageId);
-//       return { handled: true };
-//     },
-//     collect: monitor => ({
-//       isOver: !!monitor.isOver(),
-//       canDrop: !!monitor.canDrop(),
-//     }),
-//   }));
-
-//   const isActive = isOver && canDrop;
-
-//   return (
-//     <div
-//       ref={drop as any}
-//       className={`mx-4 transition-all duration-200 relative
-//         ${isActive ? 'py-8' : 'py-0'}
-//       `}
-//       onMouseEnter={() => setIsHovering(true)}
-//       onMouseLeave={() => setIsHovering(false)}
-//     >
-//       <AnimatePresence>
-//         {(isHovering || isActive) && (
-//           <motion.div
-//             initial={{ opacity: 0, height: 0 }}
-//             animate={{
-//               opacity: isActive ? 1 : 0.5,
-//               height: isActive ? 40 : 20,
-//             }}
-//             exit={{ opacity: 0, height: 0 }}
-//             className={`w-full bg-blue-50 border-2 border-dashed rounded-md flex items-center justify-center
-//               ${isActive ? 'border-blue-400' : 'border-blue-200'}
-//             `}
-//           >
-//             <span
-//               className={`text-sm ${
-//                 isActive ? 'text-blue-500' : 'text-blue-400'
-//               }`}
-//             >
-//               {isActive ? 'Drop here' : 'Drop zone'}
-//             </span>
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-//     </div>
-//   );
-// }
-
 // src/components/form-builder/canvas/DropZone.tsx
 'use client';
 
@@ -88,12 +21,6 @@ export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
       drop: (item: { fieldType: FieldType }, monitor) => {
         // Only handle the drop if no child component handled it
         if (!monitor.didDrop()) {
-          console.log('🎯 DropZone handling drop:', {
-            fieldType: item.fieldType,
-            index,
-            pageId,
-          });
-
           onDrop(item.fieldType, index, pageId);
         }
         return undefined;

@@ -2,14 +2,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { setFormTitle } from '@/redux/slices/formBuilder/formBuilderSlice';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import LOGO from '@/../public/Logo.png';
 import Link from 'next/link';
 import ProfileDropdown from '@/components/dashboard/ProfileDropdown';
-import { RootState } from '@/redux/store';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatTime } from '@/lib/utils';
@@ -26,21 +25,6 @@ interface FormBuilderHeaderProps {
   onManualSave?: () => void;
 }
 
-interface User {
-  name?: string;
-  profileImage?: string | null;
-  subscription?: {
-    plan?: string;
-  };
-  formsUsed?: number;
-  formsTotal?: number;
-}
-
-interface UserState {
-  user: User | null;
-  token: string | null;
-}
-
 export default function FormBuilderHeader({
   title,
   lastSaved,
@@ -55,7 +39,7 @@ export default function FormBuilderHeader({
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
 
-  const { user } = useSelector((state: RootState) => state.user as UserState);
+  // const { user } = useSelector((state: RootState) => state.user as UserState);
 
   //  : Update titleValue when title prop changes
   useEffect(() => {
@@ -76,12 +60,6 @@ export default function FormBuilderHeader({
         throw new Error('Authentication token not found');
       }
 
-      console.log('💾 Saving title from header:', {
-        formId,
-        oldTitle: title,
-        newTitle: newTitle.trim(),
-      });
-
       // Update title in backend
       await axios.put(
         `${apiConfig.url}/forms/${formId}`,
@@ -98,7 +76,6 @@ export default function FormBuilderHeader({
       dispatch(setFormTitle(newTitle.trim()));
 
       toast.success('Form title updated successfully');
-      console.log(' Title updated successfully from header');
     } catch (error: any) {
       let errorMessage = 'Failed to update title';
 
@@ -116,7 +93,7 @@ export default function FormBuilderHeader({
 
       setTitleError(errorMessage);
       toast.error(errorMessage);
-      console.error('❌ Failed to update title from header:', error);
+      console.error('Failed to update title from header:', error);
 
       // Reset title to original value on error
       setTitleValue(title);
@@ -244,7 +221,7 @@ export default function FormBuilderHeader({
       {/* Left Side - Logo and Form Builder Text */}
       <div className='flex items-center space-x-4'>
         <Link href='/dashboard' className='flex items-center cursor-pointer'>
-          <Image src={LOGO} alt='LOGO' width={33} height={33} />
+          <Image src={LOGO} alt='LOGO' width={33} height={33} priority />
           <span className='ml-4 text-3xl font-bold text-gray-900 '>FormIQ</span>
         </Link>
 
@@ -320,13 +297,7 @@ export default function FormBuilderHeader({
 
       {/* Right Side - Action Buttons */}
       <div className='flex items-center space-x-2'>
-        <ProfileDropdown
-          userName={user?.name || 'User'}
-          userImage={user?.profileImage || null}
-          planType={user?.subscription?.plan || 'STARTER'}
-          formsUsed={user?.formsUsed || 0}
-          formsTotal={user?.formsTotal || 5}
-        />
+        <ProfileDropdown />
       </div>
     </header>
   );

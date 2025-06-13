@@ -65,14 +65,6 @@ export default function FileUploadField({
   }, [value]);
 
   const validateFile = (file: File): { isValid: boolean; error?: string } => {
-    console.log('🔍 Validating file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      accept,
-      fieldType,
-    });
-
     // Check file size first
     const maxSize = fieldType === 'image' ? 10 * 1024 * 1024 : 25 * 1024 * 1024;
     if (file.size > maxSize) {
@@ -122,7 +114,6 @@ export default function FileUploadField({
       };
     }
 
-    console.log(' File validation passed');
     return { isValid: true };
   };
 
@@ -160,8 +151,6 @@ export default function FileUploadField({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    console.log('📁 Files selected:', files.length);
-
     // Check file count limits
     if (!multiple && files.length > 1) {
       toast.error('Only one file is allowed');
@@ -195,7 +184,6 @@ export default function FileUploadField({
 
       // Upload valid files
       const uploadPromises = validFiles.map(file => {
-        console.log(`📤 Uploading: ${file.name}`);
         return fieldType === 'image'
           ? uploadFormImage(file, fieldId, formId)
           : uploadFormFile(file, fieldId, formId);

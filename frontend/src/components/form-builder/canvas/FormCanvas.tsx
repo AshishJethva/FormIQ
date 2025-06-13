@@ -60,7 +60,6 @@ export default function FormCanvas() {
   // Load form data on mount if not already loaded
   useEffect(() => {
     if (formId && !form && !isLoading) {
-      console.log('FormCanvas: Loading form data for ID:', formId);
       dispatch(loadFormAsync(formId));
     }
   }, [dispatch, formId, form, isLoading]);
@@ -73,12 +72,6 @@ export default function FormCanvas() {
 
       // Only update if the selectedPageId doesn't match the current page
       if (currentPage && form.selectedPageId !== currentPage.id) {
-        console.log('🔄 Syncing selectedPageId with current page:', {
-          currentPageIndex,
-          currentPageId: currentPage.id,
-          previousSelectedPageId: form.selectedPageId,
-        });
-
         dispatch(setSelectedPageId(currentPage.id));
       }
     }
@@ -170,19 +163,11 @@ export default function FormCanvas() {
 
     // Ensure page index is within valid range
     if (pageIndex >= 0 && pageIndex <= form.pages.length) {
-      console.log('🧭 Navigating to page:', {
-        targetPageIndex: pageIndex,
-        currentPageIndex: form.currentPageIndex,
-        totalPages: form.pages.length,
-      });
-
-      // Update form's currentPageIndex
       dispatch(setCurrentPageIndex(pageIndex));
 
       // If navigating to a valid page (not thank you page), update selectedPageId
       if (pageIndex < form.pages.length && form.pages[pageIndex]) {
         const targetPage = form.pages[pageIndex];
-        console.log('🎯 Setting selectedPageId to:', targetPage.id);
         dispatch(setSelectedPageId(targetPage.id));
       }
     }
@@ -215,12 +200,6 @@ export default function FormCanvas() {
       canDrop: () => !!currentPage, // Only allow drop if we have a current page
       drop: (item: { fieldType: FieldType }, monitor) => {
         if (!monitor.didDrop() && currentPage) {
-          console.log('🎯 Dropping field on current page:', {
-            fieldType: item.fieldType,
-            currentPageId: currentPage.id,
-            currentPageIndex: form?.currentPageIndex,
-          });
-
           // Add field to the END of the current page
           dispatch(
             addFieldAtIndex({
@@ -404,18 +383,11 @@ export default function FormCanvas() {
     index: number,
     pageId: string
   ) => {
-    console.log('🎯 Adding field at index:', {
-      type,
-      index,
-      pageId,
-      currentPageId: currentPage?.id,
-    });
-
     dispatch(
       addFieldAtIndex({
         type,
         index,
-        pageId, // Use the specific pageId passed from DropZone
+        pageId,
       })
     );
     toast.success(`Added new ${type.replace(/_/g, ' ').toLowerCase()} field`);

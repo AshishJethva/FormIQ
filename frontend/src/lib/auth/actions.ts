@@ -78,8 +78,6 @@ export const verifyOtp = async (
       user_id: user_id,
     });
 
-    console.log('Response: function', response);
-
     if (response.status === 200) {
       return response.data;
     }

@@ -113,7 +113,6 @@ export const submissionsService = {
       const url = `/submissions/form/${formId}${
         params.toString() ? `?${params.toString()}` : ''
       }`;
-      console.log('📡 Fetching submissions from:', url);
 
       const response = await api.get(url);
       return response.data;
@@ -228,16 +227,10 @@ export const submissionsService = {
     details?: any;
   }> {
     try {
-      console.log(
-        '🗑️ Starting comprehensive submission deletion:',
-        submissionId
-      );
-
       const response = await api.delete(`/submissions/${submissionId}`, {
         timeout: 60000, // 1 minute timeout
       });
 
-      console.log(' Submission deletion completed:', response.data.details);
       return response.data;
     } catch (error: any) {
       console.error('❌ Submission deletion failed:', error);
@@ -256,19 +249,12 @@ export const submissionsService = {
     filePublicId: string
   ): Promise<FileOperationResult> {
     try {
-      console.log('🗑️ Deleting file from submission:', {
-        submissionId,
-        fieldId,
-        filePublicId,
-      });
-
       const response = await api.delete(
         `/submissions/${submissionId}/files/${fieldId}/${encodeURIComponent(
           filePublicId
         )}`
       );
 
-      console.log(' File deleted from submission successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error deleting file from submission:', error);
@@ -290,11 +276,8 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('📁 Getting files from submission:', submissionId);
-
       const response = await api.get(`/submissions/${submissionId}/files`);
 
-      console.log(' Submission files retrieved successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error getting submission files:', error);
@@ -312,11 +295,6 @@ export const submissionsService = {
     fieldIds?: string[]
   ): Promise<Blob> {
     try {
-      console.log('📥 Downloading submission files as ZIP:', {
-        submissionId,
-        fieldIds,
-      });
-
       const params = new URLSearchParams();
       if (fieldIds && fieldIds.length > 0) {
         fieldIds.forEach(fieldId => params.append('fieldIds', fieldId));
@@ -331,7 +309,6 @@ export const submissionsService = {
         }
       );
 
-      console.log(' Submission files ZIP downloaded successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error downloading submission files:', error);
@@ -355,11 +332,8 @@ export const submissionsService = {
     }>;
   }> {
     try {
-      console.log('🔄 Performing bulk file operation:', operation);
-
       const response = await api.post('/submissions/files/bulk', operation);
 
-      console.log(' Bulk file operation completed successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error performing bulk file operation:', error);
@@ -407,14 +381,6 @@ export const submissionsService = {
     }
   ): Promise<Blob> {
     try {
-      console.log('📊 Starting CSV export request:', {
-        formId,
-        dateFrom,
-        dateTo,
-        includeFiles,
-        additionalFilters,
-      });
-
       const params = new URLSearchParams();
       params.append('format', 'csv');
 
@@ -437,7 +403,6 @@ export const submissionsService = {
       }
 
       const exportUrl = `/submissions/form/${formId}/export?${params.toString()}`;
-      console.log('📡 Making CSV export request to:', exportUrl);
 
       const response = await api.get(exportUrl, {
         responseType: 'blob',
@@ -445,12 +410,6 @@ export const submissionsService = {
         headers: {
           Accept: 'text/csv',
         },
-      });
-
-      console.log(' CSV export response received:', {
-        size: response.data.size,
-        type: response.data.type,
-        headers: response.headers,
       });
 
       // Validate response
@@ -544,8 +503,6 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('👀 Getting export preview for form:', formId);
-
       const response = await api.get(
         `/submissions/form/${formId}/export-preview`,
         {
@@ -577,8 +534,6 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('📊 Getting export statistics for form:', formId);
-
       const response = await api.get(
         `/submissions/form/${formId}/export-stats`
       );
@@ -609,8 +564,6 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log(' Validating export request for form:', formId);
-
       const response = await api.post(
         `/submissions/form/${formId}/validate-export`,
         {
@@ -651,8 +604,6 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('📊 Getting submission analytics for form:', formId);
-
       const params = new URLSearchParams();
       if (dateFrom) params.append('dateFrom', dateFrom);
       if (dateTo) params.append('dateTo', dateTo);
@@ -663,7 +614,6 @@ export const submissionsService = {
         }`
       );
 
-      console.log(' Submission analytics retrieved successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error getting submission analytics:', error);
@@ -689,12 +639,6 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('🔍 Searching file content:', {
-        formId,
-        searchQuery,
-        fileTypes,
-      });
-
       const params = new URLSearchParams();
       params.append('q', searchQuery);
       if (fileTypes && fileTypes.length > 0) {
@@ -705,7 +649,6 @@ export const submissionsService = {
         `/submissions/form/${formId}/search/files?${params.toString()}`
       );
 
-      console.log(' File content search completed successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error searching file content:', error);
@@ -737,11 +680,6 @@ export const submissionsService = {
     };
   }> {
     try {
-      console.log('📋 Getting file access logs:', {
-        submissionId,
-        filePublicId,
-      });
-
       const params = new URLSearchParams();
       if (filePublicId) params.append('filePublicId', filePublicId);
 
@@ -751,7 +689,6 @@ export const submissionsService = {
         }`
       );
 
-      console.log(' File access logs retrieved successfully');
       return response.data;
     } catch (error: any) {
       console.error('❌ Error getting file access logs:', error);

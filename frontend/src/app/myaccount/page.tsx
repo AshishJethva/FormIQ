@@ -609,6 +609,7 @@ export default function AccountPage() {
                         alt='Avatar Preview'
                         width={64}
                         height={64}
+                        priority
                         className='rounded-full object-cover w-16 h-16'
                       />
                     ) : userProfile.profile.avatar?.src &&
@@ -618,6 +619,7 @@ export default function AccountPage() {
                         alt='User Avatar'
                         width={64}
                         height={64}
+                        priority
                         className='rounded-full object-cover w-16 h-16'
                       />
                     ) : (

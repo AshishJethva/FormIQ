@@ -51,16 +51,8 @@ const logoUpload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB max for logos
   },
   fileFilter: (req, file, cb) => {
-    console.log('🔍 Logo file filter:', {
-      fieldname: file.fieldname,
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size,
-    });
-
     // Check if it's an image
     if (!file.mimetype.startsWith('image/')) {
-      console.log('❌ Invalid file type:', file.mimetype);
       return cb(new Error('Only image files are allowed for logos'));
     }
 
@@ -75,11 +67,9 @@ const logoUpload = multer({
     ];
 
     if (!allowedFormats.includes(file.mimetype)) {
-      console.log('❌ Unsupported format:', file.mimetype);
       return cb(new Error('Supported formats: JPG, PNG, GIF, WebP, SVG'));
     }
 
-    console.log(' Logo file validation passed');
     cb(null, true);
   },
 });
@@ -109,14 +99,6 @@ router.post(
     }
 
     try {
-      console.log('📎 Uploading file:', {
-        formId,
-        fieldId,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimeType: req.file.mimetype,
-      });
-
       const uploadResult = await uploadFormFile(
         req.file.buffer,
         req.file.originalname,
@@ -124,8 +106,6 @@ router.post(
         fieldId,
         formId
       );
-
-      console.log(' File uploaded successfully:', uploadResult.url);
 
       res.status(200).json({
         success: true,
@@ -167,13 +147,6 @@ router.post(
     }
 
     try {
-      console.log('📎 Uploading multiple files:', {
-        formId,
-        fieldId,
-        fileCount: files.length,
-        totalSize: files.reduce((sum, file) => sum + file.size, 0),
-      });
-
       const fileData = files.map(file => ({
         buffer: file.buffer,
         originalName: file.originalname,
@@ -184,11 +157,6 @@ router.post(
         fileData,
         fieldId,
         formId
-      );
-
-      console.log(
-        ' Multiple files uploaded successfully:',
-        uploadResults.length
       );
 
       res.status(200).json({
@@ -211,17 +179,8 @@ router.post(
   logoUpload.single('logo'),
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log('📎 Logo upload request received:', {
-        hasFile: !!req.file,
-        fieldname: req.file?.fieldname,
-        originalname: req.file?.originalname,
-        mimetype: req.file?.mimetype,
-        size: req.file?.size,
-      });
-
       // Check if file was uploaded
       if (!req.file) {
-        console.log('❌ No file uploaded');
         res.status(400).json({
           success: false,
           error: 'No logo file uploaded',
@@ -231,19 +190,12 @@ router.post(
 
       // Validate file size
       if (req.file.size > 5 * 1024 * 1024) {
-        console.log('❌ File too large:', req.file.size);
         res.status(400).json({
           success: false,
           error: 'Logo file size must be less than 5MB',
         });
         return;
       }
-
-      console.log(' Logo uploaded successfully:', {
-        url: req.file.path,
-        publicId: req.file.filename,
-        size: req.file.size,
-      });
 
       // Return the Cloudinary URL and other info
       res.status(200).json({
@@ -304,14 +256,6 @@ router.post(
     }
 
     try {
-      console.log('🖼️ Uploading image:', {
-        formId,
-        fieldId,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimeType: req.file.mimetype,
-      });
-
       const uploadResult = await uploadFormFile(
         req.file.buffer,
         req.file.originalname,
@@ -319,8 +263,6 @@ router.post(
         fieldId,
         formId
       );
-
-      console.log(' Image uploaded successfully:', uploadResult.url);
 
       res.status(200).json({
         success: true,
@@ -359,13 +301,6 @@ router.post(
     }
 
     try {
-      console.log('📎 Uploading preview file:', {
-        fieldId,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimeType: req.file.mimetype,
-      });
-
       const uploadResult = await uploadFormFile(
         req.file.buffer,
         req.file.originalname,
@@ -373,8 +308,6 @@ router.post(
         fieldId,
         'preview' // Use 'preview' as formId
       );
-
-      console.log(' Preview file uploaded successfully:', uploadResult.url);
 
       res.status(200).json({
         success: true,
@@ -429,13 +362,6 @@ router.post(
     }
 
     try {
-      console.log('🖼️ Uploading preview image:', {
-        fieldId,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimeType: req.file.mimetype,
-      });
-
       const uploadResult = await uploadFormFile(
         req.file.buffer,
         req.file.originalname,
@@ -443,8 +369,6 @@ router.post(
         fieldId,
         'preview' // Use 'preview' as formId
       );
-
-      console.log(' Preview image uploaded successfully:', uploadResult.url);
 
       res.status(200).json({
         success: true,
@@ -510,15 +434,12 @@ router.delete(
     const { resourceType = 'raw' } = req.query;
 
     try {
-      console.log('🗑️ Deleting file:', publicId);
-
       const result = await deleteFormFile(
         publicId,
         resourceType as 'image' | 'video' | 'raw'
       );
 
       if (result.result === 'ok') {
-        console.log(' File deleted successfully');
         res.status(200).json({
           success: true,
           message: 'File deleted successfully',

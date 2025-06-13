@@ -12,13 +12,6 @@ export const validateFileType = (
   acceptAttribute?: string,
   fieldType?: 'image' | 'fileUpload'
 ): FileValidationResult => {
-  console.log('🔍 Validating file:', {
-    fileName: file.name,
-    mimeType: file.type,
-    acceptAttribute,
-    fieldType,
-  });
-
   // Handle empty, undefined, or wildcard accept attributes
   if (
     !acceptAttribute ||
@@ -28,8 +21,6 @@ export const validateFileType = (
     acceptAttribute === 'undefined' ||
     acceptAttribute === 'null'
   ) {
-    console.log(' No restrictions or wildcard - file accepted');
-
     // Still check for dangerous file types
     if (isDangerousFileType(file)) {
       return {
@@ -44,7 +35,6 @@ export const validateFileType = (
   // For image fields, validate it's actually an image
   if (fieldType === 'image') {
     if (!file.type.startsWith('image/')) {
-      console.log('❌ Image field requires image file, got:', file.type);
       return {
         isValid: false,
         error: 'Only image files are allowed',
@@ -53,7 +43,6 @@ export const validateFileType = (
 
     // If accept is just "image/*", allow all images
     if (acceptAttribute === 'image/*') {
-      console.log(' Image field accepts all images');
       return { isValid: true };
     }
   }
@@ -64,23 +53,12 @@ export const validateFileType = (
     .map(type => type.trim().toLowerCase())
     .filter(type => type.length > 0);
 
-  console.log('📋 Parsed allowed types:', allowedTypes);
-
   // Check each allowed type
   for (const allowedType of allowedTypes) {
-    console.log(`🔍 Checking against: "${allowedType}"`);
-
     if (checkTypeMatch(allowedType, file)) {
-      console.log(` File matches type: ${allowedType}`);
       return { isValid: true };
     }
   }
-
-  console.log('❌ File type not allowed:', {
-    fileType: file.type,
-    fileName: file.name,
-    allowedTypes,
-  });
 
   return {
     isValid: false,
@@ -310,13 +288,6 @@ export const validateFile = (
     existingFileCount = 0,
   } = options;
 
-  console.log('🔍 Complete file validation:', {
-    fileName: file.name,
-    size: file.size,
-    type: file.type,
-    options,
-  });
-
   // Validate file count
   if (!multiple && existingFileCount >= 1) {
     return {
@@ -344,7 +315,6 @@ export const validateFile = (
     return typeResult;
   }
 
-  console.log(' File validation passed:', file.name);
   return { isValid: true };
 };
 

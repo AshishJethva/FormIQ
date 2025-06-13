@@ -91,6 +91,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
                 alt={userData.name}
                 width={64}
                 height={64}
+                priority
                 className='rounded-sm mr-2'
               />
             ) : (
@@ -139,6 +140,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
               width={20}
               height={20}
               className='ml-2'
+              priority
             />
           </div>
         }

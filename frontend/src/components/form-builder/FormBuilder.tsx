@@ -63,10 +63,9 @@ export default function FormBuilder() {
       enableToast: false,
       retryAttempts: 3,
       forceUpdatePublished: isPublishedForm,
-      onSaveSuccess: data => {
-        console.log(' Auto-save successful:', data);
+      onSaveSuccess: () => {
         if (isPublishedForm) {
-          console.log('🌐 Published form updated - changes are live!');
+          console.log('Published form updated - changes are live!');
         }
       },
       onSaveError: error => {
@@ -78,7 +77,6 @@ export default function FormBuilder() {
   useEffect(() => {
     const handleHashChange = () => {
       const isPreviewFromHash = window.location.hash === '#preview';
-      console.log('🔄 Hash changed, preview mode:', isPreviewFromHash);
 
       if (isPreviewFromHash !== isPreviewEnabled) {
         dispatch(setPreviewMode(isPreviewFromHash));
@@ -104,7 +102,6 @@ export default function FormBuilder() {
         pathname.includes('/publish') ||
         pathname.includes('/submissions'))
     ) {
-      console.log('📴 Disabling preview mode due to navigation');
       dispatch(setPreviewMode(false));
       window.location.hash = '';
     }
@@ -114,37 +111,23 @@ export default function FormBuilder() {
     const loadForm = async () => {
       if (formId) {
         try {
-          console.log('🔄 Loading form with ID:', formId);
-
-          // Clear any existing errors
           dispatch(clearError());
 
-          // Load form from backend
           const result = await dispatch(loadFormAsync(formId));
 
           if (loadFormAsync.fulfilled.match(result)) {
-            console.log(' Form loaded successfully:', {
-              title: result.payload.title,
-              pageCount: result.payload.pages?.length || 0,
-              fieldsCount:
-                result.payload.pages?.reduce(
-                  (total: number, page: any) =>
-                    total + (page.fields?.length || 0),
-                  0
-                ) || 0,
-            });
+            console.log('Form loaded successfully');
           } else if (loadFormAsync.rejected.match(result)) {
             console.error('❌ Form loading failed:', result.payload);
-            // If loading fails, try to initialize a new form
+
             dispatch(initializeForm());
           }
         } catch (error) {
           console.error('❌ Form loading error:', error);
-          // If loading fails, initialize a new form
+
           dispatch(initializeForm());
         }
       } else {
-        console.log('🆕 No formId provided, initializing new form');
         dispatch(initializeForm());
       }
     };
@@ -165,11 +148,6 @@ export default function FormBuilder() {
   }, [currentPage, isPreviewEnabled, dispatch]);
 
   const handlePreviewToggle = (enabled: boolean) => {
-    console.log('🔄 Preview toggle requested:', {
-      enabled,
-      current: isPreviewEnabled,
-    });
-
     dispatch(setPreviewMode(enabled));
 
     if (enabled) {
@@ -242,7 +220,6 @@ export default function FormBuilder() {
   }
 
   if (!formState.form) {
-    console.log('⚠️ No form data available, showing fallback');
     return (
       <div className='flex items-center justify-center h-screen bg-gray-100'>
         <div className='text-center'>

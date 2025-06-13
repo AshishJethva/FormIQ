@@ -65,9 +65,6 @@ const mapSortOptionToBackend = (
 
 export const formsService = {
   async getForms(filters: FormFilters = {}) {
-    // Log the incoming filters
-    console.log(' formsService.getForms called with filters:', filters);
-
     // Map frontend sort option to backend format
     let sortBy = filters.sortBy;
     let sortOrder = filters.sortOrder;
@@ -140,9 +137,8 @@ export const formsService = {
 
   async getForm(id: string) {
     try {
-      console.log('📋 Fetching form structure for ID:', id);
       const response = await api.get(`/forms/${id}`);
-      console.log(' Form structure fetched successfully');
+
       return response.data;
     } catch (error: any) {
       console.error('❌ Error fetching form structure:', error);
@@ -206,16 +202,10 @@ export const formsService = {
 
   async deleteForm(id: string) {
     try {
-      console.log('🗑️ Starting comprehensive form deletion:', id);
-
       const response = await api.delete(`/forms/${id}`, {
         timeout: 120000, // 2 minute timeout for large deletions
       });
 
-      // Show detailed success message
-      const details = response.data.details;
-
-      console.log(' Form deletion completed:', details);
       return response.data;
     } catch (error: any) {
       console.error('❌ Form deletion failed:', error);
@@ -241,12 +231,11 @@ export const formsService = {
 
   async bulkAddLabel(formIds: string[], labelId: string) {
     try {
-      console.log('Bulk adding label:', labelId, 'to forms:', formIds);
       const response = await api.patch('/forms/bulk/add-label', {
         formIds,
         labelId,
       });
-      console.log('Bulk add label response:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('Error bulk adding label:', error);
@@ -260,12 +249,11 @@ export const formsService = {
 
   async bulkRemoveLabel(formIds: string[], labelId: string) {
     try {
-      console.log('Bulk removing label:', labelId, 'from forms:', formIds);
       const response = await api.patch('/forms/bulk/remove-label', {
         formIds,
         labelId,
       });
-      console.log('Bulk remove label response:', response.data);
+
       return response.data;
     } catch (error: any) {
       console.error('Error bulk removing label:', error);

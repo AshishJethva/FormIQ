@@ -80,11 +80,6 @@ export default function MainNavigation({
     setIsPublishing(true);
 
     try {
-      console.log(' Publishing form for preview:', {
-        formId,
-        currentStatus: form?.isPublished,
-      });
-
       // Publish the form (set to true)
       await dispatch(
         publishFormAsync({
@@ -93,7 +88,6 @@ export default function MainNavigation({
         })
       ).unwrap();
 
-      console.log(' Form published successfully for preview');
       toast.success('Form published and preview enabled!');
 
       return true;
@@ -148,7 +142,6 @@ export default function MainNavigation({
       try {
         // Check if form is already published
         if (!form?.isPublished) {
-          console.log('📝 Form not published, auto-publishing for preview...');
           const publishSuccess = await handlePublishForm();
 
           if (!publishSuccess) {
@@ -167,8 +160,6 @@ export default function MainNavigation({
 
         // Update URL hash for preview state
         window.location.hash = '#preview';
-
-        console.log(' Preview mode enabled successfully');
       } catch (error) {
         console.error('❌ Error enabling preview mode:', error);
         toast.error('Failed to enable preview mode');
@@ -185,8 +176,6 @@ export default function MainNavigation({
 
       // Clear URL hash
       window.location.hash = '';
-
-      console.log('📴 Preview mode disabled');
     }
   };
 

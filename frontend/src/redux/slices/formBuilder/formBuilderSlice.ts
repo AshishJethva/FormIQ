@@ -75,15 +75,12 @@ export const loadFormAsync = createAsyncThunk(
         throw new Error('No authentication token found');
       }
 
-      console.log('Loading form from backend:', formId);
-
       const response = await axios.get(`${apiConfig.url}/forms/${formId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log('Form loaded successfully:', response.data.data);
       return response.data.data;
     } catch (error: any) {
       console.error('Failed to load form:', error);
@@ -130,12 +127,6 @@ export const saveFormAsync = createAsyncThunk(
         },
       };
 
-      console.log('Saving form to backend:', {
-        formId,
-        pageCount: saveData.pages.length,
-        title: saveData.title,
-      });
-
       const response = await axios.put(
         `${apiConfig.url}/forms/${formId}`,
         saveData,
@@ -147,7 +138,6 @@ export const saveFormAsync = createAsyncThunk(
         }
       );
 
-      console.log('Form saved successfully');
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -265,7 +255,6 @@ const formBuilderSlice = createSlice({
     setSelectedPageId: (state, action: PayloadAction<string>) => {
       if (state.form) {
         state.form.selectedPageId = action.payload;
-        console.log('🎯 selectedPageId updated to:', action.payload);
       }
     },
 
@@ -665,13 +654,6 @@ const formBuilderSlice = createSlice({
 
       const { type, index, pageId } = action.payload;
 
-      console.log('🎯 Redux addFieldAtIndex:', {
-        type,
-        index,
-        pageId,
-        isHeading: type === FieldType.HEADING,
-      });
-
       const targetPageIndex = state.form.pages.findIndex(
         page => page.id === pageId
       );
@@ -774,14 +756,6 @@ const formBuilderSlice = createSlice({
 
       const insertIndex = Math.min(index, page.fields.length);
       page.fields.splice(insertIndex, 0, newField);
-
-      console.log(' Field added successfully:', {
-        fieldId: newId,
-        fieldType: type,
-        pageId,
-        insertIndex,
-        totalFieldsInPage: page.fields.length,
-      });
 
       state.form.selectedFieldId = newId;
       state.hasUnsavedChanges = true;
@@ -1101,10 +1075,6 @@ const formBuilderSlice = createSlice({
           const updatedData = action.payload;
           if (updatedData && updatedData.isPublished !== undefined) {
             state.form.isPublished = updatedData.isPublished;
-            console.log(
-              ' Form publish status updated:',
-              updatedData.isPublished
-            );
 
             if (updatedData.publishedAt) {
               state.form.updatedAt =

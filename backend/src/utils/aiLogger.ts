@@ -20,14 +20,14 @@ export class AILogger {
     };
 
     if (data.success) {
-      console.log(' AI Generation Success:', logEntry);
+      console.log('AI Generation Success:', logEntry);
     } else {
-      console.error('❌ AI Generation Failed:', logEntry);
+      console.error('AI Generation Failed:', logEntry);
     }
   }
 
   static logUsage(userId: string, action: string, metadata?: any) {
-    console.log('📊 AI Usage:', {
+    console.log('AI Usage:', {
       timestamp: new Date().toISOString(),
       userId,
       action,

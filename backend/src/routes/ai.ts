@@ -46,11 +46,7 @@ router.post(
         originalPromptLength: prompt.length,
       });
 
-      console.log('🤖 Starting AI form generation with logo:', {
-        userId,
-        promptLength: sanitizedPrompt.length,
-        timestamp: new Date().toISOString(),
-      });
+     
 
       const result = await aiService.generateForm(sanitizedPrompt, userId);
 
@@ -69,16 +65,7 @@ router.post(
 
       const formConfig = result.data;
 
-      console.log('AI generation successful, creating form in database:', {
-        title: formConfig.title,
-        hasLogo: !!formConfig.logo,
-        logoUrl: formConfig.logo?.src?.substring(0, 50) + '...',
-        logoSize: formConfig.logo?.size,
-        fieldCount: formConfig.pages.reduce(
-          (total: number, page: any) => total + (page.fields?.length || 0),
-          0
-        ),
-      });
+      
 
       const newForm = new Form({
         title: formConfig.title,
@@ -383,11 +370,7 @@ router.post(
         });
       }
 
-      console.log('🔄 Regenerating logo for form:', {
-        formId,
-        title: form.title,
-        currentLogo: !!form.logo,
-      });
+    
 
       // Generate new logo
       const logoResult = await aiService.generateFormLogoPublic(

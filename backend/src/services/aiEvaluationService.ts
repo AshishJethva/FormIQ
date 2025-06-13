@@ -79,7 +79,7 @@ class RateLimiter {
     if (this.requests.length >= this.maxRequests) {
       const oldestRequest = Math.min(...this.requests);
       const waitTime = this.timeWindow - (now - oldestRequest) + 2000;
-      console.log(`⏳ Rate limit reached, waiting ${waitTime}ms`);
+
       await new Promise(resolve => setTimeout(resolve, waitTime));
       return this.waitForSlot();
     }
@@ -114,11 +114,6 @@ export class AIEvaluationService {
       let quizIndicators = 0;
       let surveyIndicators = 0;
       let feedbackIndicators = 0;
-
-      console.log('🔍 Form type detection:', {
-        title: formTitle,
-        description: formDescription,
-      });
 
       const titleDescText = formTitle + ' ' + formDescription;
 
@@ -199,12 +194,6 @@ export class AIEvaluationService {
         });
       }
 
-      console.log('📊 Form type indicators:', {
-        quiz: quizIndicators,
-        survey: surveyIndicators,
-        feedback: feedbackIndicators,
-      });
-
       // Determine form type with enhanced logic
       if (quizIndicators >= 3) return 'quiz';
       if (surveyIndicators >= 3) return 'survey';
@@ -239,10 +228,6 @@ export class AIEvaluationService {
 
       await rateLimiter.waitForSlot();
 
-      console.log(
-        `🤖 Making AI request (attempt ${retryCount + 1}/${this.maxRetries + 1})`
-      );
-
       const model = this.genAI.getGenerativeModel({
         model: 'gemini-2.0-flash-lite', //  Updated model ID
         generationConfig: {
@@ -260,7 +245,6 @@ export class AIEvaluationService {
         throw new Error('Empty response from AI service');
       }
 
-      console.log(' AI request successful');
       return response;
     } catch (error: any) {
       console.error(
@@ -280,7 +264,7 @@ export class AIEvaluationService {
 
       if (shouldRetry) {
         const delay = this.retryDelay * Math.pow(2, retryCount);
-        console.log(`⏳ Retrying in ${delay}ms...`);
+
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.makeAIRequest(prompt, retryCount + 1);
       }
@@ -300,10 +284,6 @@ export class AIEvaluationService {
 
       await rateLimiter.waitForSlot();
 
-      console.log(
-        `🤖 Making complex AI request (attempt ${retryCount + 1}/${this.maxRetries + 1})`
-      );
-
       const model = this.genAI.getGenerativeModel({
         model: 'gemini-2.0-flash-lite', //  Pro model for complex tasks
         generationConfig: {
@@ -321,7 +301,6 @@ export class AIEvaluationService {
         throw new Error('Empty response from AI service');
       }
 
-      console.log(' Complex AI request successful');
       return response;
     } catch (error: any) {
       console.error(
@@ -340,14 +319,13 @@ export class AIEvaluationService {
 
       if (shouldRetry) {
         const delay = this.retryDelay * Math.pow(2, retryCount);
-        console.log(`⏳ Retrying complex request in ${delay}ms...`);
+
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.makeComplexAIRequest(prompt, retryCount + 1);
       }
 
       // Fallback to regular model if pro model fails
       if (retryCount === 0) {
-        console.log('🔄 Falling back to standard model...');
         return this.makeAIRequest(prompt, 0);
       }
 
@@ -360,8 +338,6 @@ export class AIEvaluationService {
     formStructure: any,
     submissionData: any
   ): Promise<QuizEvaluation> {
-    console.log('🎯 Starting enhanced quiz evaluation');
-
     try {
       const questions = [];
 
@@ -372,9 +348,6 @@ export class AIEvaluationService {
             page.fields.forEach((field: any, fieldIndex: number) => {
               try {
                 if (!field?.id || !field?.type || !field?.label) {
-                  console.log(
-                    `⚠️ Skipping invalid field at page ${pageIndex}, field ${fieldIndex}`
-                  );
                   return;
                 }
 
@@ -406,13 +379,6 @@ export class AIEvaluationService {
                         opt && typeof opt === 'object' && opt.label && opt.value
                     );
 
-                    console.log(`📋 Adding question: ${field.label}`, {
-                      id: field.id,
-                      hasOptions: fieldData.options.length > 0,
-                      hasCorrectAnswer: !!fieldData.correctAnswer,
-                      userResponse: submissionData[field.id],
-                    });
-
                     questions.push(fieldData);
                   }
                 }
@@ -426,8 +392,6 @@ export class AIEvaluationService {
           }
         });
       }
-
-      console.log(`🔍 Found ${questions.length} evaluable questions`);
 
       if (questions.length === 0) {
         console.warn('⚠️ No valid quiz questions found');
@@ -447,10 +411,6 @@ export class AIEvaluationService {
         const question = questions[i];
 
         try {
-          console.log(
-            `🤔 Processing question ${i + 1}/${questions.length}: ${question.label}`
-          );
-
           const userAnswer = submissionData[question.id];
           let isCorrect = false;
           let correctAnswer = 'Not specified';
@@ -468,14 +428,7 @@ export class AIEvaluationService {
             explanation = isCorrect
               ? ' Correct! Well done.'
               : `❌ Incorrect. The correct answer is "${correctAnswer}".`;
-
-            console.log(
-              `📊 Direct evaluation: ${isCorrect ? 'Correct' : 'Incorrect'}`
-            );
           } else {
-            // AI evaluation with enhanced error handling
-            console.log(`🤖 Using AI evaluation for: ${question.label}`);
-
             try {
               const prompt = `
 You are an expert educational evaluator. Analyze this question and determine the correct answer.
@@ -524,10 +477,6 @@ Be thorough and educational in your analysis.`;
                 isCorrect = isCorrectMatch[1]?.toLowerCase() === 'true';
                 explanation =
                   explanationMatch[1]?.trim() || 'No explanation available';
-
-                console.log(
-                  `🤖 AI evaluation successful: ${isCorrect ? 'Correct' : 'Incorrect'}`
-                );
               } else {
                 throw new Error('Invalid AI response format');
               }
@@ -561,8 +510,6 @@ Be thorough and educational in your analysis.`;
             explanation,
             isCorrect,
           });
-
-          console.log(` Question ${i + 1} processed successfully`);
         } catch (questionError: any) {
           console.error(
             `❌ Error processing question ${i + 1}:`,
@@ -593,18 +540,6 @@ Be thorough and educational in your analysis.`;
         explanations,
       };
 
-      console.log(`🎉 Quiz evaluation completed:`, {
-        correctAnswers,
-        totalQuestions: questions.length,
-        percentage,
-        successfulEvaluations: explanations.filter(
-          e => !e.explanation.includes('Evaluation failed')
-        ).length,
-        failedEvaluations: explanations.filter(e =>
-          e.explanation.includes('Evaluation failed')
-        ).length,
-      });
-
       return result;
     } catch (error: any) {
       console.error('❌ Quiz evaluation failed:', error);
@@ -617,8 +552,6 @@ Be thorough and educational in your analysis.`;
     formStructure: any,
     submissionData: any
   ): Promise<SurveyEvaluation> {
-    console.log('📊 Starting survey evaluation with correct model');
-
     try {
       // Extract survey responses (same logic as before)
       const responses = [];
@@ -668,8 +601,6 @@ Be thorough and educational in your analysis.`;
           }
         });
       }
-
-      console.log(`📊 Extracted ${responses.length} survey responses`);
 
       if (responses.length === 0) {
         return this.getDefaultSurveyAnalysis([]);
@@ -778,9 +709,6 @@ Provide specific, data-driven analysis.`;
           responseQuality: Math.min(100, Math.max(1, responseQuality)),
         };
 
-        console.log(
-          '📊 Survey evaluation completed successfully with fixed model'
-        );
         return result;
       } catch (aiError: any) {
         console.error('❌ AI survey analysis failed:', aiError);
@@ -797,8 +725,6 @@ Provide specific, data-driven analysis.`;
     formStructure: any,
     submissionData: any
   ): Promise<FeedbackEvaluation> {
-    console.log('💬 Starting enhanced feedback evaluation');
-
     try {
       const feedbackContent = [];
 
@@ -849,8 +775,6 @@ Provide specific, data-driven analysis.`;
           }
         });
       }
-
-      console.log(`💬 Extracted ${feedbackContent.length} feedback items`);
 
       if (feedbackContent.length === 0) {
         return this.getDefaultFeedbackAnalysis('No feedback content provided');
@@ -953,9 +877,6 @@ Focus on actionable business insights.`;
         // Auto-adjust urgency based on sentiment
         if (sentimentNegative > 60 && urgencyLevel !== 'high') {
           urgencyLevel = 'high';
-          console.log(
-            '🔴 Auto-adjusted urgency to HIGH due to negative sentiment'
-          );
         }
 
         const insightsMatch = aiResponse.match(/INSIGHTS:\s*(.+)/i);
@@ -980,7 +901,6 @@ Focus on actionable business insights.`;
           urgencyLevel,
         };
 
-        console.log('💬 Feedback evaluation completed successfully');
         return result;
       } catch (aiError: any) {
         console.error('❌ AI feedback analysis failed:', aiError);
@@ -998,10 +918,6 @@ Focus on actionable business insights.`;
     submissionData: any,
     submissionId: string
   ): Promise<AIEvaluationResult> {
-    console.log(
-      ` Starting comprehensive AI evaluation for submission: ${submissionId}`
-    );
-
     const startTime = Date.now();
 
     try {
@@ -1021,7 +937,6 @@ Focus on actionable business insights.`;
       }
 
       const formType = this.detectFormType(formStructure, submissionData);
-      console.log(`🎯 Form type detected: ${formType}`);
 
       let evaluation: AIEvaluationResult = {
         id: `eval_${submissionId}_${Date.now()}`,
@@ -1036,7 +951,6 @@ Focus on actionable business insights.`;
 
       switch (formType) {
         case 'quiz':
-          console.log('🎓 Processing as quiz form...');
           try {
             const quizResults = await this.evaluateQuizSubmission(
               formStructure,
@@ -1072,7 +986,6 @@ Focus on actionable business insights.`;
           break;
 
         case 'survey':
-          console.log('📊 Processing as survey form...');
           try {
             const surveyResults = await this.evaluateSurveySubmission(
               formStructure,
@@ -1109,7 +1022,6 @@ Focus on actionable business insights.`;
           break;
 
         case 'feedback':
-          console.log('💬 Processing as feedback form...');
           try {
             const feedbackResults = await this.evaluateFeedbackSubmission(
               formStructure,
@@ -1144,26 +1056,11 @@ Focus on actionable business insights.`;
           break;
 
         default:
-          console.log('📝 Processing as general form...');
           evaluation.feedback =
             'General form submission processed and analyzed successfully';
           evaluation.categories = ['general', 'data-collection'];
           evaluation.sentiment = 'neutral';
       }
-
-      const processingTime = Date.now() - startTime;
-      console.log('🎉 AI evaluation completed:', {
-        submissionId,
-        formType,
-        sentiment: evaluation.sentiment,
-        status: evaluation.status,
-        processingTime: `${processingTime}ms`,
-        hasSpecificResults: !!(
-          evaluation.quizResults ||
-          evaluation.surveyResults ||
-          evaluation.feedbackResults
-        ),
-      });
 
       return evaluation;
     } catch (error: any) {
@@ -1208,11 +1105,6 @@ Focus on actionable business insights.`;
         return false;
       }
 
-      console.log(' Form structure validation passed:', {
-        pagesCount: formStructure.pages.length,
-        totalFields,
-      });
-
       return true;
     } catch (error) {
       console.error('❌ Form structure validation error:', error);
@@ -1238,11 +1130,6 @@ Focus on actionable business insights.`;
         console.warn('⚠️ Submission has no valid content to evaluate');
         return false;
       }
-
-      console.log(' Submission data validation passed:', {
-        fieldCount,
-        hasValidContent,
-      });
 
       return true;
     } catch (error) {
@@ -1388,18 +1275,11 @@ Focus on actionable business insights.`;
     formStructure: any,
     submissions: Array<{ id: string; data: any }>
   ): Promise<AIEvaluationResult[]> {
-    console.log(
-      ` Starting enhanced batch evaluation for ${submissions.length} submissions`
-    );
-
     const results: AIEvaluationResult[] = [];
     const batchStartTime = Date.now();
 
     for (let i = 0; i < submissions.length; i++) {
       const submission = submissions[i];
-      console.log(
-        `🔄 Processing submission ${i + 1}/${submissions.length}: ${submission.id}`
-      );
 
       try {
         const evaluation = await this.evaluateSubmissionWithValidation(
@@ -1426,18 +1306,6 @@ Focus on actionable business insights.`;
         );
       }
     }
-
-    const batchTime = Date.now() - batchStartTime;
-    const successCount = results.filter(r => r.status === 'completed').length;
-    const failureCount = results.length - successCount;
-
-    console.log('🎉 Enhanced batch evaluation completed:', {
-      totalSubmissions: submissions.length,
-      successful: successCount,
-      failed: failureCount,
-      totalTime: `${batchTime}ms`,
-      avgTimePerSubmission: `${Math.round(batchTime / submissions.length)}ms`,
-    });
 
     return results;
   }

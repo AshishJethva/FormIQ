@@ -68,15 +68,6 @@ export default function FormSettingsPage() {
   // Initialize with proper defaults and ensure both settings are ON by default
   useEffect(() => {
     if (form && form.settings) {
-      console.log('📄 Form data updated:', {
-        title: form.title,
-        isEnabled: form.settings?.isEnabled,
-        allowMultipleSubmissions: form.settings?.allowMultipleSubmissions,
-        allowMultipleEmailSubmissions:
-          form.settings?.allowMultipleEmailSubmissions,
-        settings: form.settings,
-      });
-
       setTitle(form.title || '');
       setSubmitButtonText(form.settings?.submitButtonText || 'Submit');
       setThankyouMessage(
@@ -100,20 +91,11 @@ export default function FormSettingsPage() {
       setAllowMultipleSubmissions(multipleSubmissions);
       setAllowMultipleEmailSubmissions(multipleEmailSubmissions);
 
-      console.log('🔄 Setting submission controls:', {
-        allowMultipleSubmissions: multipleSubmissions,
-        allowMultipleEmailSubmissions: multipleEmailSubmissions,
-      });
-
       // If these settings are undefined in the backend, update them to true
       if (
         form.settings?.allowMultipleSubmissions === undefined ||
         form.settings?.allowMultipleEmailSubmissions === undefined
       ) {
-        console.log(
-          '🔧 Updating undefined submission settings to default true values'
-        );
-
         const settingsUpdate: Partial<FormSettings> = {};
 
         if (form.settings?.allowMultipleSubmissions === undefined) {
@@ -135,12 +117,6 @@ export default function FormSettingsPage() {
   const handleMultipleSubmissionsToggle = () => {
     const newValue = !allowMultipleSubmissions;
 
-    console.log('🔄 Toggling multiple submissions:', {
-      from: allowMultipleSubmissions,
-      to: newValue,
-      currentEmailSetting: allowMultipleEmailSubmissions,
-    });
-
     setAllowMultipleSubmissions(newValue);
 
     // Update Redux immediately
@@ -159,18 +135,10 @@ export default function FormSettingsPage() {
 
   const handleMultipleEmailSubmissionsToggle = () => {
     if (!allowMultipleSubmissions) {
-      console.log(
-        '⚠️ Cannot toggle email submissions when multiple submissions is disabled'
-      );
       return;
     }
 
     const newValue = !allowMultipleEmailSubmissions;
-
-    console.log('🔄 Toggling multiple email submissions:', {
-      from: allowMultipleEmailSubmissions,
-      to: newValue,
-    });
 
     setAllowMultipleEmailSubmissions(newValue);
 

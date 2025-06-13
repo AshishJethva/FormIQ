@@ -1,4 +1,4 @@
-// src/hooks/useDeletion.ts - Custom Hook for Deletion Operations
+// src/hooks/useDeletion.ts
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import {

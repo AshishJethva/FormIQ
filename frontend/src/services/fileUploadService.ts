@@ -67,14 +67,6 @@ export const uploadFormFile = async (
     const formData = new FormData();
     formData.append('file', file);
 
-    console.log('📎 Uploading file:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      fieldId,
-      formId,
-    });
-
     // Use different endpoint for preview mode
     const endpoint =
       formId === 'preview'
@@ -96,7 +88,6 @@ export const uploadFormFile = async (
       },
     });
 
-    console.log(' File uploaded successfully:', response.data.data);
     return response.data.data;
   } catch (error: any) {
     console.error('❌ File upload failed:', error);
@@ -144,14 +135,6 @@ export const uploadFormImage = async (
     const formData = new FormData();
     formData.append('image', file);
 
-    console.log('🖼️ Uploading image:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      fieldId,
-      formId,
-    });
-
     // Use different endpoint for preview mode
     const endpoint =
       formId === 'preview'
@@ -173,7 +156,6 @@ export const uploadFormImage = async (
       },
     });
 
-    console.log(' Image uploaded successfully:', response.data.data);
     return response.data.data;
   } catch (error: any) {
     console.error('❌ Image upload failed:', error);
@@ -219,13 +201,6 @@ export const uploadMultipleFiles = async (
       formData.append('files', file);
     });
 
-    console.log('📎 Uploading multiple files:', {
-      count: files.length,
-      totalSize: files.reduce((sum, file) => sum + file.size, 0),
-      fieldId,
-      formId,
-    });
-
     const response = await axios.post(
       `${apiConfig.url}/upload/form/${formId}/field/${fieldId}/multiple`,
       formData,
@@ -245,10 +220,6 @@ export const uploadMultipleFiles = async (
       }
     );
 
-    console.log(
-      'Multiple files uploaded successfully:',
-      response.data.data.length
-    );
     return response.data.data;
   } catch (error: any) {
     console.error('❌ Multiple files upload failed:', error);
@@ -282,8 +253,6 @@ export const deleteFormFile = async (
   resourceType: 'image' | 'video' | 'raw' = 'raw'
 ): Promise<FileDeleteResult> => {
   try {
-    console.log('🗑️ Requesting file deletion via backend:', publicId);
-
     const response = await api.delete(
       `/upload/file/${encodeURIComponent(publicId)}`,
       {
@@ -293,7 +262,6 @@ export const deleteFormFile = async (
     );
 
     if (response.data.success) {
-      console.log(' File deleted successfully via backend');
       return { success: true, publicId };
     } else {
       throw new Error('Backend deletion failed');
@@ -326,12 +294,6 @@ export const deleteFileFromSubmission = async (
       throw new Error('Missing required parameters for file deletion');
     }
 
-    console.log('🗑️ Removing file from submission data:', {
-      submissionId,
-      fieldId,
-      filePublicId,
-    });
-
     const response = await api.delete(
       `/submissions/${submissionId}/files/${fieldId}/${encodeURIComponent(
         filePublicId
@@ -341,7 +303,6 @@ export const deleteFileFromSubmission = async (
       }
     );
 
-    console.log(' File removed from submission data successfully');
     return response.data;
   } catch (error: any) {
     console.error('❌ Failed to remove file from submission data:', error);
@@ -373,31 +334,21 @@ export const deleteFileCompletely = async (
   file: { publicId: string; mimeType?: string; originalName?: string }
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log('🗑️ Starting complete file deletion:', {
-      submissionId,
-      fieldId,
-      publicId: file.publicId,
-      fileName: file.originalName,
-    });
-
     // Step 1: Delete from cloud storage
     const resourceType = file.mimeType?.startsWith('image/') ? 'image' : 'raw';
 
     try {
       await deleteFormFile(file.publicId, resourceType);
-      console.log(' File deleted from cloud storage');
     } catch (cloudError: any) {
       console.warn(
         '⚠️ Cloud storage deletion failed, continuing with database cleanup:',
         cloudError.message
       );
-      // Continue with database cleanup even if cloud deletion fails
     }
 
     // Step 2: Remove from submission data
     try {
       await deleteFileFromSubmission(submissionId, fieldId, file.publicId);
-      console.log(' File removed from submission data');
     } catch (dbError: any) {
       console.error('❌ Database cleanup failed:', dbError);
       throw new Error(
@@ -434,8 +385,6 @@ export const bulkDeleteFilesWithProgress = async (
   };
 
   if (files.length === 0) return result;
-
-  console.log(`🗑️ Starting bulk deletion of ${files.length} files via backend`);
 
   let processed = 0;
 
@@ -485,9 +434,6 @@ export const bulkDeleteFilesWithProgress = async (
     }
   }
 
-  console.log(
-    ` Bulk deletion completed: ${result.successful.length} successful, ${result.failed.length} failed`
-  );
   return result;
 };
 
@@ -503,14 +449,6 @@ export const validateFile = (
   allowedTypes: string[] = [],
   maxSize: number = 25 * 1024 * 1024 // 25MB default
 ): { isValid: boolean; error?: string } => {
-  console.log('🔍 Validating file:', {
-    fileName: file.name,
-    mimeType: file.type,
-    size: file.size,
-    allowedTypes,
-    maxSize,
-  });
-
   // Check file size
   if (file.size > maxSize) {
     const maxSizeMB = Math.round(maxSize / (1024 * 1024));
@@ -554,30 +492,24 @@ export const validateFile = (
     if (normalizedType.endsWith('/*')) {
       const baseType = normalizedType.slice(0, -2);
       const result = file.type.toLowerCase().startsWith(baseType);
-      if (result) {
-        console.log(` File matches wildcard type: ${normalizedType}`);
-      }
+
       return result;
     }
 
     // Handle file extensions like '.pdf', '.doc', '.jpg'
     if (normalizedType.startsWith('.')) {
       const result = file.name.toLowerCase().endsWith(normalizedType);
-      if (result) {
-        console.log(` File matches extension: ${normalizedType}`);
-      }
+
       return result;
     }
 
     // Handle exact MIME types like 'application/pdf', 'image/jpeg'
     if (file.type.toLowerCase() === normalizedType) {
-      console.log(` File matches exact MIME type: ${normalizedType}`);
       return true;
     }
 
     // Handle common aliases
     if (normalizedType === 'pdf' && file.type === 'application/pdf') {
-      console.log(' File matches PDF alias');
       return true;
     }
 
@@ -587,7 +519,6 @@ export const validateFile = (
         file.type ===
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     ) {
-      console.log(' File matches DOC alias');
       return true;
     }
 
@@ -597,7 +528,6 @@ export const validateFile = (
         file.type ===
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     ) {
-      console.log(' File matches Excel alias');
       return true;
     }
 
@@ -605,11 +535,6 @@ export const validateFile = (
   });
 
   if (!isTypeAllowed) {
-    console.log('❌ File type not allowed:', {
-      fileType: file.type,
-      fileName: file.name,
-      allowedTypes,
-    });
     return {
       isValid: false,
       error: `File type "${
@@ -640,7 +565,6 @@ export const validateFile = (
     };
   }
 
-  console.log(' File validation passed');
   return { isValid: true };
 };
 
@@ -710,8 +634,6 @@ export const getSecureFileDownload = async (
   fileName?: string
 ): Promise<{ url: string; filename: string }> => {
   try {
-    console.log('📥 Preparing secure file download:', { fileUrl, fileName });
-
     // For now, return the original URL (can be enhanced with signed URLs later)
     return {
       url: fileUrl,
@@ -742,12 +664,6 @@ export const downloadFileEnhanced = async (
     addAuthHeaders = false,
     forceDirectDownload = false,
   } = options;
-
-  console.log('📥 Starting enhanced file download:', {
-    fileName: file.originalName,
-    mimeType: file.mimeType,
-    options,
-  });
 
   // Method 1: Try authenticated fetch with proper headers
   if (!forceDirectDownload) {
@@ -819,7 +735,6 @@ export const downloadFileEnhanced = async (
     if (file.mimeType.includes('pdf') || file.mimeType.includes('document')) {
       const newWindow = window.open(file.url, '_blank', 'noopener,noreferrer');
       if (newWindow) {
-        console.log(' File opened in new tab for download');
         return { success: true, method: 'new-tab' };
       }
     }
@@ -836,7 +751,6 @@ export const downloadFileEnhanced = async (
     a.click();
     document.body.removeChild(a);
 
-    console.log(' File download initiated via direct link');
     return { success: true, method: 'direct-link' };
   } catch (directError) {
     console.error('❌ Direct download failed:', directError);
@@ -845,7 +759,7 @@ export const downloadFileEnhanced = async (
   // Method 3: Last resort - copy URL to clipboard
   try {
     await navigator.clipboard.writeText(file.url);
-    console.log('📋 File URL copied to clipboard as fallback');
+
     return { success: true, method: 'clipboard' };
   } catch (clipboardError) {
     console.error('❌ Clipboard fallback failed:', clipboardError);

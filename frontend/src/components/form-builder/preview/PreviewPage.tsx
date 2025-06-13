@@ -728,18 +728,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       });
     });
 
-    console.log('🎯 Generated safe dummy data:', {
-      dataFields: Object.keys(dummyFormData).length,
-      fileFields: Object.keys(dummyFileData).length,
-      totalFiles: Object.values(dummyFileData).reduce(
-        (total: number, files: any) => {
-          if (Array.isArray(files)) return total + files.length;
-          return total + (files ? 1 : 0);
-        },
-        0
-      ),
-    });
-
     return { dummyFormData, dummyFileData };
   };
 
@@ -1018,48 +1006,11 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     setIsSubmitting(true);
 
     try {
-      console.log(' Submitting form with enhanced field types:', {
-        formId,
-        dataKeys: Object.keys(formData),
-        fileKeys: Object.keys(fileData),
-        totalFields: Object.keys(formData).length,
-        totalFiles: Object.values(fileData).reduce(
-          (total: number, files: any) => {
-            if (Array.isArray(files)) return total + files.length;
-            return total + (files ? 1 : 0);
-          },
-          0
-        ),
-        hasSignature: Object.keys(formData).some(key =>
-          form.pages.some((page: any) =>
-            page.fields?.some(
-              (field: any) => field.id === key && field.type === 'signature'
-            )
-          )
-        ),
-        hasProductList: Object.keys(formData).some(key =>
-          form.pages.some((page: any) =>
-            page.fields?.some(
-              (field: any) => field.id === key && field.type === 'productList'
-            )
-          )
-        ),
-        hasFillBlank: Object.keys(formData).some(key =>
-          form.pages.some((page: any) =>
-            page.fields?.some(
-              (field: any) => field.id === key && field.type === 'fillBlank'
-            )
-          )
-        ),
-      });
-
       // Prepare file data for submission
       const preparedFileData = prepareFileDataForSubmission(fileData);
 
       // Submit form with both regular data and file data
       const result = await submitForm(formId, formData, preparedFileData);
-
-      console.log(' Form submission successful with enhanced fields:', result);
 
       setIsSubmitted(true);
       setSubmissionId(result.data.submissionId);

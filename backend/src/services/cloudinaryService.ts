@@ -70,8 +70,6 @@ export const deleteImage = async (publicId: string): Promise<void> => {
     if (result.result !== 'ok') {
       throw new Error(`Failed to delete image: ${result.result}`);
     }
-
-    console.log(`Successfully deleted image with publicId: ${publicId}`);
   } catch (error: any) {
     console.error('Error deleting image from Cloudinary:', error);
     throw new Error(`Failed to delete image: ${error.message}`);
@@ -142,11 +140,6 @@ export const uploadFormFile = async (
           if (error) {
             reject(error);
           } else {
-            console.log(' Cloudinary upload successful:', {
-              public_id: result?.public_id,
-              secure_url: result?.secure_url,
-              bytes: result?.bytes,
-            });
             resolve(result);
           }
         }
@@ -307,12 +300,6 @@ export const uploadLogo = async (
     const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const uniqueFileName = `logo_${timestamp}_${sanitizedName}`;
 
-    console.log('📤 Uploading logo to Cloudinary:', {
-      fileName: uniqueFileName,
-      mimeType,
-      size: buffer.length,
-    });
-
     const uploadResult = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -329,11 +316,6 @@ export const uploadLogo = async (
             console.error('Cloudinary logo upload error:', error);
             reject(error);
           } else {
-            console.log(' Logo upload successful:', {
-              public_id: result?.public_id,
-              secure_url: result?.secure_url,
-              bytes: result?.bytes,
-            });
             resolve(result);
           }
         }
@@ -367,14 +349,10 @@ export const deleteFormFile = async (
   resourceType: 'image' | 'video' | 'raw' = 'raw'
 ): Promise<CloudinaryDeleteResult> => {
   try {
-    console.log(`🗑️ Deleting ${resourceType} from Cloudinary:`, publicId);
-
     const result = await cloudinary.uploader.destroy(publicId, {
       resource_type: resourceType,
       invalidate: true, // Invalidate CDN cache
     });
-
-    console.log('Cloudinary delete result:', result);
 
     const success = result.result === 'ok' || result.result === 'not found';
 
@@ -413,10 +391,6 @@ export const bulkDeleteFiles = async (
   if (publicIds.length === 0) {
     return result;
   }
-
-  console.log(
-    `🗑️ Bulk deleting ${publicIds.length} ${resourceType} files from Cloudinary`
-  );
 
   // Process in batches to avoid API limits
   for (let i = 0; i < publicIds.length; i += batchSize) {
@@ -475,9 +449,6 @@ export const bulkDeleteFiles = async (
     }
   }
 
-  console.log(
-    ` Bulk deletion completed: ${result.successCount} successful, ${result.failureCount} failed`
-  );
   return result;
 };
 
@@ -496,8 +467,6 @@ export const deleteSubmissionFiles = async (
       failureCount: 0,
     };
   }
-
-  console.log(`🗑️ Deleting ${files.length} files for submission`);
 
   // Group files by resource type
   const imageFiles: string[] = [];
@@ -556,10 +525,6 @@ export const deleteFormFiles = async (
   logoResult?: CloudinaryDeleteResult;
   totalFilesProcessed: number;
 }> => {
-  console.log(
-    `🗑️ Starting comprehensive file deletion for form: ${formData.title}`
-  );
-
   // Collect all file public IDs from submissions
   const allFiles: any[] = [];
 
@@ -600,17 +565,12 @@ export const deleteFormFiles = async (
     }
   });
 
-  console.log(
-    `📊 Found ${allFiles.length} files across ${submissions.length} submissions`
-  );
-
   // Delete submission files
   const submissionFilesResult = await deleteSubmissionFiles(allFiles);
 
   // Delete form logo if exists
   let logoResult: CloudinaryDeleteResult | undefined;
   if (formData.logo && formData.logo.publicId) {
-    console.log(`🖼️ Deleting form logo: ${formData.logo.publicId}`);
     logoResult = await deleteFormFile(
       formData.logo.publicId,
       formData.logo.type === 'uploaded' ? 'image' : 'raw'
@@ -618,13 +578,6 @@ export const deleteFormFiles = async (
   }
 
   const totalFilesProcessed = allFiles.length + (logoResult ? 1 : 0);
-
-  console.log(` Form file deletion completed:`, {
-    submissionFiles: submissionFilesResult.successCount,
-    submissionFilesFailed: submissionFilesResult.failureCount,
-    logoDeleted: logoResult?.success || false,
-    totalProcessed: totalFilesProcessed,
-  });
 
   return {
     submissionFiles: submissionFilesResult,

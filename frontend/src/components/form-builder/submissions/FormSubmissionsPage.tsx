@@ -373,11 +373,6 @@ const detectFormTypeClient = (
   let surveyIndicators = 0;
   let feedbackIndicators = 0;
 
-  console.log('🔍 Enhanced form type detection for submissions page:', {
-    title: formTitle,
-    description: formDescription,
-  });
-
   // Analyze title and description with enhanced keywords
   const titleDescText = formTitle + ' ' + formDescription;
 
@@ -462,12 +457,6 @@ const detectFormTypeClient = (
     });
   }
 
-  console.log('📊 Form type indicators:', {
-    quiz: quizIndicators,
-    survey: surveyIndicators,
-    feedback: feedbackIndicators,
-  });
-
   // Determine form type based on highest score with better thresholds
   if (quizIndicators >= 3) return 'quiz';
   if (surveyIndicators >= 3) return 'survey';
@@ -551,9 +540,8 @@ const FormSubmissionsPage: React.FC = () => {
     useDeletion({
       type: 'submission',
       requireConfirmation: true,
-      onSuccess: result => {
-        console.log(' Submissions deletion completed:', result);
-        fetchSubmissions(); // Refresh submissions list
+      onSuccess: () => {
+        fetchSubmissions();
       },
       onError: error => {
         console.error('❌ Submissions deletion failed:', error);
@@ -688,12 +676,6 @@ const FormSubmissionsPage: React.FC = () => {
     setDetectedFormType(formType);
     setIsFeedbackForm(shouldEvaluate);
 
-    console.log('🎯 Form analysis results:', {
-      formType,
-      shouldEvaluate,
-      uniqueFieldsCount: detectedUniqueFields.length,
-    });
-
     if (formData?.pages && Array.isArray(formData.pages)) {
       formData.pages.forEach((page: any) => {
         if (page.fields && Array.isArray(page.fields)) {
@@ -744,13 +726,6 @@ const FormSubmissionsPage: React.FC = () => {
 
     setFieldLabelsMap(labelsMap);
 
-    console.log('📋 Field mapping created:', {
-      totalFields: Object.keys(labelsMap).length,
-      hasEmail: emailFound,
-      hasFullName: fullNameFound,
-      uniqueFields: detectedUniqueFields.map(f => f.label),
-    });
-
     return labelsMap;
   };
 
@@ -764,25 +739,12 @@ const FormSubmissionsPage: React.FC = () => {
     const value = data[fieldId];
     const result = formatDisplayValue(value, fieldId, formStructure);
 
-    console.log('🔍 Getting field value:', {
-      fieldId,
-      fieldLabel: fieldLabelsMap[fieldId],
-      rawValue: value,
-      formattedValue: result,
-    });
-
     return result;
   };
 
   // Function to get email value from submission with choice field support
   const getEmailFromSubmission = (submission: Submission): string => {
     const data = submission.data;
-
-    console.log('📧 Searching for email field in submission:', {
-      submissionId: submission.id,
-      dataKeys: Object.keys(data),
-      fieldLabelsMap: Object.keys(fieldLabelsMap),
-    });
 
     // Try direct field matching first
     for (const [key, value] of Object.entries(data)) {
@@ -794,7 +756,7 @@ const FormSubmissionsPage: React.FC = () => {
         label.includes('e-mail')
       ) {
         const result = formatDisplayValue(value, key, formStructure);
-        console.log(' Found email field:', { key, label, value: result });
+
         return result;
       }
     }
@@ -807,24 +769,17 @@ const FormSubmissionsPage: React.FC = () => {
         value.includes('.')
       ) {
         const result = formatDisplayValue(value, key, formStructure);
-        console.log(' Found email-like value:', { key, value: result });
+
         return result;
       }
     }
 
-    console.log('❌ No email field found');
     return 'N/A';
   };
 
   // Full name extraction with choice field support
   const getFullNameFromSubmission = (submission: Submission): string => {
     const data = submission.data;
-
-    console.log('👤 Enhanced full name search in submission:', {
-      submissionId: submission.id,
-      dataKeys: Object.keys(data),
-      fieldLabelsMap: Object.entries(fieldLabelsMap),
-    });
 
     // Step 1: Look for explicit full name fields
     for (const [key, value] of Object.entries(data)) {
@@ -843,11 +798,6 @@ const FormSubmissionsPage: React.FC = () => {
       ) {
         const result = formatDisplayValue(value, key, formStructure);
         if (result !== 'N/A') {
-          console.log(' Found full name field:', {
-            key,
-            label,
-            value: result,
-          });
           return result;
         }
       }
@@ -858,14 +808,14 @@ const FormSubmissionsPage: React.FC = () => {
       if (typeof value === 'object' && value !== null) {
         if (value.firstName && value.lastName) {
           const result = `${value.firstName} ${value.lastName}`.trim();
-          console.log(' Found fullName object:', { key, value, result });
+
           return result;
         }
 
         // Check for other name combinations
         if (value.first && value.last) {
           const result = `${value.first} ${value.last}`.trim();
-          console.log(' Found first/last object:', { key, value, result });
+
           return result;
         }
       }
@@ -885,7 +835,6 @@ const FormSubmissionsPage: React.FC = () => {
         key.toLowerCase() === 'fname'
       ) {
         firstName = formatDisplayValue(value, key, formStructure);
-        console.log('📝 Found first name:', { key, label, value: firstName });
       } else if (
         label.includes('last name') ||
         label.includes('lastname') ||
@@ -894,27 +843,20 @@ const FormSubmissionsPage: React.FC = () => {
         key.toLowerCase() === 'lname'
       ) {
         lastName = formatDisplayValue(value, key, formStructure);
-        console.log('📝 Found last name:', { key, label, value: lastName });
       }
     }
 
     if (firstName !== 'N/A' && lastName !== 'N/A') {
       const result = `${firstName} ${lastName}`.trim();
-      console.log(' Constructed full name from parts:', {
-        firstName,
-        lastName,
-        result,
-      });
+
       return result;
     }
 
     if (firstName !== 'N/A') {
-      console.log(' Using first name only:', firstName);
       return firstName;
     }
 
     if (lastName !== 'N/A') {
-      console.log(' Using last name only:', lastName);
       return lastName;
     }
 
@@ -932,17 +874,11 @@ const FormSubmissionsPage: React.FC = () => {
       ) {
         const result = formatDisplayValue(value, key, formStructure);
         if (result !== 'N/A' && result.length > 1) {
-          console.log(' Found potential name field:', {
-            key,
-            label,
-            value: result,
-          });
           return result;
         }
       }
     }
 
-    console.log('❌ No name field found');
     return 'N/A';
   };
 
@@ -951,12 +887,10 @@ const FormSubmissionsPage: React.FC = () => {
     if (!formId) return;
 
     try {
-      console.log('📋 Fetching form structure for:', formId);
       const response = await formsService.getForm(formId);
       if (response.success && response.data) {
         setFormStructure(response.data);
         analyzeFormStructure(response.data);
-        console.log(' Form structure fetched and analyzed');
       }
     } catch (error) {
       console.error('Error fetching form structure:', error);
@@ -965,18 +899,12 @@ const FormSubmissionsPage: React.FC = () => {
 
   const evaluateSubmissionWithAI = async (submission: Submission) => {
     if (evaluatingSubmissions.has(submission.id)) {
-      console.log('⚠️ Evaluation already in progress for:', submission.id);
       return;
     }
 
     setEvaluatingSubmissions(prev => new Set(prev).add(submission.id));
 
     try {
-      console.log(
-        '🤖 Starting enhanced AI evaluation for submission:',
-        submission.id
-      );
-
       const result = await aiEvaluationService.evaluateSubmission(
         submission.id
       );
@@ -986,8 +914,6 @@ const FormSubmissionsPage: React.FC = () => {
           ...prev,
           [submission.id]: result.data as AIEvaluation,
         }));
-
-        console.log('AI evaluation completed successfully for:', submission.id);
 
         toast.success('AI evaluation completed!', {
           description: `Analysis completed for ${detectedFormType} form with ${result.data.status} status.`,
@@ -1092,12 +1018,6 @@ const FormSubmissionsPage: React.FC = () => {
     }
 
     try {
-      console.log(
-        'Starting enhanced batch evaluation for',
-        submissionIds.length,
-        'submissions'
-      );
-
       // Mark all submissions as evaluating
       setEvaluatingSubmissions(prev => {
         const newSet = new Set(prev);
@@ -1128,13 +1048,6 @@ const FormSubmissionsPage: React.FC = () => {
           ...prev,
           ...evaluationsMap,
         }));
-
-        console.log('🎉 Enhanced batch evaluation completed:', {
-          total: result.data.length,
-          successful: successCount,
-          failed: failedCount,
-          totalTime: result.metadata?.totalTime,
-        });
 
         // Show detailed success/failure message
         if (failedCount === 0) {
@@ -1258,8 +1171,6 @@ const FormSubmissionsPage: React.FC = () => {
       }
 
       try {
-        console.log('📡 Fetching submissions for form:', formId);
-
         const filters = {
           page,
           limit,
@@ -1313,11 +1224,6 @@ const FormSubmissionsPage: React.FC = () => {
 
           // Enhanced auto-evaluation for feedback/survey forms
           if (isFeedbackForm && processedSubmissions.length > 0) {
-            console.log(
-              '🎯 Auto-evaluating submissions for form type:',
-              detectedFormType
-            );
-
             // Auto-evaluate submissions that don't have evaluations yet
             const unevaluatedSubmissions = processedSubmissions.filter(
               (submission: Submission) =>
@@ -1332,17 +1238,9 @@ const FormSubmissionsPage: React.FC = () => {
                 .slice(0, batchSize)
                 .map((s: Submission) => s.id);
 
-              console.log(
-                ` Auto-evaluating ${submissionIds.length} submissions`
-              );
               evaluateMultipleSubmissions(submissionIds);
             }
           }
-
-          console.log(
-            ' Submissions fetched successfully:',
-            processedSubmissions.length
-          );
         }
       } catch (error: any) {
         console.error('❌ Error fetching submissions:', error);
@@ -1374,19 +1272,6 @@ const FormSubmissionsPage: React.FC = () => {
     setDownloadingCsv(true);
 
     try {
-      console.log('📥 Starting Cloudinary-only CSV download for form:', formId);
-
-      // Build filters for export
-      const exportFilters = {
-        ...(searchTerm && { search: searchTerm }),
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-        ...(readFilter !== 'all' && {
-          isRead: readFilter === 'read' ? 'true' : 'false',
-        }),
-      };
-
-      console.log('🔍 Export filters:', exportFilters);
-
       // Perform the CSV export
       const blob = await submissionsService.exportCSV(
         formId,
@@ -1422,14 +1307,6 @@ const FormSubmissionsPage: React.FC = () => {
 
       // Cleanup
       setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-
-      // Success feedback
-      const fileSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-
-      console.log('🎉 CSV download completed:', {
-        filename,
-        fileSize: `${fileSizeMB} MB`,
-      });
     } catch (error: any) {
       console.error('❌ CSV download failed:', error);
 
@@ -1453,12 +1330,6 @@ const FormSubmissionsPage: React.FC = () => {
         throw new Error('Invalid submission ID');
       }
 
-      console.log('🔄 Toggling read status:', {
-        submissionId,
-        currentStatus: isRead,
-        newStatus: !isRead,
-      });
-
       await submissionsService.updateReadStatus(submissionId, !isRead);
 
       setSubmissions(prev =>
@@ -1471,8 +1342,6 @@ const FormSubmissionsPage: React.FC = () => {
         ...prev,
         unread: !isRead ? prev.unread - 1 : prev.unread + 1,
       }));
-
-      console.log(' Read status updated successfully');
     } catch (error: any) {
       console.error('❌ Error updating read status:', error);
       setSubmissions(prev =>
@@ -1520,8 +1389,6 @@ const FormSubmissionsPage: React.FC = () => {
         delete newEvaluations[submissionId];
         return newEvaluations;
       });
-
-      console.log(' Submission deletion completed successfully');
     } catch (error: any) {
       console.error('❌ Error deleting submission:', error);
       toast.error('Deletion Failed', {
@@ -1544,8 +1411,6 @@ const FormSubmissionsPage: React.FC = () => {
       if (!file?.publicId) {
         throw new Error('Invalid file data - missing publicId');
       }
-
-      console.log('🗑️ Deleting individual file:', file.originalName);
 
       try {
         // Call the enhanced backend route
@@ -1650,12 +1515,6 @@ const FormSubmissionsPage: React.FC = () => {
     try {
       setDownloadingFileId(file.publicId);
 
-      console.log('📥 Starting file download:', {
-        name: file.originalName,
-        url: file.url,
-        mimeType: file.mimeType,
-      });
-
       const a = document.createElement('a');
       a.href = file.url;
       a.download = file.originalName || 'download';
@@ -1666,8 +1525,6 @@ const FormSubmissionsPage: React.FC = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-
-      console.log(' File download completed');
     } catch (error: any) {
       console.error('❌ Download error:', error);
       toast.error(`Failed to download ${file.originalName}`);
@@ -1686,13 +1543,6 @@ const FormSubmissionsPage: React.FC = () => {
   // View submission details
   const handleViewSubmission = async (submission: Submission) => {
     try {
-      console.log('👁️ Viewing submission:', {
-        id: submission.id,
-        isRead: submission.isRead,
-        data: submission.data,
-        files: submission.files,
-      });
-
       setSelectedSubmission(submission);
       setShowSubmissionModal(true);
 
@@ -1973,16 +1823,6 @@ const FormSubmissionsPage: React.FC = () => {
   const renderFieldValue = (fieldId: string, value: any) => {
     const label = fieldLabelsMap[fieldId] || fieldId;
 
-    console.log('🔍 Rendering field:', {
-      fieldId,
-      label,
-      value,
-      submissionId: selectedSubmission?.id,
-      hasSubmissionFiles: !!(
-        selectedSubmission?.files && selectedSubmission.files.length > 0
-      ),
-    });
-
     // Check if this is a signature field
     const isSignatureField = (value: any, label: string): boolean => {
       if (typeof value === 'string' && value.startsWith('data:image/')) {
@@ -2000,8 +1840,6 @@ const FormSubmissionsPage: React.FC = () => {
 
     // Handle signature fields specially
     if (isSignatureField(value, label)) {
-      console.log('✍️ Rendering signature field:', label);
-
       const isBase64 =
         typeof value === 'string' && value.startsWith('data:image/');
       const isCloudinaryUrl =
@@ -2032,8 +1870,6 @@ const FormSubmissionsPage: React.FC = () => {
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-
-          console.log(' Signature download initiated');
         } catch (error) {
           console.error('❌ Error downloading signature:', error);
           toast.error('Failed to download signature');
@@ -2194,19 +2030,10 @@ const FormSubmissionsPage: React.FC = () => {
       : false;
 
     if (hasFiles) {
-      console.log('📁 Rendering file field:', label);
-
       // Get all files for this field
       const fieldFiles = selectedSubmission
         ? getAllFilesForField(selectedSubmission, fieldId)
         : [];
-
-      console.log('📁 Field files:', {
-        fieldId,
-        label,
-        fileCount: fieldFiles.length,
-        files: fieldFiles,
-      });
 
       // Normalize file data to ensure compatibility with FileManager
       const normalizedFiles = fieldFiles.map((file: any) => ({
@@ -2263,16 +2090,10 @@ const FormSubmissionsPage: React.FC = () => {
             fieldId={fieldId}
             submissionId={selectedSubmission!.id}
             onFileDelete={async file => {
-              console.log('🗑️ Delete requested for:', file.originalName);
               await handleDeleteFile(file, selectedSubmission!.id, fieldId);
             }}
             onFileDownload={async file => {
-              console.log('📥 Download requested for:', file.originalName);
               await handleDownloadFile(file);
-            }}
-            onFileView={file => {
-              console.log('👁️ Preview requested for:', file.originalName);
-              // FileManager handles preview internally
             }}
             showActions={true}
             compact={true}
@@ -2304,8 +2125,6 @@ const FormSubmissionsPage: React.FC = () => {
   // Initialize data on component mount
   useEffect(() => {
     if (formId) {
-      console.log(' Component mounted, fetching data for formId:', formId);
-
       const initializeData = async () => {
         await fetchFormStructure();
         await fetchSubmissions();
@@ -2705,7 +2524,7 @@ const FormSubmissionsPage: React.FC = () => {
                             e.stopPropagation();
                             handleToggleRead(submission.id, submission.isRead);
                           }}
-                          className='p-1 hover:bg-gray-200 rounded-full cursor-pointer transition-colors cursor-pointer'
+                          className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer'
                           title={
                             submission.isRead
                               ? 'Mark as unread'
@@ -2729,7 +2548,7 @@ const FormSubmissionsPage: React.FC = () => {
                               e.stopPropagation();
                               confirmDelete(submission.id);
                             }}
-                            className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors cursor-pointer'
+                            className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors'
                             title='Delete submission'
                           >
                             <Trash2 className='w-4 h-4' />

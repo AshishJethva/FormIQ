@@ -44,11 +44,6 @@ const apiService = {
 
 export const submitForm = async (formId: string, formData: any) => {
   try {
-    console.log(' Submitting form:', {
-      formId,
-      dataKeys: Object.keys(formData || {}),
-    });
-
     const response = await axios.post(
       `${apiConfig.url}/submissions/${formId}/submit`,
       { data: formData },
@@ -60,7 +55,6 @@ export const submitForm = async (formId: string, formData: any) => {
       }
     );
 
-    console.log(' Form submission successful:', response.data);
     return response.data;
   } catch (error: any) {
     // Enhanced error handling

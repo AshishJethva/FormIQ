@@ -72,8 +72,6 @@ router.get(
       throw new ApiError('Invalid form ID format', 400);
     }
 
-    console.log('🌐 Public form request:', { formId });
-
     // Always fetch fresh data from database (no caching)
     const form = await Form.findOne({
       _id: formId,
@@ -84,17 +82,14 @@ router.get(
     });
 
     if (!form) {
-      console.log('❌ Public form not found or not available:', { formId });
       throw new ApiError('Form not found or not available', 404);
     }
 
     // Increment view count
     try {
       await Form.findByIdAndUpdate(formId, { $inc: { views: 1 } });
-      console.log('📊 View count incremented');
     } catch (error) {
       console.warn('⚠️ Failed to increment view count:', error);
-      // Don't fail the request if view count update fails
     }
 
     // Return latest form structure
@@ -116,17 +111,6 @@ router.get(
       updatedAt: form.updatedAt,
       publishedAt: form.publishedAt,
     };
-
-    console.log('🌐 Serving published form:', {
-      formId,
-      title: form.title,
-      pagesCount: formData.pages.length,
-      lastUpdated: form.updatedAt,
-      totalFields: formData.pages.reduce(
-        (total, page) => total + (page.fields?.length || 0),
-        0
-      ),
-    });
 
     // Set cache headers to ensure fresh data
     res.set({
@@ -223,49 +207,23 @@ router.get(
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
-    console.log(
-      '🔍 FINAL QUERY BEFORE DATABASE:',
-      JSON.stringify(query, null, 2)
-    );
-
     const forms = await Form.find(query)
       .sort(sortObj)
       .skip(skip)
       .limit(limitNum);
 
-    console.log('📊 DATABASE RESULTS:', {
-      totalFound: forms.length,
-      queryHadLabelFilter: !!query.labels,
-      sampleFormLabels: forms.slice(0, 3).map(f => ({
-        id: f._id,
-        title: f.title,
-        labels: f.labels,
-      })),
-    });
-
     // If you have label filtering but got results, check if they actually match
     if (query.labels && forms.length > 0) {
       const expectedLabels = query.labels.$in;
-      console.log('🎯 Expected labels:', expectedLabels);
 
       forms.forEach(form => {
         const hasMatchingLabel = form.labels?.some(label =>
           expectedLabels.includes(label)
         );
-        if (!hasMatchingLabel) {
-          console.log('❌ Form WITHOUT expected labels:', {
-            formId: form._id,
-            formTitle: form.title,
-            formLabels: form.labels,
-            expectedLabels,
-          });
-        }
       });
     }
 
     const total = await Form.countDocuments(query);
-
-    console.log(`Found ${forms.length} forms, total: ${total}`);
 
     // Transform to match frontend expectations
     const transformedForms = forms.map(form => {
@@ -298,8 +256,6 @@ router.get(
       };
     });
 
-    console.log(`Transformed ${transformedForms.length} forms`);
-
     res.status(200).json({
       success: true,
       data: transformedForms,
@@ -323,15 +279,12 @@ router.get(
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const formId = req.params.id;
 
-    console.log('🔍 Loading form:', { formId, userId: userId.toString() });
-
     const form = await Form.findOne({
       _id: req.params.id,
       userId,
     });
 
     if (!form) {
-      console.log('❌ Form not found:', { formId, userId: userId.toString() });
       throw new ApiError('Form not found', 404);
     }
 
@@ -373,8 +326,6 @@ router.get(
       form.settings?.allowMultipleEmailSubmissions === undefined ||
       form.settings?.showLogo === undefined
     ) {
-      console.log('🔧 Updating form with missing default settings');
-
       await Form.findByIdAndUpdate(formId, {
         $set: {
           'settings.allowMultipleSubmissions':
@@ -391,7 +342,6 @@ router.get(
 
     // If pages is not an array or is empty, create a default page
     if (!Array.isArray(pages) || pages.length === 0) {
-      console.log('🔧 Creating default page structure');
       pages = [
         {
           id: uuidv4(),
@@ -403,7 +353,6 @@ router.get(
     // Ensure each page has proper structure
     pages = pages.map((page: any, index: number) => {
       if (!page || typeof page !== 'object') {
-        console.log(`🔧 Fixing page structure at index ${index}`);
         return {
           id: uuidv4(),
           fields: [],
@@ -415,16 +364,6 @@ router.get(
         id: page.id || uuidv4(),
         fields: Array.isArray(page.fields) ? page.fields : [],
       };
-
-      console.log(`📄 Page ${index}:`, {
-        id: pageData.id,
-        fieldsCount: pageData.fields.length,
-        fields: pageData.fields.map((f: any) => ({
-          id: f?.id,
-          type: f?.type,
-          label: f?.label,
-        })),
-      });
 
       return pageData;
     });
@@ -620,23 +559,12 @@ router.put(
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const formId = req.params.id;
 
-    console.log('🔄 Updating form:', {
-      formId,
-      userId: userId.toString(),
-      dataKeys: Object.keys(req.body),
-      pagesCount: req.body.pages?.length || 0,
-    });
-
     const form = await Form.findOne({
       _id: formId,
       userId,
     });
 
     if (!form) {
-      console.log('❌ Form not found for update:', {
-        formId,
-        userId: userId.toString(),
-      });
       throw new ApiError('Form not found', 404);
     }
 
@@ -681,14 +609,6 @@ router.put(
       };
 
       req.body.settings = updatedSettings;
-
-      console.log('🔧 Enhanced settings update:', {
-        allowMultipleSubmissions: updatedSettings.allowMultipleSubmissions,
-        allowMultipleEmailSubmissions:
-          updatedSettings.allowMultipleEmailSubmissions,
-        showLogo: updatedSettings.showLogo,
-        isEnabled: updatedSettings.isEnabled,
-      });
     }
 
     // Update form fields with validation
@@ -719,21 +639,6 @@ router.put(
 
     try {
       await form.save();
-
-      if (wasPublished || form.isPublished) {
-        console.log('🌐 PUBLISHED FORM UPDATED:', {
-          id: form.id,
-          title: form.title,
-          pagesCount: form.pages?.length || 0,
-          isEnabled: form.settings?.isEnabled,
-          allowMultipleSubmissions: form.settings?.allowMultipleSubmissions,
-          allowMultipleEmailSubmissions:
-            form.settings?.allowMultipleEmailSubmissions,
-          updatedAt: form.updatedAt,
-        });
-      }
-
-      console.log('Form updated successfully');
     } catch (saveError) {
       throw new ApiError('Failed to save form', 500);
     }
@@ -961,8 +866,6 @@ router.delete(
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const formId = req.params.id;
 
-    console.log(`🗑️ STARTING PERMANENT FORM DELETION: ${formId}`);
-
     // Validate form ID
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
@@ -971,36 +874,21 @@ router.delete(
     // Step 1: Find and verify form ownership
     const form = await Form.findOne({ _id: formId, userId });
     if (!form) {
-      console.log(`❌ Form ${formId} not found for user ${userId}`);
       throw new ApiError('Form not found or access denied', 404);
     }
 
-    console.log(
-      `📋 Form found: "${form.title}" with ${form.submissions} submissions`
-    );
-
     // Step 2: Get all submissions for this form
     const submissions = await Submission.find({ formId }).lean();
-    console.log(`📊 Found ${submissions.length} submissions to delete`);
 
     // Step 3: Delete all files from Cloudinary (submissions + form logo)
     let fileCleanupResult;
     try {
-      console.log(`🧹 Starting file cleanup process...`);
       fileCleanupResult = await deleteFormFiles(form, submissions);
-
-      console.log(` File cleanup completed:`, {
-        submissionFilesDeleted: fileCleanupResult.submissionFiles.successCount,
-        submissionFilesFailed: fileCleanupResult.submissionFiles.failureCount,
-        logoDeleted: fileCleanupResult.logoResult?.success || false,
-        totalProcessed: fileCleanupResult.totalFilesProcessed,
-      });
     } catch (fileError: any) {
       console.error(
         `⚠️ File cleanup failed (continuing with database cleanup):`,
         fileError
       );
-      // Continue with database cleanup even if file cleanup fails
     }
 
     // Step 4: Delete all submissions from database
@@ -1008,9 +896,6 @@ router.delete(
     try {
       const submissionDeleteResult = await Submission.deleteMany({ formId });
       deletedSubmissionsCount = submissionDeleteResult.deletedCount || 0;
-      console.log(
-        ` Deleted ${deletedSubmissionsCount} submissions from database`
-      );
     } catch (submissionError: any) {
       console.error(`Failed to delete submissions:`, submissionError);
       throw new ApiError('Failed to delete form submissions', 500);
@@ -1021,11 +906,8 @@ router.delete(
       const formDeleteResult = await Form.deleteOne({ _id: formId, userId });
 
       if (formDeleteResult.deletedCount === 0) {
-        console.log(`Failed to delete form ${formId} from database`);
         throw new ApiError('Failed to delete form', 500);
       }
-
-      console.log(` Form "${form.title}" deleted from database`);
     } catch (formError: any) {
       console.error(`Failed to delete form:`, formError);
       throw new ApiError('Failed to delete form', 500);
@@ -1064,8 +946,6 @@ router.delete(
       },
     };
 
-    console.log(`🎉 FORM DELETION COMPLETED SUCCESSFULLY:`, response.details);
-
     res.status(200).json(response);
   })
 );
@@ -1089,13 +969,9 @@ router.delete(
       throw new ApiError('Form not found or not authorized', 404);
     }
 
-    console.log(`🗑️ Starting deletion of all submissions for form: ${formId}`);
-
     try {
       // Get all submissions with their files for cleanup
       const submissions = await Submission.find({ formId }).lean();
-
-      console.log(`📊 Found ${submissions.length} submissions to delete`);
 
       // Collect all files that need to be deleted from Cloudinary
       const filesToDelete: Array<{ publicId: string; resourceType: string }> =
@@ -1150,10 +1026,6 @@ router.delete(
         }
       });
 
-      console.log(
-        `📁 Found ${filesToDelete.length} files to delete from Cloudinary`
-      );
-
       // Delete all submissions from database first
       const deleteResult = await Submission.deleteMany({ formId });
 
@@ -1170,18 +1042,12 @@ router.delete(
         );
 
         // Don't await this - let it run in background to avoid timeout
-        Promise.all(fileCleanupPromises)
-          .then(() => {
-            console.log(
-              `Cleaned up ${filesToDelete.length} files from Cloudinary`
-            );
-          })
-          .catch(error => {
-            console.error(
-              '❌ Some files failed to delete from Cloudinary:',
-              error
-            );
-          });
+        Promise.all(fileCleanupPromises).catch(error => {
+          console.error(
+            '❌ Some files failed to delete from Cloudinary:',
+            error
+          );
+        });
       }
 
       // Update form's submission count to 0
@@ -1214,18 +1080,12 @@ router.delete(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    console.log(
-      `Cleaning up forms trashed before: ${thirtyDaysAgo} for user: ${userId}`
-    );
-
     // Find forms that have been in trash for 30+ days
     const formsToDelete = await Form.find({
       userId,
       isTrashed: true,
       trashedAt: { $lte: thirtyDaysAgo },
     });
-
-    console.log(`Found ${formsToDelete.length} forms to cleanup`);
 
     if (formsToDelete.length === 0) {
       res.status(200).json({
@@ -1242,8 +1102,6 @@ router.delete(
       isTrashed: true,
       trashedAt: { $lte: thirtyDaysAgo },
     });
-
-    console.log(`Cleanup result:`, result);
 
     res.status(200).json({
       success: true,
@@ -1407,12 +1265,6 @@ router.patch(
     const { formIds, labelId } = req.body;
     const userId = new mongoose.Types.ObjectId(req.user.id);
 
-    console.log('Bulk add label request:', {
-      formIds,
-      labelId,
-      userId: userId.toString(),
-    });
-
     if (!formIds || !Array.isArray(formIds) || !labelId) {
       throw new ApiError('Form IDs and label ID are required', 400);
     }
@@ -1458,8 +1310,6 @@ router.patch(
       { $addToSet: { labels: labelId } }
     );
 
-    console.log('Bulk add label result:', result);
-
     res.status(200).json({
       success: true,
       message: `Label added to ${result.modifiedCount} forms`,
@@ -1477,12 +1327,6 @@ router.patch(
   asyncHandler(async (req: Request, res: Response) => {
     const { formIds, labelId } = req.body;
     const userId = new mongoose.Types.ObjectId(req.user.id);
-
-    console.log('Bulk remove label request:', {
-      formIds,
-      labelId,
-      userId: userId.toString(),
-    });
 
     if (!formIds || !Array.isArray(formIds) || !labelId) {
       throw new ApiError('Form IDs and label ID are required', 400);
@@ -1522,8 +1366,6 @@ router.patch(
       { _id: { $in: formIds }, userId },
       { $pull: { labels: labelId } }
     );
-
-    console.log('Bulk remove label result:', result);
 
     res.status(200).json({
       success: true,

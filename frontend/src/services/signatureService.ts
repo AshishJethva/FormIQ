@@ -15,11 +15,6 @@ export const signatureCloudinaryService = {
     fieldId: string
   ): Promise<string> {
     try {
-      console.log('📸 Uploading signature to Cloudinary:', {
-        submissionId,
-        fieldId,
-      });
-
       // Remove data URL prefix if present
       const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
 
@@ -56,7 +51,6 @@ export const signatureCloudinaryService = {
 
       const result = await response.json();
 
-      console.log(' Signature uploaded to Cloudinary:', result.secure_url);
       return result.secure_url;
     } catch (error: any) {
       console.error('❌ Error uploading signature to Cloudinary:', error);
@@ -81,11 +75,6 @@ export const signatureCloudinaryService = {
             fieldId
           );
           processedData[fieldId] = cloudinaryUrl;
-
-          console.log(
-            ` Processed signature for field ${fieldId}:`,
-            cloudinaryUrl
-          );
         } catch (error) {
           console.error(
             `❌ Failed to process signature for field ${fieldId}:`,
@@ -110,12 +99,6 @@ export const generateEnhancedCSVExportWithSignatures = async (
     return 'Submission Date,No Data\n"No submissions found",""';
   }
 
-  console.log(
-    '📊 Generating Enhanced CSV with signature processing for',
-    submissions.length,
-    'submissions'
-  );
-
   // Process signatures for all submissions
   const processedSubmissions = await Promise.all(
     submissions.map(async submission => {
@@ -126,10 +109,6 @@ export const generateEnhancedCSVExportWithSignatures = async (
         );
 
         if (hasSignatures) {
-          console.log(
-            '🖊️ Processing signatures for submission:',
-            submission._id
-          );
           const processedData =
             await signatureCloudinaryService.processSignaturesInSubmission(
               submission.data,
