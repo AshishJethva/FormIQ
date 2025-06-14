@@ -42,6 +42,9 @@ export default function FormBuilder() {
   );
   const [elementsVisible, setElementsVisible] = useState<boolean>(true);
 
+  // Add state for panel expansion
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+
   // Determine current page based on pathname and preview state
   const getCurrentPage = () => {
     if (isPreviewEnabled) return 'PREVIEW';
@@ -73,6 +76,11 @@ export default function FormBuilder() {
       },
     }
   );
+
+  // Handle panel toggle callback
+  const handlePanelToggle = (isExpanded: boolean) => {
+    setIsPanelExpanded(isExpanded);
+  };
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -141,6 +149,7 @@ export default function FormBuilder() {
   useEffect(() => {
     if (currentPage !== 'BUILD') {
       setElementsVisible(false);
+      setIsPanelExpanded(false); // Close panel when leaving BUILD page
       dispatch(clearSelectedField());
     } else if (!isPreviewEnabled) {
       setElementsVisible(true);
@@ -152,6 +161,7 @@ export default function FormBuilder() {
 
     if (enabled) {
       setElementsVisible(false);
+      setIsPanelExpanded(false); // Close panel in preview mode
       dispatch(clearSelectedField());
       window.location.hash = '#preview';
 
@@ -340,11 +350,13 @@ export default function FormBuilder() {
           <AnimatePresence>
             {currentPage === 'BUILD' &&
               elementsVisible &&
-              !isPreviewEnabled && <ElementsPanel />}
+              !isPreviewEnabled && (
+                <ElementsPanel onPanelToggle={handlePanelToggle} />
+              )}
           </AnimatePresence>
 
-          {/* Form Canvas */}
-          <FormCanvas />
+          {/* Form Canvas - Pass panel state */}
+          <FormCanvas isPanelExpanded={isPanelExpanded} />
 
           {/* Properties Panel - Only shown when a field is selected and not in preview mode */}
           {formState.form.selectedFieldId &&

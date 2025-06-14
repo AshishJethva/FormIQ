@@ -34,7 +34,14 @@ import FormPagination from './FormPagination';
 import LogoPropertiesPanel from '../properties-panel/LogoPropertiesPanel';
 import { AppDispatch } from '@/redux/store';
 
-export default function FormCanvas() {
+// Interface for panel state
+interface FormCanvasProps {
+  isPanelExpanded?: boolean;
+}
+
+export default function FormCanvas({
+  isPanelExpanded = false,
+}: FormCanvasProps) {
   const dispatch = useDispatch<AppDispatch>();
   const params = useParams();
   const formId = params.formId as string;
@@ -52,10 +59,30 @@ export default function FormCanvas() {
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [isLogoPropertiesOpen, setIsLogoPropertiesOpen] = useState(false);
   const [isPageLabelHovered, setIsPageLabelHovered] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   const formCanvasRef = useRef<HTMLDivElement>(null);
   const logoAreaRef = useRef<HTMLDivElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
+
+  // Check screen size for responsive behavior
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1500); // xl breakpoint
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
+
+  // Helper function to determine if content should shift
+  const shouldShiftContent = () => {
+    return isPanelExpanded && !isLargeScreen;
+  };
 
   // Load form data on mount if not already loaded
   useEffect(() => {
@@ -70,7 +97,6 @@ export default function FormCanvas() {
       const currentPageIndex = form.currentPageIndex || 0;
       const currentPage = form.pages[currentPageIndex];
 
-      // Only update if the selectedPageId doesn't match the current page
       if (currentPage && form.selectedPageId !== currentPage.id) {
         dispatch(setSelectedPageId(currentPage.id));
       }
@@ -84,7 +110,6 @@ export default function FormCanvas() {
         formCanvasRef.current &&
         !formCanvasRef.current.contains(event.target as Node) &&
         form?.selectedFieldId &&
-        // Make sure we're not clicking in the properties panel
         !(event.target as Element).closest('.properties-panel')
       ) {
         dispatch(clearSelectedField());
@@ -104,6 +129,7 @@ export default function FormCanvas() {
     }
   }, [editingLabelId]);
 
+  // Form Builder Warnings Component
   const FormBuilderWarnings = ({ form }: { form: any }) => {
     const hasRequiredFields = form?.pages?.some((page: any) =>
       page.fields?.some((field: any) => field.required === true)
@@ -115,7 +141,7 @@ export default function FormCanvas() {
 
     if (!hasAnyFields) {
       return (
-        <div className='mx-auto my-4 p-4 bg-orange-50 border border-orange-200 rounded-lg w-[768px]'>
+        <div className='mx-auto my-4 p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-3xl'>
           <div className='flex items-center'>
             <div className='text-orange-600 mr-2'>⚠️</div>
             <div>
@@ -132,7 +158,7 @@ export default function FormCanvas() {
 
     if (!hasRequiredFields && form?.isPublished) {
       return (
-        <div className='mx-auto my-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg w-[768px]'>
+        <div className='mx-auto my-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-3xl'>
           <div className='flex items-center'>
             <div className='text-yellow-600 mr-2'>💡</div>
             <div>
@@ -161,11 +187,9 @@ export default function FormCanvas() {
   const navigateToPage = (pageIndex: number) => {
     if (!form) return;
 
-    // Ensure page index is within valid range
     if (pageIndex >= 0 && pageIndex <= form.pages.length) {
       dispatch(setCurrentPageIndex(pageIndex));
 
-      // If navigating to a valid page (not thank you page), update selectedPageId
       if (pageIndex < form.pages.length && form.pages[pageIndex]) {
         const targetPage = form.pages[pageIndex];
         dispatch(setSelectedPageId(targetPage.id));
@@ -197,10 +221,9 @@ export default function FormCanvas() {
   const [{ isOver, canDrop }, dropRef] = useDrop(
     () => ({
       accept: ItemTypes.FORM_ELEMENT,
-      canDrop: () => !!currentPage, // Only allow drop if we have a current page
+      canDrop: () => !!currentPage,
       drop: (item: { fieldType: FieldType }, monitor) => {
         if (!monitor.didDrop() && currentPage) {
-          // Add field to the END of the current page
           dispatch(
             addFieldAtIndex({
               type: item.fieldType,
@@ -223,47 +246,26 @@ export default function FormCanvas() {
       }),
     }),
     [currentPage, form?.currentPageIndex]
-  ); // Re-create drop handler when page changes
+  );
 
-  // Show loading state while form is loading
-  if (isLoading) {
-    return (
-      <div className='w-full h-full flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4'></div>
-          <p className='text-gray-600'>Loading form...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!form) return null;
-  if (!form.pages || !Array.isArray(form.pages)) {
-    console.error('Form pages is not properly initialized');
-    return null;
-  }
-
+  // Field event handlers
   const handleFieldClick = (fieldId: string) => {
-    if (isPreviewMode) return;
+    if (isPreviewMode || !form) return;
 
-    // Select the field
     if (form.selectedFieldId === fieldId) {
-      // If already selected, toggle properties panel
       dispatch(togglePropertiesPanel());
     } else {
-      // Otherwise, just select it
       dispatch(selectField(fieldId));
     }
   };
 
   const handleSettingsClick = (e: React.MouseEvent, fieldId: string) => {
     e.stopPropagation();
+    if (!form) return;
 
-    // If the field is already selected, toggle properties panel
     if (form.selectedFieldId === fieldId) {
       dispatch(togglePropertiesPanel());
     } else {
-      // Select field and open properties panel
       dispatch(selectField(fieldId));
       dispatch(togglePropertiesPanel(true));
     }
@@ -271,8 +273,8 @@ export default function FormCanvas() {
 
   const handleDeleteField = (e: React.MouseEvent, fieldId: string) => {
     e.stopPropagation();
+    if (!form || !form.pages) return;
 
-    // Find the page that contains this field
     let pageId = '';
     let field: Field | undefined;
 
@@ -288,7 +290,6 @@ export default function FormCanvas() {
 
     if (pageId && fieldId) {
       dispatch(removeField({ fieldId, pageId }));
-
       if (field) {
         toast.info(`${field.label} field removed`);
       }
@@ -297,8 +298,8 @@ export default function FormCanvas() {
 
   const handleDuplicateField = (e: React.MouseEvent, fieldId: string) => {
     e.stopPropagation();
+    if (!form || !form.pages) return;
 
-    // Find the field
     let field: Field | undefined;
     let pageId: string | undefined;
 
@@ -323,7 +324,6 @@ export default function FormCanvas() {
     label: string
   ) => {
     e.stopPropagation();
-
     if (isPreviewMode) return;
 
     setEditingLabelId(fieldId);
@@ -335,8 +335,7 @@ export default function FormCanvas() {
   };
 
   const handleLabelBlur = () => {
-    if (editingLabelId && editingLabelValue.trim()) {
-      // Find the page that contains this field
+    if (editingLabelId && editingLabelValue.trim() && form && form.pages) {
       let pageId = '';
 
       for (const page of form.pages) {
@@ -393,11 +392,12 @@ export default function FormCanvas() {
     toast.success(`Added new ${type.replace(/_/g, ' ').toLowerCase()} field`);
   };
 
-  // Render a field based on its type and state
+  // Render field function
   const renderField = (field: Field, index: number, pageId: string) => {
+    if (!form) return null;
+
     const isSelected = form.selectedFieldId === field.id;
 
-    // Create editable label component
     const renderEditableLabel = () => {
       const isEditing = editingLabelId === field.id;
 
@@ -430,7 +430,6 @@ export default function FormCanvas() {
       );
     };
 
-    // Field content based on its type
     const renderFieldContent = () => {
       switch (field.type) {
         case FieldType.SHORT_TEXT:
@@ -662,101 +661,6 @@ export default function FormCanvas() {
             </div>
           );
 
-        case FieldType.IMAGE:
-          return (
-            <div>
-              {renderEditableLabel()}
-              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
-                <Image className='w-12 h-12 mx-auto text-gray-400 mb-2' />
-                <p className='text-gray-500 text-sm'>
-                  Click to upload an image
-                </p>
-                <p className='text-gray-400 text-xs mt-1'>
-                  PNG, JPG, GIF up to 10MB
-                </p>
-              </div>
-              {field.helpText && (
-                <div className='text-sm text-gray-500 mt-1'>
-                  {field.helpText}
-                </div>
-              )}
-            </div>
-          );
-
-        case FieldType.FILE_UPLOAD:
-          return (
-            <div>
-              {renderEditableLabel()}
-              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
-                <Upload className='w-12 h-12 mx-auto text-gray-400 mb-2' />
-                <p className='text-gray-500 text-sm'>Click to upload files</p>
-                <p className='text-gray-400 text-xs mt-1'>
-                  {field.accept
-                    ? `Accepted: ${field.accept}`
-                    : 'Any file type up to 25MB'}
-                </p>
-              </div>
-              {field.helpText && (
-                <div className='text-sm text-gray-500 mt-1'>
-                  {field.helpText}
-                </div>
-              )}
-            </div>
-          );
-
-        case FieldType.TIME:
-          return (
-            <div>
-              {renderEditableLabel()}
-              <Input
-                type='time'
-                disabled
-                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-              {field.helpText && (
-                <div className='text-sm text-gray-500 mt-1'>
-                  {field.helpText}
-                </div>
-              )}
-            </div>
-          );
-
-        case FieldType.HEADING:
-          return (
-            <div>
-              {editingLabelId === field.id ? (
-                <input
-                  ref={labelInputRef}
-                  value={editingLabelValue}
-                  onChange={handleLabelChange}
-                  onBlur={handleLabelBlur}
-                  onKeyDown={handleLabelKeyDown}
-                  className={`bg-transparent w-full text-3xl font-semibold my-5 py-2 pb-5 text-gray-700 outline-none border-none focus:outline-none focus:ring-0 focus:border-none ${
-                    field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
-                  }`}
-                  style={{
-                    textAlign:
-                      field.labelAlignment === 'LEFT' ? 'left' : 'right',
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <h3
-                  className={`text-3xl my-5 py-2 pb-5 border-b font-semibold border-gray-200  text-gray-700 cursor-pointer ${
-                    field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
-                  }`}
-                  style={{
-                    textAlign:
-                      field.labelAlignment === 'LEFT' ? 'left' : 'right',
-                  }}
-                  onClick={e => handleLabelClick(e, field.id, field.label)}
-                >
-                  {field.label}
-                </h3>
-              )}
-            </div>
-          );
-
         case FieldType.EMAIL:
           return (
             <div>
@@ -856,6 +760,23 @@ export default function FormCanvas() {
             </div>
           );
 
+        case FieldType.TIME:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <Input
+                type='time'
+                disabled
+                className='w-full my-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
         case FieldType.APPOINTMENT:
           return (
             <div>
@@ -871,6 +792,48 @@ export default function FormCanvas() {
                   type='time'
                   className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.IMAGE:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
+                <Image className='w-12 h-12 mx-auto text-gray-400 mb-2' />
+                <p className='text-gray-500 text-sm'>
+                  Click to upload an image
+                </p>
+                <p className='text-gray-400 text-xs mt-1'>
+                  PNG, JPG, GIF up to 10MB
+                </p>
+              </div>
+              {field.helpText && (
+                <div className='text-sm text-gray-500 mt-1'>
+                  {field.helpText}
+                </div>
+              )}
+            </div>
+          );
+
+        case FieldType.FILE_UPLOAD:
+          return (
+            <div>
+              {renderEditableLabel()}
+              <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
+                <Upload className='w-12 h-12 mx-auto text-gray-400 mb-2' />
+                <p className='text-gray-500 text-sm'>Click to upload files</p>
+                <p className='text-gray-400 text-xs mt-1'>
+                  {field.accept
+                    ? `Accepted: ${field.accept}`
+                    : 'Any file type up to 25MB'}
+                </p>
               </div>
               {field.helpText && (
                 <div className='text-sm text-gray-500 mt-1'>
@@ -900,6 +863,42 @@ export default function FormCanvas() {
                 <div className='text-sm text-gray-500 mt-1'>
                   {field.helpText}
                 </div>
+              )}
+            </div>
+          );
+
+        case FieldType.HEADING:
+          return (
+            <div>
+              {editingLabelId === field.id ? (
+                <input
+                  ref={labelInputRef}
+                  value={editingLabelValue}
+                  onChange={handleLabelChange}
+                  onBlur={handleLabelBlur}
+                  onKeyDown={handleLabelKeyDown}
+                  className={`bg-transparent w-full text-3xl font-semibold my-5 py-2 pb-5 text-gray-700 outline-none border-none focus:outline-none focus:ring-0 focus:border-none ${
+                    field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
+                  }`}
+                  style={{
+                    textAlign:
+                      field.labelAlignment === 'LEFT' ? 'left' : 'right',
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <h3
+                  className={`text-3xl my-5 py-2 pb-5 border-b font-semibold border-gray-200  text-gray-700 cursor-pointer ${
+                    field.labelAlignment === 'LEFT' ? 'text-left' : 'text-right'
+                  }`}
+                  style={{
+                    textAlign:
+                      field.labelAlignment === 'LEFT' ? 'left' : 'right',
+                  }}
+                  onClick={e => handleLabelClick(e, field.id, field.label)}
+                >
+                  {field.label}
+                </h3>
               )}
             </div>
           );
@@ -1247,76 +1246,115 @@ export default function FormCanvas() {
     );
   };
 
+  // Logo area component
+  const renderLogoArea = () => {
+    if (!form) return null;
+
+    return (
+      <div
+        className='flex justify-center w-full bg-[#F3F3FE]'
+        style={{
+          // Only shift on smaller screens (below xl breakpoint)
+          paddingLeft: shouldShiftContent() ? '320px' : '0px',
+          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <motion.div
+          ref={logoAreaRef}
+          className={`max-w-3xl w-full mx-auto my-8 mt-11 transition-colors cursor-pointer overflow-visible ${
+            form.logo
+              ? 'border-transparent'
+              : isLogoHovered
+              ? 'border-blue-400 text-blue-500 bg-blue-50/30 border-dashed border-2 rounded pt-1 text-center'
+              : 'border-gray-300 text-gray-400 hover:border-blue-300 hover:text-blue-500 border-dashed border-2 rounded pt-1 text-center'
+          }`}
+          style={{
+            minHeight:
+              form.logo?.size && form.logo.size > 70
+                ? '180px'
+                : form.logo?.size && form.logo.size > 50
+                ? '120px'
+                : '60px',
+            transition:
+              'min-height 0.3s ease, border-color 0.3s ease, background-color 0.3s ease',
+          }}
+          onMouseEnter={() => setIsLogoHovered(true)}
+          onMouseLeave={() => setIsLogoHovered(false)}
+          onClick={handleLogoClick}
+        >
+          {form.logo ? (
+            <FormLogo />
+          ) : (
+            <AnimatePresence>
+              {isLogoHovered ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className='flex items-center justify-center py-3'
+                >
+                  <Upload className='mr-2 w-5 h-5' />
+                  <span className='font-medium'>ADD YOUR LOGO</span>
+                </motion.div>
+              ) : (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className='py-3 block'
+                >
+                  + ADD YOUR LOGO
+                </motion.span>
+              )}
+            </AnimatePresence>
+          )}
+        </motion.div>
+      </div>
+    );
+  };
+
+  // Show loading state while form is loading
+  if (isLoading) {
+    return (
+      <div className='w-full h-full flex items-center justify-center bg-[#F3F3FE]'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4'></div>
+          <p className='text-gray-600'>Loading form...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!form) return null;
+  if (!form.pages || !Array.isArray(form.pages)) {
+    console.error('Form pages is not properly initialized');
+    return null;
+  }
+
   // Special case for Thank You page
   const currentPageIndex =
     form.currentPageIndex !== undefined ? form.currentPageIndex : 0;
   const isThankYouPage = currentPageIndex === form.pages.length;
 
-  // Render the logo area (now outside the form container)
-  const renderLogoArea = () => {
-    return (
-      <div
-        ref={logoAreaRef}
-        className={`max-w-3xl mx-auto my-8 transition-colors cursor-pointer overflow-visible ${
-          form.logo
-            ? 'border-transparent'
-            : isLogoHovered
-            ? 'border-blue-400 text-blue-500 bg-blue-50/30 border-dashed border-2 rounded pt-1 text-center'
-            : 'border-gray-300 text-gray-400 hover:border-blue-300 hover:text-blue-500 border-dashed border-2 rounded pt-1 text-center'
-        }`}
-        style={{
-          minHeight:
-            form.logo?.size && form.logo.size > 70
-              ? '180px'
-              : form.logo?.size && form.logo.size > 50
-              ? '120px'
-              : '60px',
-          transition:
-            'min-height 0.3s ease, border-color 0.3s ease, background-color 0.3s ease',
-        }}
-        onMouseEnter={() => setIsLogoHovered(true)}
-        onMouseLeave={() => setIsLogoHovered(false)}
-        onClick={handleLogoClick}
-      >
-        {form.logo ? (
-          <FormLogo />
-        ) : (
-          <AnimatePresence>
-            {isLogoHovered ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className='flex items-center justify-center py-3'
-              >
-                <Upload className='mr-2 w-5 h-5' />
-                <span className='font-medium'>ADD YOUR LOGO</span>
-              </motion.div>
-            ) : (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className='py-3 block'
-              >
-                + ADD YOUR LOGO
-              </motion.span>
-            )}
-          </AnimatePresence>
-        )}
-      </div>
-    );
-  };
-
   if (isThankYouPage) {
     return (
-      <div className='w-full h-full overflow-y-auto mt-10'>
+      <div className='w-full h-full overflow-y-auto mt-10 bg-[#F3F3FE]'>
+        {renderLogoArea()}
         <div
-          className='max-w-3xl mx-auto bg-white p-8 shadow-sm'
-          ref={formCanvasRef}
+          className='flex justify-center'
+          style={{
+            // Only shift on smaller screens (below xl breakpoint)
+            paddingLeft: shouldShiftContent() ? '320px' : '0px',
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
         >
-          <ThankYouPage />
-          <FormPagination />
+          <div
+            className='max-w-3xl w-full mx-auto bg-white p-8 shadow-sm'
+            ref={formCanvasRef}
+          >
+            <ThankYouPage />
+            <FormPagination />
+          </div>
         </div>
         <LogoPropertiesPanel
           isOpen={isLogoPropertiesOpen}
@@ -1329,7 +1367,7 @@ export default function FormCanvas() {
   // Ensure we have a valid current page
   if (!currentPage) {
     return (
-      <div className='w-full h-full flex items-center justify-center'>
+      <div className='w-full h-full flex items-center justify-center bg-[#F3F3FE]'>
         <div className='text-center'>
           <p className='text-gray-600'>No page available</p>
         </div>
@@ -1343,131 +1381,175 @@ export default function FormCanvas() {
 
   return (
     <div className='w-full h-full overflow-y-auto bg-[#F3F3FE]'>
-      {/* Logo Area - Outside the form */}
+      {/* Logo Area */}
       {renderLogoArea()}
 
       {/* Warnings */}
-      <FormBuilderWarnings form={form} />
+      <div
+        className='flex justify-center'
+        style={{
+          // Only shift on smaller screens (below xl breakpoint)
+          paddingLeft: shouldShiftContent() ? '320px' : '0px',
+          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <FormBuilderWarnings form={form} />
+      </div>
 
       {/* Page Label with Remove Page option */}
       {!isFirstPage && (
-        <div className='max-w-3xl mx-auto mb-2 flex justify-end'>
-          <div
-            className='relative'
-            onMouseEnter={() => setIsPageLabelHovered(true)}
-            onMouseLeave={() => setIsPageLabelHovered(false)}
-          >
-            <span className='text-gray-500 text-sm'>
-              Page {currentPageIndex + 1}
-            </span>
+        <div
+          className='flex justify-center'
+          style={{
+            // Only shift on smaller screens (below xl breakpoint)
+            paddingLeft: shouldShiftContent() ? '320px' : '0px',
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <div className='max-w-3xl w-full mx-auto mb-2 flex justify-end'>
+            <div
+              className='relative'
+              onMouseEnter={() => setIsPageLabelHovered(true)}
+              onMouseLeave={() => setIsPageLabelHovered(false)}
+            >
+              <span className='text-gray-500 text-sm'>
+                Page {currentPageIndex + 1}
+              </span>
 
-            {/* Remove Page Button - Shows on hover */}
-            <AnimatePresence>
-              {isPageLabelHovered && !isPreviewMode && (
-                <motion.button
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 5 }}
-                  className='ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md text-xs cursor-pointer'
-                  onClick={() => handleRemovePage(currentPage.id)}
-                >
-                  Remove Page
-                </motion.button>
-              )}
-            </AnimatePresence>
+              <AnimatePresence>
+                {isPageLabelHovered && !isPreviewMode && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    className='ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-md text-xs cursor-pointer'
+                    onClick={() => handleRemovePage(currentPage.id)}
+                  >
+                    Remove Page
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       )}
 
       {/* Form Container */}
       <div
-        className={`max-w-3xl mx-auto bg-white shadow-sm my-4 ${
-          isOver && canDrop ? 'ring-2 ring-blue-400 ring-opacity-70' : ''
-        }`}
-        ref={node => {
-          dropRef(node);
-          if (formCanvasRef.current !== node) {
-            formCanvasRef.current = node;
-          }
+        className='flex justify-center'
+        style={{
+          // Only shift on smaller screens (below xl breakpoint)
+          paddingLeft: shouldShiftContent() ? '320px' : '0px',
+          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <div>
-          {/* Drop zone before any fields - PASS CURRENT PAGE ID */}
-          {!isPreviewMode && (
-            <DropZone
-              index={0}
-              pageId={currentPage.id} // This is crucial!
-              onDrop={handleAddFieldAtIndex}
-            />
-          )}
+        <motion.div
+          className={`max-w-3xl w-full mx-auto bg-white shadow-sm my-4 ${
+            isOver && canDrop ? 'ring-2 ring-blue-400 ring-opacity-70' : ''
+          }`}
+          ref={node => {
+            dropRef(node);
+            if (formCanvasRef.current !== node) {
+              formCanvasRef.current = node;
+            }
+          }}
+        >
+          <div>
+            {/* Drop zone before any fields */}
+            {!isPreviewMode && (
+              <DropZone
+                index={0}
+                pageId={currentPage.id}
+                onDrop={handleAddFieldAtIndex}
+              />
+            )}
 
-          {/* Fields with drop zones between them */}
-          {fields.map((field, index) => (
-            <div key={field.id}>
-              {renderField(field, index, currentPage.id)}
+            {/* Fields with drop zones between them */}
+            {fields.map((field, index) => (
+              <div key={field.id}>
+                {renderField(field, index, currentPage.id)}
 
-              {/* Drop zone after each field - PASS CURRENT PAGE ID */}
-              {!isPreviewMode && (
-                <DropZone
-                  index={index + 1}
-                  pageId={currentPage.id} // This is crucial!
-                  onDrop={handleAddFieldAtIndex}
-                />
+                {/* Drop zone after each field */}
+                {!isPreviewMode && (
+                  <DropZone
+                    index={index + 1}
+                    pageId={currentPage.id}
+                    onDrop={handleAddFieldAtIndex}
+                  />
+                )}
+              </div>
+            ))}
+
+            {/* Empty Form State */}
+            {fields.length === 0 && !isPreviewMode && (
+              <div className='flex flex-col mt-4 items-center justify-center h-30 border-2 border-dashed border-gray-300 rounded-lg mx-4 mb-4 pt-4'>
+                <div className='text-gray-500 mb-4'>
+                  Drag your first question here from the left.
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Buttons - Next, Back, Submit */}
+            <div className='px-4 mt-2 mb-8 pt-3 pb-6 flex justify-center'>
+              {/* Show Back button on pages after the first */}
+              {!isFirstPage && (
+                <button
+                  className='bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-8 rounded transition-colors mr-4 cursor-pointer'
+                  onClick={() => navigateToPage(currentPageIndex - 1)}
+                >
+                  Back
+                </button>
+              )}
+
+              {/* Show Next button on all pages except last */}
+              {!isLastPage ? (
+                <button
+                  className='bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-8 rounded transition-colors cursor-pointer'
+                  onClick={() => navigateToPage(currentPageIndex + 1)}
+                >
+                  Next
+                </button>
+              ) : (
+                /* Show Submit button on last page */
+                <button
+                  className='bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-8 rounded transition-colors cursor-pointer'
+                  disabled={isPreviewMode}
+                >
+                  {form?.settings?.submitButtonText || 'Submit'}
+                </button>
               )}
             </div>
-          ))}
-
-          {/* Empty Form State */}
-          {fields.length === 0 && !isPreviewMode && (
-            <div className='flex flex-col mt-4 items-center justify-center h-30 border-2 border-dashed border-gray-300 rounded-lg mx-4 mb-4 pt-4'>
-              <div className='text-gray-500 mb-4'>
-                Drag your first question here from the left.
-              </div>
-            </div>
-          )}
-
-          {/* Dynamic Buttons - Next, Back, Submit */}
-          <div className='px-4 mt-2 mb-8 pt-3 pb-6 flex justify-center'>
-            {/* Show Back button on pages after the first */}
-            {!isFirstPage && (
-              <button
-                className='bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-8 rounded transition-colors mr-4 cursor-pointer'
-                onClick={() => navigateToPage(currentPageIndex - 1)}
-              >
-                Back
-              </button>
-            )}
-
-            {/* Show Next button on all pages except last */}
-            {!isLastPage ? (
-              <button
-                className='bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-8 rounded transition-colors cursor-pointer'
-                onClick={() => navigateToPage(currentPageIndex + 1)}
-              >
-                Next
-              </button>
-            ) : (
-              /* Show Submit button on last page */
-              <button
-                className='bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-8 rounded transition-colors cursor-pointer'
-                disabled={isPreviewMode}
-              >
-                {form.settings?.submitButtonText || 'Submit'}
-              </button>
-            )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Add New Page Button - only appear on last page */}
       {!isPreviewMode && isLastPage && (
-        <div className='border-t border-gray-200 text-center w-[764px] mx-auto'>
-          <AddNewPageButton isInline />
+        <div
+          className='flex justify-center'
+          style={{
+            // Only shift on smaller screens (below xl breakpoint)
+            paddingLeft: shouldShiftContent() ? '320px' : '0px',
+            transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <div className='border-t border-gray-200 text-center max-w-3xl w-full mx-auto'>
+            <AddNewPageButton isInline />
+          </div>
         </div>
       )}
 
       {/* Pagination */}
-      <FormPagination />
+      <div
+        className='flex justify-center'
+        style={{
+          // Only shift on smaller screens (below xl breakpoint)
+          paddingLeft: shouldShiftContent() ? '320px' : '0px',
+          transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <FormPagination />
+      </div>
 
       {/* Logo Properties Panel */}
       <LogoPropertiesPanel

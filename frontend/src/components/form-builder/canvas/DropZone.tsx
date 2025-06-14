@@ -35,11 +35,11 @@ export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
 
   return (
     <div
-      ref={drop}
-      className={`relative transition-all duration-200 ${
+      ref={drop as unknown as React.RefObject<HTMLDivElement>}
+      className={`relative transition-all duration-300 ease-in-out ${
         isOver && canDrop
-          ? 'h-12 opacity-100'
-          : 'h-2 opacity-0 hover:opacity-100 hover:h-8'
+          ? 'h-16 sm:h-12 opacity-100'
+          : 'h-3 sm:h-2 opacity-0 hover:opacity-100 hover:h-10 sm:hover:h-8'
       }`}
     >
       <AnimatePresence>
@@ -51,16 +51,21 @@ export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
               scaleY: 1,
             }}
             exit={{ opacity: 0, scaleY: 0 }}
-            className={`absolute inset-0 mx-4 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors ${
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className={`absolute inset-0 mx-2 sm:mx-4 rounded-lg border-2 border-dashed flex items-center justify-center transition-all duration-200 ${
               isOver && canDrop
-                ? 'border-blue-400 bg-blue-50/50'
-                : 'border-gray-300 bg-gray-50/30 hover:border-blue-300 hover:bg-blue-50/30'
+                ? 'border-blue-400 bg-blue-50/70 shadow-sm'
+                : 'border-gray-300 bg-gray-50/50 hover:border-blue-300 hover:bg-blue-50/40'
             }`}
           >
-            <div className='flex items-center text-xs text-gray-500'>
-              <Plus className='w-3 h-3 mr-1' />
+            <motion.div
+              className='flex items-center text-xs sm:text-sm text-gray-500 font-medium'
+              animate={isOver && canDrop ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 0.5, repeat: Infinity }}
+            >
+              <Plus className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
               <span>Drop here</span>
-            </div>
+            </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>

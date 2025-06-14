@@ -5,6 +5,8 @@ import { RootState } from '@/redux/store';
 import { FormPage as FormPageType } from '@/types/form';
 import { useDrop } from 'react-dnd';
 import { ItemTypes } from '@/types/dragTypes';
+import { motion } from 'framer-motion';
+import { FileText, MousePointer2 } from 'lucide-react';
 
 interface FormPageProps {
   page: FormPageType;
@@ -38,7 +40,6 @@ const FormPage: React.FC<FormPageProps> = ({ page, isActive, renderField }) => {
     },
     canDrop: () => {
       // Add your logic to determine if dropping is allowed
-      // For example, you might only allow dropping certain item types
       return true; // Allow all drops by default
     },
     collect: monitor => ({
@@ -47,19 +48,23 @@ const FormPage: React.FC<FormPageProps> = ({ page, isActive, renderField }) => {
     }),
   });
 
-  // Don't render if page is not active
   if (!isActive) return null;
 
   return (
-    <div className='mt-4 mb-8'>
+    <motion.div
+      className='mt-4 mb-8 px-2 sm:px-0'
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+    >
       {/* Page Fields */}
       <div
-        className={`space-y-1 ${
+        className={`space-y-2 sm:space-y-1 transition-all duration-300 ${
           isOver && canDrop && !page.fields?.length
-            ? 'py-4 border-2 border-dashed border-blue-300 bg-blue-50/30 rounded'
+            ? 'py-6 sm:py-4 border-2 border-dashed border-blue-300 bg-blue-50/30 rounded-lg'
             : ''
         }`}
-        ref={drop}
+        ref={drop as unknown as React.Ref<HTMLDivElement>}
       >
         {page.fields && page.fields.length > 0
           ? page.fields.map((field, index) => (
@@ -69,16 +74,48 @@ const FormPage: React.FC<FormPageProps> = ({ page, isActive, renderField }) => {
             ))
           : // Empty state
             !isPreviewMode && (
-              <div className='py-12 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 mx-4'>
-                <div className='text-gray-500 mb-2'>No fields added yet</div>
-                <div className='text-gray-400 text-sm'>
+              <motion.div
+                className='py-16 sm:py-12 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100/50 mx-2 sm:mx-4'
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <motion.div
+                  animate={{
+                    rotate: [0, 5, -5, 0],
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3,
+                  }}
+                >
+                  <FileText className='w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mb-4' />
+                </motion.div>
+                <div className='text-gray-600 mb-2 text-lg sm:text-xl font-medium text-center'>
+                  No fields added yet
+                </div>
+                <div className='text-gray-500 text-sm sm:text-base text-center max-w-xs sm:max-w-sm px-4'>
                   Drag elements from the left panel or click the &apos;+&apos;
                   button to add a field
                 </div>
-              </div>
+                <motion.div
+                  className='mt-4 flex items-center text-gray-400 text-xs sm:text-sm'
+                  animate={{ x: [0, 10, 0] }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    repeatDelay: 2,
+                  }}
+                >
+                  <MousePointer2 className='w-4 h-4 mr-1' />
+                  <span>Start building your form</span>
+                </motion.div>
+              </motion.div>
             )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

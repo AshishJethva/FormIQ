@@ -9,10 +9,16 @@ import Image from 'next/image';
 import LOGO from '@/../public/Logo.png';
 import Link from 'next/link';
 import ProfileDropdown from '@/components/dashboard/ProfileDropdown';
-import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Menu,
+  ArrowLeft,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatTime } from '@/lib/utils';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
@@ -33,21 +39,27 @@ export default function FormBuilderHeader({
 }: FormBuilderHeaderProps) {
   const dispatch = useDispatch();
   const params = useParams();
+  const router = useRouter();
   const formId = params.formId as string;
 
   const [titleValue, setTitleValue] = useState(title);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // const { user } = useSelector((state: RootState) => state.user as UserState);
+  // Handle back navigation
+  const handleBackClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/dashboard');
+  };
 
-  //  : Update titleValue when title prop changes
+  // Update titleValue when title prop changes
   useEffect(() => {
     setTitleValue(title);
-    setTitleError(null); // Clear any previous errors when title changes
+    setTitleError(null);
   }, [title]);
 
-  //  ADDED: Manual save function for title with duplicate validation
+  // Manual save function for title with duplicate validation
   const saveTitleToBackend = async (newTitle: string) => {
     if (!newTitle.trim() || !formId || newTitle.trim() === title) return;
 
@@ -60,7 +72,6 @@ export default function FormBuilderHeader({
         throw new Error('Authentication token not found');
       }
 
-      // Update title in backend
       await axios.put(
         `${apiConfig.url}/forms/${formId}`,
         { title: newTitle.trim() },
@@ -72,14 +83,10 @@ export default function FormBuilderHeader({
         }
       );
 
-      // Update Redux state
       dispatch(setFormTitle(newTitle.trim()));
-
-      toast.success('Form title updated successfully');
     } catch (error: any) {
       let errorMessage = 'Failed to update title';
 
-      //  : Handle specific error cases
       if (error.response?.status === 400) {
         errorMessage =
           error.response.data?.message ||
@@ -94,8 +101,6 @@ export default function FormBuilderHeader({
       setTitleError(errorMessage);
       toast.error(errorMessage);
       console.error('Failed to update title from header:', error);
-
-      // Reset title to original value on error
       setTitleValue(title);
     } finally {
       setIsSavingTitle(false);
@@ -104,14 +109,14 @@ export default function FormBuilderHeader({
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitleValue(e.target.value);
-    setTitleError(null); // Clear error when user starts typing
+    setTitleError(null);
   };
 
   const handleTitleBlur = () => {
     if (titleValue.trim() && titleValue.trim() !== title) {
       saveTitleToBackend(titleValue.trim());
     } else if (!titleValue.trim()) {
-      setTitleValue(title); // Reset to original if empty
+      setTitleValue(title);
       setTitleError(null);
     }
   };
@@ -125,46 +130,44 @@ export default function FormBuilderHeader({
 
   // Get save status display
   const getSaveStatusDisplay = () => {
-    //  ADDED: Show title saving status first
     if (isSavingTitle) {
       return (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
           className='flex items-center text-blue-600'
         >
-          <Loader2 className='w-4 h-4 mr-1 animate-spin' />
-          <span className='text-sm font-medium'>Saving title...</span>
+          <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-spin' />
+          <span className='text-xs sm:text-sm font-medium'>
+            Saving title...
+          </span>
         </motion.div>
       );
     }
 
-    //  ADDED: Show title error if exists
     if (titleError) {
       return (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
           className='flex items-center text-red-600'
         >
-          <AlertCircle className='w-4 h-4 mr-1' />
-          <span className='text-sm font-medium'>Title save failed</span>
+          <AlertCircle className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
+          <span className='text-xs sm:text-sm font-medium'>
+            Title save failed
+          </span>
         </motion.div>
       );
     }
 
     if (!lastSaved) return 'Not saved yet';
 
-    // Use formatTime to format the lastSaved time
     const formattedTime = formatTime(lastSaved);
-
-    // Calculate time difference for relative time display
     const saveDate = new Date(lastSaved);
     const now = new Date();
     const diffMs = now.getTime() - saveDate.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    // Prepare the relative time text
     let timeText = '';
     if (diffMins < 1) {
       timeText = `just now at ${formattedTime}`;
@@ -179,12 +182,12 @@ export default function FormBuilderHeader({
     if (isSaving) {
       return (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
           className='flex items-center text-blue-600'
         >
-          <Loader2 className='w-4 h-4 mr-1 animate-spin' />
-          <span className='text-sm font-medium'>Saving...</span>
+          <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-spin' />
+          <span className='text-xs sm:text-sm font-medium'>Saving...</span>
         </motion.div>
       );
     }
@@ -192,113 +195,198 @@ export default function FormBuilderHeader({
     if (saveError) {
       return (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
           className='flex items-center text-red-600'
         >
-          <AlertCircle className='w-4 h-4 mr-1' />
-          <span className='text-sm font-medium'>Save failed</span>
+          <AlertCircle className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
+          <span className='text-xs sm:text-sm font-medium'>Save failed</span>
         </motion.div>
       );
     }
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className='flex items-center text-green-600'
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className='flex items-center text-green-600 relative bottom-1'
       >
-        <CheckCircle className='w-4 h-4 mr-1' />
-        <span className='text-sm font-medium'>
-          All changes saved {timeText}
+        <CheckCircle className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
+        <span className='text-xs sm:text-sm font-medium'>
+          <span className='hidden sm:inline'>All changes saved </span>
+          <span className='sm:hidden'>Saved </span>
+          {timeText}
         </span>
       </motion.div>
     );
   };
 
   return (
-    <header className='flex justify-between items-center px-6 py-3 bg-white border-b border-gray-200 z-30'>
-      {/* Left Side - Logo and Form Builder Text */}
-      <div className='flex items-center space-x-4'>
-        <Link href='/dashboard' className='flex items-center cursor-pointer'>
-          <Image src={LOGO} alt='LOGO' width={33} height={33} priority />
-          <span className='ml-4 text-3xl font-bold text-gray-900 '>FormIQ</span>
-        </Link>
+    <>
+      {/* Main Header - Single Horizontal Line */}
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+        className='relative flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-white via-white to-gray-50 border-b border-gray-200 shadow-sm z-30 min-h-[64px] sm:min-h-[72px]'
+      >
+        {/* Left Side - Navigation & Branding */}
+        <div className='flex items-center space-x-2 sm:space-x-4 min-w-0 flex-shrink-0 relative z-20'>
+          {/* Mobile Back Button */}
+          <button
+            onClick={handleBackClick}
+            className='flex sm:hidden items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+          >
+            <ArrowLeft className='w-4 h-4 text-gray-700' />
+          </button>
 
-        <div className='border border-[#e3e5f5] h-5'></div>
-        <div className='relative '>
-          <span className='text-gray-700 text-md font-medium mr-2 '>
-            Form Builder
-          </span>
-        </div>
-      </div>
+          {/* Desktop Logo & Brand - Hidden on smaller screens */}
+          <Link
+            href='/dashboard'
+            className='hidden md:flex items-center cursor-pointer group'
+          >
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className='relative'
+            >
+              <Image
+                src={LOGO}
+                alt='LOGO'
+                width={33}
+                height={33}
+                priority
+                className='rounded-lg shadow-sm'
+              />
+              <div className='absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity' />
+            </motion.div>
+            <span className='ml-3 text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent whitespace-nowrap'>
+              FormIQ
+            </span>
+          </Link>
 
-      {/* Center - Form Title and Save Status */}
-      <div className='flex-1 text-center max-w-xl mr-65'>
-        <div className='flex flex-col items-center -my-2'>
-          <Input
-            autoFocus
-            value={titleValue}
-            onChange={handleTitleChange}
-            onBlur={handleTitleBlur}
-            onKeyDown={handleTitleKeyDown}
-            className={`text-4xl font-semibold w-full max-w-xl text-center border-none bg-transparent shadow-none focus-visible:ring-0 focus:outline-none pr-8 ${
-              titleError ? 'text-red-600' : ''
-            }`}
-            style={{ fontSize: '20px' }}
-            placeholder='Form Title'
-            disabled={isSavingTitle}
-          />
-
-          {/*  ADDED: Loading indicator for title */}
-          {isSavingTitle && (
-            <div className='absolute right-2 top-1/2 transform -translate-y-1/2'>
-              <Loader2 className='w-4 h-4 animate-spin text-blue-500' />
-            </div>
-          )}
-
-          {/* Save Status */}
-          <div className='mt-[-2] mb-0.5 min-h-[24px] flex items-center justify-center'>
-            <AnimatePresence mode='wait'>
-              <motion.div
-                key={
-                  isSavingTitle
-                    ? 'saving-title'
-                    : titleError
-                    ? 'title-error'
-                    : isSaving
-                    ? 'saving'
-                    : saveError
-                    ? 'error'
-                    : 'saved'
-                }
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {getSaveStatusDisplay()}
-              </motion.div>
-            </AnimatePresence>
+          <div className='hidden lg:block'>
+            <div className='hidden md:block border-l border-gray-300 h-6' />
           </div>
 
-          {/*  ADDED: Title error display */}
-          {titleError && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className='text-xs text-red-600 mt-1 text-center max-w-xs'
-            >
-              {titleError}
-            </motion.div>
-          )}
+          {/* Form Builder Label - Only on large screens */}
+          <div className='hidden lg:block'>
+            <span className='text-gray-600 text-base font-medium bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
+              Form Builder
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Right Side - Action Buttons */}
-      <div className='flex items-center space-x-2'>
-        <ProfileDropdown />
-      </div>
-    </header>
+        {/* Center - Form Title and Save Status (Perfectly centered above nav tabs) */}
+        <div className='absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-16 sm:px-4'>
+          <motion.div
+            className='w-full flex flex-col items-center space-y-1 pointer-events-none'
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            {/* Form Title Input */}
+            <div className='relative w-full max-w-xl'>
+              <Input
+                autoFocus
+                value={titleValue}
+                onChange={handleTitleChange}
+                onBlur={handleTitleBlur}
+                onKeyDown={handleTitleKeyDown}
+                className={`focus-visible:ring-0 border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent shadow-none text-lg sm:text-xl lg:text-2xl font-semibold w-full text-center bg-transparent focus-visible:ring-offset-0 transition-all duration-200 px-2 py-0 pointer-events-auto ${
+                  titleError
+                    ? 'text-red-600'
+                    : 'text-gray-900 hover:bg-gray-50/50'
+                }`}
+                placeholder='Form Title'
+                disabled={isSavingTitle}
+              />
+            </div>
+
+            {/* Save Status - Centered below title */}
+            <div className='min-h-[20px] flex items-center justify-center pointer-events-none'>
+              <AnimatePresence mode='wait'>
+                <motion.div
+                  key={
+                    isSavingTitle
+                      ? 'saving-title'
+                      : titleError
+                      ? 'title-error'
+                      : isSaving
+                      ? 'saving'
+                      : saveError
+                      ? 'error'
+                      : 'saved'
+                  }
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {getSaveStatusDisplay()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          {/* Title error display - positioned below */}
+          <AnimatePresence>
+            {titleError && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                className='absolute top-full left-1/2 transform -translate-x-1/2 mt-2 text-xs sm:text-sm text-red-600 text-center max-w-md bg-red-50 px-3 py-2 rounded-lg border border-red-200 shadow-lg z-50'
+              >
+                {titleError}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Right Side - Profile & Mobile Menu */}
+        <div className='flex items-center space-x-2 flex-shrink-0 relative z-20'>
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className='flex sm:hidden items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+          >
+            <Menu className='w-4 h-4 text-gray-700' />
+          </button>
+
+          {/* Desktop Profile */}
+          <div className='hidden sm:block'>
+            <ProfileDropdown />
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Mobile Menu Panel */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className='sm:hidden bg-white border-b border-gray-200 shadow-lg overflow-hidden z-20'
+          >
+            <div className='px-4 py-4 space-y-4'>
+              {/* Form Builder Label for Mobile */}
+              <div className='text-center'>
+                <span className='text-gray-600 text-sm font-medium bg-gray-100 px-3 py-1 rounded-full'>
+                  Form Builder
+                </span>
+              </div>
+
+              {/* Mobile Profile Section */}
+              <div className='pt-2 border-t border-gray-200'>
+                <ProfileDropdown />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
