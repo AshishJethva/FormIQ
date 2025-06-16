@@ -1493,7 +1493,6 @@ router.get(
     // Dynamic search across all form fields
     if (search && search.toString().trim()) {
       const searchTerm = search.toString().trim();
-      
 
       const searchFields = [];
 
@@ -1515,7 +1514,6 @@ router.get(
 
       // Add ALL dynamic form fields to search
       const dynamicFieldIds = getSearchableFieldIds(form);
-     
 
       dynamicFieldIds.forEach(fieldId => {
         // Search in simple string fields
@@ -1542,7 +1540,6 @@ router.get(
       });
 
       query.$or = searchFields;
-      
     }
 
     // Pagination
@@ -1562,8 +1559,6 @@ router.get(
       Submission.find(query).sort(sortObj).skip(skip).limit(limitNum).lean(),
       Submission.countDocuments(query),
     ]);
-
-    
 
     // Get submission statistics
     const stats = await Submission.aggregate([
@@ -1655,8 +1650,6 @@ router.post(
     const { formId } = req.params;
     const requestBody = req.body;
 
-  
-
     // STEP 1: Validate Form ID
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       // console.error('❌ Invalid form ID format:', formId);
@@ -1708,7 +1701,6 @@ router.post(
     const submissionData = requestBody.data || {};
     const fileData = requestBody.files || {};
 
-    
     // STEP 5: Process files
     const processedFiles: Array<{
       fieldId: string;
@@ -1725,8 +1717,6 @@ router.post(
       for (const [fieldId, value] of Object.entries(submissionData)) {
         // Check if this is a signature field with base64 data
         if (typeof value === 'string' && value.startsWith('data:image/')) {
-         
-
           try {
             // Convert base64 to buffer
             const base64Data = value.split(',')[1];
@@ -1755,8 +1745,6 @@ router.post(
               mimeType: 'image/png',
               uploadedAt: new Date(),
             });
-
-            
           } catch (error) {
             console.error(
               `❌ Failed to upload signature for field ${fieldId}:`,
@@ -1812,8 +1800,6 @@ router.post(
       }
     }
 
-   
-
     // STEP 6: Validate form structure and data
     const hasFormFields = form.pages?.some(
       page =>
@@ -1823,8 +1809,6 @@ router.post(
     if (!hasFormFields) {
       console.error('Form has no fields - allowing submission');
     } else {
-     
-
       const validationErrors = validateSubmissionData(
         submissionData,
         form.pages || [],
@@ -1889,8 +1873,6 @@ router.post(
         },
       };
 
-     
-
       const submission = await Submission.create(submissionPayload);
 
       // STEP 9: Update form submission counter
@@ -1898,8 +1880,6 @@ router.post(
         $inc: { submissions: 1 },
         $set: { updatedAt: new Date() },
       });
-
-     
 
       //  STEP 10: Return success response
       return res.status(201).json({
@@ -2225,8 +2205,6 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-  
-
     // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new ApiError('Invalid submission ID format', 400);
@@ -2235,7 +2213,6 @@ router.delete(
     // Step 1: Find and verify submission
     const submission = await Submission.findById(id);
     if (!submission) {
-     
       throw new ApiError('Submission not found', 404);
     }
 
@@ -2245,11 +2222,8 @@ router.delete(
       userId: req.user.id,
     });
     if (!form) {
-      
       throw new ApiError('Not authorized to delete this submission', 403);
     }
-
-   
 
     // Step 3: Collect all files to delete
     const filesToDelete: any[] = [];
@@ -2257,7 +2231,6 @@ router.delete(
     // Files from submission.files array
     if (submission.files && Array.isArray(submission.files)) {
       filesToDelete.push(...submission.files);
-      
     }
 
     // Files from submission.data (legacy format and base64 signatures)
@@ -2296,16 +2269,11 @@ router.delete(
       });
     }
 
-
-
     // Step 4: Delete files from Cloudinary
     let fileCleanupResult;
     if (filesToDelete.length > 0) {
       try {
-       
         fileCleanupResult = await deleteSubmissionFiles(filesToDelete);
-
-       
       } catch (fileError: any) {
         console.error(
           `⚠️ File cleanup failed (continuing with database cleanup):`,
@@ -2313,11 +2281,10 @@ router.delete(
         );
         // Continue with database cleanup even if file cleanup fails
       }
-    } 
+    }
     // Step 5: Delete submission from database
     try {
       await Submission.findByIdAndDelete(id);
-     
     } catch (dbError: any) {
       console.error(`❌ Failed to delete submission from database:`, dbError);
       throw new ApiError('Failed to delete submission from database', 500);
@@ -2329,7 +2296,6 @@ router.delete(
         $inc: { submissions: -1 },
         $set: { updatedAt: new Date() },
       });
-      
     } catch (countError: any) {
       console.warn(`⚠️ Failed to update form submission count:`, countError);
     }
@@ -2349,8 +2315,6 @@ router.delete(
       },
     };
 
-   
-
     res.status(200).json(response);
   })
 );
@@ -2363,8 +2327,6 @@ router.delete(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const { submissionId, fieldId, publicId } = req.params;
-
-    
 
     // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(submissionId)) {
@@ -2428,8 +2390,6 @@ router.delete(
       throw new ApiError('File not found in submission', 404);
     }
 
-    
-
     // Step 4: Delete file from Cloudinary
     let cloudinarySuccess = false;
     try {
@@ -2443,7 +2403,7 @@ router.delete(
       if (!cloudinarySuccess) {
         console.warn(`⚠️ Cloudinary deletion failed: ${deleteResult.error}`);
         // Continue with database cleanup even if Cloudinary fails
-      } 
+      }
     } catch (cloudinaryError: any) {
       console.error(`❌ Cloudinary deletion error:`, cloudinaryError);
       // Continue with database cleanup
@@ -2466,7 +2426,6 @@ router.delete(
           },
         });
 
-       
         databaseSuccess = true;
       } else if (fileLocation === 'data_object') {
         // Update data object
@@ -2495,7 +2454,6 @@ router.delete(
           });
         }
 
-        
         databaseSuccess = true;
       }
     } catch (dbError: any) {
@@ -2520,8 +2478,6 @@ router.delete(
       },
     };
 
-   
-
     res.status(200).json(response);
   })
 );
@@ -2534,8 +2490,6 @@ router.delete(
   protect,
   asyncHandler(async (req: Request, res: Response) => {
     const { submissionId, fieldId } = req.params;
-
-    
 
     // Validate submission ID
     if (!mongoose.Types.ObjectId.isValid(submissionId)) {
@@ -2585,8 +2539,6 @@ router.delete(
       throw new ApiError('No files found for this field', 404);
     }
 
-   
-
     // Step 4: Delete files from Cloudinary
     const cloudinaryResults: Array<{
       publicId: string;
@@ -2633,8 +2585,6 @@ router.delete(
           updatedAt: new Date(),
         },
       });
-
-      
     } catch (dbError: any) {
       console.error(`❌ Database update failed:`, dbError);
       throw new ApiError('Failed to update submission in database', 500);
@@ -2655,8 +2605,6 @@ router.delete(
         cloudinaryResults,
       },
     };
-
-   
 
     res.status(200).json(response);
   })
@@ -2787,8 +2735,6 @@ router.get(
     const { formId } = req.params;
     const { format = 'csv', dateFrom, dateTo, status, isRead } = req.query;
 
-   
-
     if (!mongoose.Types.ObjectId.isValid(formId)) {
       throw new ApiError('Invalid form ID format', 400);
     }
@@ -2798,8 +2744,6 @@ router.get(
     if (!form) {
       throw new ApiError('Form not found', 404);
     }
-
-    
 
     // Build query for filtering (existing logic)
     const query: any = { formId };
@@ -2831,8 +2775,6 @@ router.get(
       .sort({ submittedAt: -1 })
       .lean();
 
-   
-
     if (format === 'csv') {
       // Generate enhanced CSV with choice field labels
       const csvData = generateEnhancedCSVExportWithLabels(submissions, form);
@@ -2841,7 +2783,6 @@ router.get(
       const formTitleSafe = form.title.replace(/[^a-zA-Z0-9]/g, '_');
       const dateStamp = new Date().toISOString().split('T')[0];
       const filename = `${formTitleSafe}-submissions-with-labels-${dateStamp}.csv`;
-
 
       // Set headers for CSV download
       res.set({
@@ -2859,8 +2800,6 @@ router.get(
         400
       );
     }
-
-    
   })
 );
 

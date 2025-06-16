@@ -41,8 +41,8 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
 
   if (!form) {
     return (
-      <div className='flex items-center justify-center h-64'>
-        <div className='text-gray-500'>Loading form...</div>
+      <div className='flex items-center justify-center min-h-[50vh]'>
+        <div className='text-gray-500 text-sm'>Loading form...</div>
       </div>
     );
   }
@@ -159,7 +159,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
 
   return (
     <div className='bg-[#F3F3FE] min-h-screen'>
-      <div className='max-w-4xl mx-auto p-8 bg-[#F3F3FE] min-h-screen'>
+      <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 bg-[#F3F3FE] min-h-screen'>
         {/* Auto-save indicator */}
         <AnimatePresence>
           {isSaving && (
@@ -167,7 +167,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className='fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50'
+              className='fixed top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg z-50 text-xs sm:text-sm'
             >
               Saving changes...
             </motion.div>
@@ -176,14 +176,14 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
 
         {/* Header */}
         <motion.div
-          className='mb-8'
+          className='mb-4 sm:mb-6'
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className='flex items-center mb-4'>
+          <div className='flex flex-col sm:flex-row sm:items-center my-3 sm:mb-4'>
             <div
-              className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${
+              className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-3 sm:mb-0 sm:mr-3 ${
                 statusInfo.color === 'green'
                   ? 'bg-green-500'
                   : statusInfo.color === 'orange'
@@ -191,20 +191,22 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
                   : 'bg-gray-500'
               }`}
             >
-              <StatusIcon className='w-6 h-6 text-white' />
+              <StatusIcon className='w-4 h-4 sm:w-5 sm:h-5 text-white' />
             </div>
             <div>
-              <h1 className='text-2xl font-bold text-gray-900'>
+              <h1 className='text-lg sm:text-xl lg:text-2xl font-bold text-gray-900'>
                 PUBLISH YOUR FORM
               </h1>
-              <p className='text-gray-600'>{statusInfo.description}</p>
+              <p className='text-xs sm:text-sm text-gray-600 mt-0'>
+                {statusInfo.description}
+              </p>
             </div>
           </div>
         </motion.div>
 
         {/* Form Status Card */}
         <motion.div
-          className={`rounded-lg p-6 mb-8 border-2 ${
+          className={`rounded-lg p-4 sm:p-5 mb-4 sm:mb-6 border-2 ${
             statusInfo.color === 'green'
               ? 'bg-green-50 border-green-200'
               : statusInfo.color === 'orange'
@@ -215,10 +217,10 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <div className='flex items-center justify-between mb-4'>
-            <div className='flex items-center'>
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4'>
+            <div className='flex items-center mb-3 sm:mb-0'>
               <StatusIcon
-                className={`w-8 h-8 mr-3 ${
+                className={`w-6 h-6 sm:w-7 sm:h-7 mr-3 ${
                   statusInfo.color === 'green'
                     ? 'text-green-600'
                     : statusInfo.color === 'orange'
@@ -228,7 +230,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
               />
               <div>
                 <h2
-                  className={`text-lg font-semibold ${
+                  className={`text-sm sm:text-base lg:text-lg font-semibold ${
                     statusInfo.color === 'green'
                       ? 'text-green-900'
                       : statusInfo.color === 'orange'
@@ -239,7 +241,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
                   {statusInfo.status}
                 </h2>
                 <p
-                  className={`text-sm ${
+                  className={`text-xs sm:text-sm ${
                     statusInfo.color === 'green'
                       ? 'text-green-700'
                       : statusInfo.color === 'orange'
@@ -255,7 +257,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
             <motion.button
               onClick={handleTogglePublish}
               disabled={isToggling}
-              className={`px-6 py-3 rounded-lg font-medium transition-all cursor-pointer ${
+              className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm sm:text-base ${
                 isPublished
                   ? 'bg-red-500 hover:bg-red-600 text-white'
                   : 'bg-green-500 hover:bg-green-600 text-white'
@@ -273,12 +275,12 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
 
           {/* Status Alerts */}
           {!isEnabled && isPublished && (
-            <div className='flex items-center p-3 bg-orange-100 rounded-lg border border-orange-200'>
-              <AlertTriangle className='w-5 h-5 text-orange-600 mr-2' />
-              <span className='text-orange-800 text-sm'>
-                Form is published but disabled. Enable it in
+            <div className='flex items-start p-3 bg-orange-100 rounded-lg border border-orange-200'>
+              <AlertTriangle className='w-4 h-4 sm:w-5 sm:h-5 text-orange-600 mr-2 mt-0.5 flex-shrink-0' />
+              <span className='text-orange-800 text-xs sm:text-sm'>
+                Form is published but disabled. Enable it in{' '}
                 <button
-                  className='ml-1 underline font-medium hover:text-orange-900 hover:cursor-pointer cursor-pointer'
+                  className='underline font-medium hover:text-orange-900 hover:cursor-pointer cursor-pointer'
                   onClick={() => router.push(`/build/${formId}/settings`)}
                 >
                   Settings
@@ -292,18 +294,18 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
         {/* Link Sharing Section */}
         {isPublished && (
           <motion.div
-            className='bg-white rounded-lg p-8 mb-8'
+            className='bg-white rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 shadow-sm'
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <div className='flex items-center justify-between mb-6'>
-              <div className='flex items-center'>
-                <h2 className='text-xl font-semibold text-gray-900 mr-4'>
+            <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6'>
+              <div className='flex flex-col sm:flex-row sm:items-center mb-3 sm:mb-0'>
+                <h2 className='text-base sm:text-lg lg:text-xl font-semibold text-gray-900 mb-2 sm:mb-0 sm:mr-4'>
                   SHARE WITH LINK
                 </h2>
                 <div
-                  className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${
+                  className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center w-fit ${
                     isAccessible
                       ? 'bg-green-100 text-green-800'
                       : 'bg-orange-100 text-orange-800'
@@ -311,12 +313,12 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
                 >
                   {isAccessible ? (
                     <>
-                      <Globe className='w-4 h-4 mr-1' />
+                      <Globe className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
                       Live Form
                     </>
                   ) : (
                     <>
-                      <Lock className='w-4 h-4 mr-1' />
+                      <Lock className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
                       Form Disabled
                     </>
                   )}
@@ -325,18 +327,18 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
             </div>
 
             {/* Link Display */}
-            <div className='flex items-center bg-white border border-gray-200 rounded-lg p-4 mb-6'>
-              <LinkIcon className='w-5 h-5 text-gray-400 mr-3' />
-              <span className='flex-1 text-gray-700 font-mono text-sm break-all'>
+            <div className='flex items-center bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6'>
+              <LinkIcon className='w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mr-2 sm:mr-3 flex-shrink-0' />
+              <span className='flex-1 text-gray-700 font-mono text-xs sm:text-sm break-all overflow-hidden'>
                 {shareableLink}
               </span>
             </div>
 
             {/* Action Buttons */}
-            <div className='flex space-x-4'>
+            <div className='flex flex-col sm:flex-row gap-3 sm:gap-4'>
               <motion.button
                 onClick={handleCopyLink}
-                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all cursor-pointer ${
+                className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm sm:text-base ${
                   copied
                     ? 'bg-green-500 text-white'
                     : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -344,14 +346,14 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Copy className='w-4 h-4 mr-2' />
+                <Copy className='w-3 h-3 sm:w-4 sm:h-4 mr-2' />
                 {copied ? 'COPIED!' : 'COPY LINK'}
               </motion.button>
 
               <motion.button
                 onClick={handleOpenInNewTab}
                 disabled={!isAccessible}
-                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all cursor-pointer ${
+                className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm sm:text-base ${
                   isAccessible
                     ? 'bg-green-500 hover:bg-green-600 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -359,7 +361,7 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
                 whileHover={{ scale: isAccessible ? 1.02 : 1 }}
                 whileTap={{ scale: isAccessible ? 0.98 : 1 }}
               >
-                <ExternalLink className='w-4 h-4 mr-2' />
+                <ExternalLink className='w-3 h-3 sm:w-4 sm:h-4 mr-2' />
                 OPEN FORM
               </motion.button>
             </div>
@@ -368,40 +370,44 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
 
         {/* Form Preview Card */}
         <motion.div
-          className='bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-8'
+          className='bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm mb-4 sm:mb-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+          <h3 className='text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4'>
             Form Preview
           </h3>
 
-          <div className='bg-gray-50 rounded-lg p-6'>
-            <div className='mb-4'>
-              <h4 className='text-xl font-bold text-gray-900'>{form.title}</h4>
+          <div className='bg-gray-50 rounded-lg p-4 sm:p-6'>
+            <div className='mb-3 sm:mb-4'>
+              <h4 className='text-lg sm:text-xl font-bold text-gray-900 line-clamp-2'>
+                {form.title}
+              </h4>
               {form.description && (
-                <p className='text-gray-600 mt-2'>{form.description}</p>
+                <p className='text-gray-600 mt-2 text-sm sm:text-base line-clamp-3'>
+                  {form.description}
+                </p>
               )}
             </div>
 
-            <div className='space-y-4'>
+            <div className='space-y-2 sm:space-y-3'>
               {form.pages[0]?.fields?.slice(0, 3).map(field => (
                 <div
                   key={field.id}
-                  className='flex items-center text-sm text-gray-600'
+                  className='flex items-center text-xs sm:text-sm text-gray-600'
                 >
-                  <div className='w-2 h-2 bg-blue-500 rounded-full mr-3'></div>
-                  <span>{field.label}</span>
+                  <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-2 sm:mr-3 flex-shrink-0'></div>
+                  <span className='truncate'>{field.label}</span>
                   {field.required && (
-                    <span className='text-red-500 ml-1'>*</span>
+                    <span className='text-red-500 ml-1 flex-shrink-0'>*</span>
                   )}
                 </div>
               ))}
 
               {(form.pages[0]?.fields?.length || 0) > 3 && (
-                <div className='flex items-center text-sm text-gray-500'>
-                  <div className='w-2 h-2 bg-gray-300 rounded-full mr-3'></div>
+                <div className='flex items-center text-xs sm:text-sm text-gray-500'>
+                  <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-300 rounded-full mr-2 sm:mr-3 flex-shrink-0'></div>
                   <span>
                     + {(form.pages[0]?.fields?.length || 0) - 3} more fields
                   </span>
@@ -409,13 +415,13 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
               )}
             </div>
 
-            <div className='mt-6 pt-4 border-t border-gray-200'>
-              <div className='flex justify-between items-center text-sm text-gray-500'>
+            <div className='mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200'>
+              <div className='flex justify-between items-center text-xs sm:text-sm text-gray-500'>
                 <span>
                   {form.pages.length} page{form.pages.length > 1 ? 's' : ''}
                 </span>
                 <span className='flex items-center'>
-                  <Users className='w-4 h-4 mr-1' />
+                  <Users className='w-3 h-3 sm:w-4 sm:h-4 mr-1' />
                   {form.submissions || 0} submissions
                 </span>
               </div>
@@ -425,32 +431,32 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
 
         {/* Quick Tips */}
         <motion.div
-          className='grid md:grid-cols-2 gap-6'
+          className='grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <div className='p-6 bg-blue-50 rounded-lg border border-blue-200'>
-            <div className='flex items-center mb-3'>
-              <CheckCircle className='w-6 h-6 text-blue-600 mr-2' />
-              <h3 className='text-lg font-semibold text-blue-900'>
+          <div className='p-4 sm:p-6 bg-blue-50 rounded-lg border border-blue-200'>
+            <div className='flex items-center mb-2 sm:mb-3'>
+              <CheckCircle className='w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-2 flex-shrink-0' />
+              <h3 className='text-base sm:text-lg font-semibold text-blue-900'>
                 Form Published
               </h3>
             </div>
-            <p className='text-blue-700 text-sm'>
+            <p className='text-blue-700 text-xs sm:text-sm leading-relaxed'>
               Your form is ready to collect responses. Share the link above with
               your audience or embed it on your website.
             </p>
           </div>
 
-          <div className='p-6 bg-purple-50 rounded-lg border border-purple-200'>
-            <div className='flex items-center mb-3'>
-              <Settings className='w-6 h-6 text-purple-600 mr-2' />
-              <h3 className='text-lg font-semibold text-purple-900'>
+          <div className='p-4 sm:p-6 bg-purple-50 rounded-lg border border-purple-200'>
+            <div className='flex items-center mb-2 sm:mb-3'>
+              <Settings className='w-5 h-5 sm:w-6 sm:h-6 text-purple-600 mr-2 flex-shrink-0' />
+              <h3 className='text-base sm:text-lg font-semibold text-purple-900'>
                 Manage Settings
               </h3>
             </div>
-            <p className='text-purple-700 text-sm'>
+            <p className='text-purple-700 text-xs sm:text-sm leading-relaxed'>
               Control form access, customize messages, and manage other settings
               from the Settings tab.
             </p>

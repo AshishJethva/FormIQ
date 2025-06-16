@@ -41,9 +41,8 @@ export default function FormBuilder() {
     (state: RootState) => state.formBuilder.isPreviewMode
   );
   const [elementsVisible, setElementsVisible] = useState<boolean>(true);
-
-  // Add state for panel expansion
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+  const [forceOpenPanel, setForceOpenPanel] = useState(false);
 
   // Determine current page based on pathname and preview state
   const getCurrentPage = () => {
@@ -80,6 +79,19 @@ export default function FormBuilder() {
   // Handle panel toggle callback
   const handlePanelToggle = (isExpanded: boolean) => {
     setIsPanelExpanded(isExpanded);
+  };
+
+  const handleCanvasPanelToggle = (shouldOpen: boolean) => {
+    if (shouldOpen && currentPage === 'BUILD' && !isPreviewEnabled) {
+      setElementsVisible(true);
+      setIsPanelExpanded(true);
+      setForceOpenPanel(true);
+
+      // Reset forceOpen after a short delay
+      setTimeout(() => {
+        setForceOpenPanel(false);
+      }, 100);
+    }
   };
 
   useEffect(() => {
@@ -127,7 +139,6 @@ export default function FormBuilder() {
             console.log('Form loaded successfully');
           } else if (loadFormAsync.rejected.match(result)) {
             console.error('❌ Form loading failed:', result.payload);
-
             dispatch(initializeForm());
           }
         } catch (error) {
@@ -351,12 +362,18 @@ export default function FormBuilder() {
             {currentPage === 'BUILD' &&
               elementsVisible &&
               !isPreviewEnabled && (
-                <ElementsPanel onPanelToggle={handlePanelToggle} />
+                <ElementsPanel
+                  onPanelToggle={handlePanelToggle}
+                  forceOpen={forceOpenPanel}
+                />
               )}
           </AnimatePresence>
 
           {/* Form Canvas - Pass panel state */}
-          <FormCanvas isPanelExpanded={isPanelExpanded} />
+          <FormCanvas
+            isPanelExpanded={isPanelExpanded}
+            onPanelToggle={handleCanvasPanelToggle}
+          />
 
           {/* Properties Panel - Only shown when a field is selected and not in preview mode */}
           {formState.form.selectedFieldId &&

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useDeletion } from '@/hooks/useDeletion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download,
   Search,
@@ -26,6 +27,8 @@ import {
   Video,
   Music,
   Archive,
+  ChevronDown,
+  Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +55,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -78,6 +82,21 @@ import {
 } from '@/services/aiEvaluation';
 import { apiConfig } from '@/config/api';
 import axios from 'axios';
+
+// ===== ANIMATION VARIANTS =====
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
 
 // ===== UTILITY FUNCTIONS =====
 const formatDateTime = (dateString: string): string => {
@@ -479,6 +498,236 @@ const detectFormTypeClient = (
   return 'general';
 };
 
+// ===== MOBILE SUBMISSION CARD COMPONENT =====
+const MobileSubmissionCard: React.FC<{
+  submission: Submission;
+  fieldLabelsMap: Record<string, string>;
+  formStructure: any;
+  uniqueFields: UniqueField[];
+  hasEmailField: boolean;
+  hasFullNameField: boolean;
+  isFeedbackForm: boolean;
+  detectedFormType: string;
+  aiEvaluations: Record<string, AIEvaluation>;
+  evaluatingSubmissions: Set<string>;
+  onView: (submission: Submission) => void;
+  onToggleRead: (submissionId: string, isRead: boolean) => void;
+  onDelete: (submissionId: string) => void;
+  onViewAIEvaluation: (submissionId: string) => void;
+  getStatusBadge: (status: string) => React.ReactNode;
+  getAIEvaluationBadge: (submissionId: string) => React.ReactNode;
+  getFieldValueFromSubmission: (
+    submission: Submission,
+    fieldId: string
+  ) => string;
+  getEmailFromSubmission: (submission: Submission) => string;
+  getFullNameFromSubmission: (submission: Submission) => string;
+}> = ({
+  submission,
+  uniqueFields,
+  hasEmailField,
+  hasFullNameField,
+  isFeedbackForm,
+  aiEvaluations,
+  onView,
+  onToggleRead,
+  onDelete,
+  onViewAIEvaluation,
+  getStatusBadge,
+  getAIEvaluationBadge,
+  getFieldValueFromSubmission,
+  getEmailFromSubmission,
+  getFullNameFromSubmission,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <motion.div
+      layout
+      variants={fadeInUp}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={`
+        p-4 rounded-lg border transition-all duration-300 cursor-pointer
+        ${
+          !submission.isRead
+            ? 'bg-blue-50 border-blue-200 shadow-md border-l-4 border-l-blue-500'
+            : 'bg-white border-gray-200 hover:shadow-lg'
+        }
+      `}
+    >
+      {/* Header */}
+      <div
+        className='flex items-center justify-between mb-3'
+        onClick={() => onView(submission)}
+      >
+        <div className='flex-1 min-w-0'>
+          <div className='flex items-center gap-2 mb-1'>
+            <Clock className='w-4 h-4 text-gray-500 flex-shrink-0' />
+            <span className='text-sm font-medium text-gray-900 truncate'>
+              {formatDateTime(submission.submittedAt)}
+            </span>
+            {!submission.isRead && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className='w-2 h-2 bg-blue-500 rounded-full flex-shrink-0'
+              />
+            )}
+          </div>
+          <div className='text-xs text-gray-500'>
+            {formatTimeAgo(submission.submittedAt)}
+          </div>
+        </div>
+        <div className='flex items-center gap-2'>
+          {getStatusBadge(submission.status)}
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={e => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className='p-1 h-6 w-6'
+          >
+            <motion.div
+              animate={{ rotate: isExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className='w-4 h-4' />
+            </motion.div>
+          </Button>
+        </div>
+      </div>
+
+      {/* Key Information */}
+      <div className='space-y-2 mb-3'>
+        {uniqueFields.map(field => (
+          <div key={field.fieldId} className='flex items-center gap-2'>
+            {field.icon}
+            <span className='text-xs text-gray-600 min-w-0 flex-shrink-0'>
+              {field.label}:
+            </span>
+            <span className='text-sm font-medium text-gray-900 truncate'>
+              {getFieldValueFromSubmission(submission, field.fieldId)}
+            </span>
+          </div>
+        ))}
+
+        {uniqueFields.length < 2 && hasEmailField && (
+          <div className='flex items-center gap-2'>
+            <Mail className='w-4 h-4 text-gray-500' />
+            <span className='text-xs text-gray-600'>Email:</span>
+            <span className='text-sm font-medium text-gray-900 truncate'>
+              {getEmailFromSubmission(submission)}
+            </span>
+          </div>
+        )}
+
+        {uniqueFields.length < 1 && hasFullNameField && (
+          <div className='flex items-center gap-2'>
+            <User className='w-4 h-4 text-gray-500' />
+            <span className='text-xs text-gray-600'>Name:</span>
+            <span className='text-sm font-medium text-gray-900 truncate'>
+              {getFullNameFromSubmission(submission)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* AI Evaluation */}
+      {isFeedbackForm && (
+        <div className='mb-3'>
+          <div
+            onClick={e => {
+              e.stopPropagation();
+              onViewAIEvaluation(submission.id);
+            }}
+            className='cursor-pointer'
+          >
+            {getAIEvaluationBadge(submission.id)}
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Details */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className='border-t border-gray-200 pt-3 mt-3 space-y-3'
+          >
+            {/* Additional Details */}
+            <div className='text-xs text-gray-600 space-y-1'>
+              <div>Submission ID: {submission.id}</div>
+              <div>Status: {submission.status}</div>
+              <div>Files: {submission.files?.length || 0}</div>
+            </div>
+
+            {/* AI Evaluation Details */}
+            {isFeedbackForm && aiEvaluations[submission.id] && (
+              <div className='bg-gray-50 p-3 rounded border'>
+                <div className='text-xs font-medium text-gray-700 mb-2'>
+                  AI Analysis Preview
+                </div>
+                <div className='text-xs text-gray-600 line-clamp-2'>
+                  {aiEvaluations[submission.id].feedback}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Actions */}
+      <div className='flex items-center justify-between mt-3 pt-3 border-t border-gray-200'>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={e => {
+              e.stopPropagation();
+              onToggleRead(submission.id, submission.isRead);
+            }}
+            className='p-2 h-8 w-8'
+          >
+            {submission.isRead ? (
+              <Eye className='w-4 h-4 text-green-600' />
+            ) : (
+              <EyeOff className='w-4 h-4 text-gray-400' />
+            )}
+          </Button>
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={e => {
+              e.stopPropagation();
+              onDelete(submission.id);
+            }}
+            className='p-2 h-8 w-8 text-red-600 hover:bg-red-50'
+          >
+            <Trash2 className='w-4 h-4' />
+          </Button>
+        </div>
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={e => {
+            e.stopPropagation();
+            onView(submission);
+          }}
+          className='text-xs px-3 py-1 h-7'
+        >
+          View Details
+        </Button>
+      </div>
+    </motion.div>
+  );
+};
+
 // ===== MAIN COMPONENT =====
 const FormSubmissionsPage: React.FC = () => {
   const params = useParams();
@@ -514,6 +763,10 @@ const FormSubmissionsPage: React.FC = () => {
     null
   );
 
+  // Mobile UI state
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
   // AI Evaluation state
   const [aiEvaluations, setAiEvaluations] = useState<
     Record<string, AIEvaluation>
@@ -547,6 +800,17 @@ const FormSubmissionsPage: React.FC = () => {
         console.error('❌ Submissions deletion failed:', error);
       },
     });
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   // ===== ENHANCED FIELD DETECTION FUNCTIONS =====
 
@@ -804,6 +1068,7 @@ const FormSubmissionsPage: React.FC = () => {
     }
 
     // Step 2: Look for fullName type fields (object with firstName/lastName)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const [key, value] of Object.entries(data)) {
       if (typeof value === 'object' && value !== null) {
         if (value.firstName && value.lastName) {
@@ -895,6 +1160,7 @@ const FormSubmissionsPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching form structure:', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formId]);
 
   const evaluateSubmissionWithAI = async (submission: Submission) => {
@@ -1250,6 +1516,7 @@ const FormSubmissionsPage: React.FC = () => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       formId,
       searchTerm,
@@ -1567,7 +1834,7 @@ const FormSubmissionsPage: React.FC = () => {
         return (
           <Badge
             variant='default'
-            className='bg-green-100 text-green-800 border-green-200'
+            className='bg-green-100 text-green-800 border-green-200 text-xs'
           >
             <CheckCircle className='w-3 h-3 mr-1' />
             Processed
@@ -1577,7 +1844,7 @@ const FormSubmissionsPage: React.FC = () => {
         return (
           <Badge
             variant='secondary'
-            className='bg-yellow-100 text-yellow-800 border-yellow-200'
+            className='bg-yellow-100 text-yellow-800 border-yellow-200 text-xs'
           >
             <AlertCircle className='w-3 h-3 mr-1' />
             Pending
@@ -1587,14 +1854,18 @@ const FormSubmissionsPage: React.FC = () => {
         return (
           <Badge
             variant='destructive'
-            className='bg-red-100 text-red-800 border-red-200'
+            className='bg-red-100 text-red-800 border-red-200 text-xs'
           >
             <XCircle className='w-3 h-3 mr-1' />
             Failed
           </Badge>
         );
       default:
-        return <Badge variant='outline'>{status}</Badge>;
+        return (
+          <Badge variant='outline' className='text-xs'>
+            {status}
+          </Badge>
+        );
     }
   };
 
@@ -1603,7 +1874,7 @@ const FormSubmissionsPage: React.FC = () => {
       return (
         <Badge
           variant='secondary'
-          className='bg-blue-100 text-blue-800 border-blue-200 animate-pulse'
+          className='bg-blue-100 text-blue-800 border-blue-200 animate-pulse text-xs'
         >
           <Loader2 className='w-3 h-3 mr-1 animate-spin' />
           Evaluating...
@@ -1621,7 +1892,7 @@ const FormSubmissionsPage: React.FC = () => {
           : 'bg-gray-100 text-gray-600 hover:bg-blue-50 cursor-pointer';
 
       return (
-        <Badge variant='outline' className={bgColor}>
+        <Badge variant='outline' className={`${bgColor} text-xs`}>
           <Brain className='w-3 h-3 mr-1' />
           {pendingText}
         </Badge>
@@ -1636,7 +1907,7 @@ const FormSubmissionsPage: React.FC = () => {
       return (
         <Badge
           variant='destructive'
-          className='bg-red-100 text-red-800 border-red-200 hover:bg-red-50 cursor-pointer'
+          className='bg-red-100 text-red-800 border-red-200 hover:bg-red-50 cursor-pointer text-xs'
           title={`Evaluation failed: ${evaluation.feedback}`}
         >
           <XCircle className='w-3 h-3 mr-1' />
@@ -1662,7 +1933,7 @@ const FormSubmissionsPage: React.FC = () => {
           return (
             <Badge
               variant='default'
-              className={`bg-${scoreColor}-100 text-${scoreColor}-800 border-${scoreColor}-200 hover:bg-${scoreColor}-50 cursor-pointer`}
+              className={`bg-${scoreColor}-100 text-${scoreColor}-800 border-${scoreColor}-200 hover:bg-${scoreColor}-50 cursor-pointer text-xs`}
               title={`Quiz Score: ${evaluation.quizResults.correctAnswers}/${evaluation.quizResults.totalQuestions} correct (${percentage}%)`}
             >
               <Star className='w-3 h-3 mr-1' />
@@ -1688,7 +1959,7 @@ const FormSubmissionsPage: React.FC = () => {
           return (
             <Badge
               variant='default'
-              className={`bg-${surveyColor}-100 text-${surveyColor}-800 border-${surveyColor}-200 hover:bg-${surveyColor}-50 cursor-pointer`}
+              className={`bg-${surveyColor}-100 text-${surveyColor}-800 border-${surveyColor}-200 hover:bg-${surveyColor}-50 cursor-pointer text-xs`}
               title={`Survey Analysis: ${positivePercent}% positive, ${evaluation.surveyResults.overallSentiment.neutral}% neutral, ${evaluation.surveyResults.overallSentiment.negative}% negative`}
             >
               <Brain className='w-3 h-3 mr-1' />
@@ -1716,7 +1987,7 @@ const FormSubmissionsPage: React.FC = () => {
           return (
             <Badge
               variant='default'
-              className={`bg-${feedbackColor}-100 text-${feedbackColor}-800 border-${feedbackColor}-200 hover:bg-${feedbackColor}-50 cursor-pointer`}
+              className={`bg-${feedbackColor}-100 text-${feedbackColor}-800 border-${feedbackColor}-200 hover:bg-${feedbackColor}-50 cursor-pointer text-xs`}
               title={`Feedback Analysis: ${positivePercent}% positive sentiment, ${urgencyLevel} priority level`}
             >
               {React.createElement(urgencyIcon, { className: 'w-3 h-3 mr-1' })}
@@ -1732,7 +2003,7 @@ const FormSubmissionsPage: React.FC = () => {
         return (
           <Badge
             variant='default'
-            className='bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-50 cursor-pointer'
+            className='bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-50 cursor-pointer text-xs'
             title='General analysis completed'
           >
             <Brain className='w-3 h-3 mr-1' />
@@ -1745,7 +2016,7 @@ const FormSubmissionsPage: React.FC = () => {
     return (
       <Badge
         variant='default'
-        className='bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-50 cursor-pointer'
+        className='bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-50 cursor-pointer text-xs'
       >
         <Brain className='w-3 h-3 mr-1' />
         Completed
@@ -1877,7 +2148,11 @@ const FormSubmissionsPage: React.FC = () => {
       };
 
       return (
-        <div className='space-y-4'>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className='space-y-4'
+        >
           <div className='flex items-center justify-between border-b border-gray-200 pb-2'>
             <label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
               <svg
@@ -1932,7 +2207,7 @@ const FormSubmissionsPage: React.FC = () => {
                 </p>
 
                 {/* Action Buttons */}
-                <div className='flex gap-2 justify-center'>
+                <div className='flex flex-col sm:flex-row gap-2 justify-center'>
                   {/* Download Button */}
                   <Button
                     size='sm'
@@ -2020,7 +2295,7 @@ const FormSubmissionsPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       );
     }
 
@@ -2051,8 +2326,12 @@ const FormSubmissionsPage: React.FC = () => {
       }));
 
       return (
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className='space-y-4'
+        >
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-2 gap-2'>
             <label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
               {normalizedFiles.length > 0 &&
                 getFileTypeInfo(normalizedFiles[0]?.mimeType || '').icon &&
@@ -2066,7 +2345,7 @@ const FormSubmissionsPage: React.FC = () => {
                 )}
               {label}
               {normalizedFiles.length > 1 && (
-                <Badge variant='secondary' className='ml-2'>
+                <Badge variant='secondary' className='ml-2 text-xs'>
                   {normalizedFiles.length} files
                 </Badge>
               )}
@@ -2101,7 +2380,7 @@ const FormSubmissionsPage: React.FC = () => {
             downloadingFileId={downloadingFileId}
             maxPreviewSize={10}
           />
-        </div>
+        </motion.div>
       );
     }
 
@@ -2109,16 +2388,20 @@ const FormSubmissionsPage: React.FC = () => {
     const displayValue = formatDisplayValue(value, fieldId, formStructure);
 
     return (
-      <div className='space-y-2 pb-4 border-b border-gray-100 last:border-b-0'>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className='space-y-2 pb-4 border-b border-gray-100 last:border-b-0'
+      >
         <label className='text-sm font-semibold text-gray-700 block'>
           {label}
         </label>
         <div className='bg-gray-50 p-3 rounded-lg border'>
-          <p className='text-gray-900 leading-relaxed whitespace-pre-wrap'>
+          <p className='text-gray-900 leading-relaxed whitespace-pre-wrap break-words'>
             {displayValue}
           </p>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -2152,150 +2435,210 @@ const FormSubmissionsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className='flex items-center justify-center min-h-screen'>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className='flex items-center justify-center min-h-screen'
+      >
         <div className='text-center'>
-          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className='rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'
+          />
           <p className='text-gray-600'>Loading submissions...</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   const hasSubmissions = submissions.length > 0;
 
   return (
-    <div className='container mx-auto px-4 py-8'>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className='container mx-auto px-4 py-4 md:py-8 max-w-7xl'
+    >
       {/* Enhanced Header with Form Type Badge */}
-      <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6'>
-        <div>
-          <div className='flex items-center gap-3 mb-2'>
-            <h1 className='text-3xl font-bold text-gray-900'>
-              Form Submissions
-            </h1>
-            {detectedFormType !== 'general' && (
-              <Badge
-                variant='outline'
-                className={`
-                  ${
-                    detectedFormType === 'quiz'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : ''
-                  }
-                  ${
-                    detectedFormType === 'survey'
-                      ? 'bg-green-50 text-green-700 border-green-200'
-                      : ''
-                  }
-                  ${
-                    detectedFormType === 'feedback'
-                      ? 'bg-orange-50 text-orange-700 border-orange-200'
-                      : ''
-                  }
-                  font-medium
-                `}
-              >
-                {detectedFormType.charAt(0).toUpperCase() +
-                  detectedFormType.slice(1)}{' '}
-                Form
-                {isFeedbackForm && <Brain className='w-3 h-3 ml-1' />}
-              </Badge>
-            )}
+      <motion.div
+        variants={fadeInUp}
+        initial='initial'
+        animate='animate'
+        className='flex flex-col gap-4 mb-6'
+      >
+        <div className='flex flex-col sm:flex-row justify-between items-start gap-4'>
+          <div className='flex-1 min-w-0'>
+            <div className='flex flex-col sm:flex-row sm:items-center gap-3 mb-2'>
+              <h1 className='text-2xl md:text-3xl font-bold text-gray-900 truncate'>
+                Form Submissions
+              </h1>
+              {detectedFormType !== 'general' && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Badge
+                    variant='outline'
+                    className={`
+                      ${
+                        detectedFormType === 'quiz'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : ''
+                      }
+                      ${
+                        detectedFormType === 'survey'
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : ''
+                      }
+                      ${
+                        detectedFormType === 'feedback'
+                          ? 'bg-orange-50 text-orange-700 border-orange-200'
+                          : ''
+                      }
+                      font-medium text-xs sm:text-sm
+                    `}
+                  >
+                    {detectedFormType.charAt(0).toUpperCase() +
+                      detectedFormType.slice(1)}{' '}
+                    Form
+                    {isFeedbackForm && <Brain className='w-3 h-3 ml-1' />}
+                  </Badge>
+                </motion.div>
+              )}
+            </div>
+            <p className='text-gray-600 text-sm md:text-base'>
+              Manage and view all form submissions
+              {isFeedbackForm && ' with AI-powered analysis'}
+            </p>
           </div>
-          <p className='text-gray-600'>
-            Manage and view all form submissions
-            {isFeedbackForm && ' with AI-powered analysis'}
-          </p>
+
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              onClick={handleDownloadCsv}
+              disabled={downloadingCsv || !hasSubmissions}
+              className={`
+              bg-[#102035] hover:bg-slate-700 font-semibold text-white
+              flex items-center gap-2 disabled:opacity-50 
+              ${
+                downloadingCsv
+                  ? 'cursor-wait'
+                  : hasSubmissions
+                  ? 'cursor-pointer'
+                  : 'cursor-not-allowed'
+              }
+              transition-all duration-200 ease-in-out
+              hover:shadow-lg active:scale-95
+              w-full sm:w-auto min-w-[180px] justify-center
+              text-sm
+            `}
+              title={
+                !hasSubmissions
+                  ? 'No submissions to export'
+                  : downloadingCsv
+                  ? 'Preparing CSV export...'
+                  : `Export ${stats.total} submission${
+                      stats.total === 1 ? '' : 's'
+                    } to CSV`
+              }
+            >
+              {downloadingCsv ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: 'linear',
+                    }}
+                    className='rounded-full h-4 w-4 border-b-2 border-white'
+                  />
+                  <span className='hidden sm:inline'>Exporting...</span>
+                  <span className='sm:hidden'>Export...</span>
+                </>
+              ) : (
+                <>
+                  <Download className='w-4 h-4' />
+                  <span className='hidden sm:inline'>
+                    Download CSV ({stats.total})
+                  </span>
+                  <span className='sm:hidden'>CSV ({stats.total})</span>
+                </>
+              )}
+            </Button>
+          </motion.div>
         </div>
-        <Button
-          onClick={handleDownloadCsv}
-          disabled={downloadingCsv || !hasSubmissions}
-          className={`
-          bg-[#102035] hover:bg-slate-700 font-semibold text-white
-          flex items-center gap-2 disabled:opacity-50 cursor-pointer
-          ${
-            downloadingCsv
-              ? 'cursor-wait'
-              : hasSubmissions
-              ? 'cursor-pointer'
-              : 'cursor-not-allowed'
-          }
-          transition-all duration-200 ease-in-out
-          hover:shadow-lg active:scale-95
-          min-w-[200px] justify-center
-        `}
-          title={
-            !hasSubmissions
-              ? 'No submissions to export'
-              : downloadingCsv
-              ? 'Preparing CSV export...'
-              : `Export ${stats.total} submission${
-                  stats.total === 1 ? '' : 's'
-                } to CSV`
-          }
-        >
-          {downloadingCsv ? (
-            <>
-              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white' />
-              <span>Exporting...</span>
-            </>
-          ) : (
-            <>
-              <Download className='w-4 h-4' />
-              <span>Download CSV ({stats.total})</span>
-            </>
-          )}
-        </Button>
-      </div>
+      </motion.div>
 
       {/* Enhanced Stats Cards with AI Evaluation Info */}
-      <div className='grid grid-cols-2 md:grid-cols-5 gap-4 mb-6'>
-        <Card>
-          <CardContent className='p-4'>
-            <div className='text-2xl font-bold text-[#102035]'>
-              {stats.total}
-            </div>
-            <p className='text-sm text-gray-600'>Total Submissions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className='p-4'>
-            <div className='text-2xl font-bold text-orange-600'>
-              {stats.unread}
-            </div>
-            <p className='text-sm text-gray-600'>Unread</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className='p-4'>
-            <div className='text-2xl font-bold text-yellow-600'>
-              {stats.pending}
-            </div>
-            <p className='text-sm text-gray-600'>Pending</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className='p-4'>
-            <div className='text-2xl font-bold text-green-600'>
-              {stats.processed}
-            </div>
-            <p className='text-sm text-gray-600'>Processed</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className='p-4'>
-            <div className='text-2xl font-bold text-red-600'>
-              {stats.failed}
-            </div>
-            <p className='text-sm text-gray-600'>Failed</p>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div
+        variants={staggerContainer}
+        initial='initial'
+        animate='animate'
+        className='grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6'
+      >
+        {[
+          {
+            label: 'Total Submissions',
+            value: stats.total,
+            color: 'text-[#102035]',
+          },
+          { label: 'Unread', value: stats.unread, color: 'text-orange-600' },
+          { label: 'Pending', value: stats.pending, color: 'text-yellow-600' },
+          {
+            label: 'Processed',
+            value: stats.processed,
+            color: 'text-green-600',
+          },
+          { label: 'Failed', value: stats.failed, color: 'text-red-600' },
+        ].map(stat => (
+          <motion.div key={stat.label} variants={fadeInUp}>
+            <Card className='hover:shadow-md transition-shadow duration-200'>
+              <CardContent className='p-3 md:p-4'>
+                <div className={`text-xl md:text-2xl font-bold ${stat.color}`}>
+                  {stat.value}
+                </div>
+                <p className='text-xs md:text-sm text-gray-600 truncate'>
+                  {stat.label}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
-      {/* Filters */}
-      <Card className='mb-6 focus-visible:ring-1 border-gray-200 shadow-sm'>
-        <CardContent className='p-4'>
-          <div className='flex flex-col sm:flex-row gap-4'>
-            <div className='flex-1'>
+      {/* Enhanced Mobile-First Filters */}
+      <motion.div
+        variants={fadeInUp}
+        initial='initial'
+        animate='animate'
+        className='mb-6'
+      >
+        <Card className='border-gray-200 shadow-sm'>
+          <CardContent className='py-1'>
+            {/* Mobile Filter Toggle */}
+            <div className='md:hidden mb-4'>
+              <Button
+                variant='outline'
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                className='w-full flex items-center justify-between'
+              >
+                <div className='flex items-center gap-2'>
+                  <Filter className='w-4 h-4' />
+                  <span>Filters</span>
+                </div>
+                <motion.div
+                  animate={{ rotate: showMobileFilters ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown className='w-4 h-4' />
+                </motion.div>
+              </Button>
+            </div>
+
+            {/* Search Bar - Always Visible */}
+            <div className='mb-4 md:mb-0'>
               <div className='relative'>
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
                 <Input
@@ -2306,328 +2649,406 @@ const FormSubmissionsPage: React.FC = () => {
                 />
               </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className='w-[150px] rounded-lg border-gray-300'>
-                <SelectValue placeholder='Status' />
-              </SelectTrigger>
-              <SelectContent className='bg-white border-gray-200'>
-                <SelectItem value='all'>All Status</SelectItem>
-                <SelectItem value='processed'>Processed</SelectItem>
-                <SelectItem value='pending'>Pending</SelectItem>
-                <SelectItem value='failed'>Failed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={readFilter} onValueChange={setReadFilter}>
-              <SelectTrigger className='w-[150px] rounded-lg border-gray-300'>
-                <SelectValue placeholder='Read Status' />
-              </SelectTrigger>
-              <SelectContent className='bg-white border-gray-200'>
-                <SelectItem value='all'>All</SelectItem>
-                <SelectItem value='read'>Read</SelectItem>
-                <SelectItem value='unread'>Unread</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Enhanced Submissions Table */}
-      <Card className='bg-white border-gray-200 shadow-sm'>
-        <CardHeader className='border-b border-gray-200'>
-          <CardTitle className='flex items-center gap-2'>
-            <Calendar className='w-5 h-5 text-gray-600' />
-            Submissions ({stats.total})
-            {isFeedbackForm && (
-              <Badge
-                variant='outline'
-                className='ml-2 bg-purple-50 text-purple-700 border-purple-200'
-              >
-                <Brain className='w-3 h-3 mr-1' />
-                AI Enabled
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className='p-0'>
-          {submissions.length === 0 ? (
-            <div className='text-center py-12'>
-              <div className='text-gray-400 mb-4'>
-                <Calendar className='w-16 h-16 mx-auto' />
-              </div>
-              <h3 className='text-lg font-medium text-gray-900 mb-2'>
-                No submissions yet
-              </h3>
-              <p className='text-gray-600'>
-                Submissions will appear here once users start submitting your
-                form.
-              </p>
-            </div>
-          ) : (
-            <div className='overflow-x-auto'>
-              <Table className='w-full table-fixed'>
-                <TableHeader>
-                  <TableRow className='border-b-2 border-gray-200 bg-gray-50'>
-                    <TableHead className='w-[18%] border-r border-gray-200 px-4 py-3'>
-                      <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                        <Clock className='w-4 h-4' />
-                        Submission Date
-                      </div>
-                    </TableHead>
-
-                    {uniqueFields.map(field => (
-                      <TableHead
-                        key={field.fieldId}
-                        className='w-[20%] border-r border-gray-200 px-4 py-3'
-                      >
-                        <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                          {field.icon}
-                          <span className='truncate'>{field.label}</span>
-                        </div>
-                      </TableHead>
-                    ))}
-
-                    {uniqueFields.length < 2 && hasEmailField && (
-                      <TableHead className='w-[20%] border-r border-gray-200 px-4 py-3'>
-                        <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                          <Mail className='w-4 h-4' />
-                          Email
-                        </div>
-                      </TableHead>
-                    )}
-
-                    {uniqueFields.length < 1 && hasFullNameField && (
-                      <TableHead className='w-[20%] border-r border-gray-200 px-4 py-3'>
-                        <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                          <User className='w-4 h-4' />
-                          Full Name
-                        </div>
-                      </TableHead>
-                    )}
-
-                    {isFeedbackForm && (
-                      <TableHead className='w-[16%] border-r border-gray-200 px-4 py-3'>
-                        <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                          <Brain className='w-4 h-4' />
-                          AI Analysis
-                        </div>
-                      </TableHead>
-                    )}
-
-                    <TableHead className='w-[12%] border-r border-gray-200 px-4 py-3'>
-                      <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                        <AlertCircle className='w-4 h-4' />
-                        Status
-                      </div>
-                    </TableHead>
-
-                    <TableHead className='w-[8%] border-r border-gray-200 px-4 py-3'>
-                      <div className='flex items-center justify-center gap-2 font-semibold text-gray-700'>
-                        Read
-                      </div>
-                    </TableHead>
-
-                    <TableHead className='w-[8%] px-4 py-3'>
-                      <div className='font-semibold text-center text-gray-700'>
-                        Actions
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {submissions.map((submission, submissionIndex) => (
-                    <TableRow
-                      key={`submission-${submission.id}-${submissionIndex}`}
-                      className={`${
-                        !submission.isRead
-                          ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                          : 'bg-white'
-                      } hover:bg-gray-50 cursor-pointer border-b border-gray-200 transition-colors duration-150`}
-                      onClick={() => handleViewSubmission(submission)}
+            {/* Filters - Collapsible on Mobile */}
+            <AnimatePresence>
+              {(showMobileFilters || !isMobile) && (
+                <motion.div
+                  initial={isMobile ? { height: 0, opacity: 0 } : false}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className='flex flex-col md:flex-row gap-4 md:items-center'
+                >
+                  <div className='flex flex-col sm:flex-row gap-2 flex-1 mt-3'>
+                    <Select
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
                     >
-                      <TableCell className='border-r border-gray-200 px-4 py-4'>
-                        <div>
-                          <div className='font-medium text-sm text-gray-900'>
-                            {formatDateTime(submission.submittedAt)}
-                          </div>
-                          <div className='text-xs text-gray-500 mt-1'>
-                            {formatTimeAgo(submission.submittedAt)}
-                          </div>
-                        </div>
-                      </TableCell>
+                      <SelectTrigger className='w-full sm:w-[150px] rounded-lg border-gray-300'>
+                        <SelectValue placeholder='Status' />
+                      </SelectTrigger>
+                      <SelectContent className='bg-white border-gray-200'>
+                        <SelectItem value='all'>All Status</SelectItem>
+                        <SelectItem value='processed'>Processed</SelectItem>
+                        <SelectItem value='pending'>Pending</SelectItem>
+                        <SelectItem value='failed'>Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                      {uniqueFields.map(field => (
-                        <TableCell
-                          key={field.fieldId}
-                          className='border-r border-gray-200 px-4 py-4'
-                        >
-                          <div
-                            className='truncate font-medium text-gray-900'
-                            title={getFieldValueFromSubmission(
-                              submission,
-                              field.fieldId
-                            )}
-                          >
-                            {getFieldValueFromSubmission(
-                              submission,
-                              field.fieldId
-                            )}
-                          </div>
-                        </TableCell>
-                      ))}
+                    <Select value={readFilter} onValueChange={setReadFilter}>
+                      <SelectTrigger className='w-full sm:w-[150px] rounded-lg border-gray-300'>
+                        <SelectValue placeholder='Read Status' />
+                      </SelectTrigger>
+                      <SelectContent className='bg-white border-gray-200'>
+                        <SelectItem value='all'>All</SelectItem>
+                        <SelectItem value='read'>Read</SelectItem>
+                        <SelectItem value='unread'>Unread</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-                      {uniqueFields.length < 2 && hasEmailField && (
-                        <TableCell className='border-r border-gray-200 px-4 py-4'>
-                          <div
-                            className='truncate font-medium text-gray-900'
-                            title={getEmailFromSubmission(submission)}
-                          >
-                            {getEmailFromSubmission(submission)}
-                          </div>
-                        </TableCell>
-                      )}
-
-                      {uniqueFields.length < 1 && hasFullNameField && (
-                        <TableCell className='border-r border-gray-200 px-4 py-4'>
-                          <div
-                            className='truncate font-medium text-gray-900'
-                            title={getFullNameFromSubmission(submission)}
-                          >
-                            {getFullNameFromSubmission(submission)}
-                          </div>
-                        </TableCell>
-                      )}
-
-                      {isFeedbackForm && (
-                        <TableCell className='border-r border-gray-200 px-4 py-4'>
-                          <div
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleViewAIEvaluation(submission.id);
-                            }}
-                            className='cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors'
-                            title='Click to view detailed AI evaluation'
-                          >
-                            {getAIEvaluationBadge(submission.id)}
-                          </div>
-                        </TableCell>
-                      )}
-
-                      <TableCell className='border-r border-gray-200 px-4 py-4'>
-                        {getStatusBadge(submission.status)}
-                      </TableCell>
-
-                      <TableCell className='border-r border-gray-200 px-4 py-4 text-center'>
-                        <Button
-                          variant='ghost'
-                          size='sm'
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleToggleRead(submission.id, submission.isRead);
-                          }}
-                          className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer'
-                          title={
-                            submission.isRead
-                              ? 'Mark as unread'
-                              : 'Mark as read'
-                          }
-                        >
-                          {submission.isRead ? (
-                            <Eye className='w-4 h-4 text-green-600' />
-                          ) : (
-                            <EyeOff className='w-4 h-4 text-gray-400' />
-                          )}
-                        </Button>
-                      </TableCell>
-
-                      <TableCell className='px-4 py-4'>
-                        <div className='flex items-center justify-center gap-1'>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={e => {
-                              e.stopPropagation();
-                              confirmDelete(submission.id);
-                            }}
-                            className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors'
-                            title='Delete submission'
-                          >
-                            <Trash2 className='w-4 h-4' />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {/* Enhanced Pagination */}
-          {pagination.pages > 1 && (
-            <div className='flex items-center justify-between mt-6 pt-4 border-t border-gray-200 px-6 pb-4'>
-              <div className='text-sm text-gray-600'>
-                Showing {(pagination.current - 1) * pagination.limit + 1} to{' '}
-                {Math.min(
-                  pagination.current * pagination.limit,
-                  pagination.total
-                )}{' '}
-                of {pagination.total} submissions
-              </div>
-              <div className='flex gap-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() =>
-                    fetchSubmissions(pagination.current - 1, pagination.limit)
-                  }
-                  disabled={pagination.current === 1}
-                  className='border-gray-300 hover:bg-gray-50 cursor-pointer'
-                >
-                  Previous
-                </Button>
-                <span className='flex items-center px-3 py-1 text-sm text-gray-700'>
-                  Page {pagination.current} of {pagination.pages}
+      {/* Enhanced Submissions Display */}
+      <motion.div variants={fadeInUp} initial='initial' animate='animate'>
+        <Card className='bg-white border-gray-200 shadow-sm'>
+          <CardHeader className='border-b border-gray-200 p-4 md:p-6'>
+            <CardTitle className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <div className='flex items-center gap-2'>
+                <Calendar className='w-5 h-5 text-gray-600' />
+                <span className='text-lg md:text-xl'>
+                  Submissions ({stats.total})
                 </span>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() =>
-                    fetchSubmissions(pagination.current + 1, pagination.limit)
-                  }
-                  disabled={pagination.current === pagination.pages}
-                  className='border-gray-300 hover:bg-gray-50 cursor-pointer'
-                >
-                  Next
-                </Button>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              {isFeedbackForm && (
+                <Badge
+                  variant='outline'
+                  className='ml-0 sm:ml-2 bg-purple-50 text-purple-700 border-purple-200 w-fit'
+                >
+                  <Brain className='w-3 h-3 mr-1' />
+                  AI Enabled
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className='p-0'>
+            {submissions.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className='text-center py-12 px-4'
+              >
+                <div className='text-gray-400 mb-4'>
+                  <Calendar className='w-16 h-16 mx-auto' />
+                </div>
+                <h3 className='text-lg font-medium text-gray-900 mb-2'>
+                  No submissions yet
+                </h3>
+                <p className='text-gray-600 text-sm md:text-base'>
+                  Submissions will appear here once users start submitting your
+                  form.
+                </p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Mobile Card View */}
+                {isMobile ? (
+                  <div className='p-4 space-y-4'>
+                    <motion.div
+                      variants={staggerContainer}
+                      initial='initial'
+                      animate='animate'
+                    >
+                      {submissions.map((submission, index) => (
+                        <MobileSubmissionCard
+                          key={`mobile-submission-${submission.id}-${index}`}
+                          submission={submission}
+                          fieldLabelsMap={fieldLabelsMap}
+                          formStructure={formStructure}
+                          uniqueFields={uniqueFields}
+                          hasEmailField={hasEmailField}
+                          hasFullNameField={hasFullNameField}
+                          isFeedbackForm={isFeedbackForm}
+                          detectedFormType={detectedFormType}
+                          aiEvaluations={aiEvaluations}
+                          evaluatingSubmissions={evaluatingSubmissions}
+                          onView={handleViewSubmission}
+                          onToggleRead={handleToggleRead}
+                          onDelete={confirmDelete}
+                          onViewAIEvaluation={handleViewAIEvaluation}
+                          getStatusBadge={getStatusBadge}
+                          getAIEvaluationBadge={getAIEvaluationBadge}
+                          getFieldValueFromSubmission={
+                            getFieldValueFromSubmission
+                          }
+                          getEmailFromSubmission={getEmailFromSubmission}
+                          getFullNameFromSubmission={getFullNameFromSubmission}
+                        />
+                      ))}
+                    </motion.div>
+                  </div>
+                ) : (
+                  /* Desktop Table View */
+                  <div className='overflow-x-auto'>
+                    <Table className='w-full table-fixed'>
+                      <TableHeader>
+                        <TableRow className='border-b-2 border-gray-200 bg-gray-50'>
+                          <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
+                            <div className='flex items-center gap-2 font-semibold text-gray-700'>
+                              <Clock className='w-4 h-4' />
+                              Submission Date
+                            </div>
+                          </TableHead>
+
+                          {uniqueFields.map(field => (
+                            <TableHead
+                              key={field.fieldId}
+                              className='border-r border-gray-200 px-4 py-3 w-[16%]'
+                            >
+                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
+                                {field.icon}
+                                <span className='truncate'>{field.label}</span>
+                              </div>
+                            </TableHead>
+                          ))}
+
+                          {uniqueFields.length < 2 && hasEmailField && (
+                            <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
+                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
+                                <Mail className='w-4 h-4' />
+                                Email
+                              </div>
+                            </TableHead>
+                          )}
+
+                          {uniqueFields.length < 1 && hasFullNameField && (
+                            <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
+                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
+                                <User className='w-4 h-4' />
+                                Full Name
+                              </div>
+                            </TableHead>
+                          )}
+
+                          {isFeedbackForm && (
+                            <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
+                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
+                                <Brain className='w-4 h-4' />
+                                AI Analysis
+                              </div>
+                            </TableHead>
+                          )}
+
+                          <TableHead className='border-r border-gray-200 px-4 py-3 w-[12%]'>
+                            <div className='flex items-center gap-2 font-semibold text-gray-700'>
+                              <AlertCircle className='w-4 h-4' />
+                              Status
+                            </div>
+                          </TableHead>
+
+                          <TableHead className='border-r border-gray-200 px-4 py-3 w-[8%]'>
+                            <div className='flex items-center justify-center gap-2 font-semibold text-gray-700'>
+                              Read
+                            </div>
+                          </TableHead>
+
+                          <TableHead className='px-4 py-3 w-[8%]'>
+                            <div className='font-semibold text-center text-gray-700'>
+                              Actions
+                            </div>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {submissions.map((submission, submissionIndex) => (
+                          <motion.tr
+                            key={`submission-${submission.id}-${submissionIndex}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: submissionIndex * 0.05 }}
+                            className={`${
+                              !submission.isRead
+                                ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                                : 'bg-white'
+                            } hover:bg-gray-50 cursor-pointer border-b border-gray-200 transition-colors duration-150`}
+                            onClick={() => handleViewSubmission(submission)}
+                          >
+                            <TableCell className='border-r border-gray-200 px-4 py-4'>
+                              <div>
+                                <div className='font-medium text-sm text-gray-900'>
+                                  {formatDateTime(submission.submittedAt)}
+                                </div>
+                                <div className='text-xs text-gray-500 mt-1'>
+                                  {formatTimeAgo(submission.submittedAt)}
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            {uniqueFields.map(field => (
+                              <TableCell
+                                key={field.fieldId}
+                                className='border-r border-gray-200 px-4 py-4'
+                              >
+                                <div
+                                  className='truncate font-medium text-gray-900'
+                                  title={getFieldValueFromSubmission(
+                                    submission,
+                                    field.fieldId
+                                  )}
+                                >
+                                  {getFieldValueFromSubmission(
+                                    submission,
+                                    field.fieldId
+                                  )}
+                                </div>
+                              </TableCell>
+                            ))}
+
+                            {uniqueFields.length < 2 && hasEmailField && (
+                              <TableCell className='border-r border-gray-200 px-4 py-4'>
+                                <div
+                                  className='truncate font-medium text-gray-900'
+                                  title={getEmailFromSubmission(submission)}
+                                >
+                                  {getEmailFromSubmission(submission)}
+                                </div>
+                              </TableCell>
+                            )}
+
+                            {uniqueFields.length < 1 && hasFullNameField && (
+                              <TableCell className='border-r border-gray-200 px-4 py-4'>
+                                <div
+                                  className='truncate font-medium text-gray-900'
+                                  title={getFullNameFromSubmission(submission)}
+                                >
+                                  {getFullNameFromSubmission(submission)}
+                                </div>
+                              </TableCell>
+                            )}
+
+                            {isFeedbackForm && (
+                              <TableCell className='border-r border-gray-200 px-4 py-4'>
+                                <div
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleViewAIEvaluation(submission.id);
+                                  }}
+                                  className='cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors'
+                                  title='Click to view detailed AI evaluation'
+                                >
+                                  {getAIEvaluationBadge(submission.id)}
+                                </div>
+                              </TableCell>
+                            )}
+
+                            <TableCell className='border-r border-gray-200 px-4 py-4'>
+                              {getStatusBadge(submission.status)}
+                            </TableCell>
+
+                            <TableCell className='border-r border-gray-200 px-4 py-4 text-center'>
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleToggleRead(
+                                    submission.id,
+                                    submission.isRead
+                                  );
+                                }}
+                                className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer'
+                                title={
+                                  submission.isRead
+                                    ? 'Mark as unread'
+                                    : 'Mark as read'
+                                }
+                              >
+                                {submission.isRead ? (
+                                  <Eye className='w-4 h-4 text-green-600' />
+                                ) : (
+                                  <EyeOff className='w-4 h-4 text-gray-400' />
+                                )}
+                              </Button>
+                            </TableCell>
+
+                            <TableCell className='px-4 py-4'>
+                              <div className='flex items-center justify-center gap-1'>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    confirmDelete(submission.id);
+                                  }}
+                                  className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors'
+                                  title='Delete submission'
+                                >
+                                  <Trash2 className='w-4 h-4' />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Enhanced Pagination */}
+            {pagination.pages > 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className='flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-gray-200 px-4 md:px-6 pb-4 gap-4'
+              >
+                <div className='text-sm text-gray-600 text-center sm:text-left'>
+                  Showing {(pagination.current - 1) * pagination.limit + 1} to{' '}
+                  {Math.min(
+                    pagination.current * pagination.limit,
+                    pagination.total
+                  )}{' '}
+                  of {pagination.total} submissions
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      fetchSubmissions(pagination.current - 1, pagination.limit)
+                    }
+                    disabled={pagination.current === 1}
+                    className='border-gray-300 hover:bg-gray-50 cursor-pointer px-3 py-1 text-sm'
+                  >
+                    Previous
+                  </Button>
+                  <span className='flex items-center px-3 py-1 text-sm text-gray-700 bg-gray-50 rounded border'>
+                    {pagination.current} / {pagination.pages}
+                  </span>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      fetchSubmissions(pagination.current + 1, pagination.limit)
+                    }
+                    disabled={pagination.current === pagination.pages}
+                    className='border-gray-300 hover:bg-gray-50 cursor-pointer px-3 py-1 text-sm'
+                  >
+                    Next
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Enhanced Submission Details Modal */}
       <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
         <DialogContent
+          className='w-[95vw] h-[90vh] max-h-[90vh] overflow-y-auto bg-white p-0'
           style={{
             width: '55vw',
-            height: '90vh',
             maxWidth: '95vw',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            backgroundColor: 'white',
           }}
-          className='[&>button]:top-7 [&>button]:right-4 [&>button]:cursor-pointer'
         >
-          <DialogHeader className='border-b border-gray-200 pb-4'>
-            <DialogTitle className='flex items-center justify-start'>
-              <span className='text-xl font-bold text-gray-900 mr-2'>
+          <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white z-10'>
+            <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-lg md:text-xl font-bold text-gray-900'>
                 Submission Details
               </span>
               {selectedSubmission && isFeedbackForm && (
                 <Badge
                   variant='outline'
                   className={`
-                    ${
+                    w-fit ${
                       detectedFormType === 'quiz'
                         ? 'bg-blue-50 text-blue-700 border-blue-200'
                         : ''
@@ -2650,74 +3071,89 @@ const FormSubmissionsPage: React.FC = () => {
                 </Badge>
               )}
             </DialogTitle>
+            <DialogDescription className='text-gray-600'>
+              View and manage detailed submission information including
+              submitted data, files, and AI analysis results.
+            </DialogDescription>
           </DialogHeader>
 
           {selectedSubmission && (
-            <div className='space-y-6 pt-4'>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className='space-y-6 p-4 md:p-6'
+            >
               {/* Enhanced Submission Meta Info */}
-              <div className='bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200'>
+              <motion.div
+                variants={fadeInUp}
+                className='bg-gradient-to-r from-blue-50 to-indigo-50 p-4 md:p-6 rounded-lg border border-blue-200'
+              >
                 <h4 className='font-semibold text-blue-900 mb-4 flex items-center gap-2'>
                   <Calendar className='w-5 h-5' />
                   Submission Information
                 </h4>
-                <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-sm'>
+                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm'>
                   <div>
-                    <span className='text-blue-700 font-medium'>
+                    <span className='text-blue-700 font-medium block mb-1'>
                       Submitted:
                     </span>
-                    <p className='mt-1 text-gray-900 font-medium'>
+                    <p className='text-gray-900 font-medium break-words'>
                       {formatDateTime(selectedSubmission.submittedAt)}
                     </p>
                   </div>
                   <div>
-                    <span className='text-blue-700 font-medium'>Status:</span>
-                    <div className='mt-1'>
-                      {getStatusBadge(selectedSubmission.status)}
-                    </div>
+                    <span className='text-blue-700 font-medium block mb-1'>
+                      Status:
+                    </span>
+                    <div>{getStatusBadge(selectedSubmission.status)}</div>
                   </div>
                   <div>
-                    <span className='text-blue-700 font-medium'>
+                    <span className='text-blue-700 font-medium block mb-1'>
                       Read Status:
                     </span>
-                    <div className='mt-1'>
+                    <div>
                       <Badge
                         variant={
                           selectedSubmission.isRead ? 'default' : 'secondary'
                         }
+                        className='text-xs'
                       >
                         {selectedSubmission.isRead ? 'Read' : 'Unread'}
                       </Badge>
                     </div>
                   </div>
                   <div>
-                    <span className='text-blue-700 font-medium'>
+                    <span className='text-blue-700 font-medium block mb-1'>
                       Form Type:
                     </span>
-                    <div className='mt-1'>
-                      <Badge variant='outline' className='bg-white'>
+                    <div>
+                      <Badge variant='outline' className='bg-white text-xs'>
                         {detectedFormType.charAt(0).toUpperCase() +
                           detectedFormType.slice(1)}
                       </Badge>
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Enhanced Unique Fields Summary */}
               {uniqueFields.length > 0 && (
-                <div className='bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200'>
+                <motion.div
+                  variants={fadeInUp}
+                  className='bg-gradient-to-r from-purple-50 to-pink-50 p-4 md:p-6 rounded-lg border border-purple-200'
+                >
                   <h4 className='font-semibold text-purple-900 mb-4 flex items-center gap-2'>
                     <IdCard className='w-5 h-5' />
                     Key Identifiers
                   </h4>
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'>
+                  <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm'>
                     {uniqueFields.map(field => (
                       <div key={field.fieldId}>
-                        <span className='text-purple-700 font-medium flex items-center gap-2'>
+                        <span className='text-purple-700 font-medium flex items-center gap-2 mb-2'>
                           {field.icon}
                           {field.label}:
                         </span>
-                        <div className='mt-2 font-semibold text-gray-900 bg-white px-4 py-3 rounded-lg border shadow-sm'>
+                        <div className='font-semibold text-gray-900 bg-white px-4 py-3 rounded-lg border shadow-sm break-words'>
                           {getFieldValueFromSubmission(
                             selectedSubmission,
                             field.fieldId
@@ -2726,44 +3162,49 @@ const FormSubmissionsPage: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Enhanced AI Evaluation Details */}
               {isFeedbackForm && aiEvaluations[selectedSubmission.id] && (
-                <div className='bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border border-green-200'>
-                  <h4 className='font-semibold text-green-900 mb-4 flex items-center gap-2'>
-                    <Brain className='w-5 h-5' />
-                    AI Evaluation Results
+                <motion.div
+                  variants={fadeInUp}
+                  className='bg-gradient-to-r from-green-50 to-emerald-50 p-4 md:p-6 rounded-lg border border-green-200'
+                >
+                  <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4'>
+                    <h4 className='font-semibold text-green-900 flex items-center gap-2'>
+                      <Brain className='w-5 h-5' />
+                      AI Evaluation Results
+                    </h4>
                     <Button
                       variant='outline'
                       size='sm'
                       onClick={() =>
                         handleViewAIEvaluation(selectedSubmission.id)
                       }
-                      className='ml-auto text-green-700 border-green-300 hover:bg-green-100 cursor-pointer'
+                      className='text-green-700 border-green-300 hover:bg-green-100 cursor-pointer w-fit text-sm'
                     >
                       View Full Analysis
                     </Button>
-                  </h4>
-                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+                  </div>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm'>
                     <div>
-                      <span className='text-green-700 font-medium'>
+                      <span className='text-green-700 font-medium block mb-1'>
                         Form Type:
                       </span>
-                      <div className='mt-1'>
-                        <Badge className='bg-green-100 text-green-800 font-bold capitalize'>
+                      <div>
+                        <Badge className='bg-green-100 text-green-800 font-bold capitalize text-xs'>
                           {aiEvaluations[selectedSubmission.id].formType}
                         </Badge>
                       </div>
                     </div>
                     <div>
-                      <span className='text-green-700 font-medium'>
+                      <span className='text-green-700 font-medium block mb-1'>
                         Sentiment:
                       </span>
-                      <div className='mt-1'>
+                      <div>
                         <Badge
-                          className={`font-bold capitalize ${
+                          className={`font-bold capitalize text-xs ${
                             aiEvaluations[selectedSubmission.id].sentiment ===
                             'positive'
                               ? 'bg-green-100 text-green-800'
@@ -2777,15 +3218,17 @@ const FormSubmissionsPage: React.FC = () => {
                         </Badge>
                       </div>
                     </div>
-                    <div>
-                      <span className='text-green-700 font-medium'>Score:</span>
-                      <div className='mt-1'>
+                    <div className='sm:col-span-2 lg:col-span-1'>
+                      <span className='text-green-700 font-medium block mb-1'>
+                        Score:
+                      </span>
+                      <div>
                         {(() => {
                           const evaluation =
                             aiEvaluations[selectedSubmission.id];
                           if (evaluation.quizResults) {
                             return (
-                              <Badge className='bg-blue-100 text-blue-800 font-bold'>
+                              <Badge className='bg-blue-100 text-blue-800 font-bold text-xs'>
                                 {evaluation.quizResults.percentage}% (
                                 {evaluation.quizResults.correctAnswers}/
                                 {evaluation.quizResults.totalQuestions})
@@ -2793,7 +3236,7 @@ const FormSubmissionsPage: React.FC = () => {
                             );
                           } else if (evaluation.surveyResults) {
                             return (
-                              <Badge className='bg-green-100 text-green-800 font-bold'>
+                              <Badge className='bg-green-100 text-green-800 font-bold text-xs'>
                                 {
                                   evaluation.surveyResults.overallSentiment
                                     .positive
@@ -2804,7 +3247,7 @@ const FormSubmissionsPage: React.FC = () => {
                           } else if (evaluation.feedbackResults) {
                             return (
                               <Badge
-                                className={`font-bold ${
+                                className={`font-bold text-xs ${
                                   evaluation.feedbackResults.urgencyLevel ===
                                   'high'
                                     ? 'bg-red-100 text-red-800'
@@ -2823,52 +3266,63 @@ const FormSubmissionsPage: React.FC = () => {
                             );
                           }
                           return (
-                            <Badge className='bg-gray-100 text-gray-800'>
+                            <Badge className='bg-gray-100 text-gray-800 text-xs'>
                               Analyzed
                             </Badge>
                           );
                         })()}
                       </div>
                     </div>
-                    <div className='col-span-1 md:col-span-3'>
-                      <span className='text-green-700 font-medium'>
+                    <div className='col-span-1 sm:col-span-2 lg:col-span-3'>
+                      <span className='text-green-700 font-medium block mb-2'>
                         Summary:
                       </span>
-                      <div className='mt-2 bg-white p-4 rounded-lg border'>
-                        <p className='text-gray-900 leading-relaxed'>
+                      <div className='bg-white p-4 rounded-lg border'>
+                        <p className='text-gray-900 leading-relaxed text-sm break-words'>
                           {aiEvaluations[selectedSubmission.id].feedback}
                         </p>
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Enhanced Submission Data */}
-              <div className='bg-white'>
+              <motion.div variants={fadeInUp} className='bg-white'>
                 <h3 className='text-lg font-bold text-gray-900 mb-6 flex items-center gap-2'>
                   <FileText className='w-5 h-5' />
                   Submitted Data
                 </h3>
 
-                <div className='space-y-4 bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-lg border border-gray-200'>
+                <div className='space-y-4 bg-gradient-to-r from-gray-50 to-slate-50 p-4 md:p-6 rounded-lg border border-gray-200'>
                   {Object.entries(selectedSubmission.data).length === 0 ? (
-                    <div className='text-center py-8'>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className='text-center py-8'
+                    >
                       <div className='text-gray-400 mb-4'>
                         <FileText className='w-16 h-16 mx-auto' />
                       </div>
                       <p className='text-gray-500 italic text-lg'>
                         No data submitted
                       </p>
-                    </div>
+                    </motion.div>
                   ) : (
-                    <>
+                    <motion.div
+                      variants={staggerContainer}
+                      initial='initial'
+                      animate='animate'
+                    >
                       {/* Render regular form fields */}
                       {Object.entries(selectedSubmission.data).map(
                         ([fieldId, value], index) => (
-                          <div key={`field-${fieldId}-${index}`}>
+                          <motion.div
+                            key={`field-${fieldId}-${index}`}
+                            variants={fadeInUp}
+                          >
                             {renderFieldValue(fieldId, value)}
-                          </div>
+                          </motion.div>
                         )
                       )}
 
@@ -2876,7 +3330,7 @@ const FormSubmissionsPage: React.FC = () => {
                       {selectedSubmission.files &&
                         Array.isArray(selectedSubmission.files) &&
                         selectedSubmission.files.length > 0 && (
-                          <>
+                          <motion.div variants={fadeInUp}>
                             <div className='border-t border-gray-300 pt-6 mt-6'>
                               <h4 className='text-md font-semibold text-gray-800 mb-4 flex items-center gap-2'>
                                 <FileText className='w-5 h-5' />
@@ -2932,11 +3386,12 @@ const FormSubmissionsPage: React.FC = () => {
                                   );
 
                                   return (
-                                    <div
+                                    <motion.div
                                       key={`file-field-${fieldId}`}
+                                      variants={fadeInUp}
                                       className='space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm'
                                     >
-                                      <div className='flex items-center justify-between border-b border-gray-200 pb-3'>
+                                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 gap-2'>
                                         <label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
                                           {normalizedFiles.length > 0 &&
                                             getFileTypeInfo(
@@ -2981,9 +3436,12 @@ const FormSubmissionsPage: React.FC = () => {
                                       {/* Enhanced File List */}
                                       <div className='space-y-3'>
                                         {normalizedFiles.map((file, index) => (
-                                          <div
+                                          <motion.div
                                             key={`file-${fieldId}-${index}`}
-                                            className='flex items-center gap-4 bg-gray-50 p-4 rounded-lg border'
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: index * 0.1 }}
+                                            className='flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 p-4 rounded-lg border'
                                           >
                                             {/* File Icon */}
                                             <div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
@@ -3010,11 +3468,11 @@ const FormSubmissionsPage: React.FC = () => {
                                               >
                                                 {file.originalName}
                                               </p>
-                                              <div className='flex items-center gap-4 mt-1'>
+                                              <div className='flex flex-wrap items-center gap-4 mt-1'>
                                                 <p className='text-xs text-gray-500'>
                                                   {formatFileSize(file.size)}
                                                 </p>
-                                                <p className='text-xs text-gray-500'>
+                                                <p className='text-xs text-gray-500 break-all'>
                                                   {file.mimeType}
                                                 </p>
                                                 <p className='text-xs text-gray-500'>
@@ -3026,95 +3484,113 @@ const FormSubmissionsPage: React.FC = () => {
                                             </div>
 
                                             {/* Action Buttons */}
-                                            <div className='flex gap-2 flex-shrink-0'>
+                                            <div className='flex flex-col sm:flex-row gap-2 flex-shrink-0'>
                                               {/* Download Button */}
-                                              <Button
-                                                size='sm'
-                                                variant='outline'
-                                                onClick={() =>
-                                                  handleDownloadFile(file)
-                                                }
-                                                disabled={
-                                                  downloadingFileId ===
-                                                  file.publicId
-                                                }
-                                                className='px-3 py-2 hover:bg-green-50 hover:border-green-300 cursor-pointer'
-                                                title={`Download ${file.originalName}`}
+                                              <motion.div
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
                                               >
-                                                {downloadingFileId ===
-                                                file.publicId ? (
-                                                  <Loader2 className='w-4 h-4 animate-spin' />
-                                                ) : (
-                                                  <Download className='w-4 h-4' />
-                                                )}
-                                                <span className='ml-1 hidden sm:inline'>
-                                                  Download
-                                                </span>
-                                              </Button>
+                                                <Button
+                                                  size='sm'
+                                                  variant='outline'
+                                                  onClick={() =>
+                                                    handleDownloadFile(file)
+                                                  }
+                                                  disabled={
+                                                    downloadingFileId ===
+                                                    file.publicId
+                                                  }
+                                                  className='w-full sm:w-auto px-3 py-2 hover:bg-green-50 hover:border-green-300 cursor-pointer text-xs'
+                                                  title={`Download ${file.originalName}`}
+                                                >
+                                                  {downloadingFileId ===
+                                                  file.publicId ? (
+                                                    <Loader2 className='w-4 h-4 animate-spin' />
+                                                  ) : (
+                                                    <Download className='w-4 h-4' />
+                                                  )}
+                                                  <span className='ml-1'>
+                                                    Download
+                                                  </span>
+                                                </Button>
+                                              </motion.div>
 
                                               {/* Delete Button */}
-                                              <Button
-                                                size='sm'
-                                                variant='outline'
-                                                onClick={() =>
-                                                  handleDeleteFile(
-                                                    file,
-                                                    selectedSubmission.id,
-                                                    fieldId
-                                                  )
-                                                }
-                                                className='px-3 py-2 text-red-600 hover:bg-red-50 hover:border-red-300 cursor-pointer'
-                                                title={`Delete ${file.originalName}`}
+                                              <motion.div
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
                                               >
-                                                <Trash2 className='w-4 h-4' />
-                                                <span className='ml-1 hidden sm:inline'>
-                                                  Delete
-                                                </span>
-                                              </Button>
+                                                <Button
+                                                  size='sm'
+                                                  variant='outline'
+                                                  onClick={() =>
+                                                    handleDeleteFile(
+                                                      file,
+                                                      selectedSubmission.id,
+                                                      fieldId
+                                                    )
+                                                  }
+                                                  className='w-full sm:w-auto px-3 py-2 text-red-600 hover:bg-red-50 hover:border-red-300 cursor-pointer text-xs'
+                                                  title={`Delete ${file.originalName}`}
+                                                >
+                                                  <Trash2 className='w-4 h-4' />
+                                                  <span className='ml-1'>
+                                                    Delete
+                                                  </span>
+                                                </Button>
+                                              </motion.div>
                                             </div>
-                                          </div>
+                                          </motion.div>
                                         ))}
                                       </div>
-                                    </div>
+                                    </motion.div>
                                   );
                                 }
                               );
                             })()}
-                          </>
+                          </motion.div>
                         )}
-                    </>
+                    </motion.div>
                   )}
                 </div>
-              </div>
+              </motion.div>
 
               {/* Enhanced Action Buttons in Modal */}
-              <div className='flex justify-center items-center border-t border-gray-200 pt-6'>
+              <motion.div
+                variants={fadeInUp}
+                className='flex justify-center items-center border-t border-gray-200 pt-6'
+              >
                 <div className='flex gap-3'>
                   {/* AI Evaluation Button */}
                   {isFeedbackForm &&
                     !evaluatingSubmissions.has(selectedSubmission.id) &&
                     !aiEvaluations[selectedSubmission.id] && (
-                      <Button
-                        variant='outline'
-                        onClick={() =>
-                          evaluateSubmissionWithAI(selectedSubmission)
-                        }
-                        className='bg-purple-500 hover:bg-purple-600 text-white border-purple-500 cursor-pointer'
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
-                        <Brain className='w-4 h-4 mr-2' />
-                        Start AI Evaluation
-                      </Button>
+                        <Button
+                          variant='outline'
+                          onClick={() =>
+                            evaluateSubmissionWithAI(selectedSubmission)
+                          }
+                          className='bg-purple-500 hover:bg-purple-600 text-white border-purple-500 cursor-pointer'
+                        >
+                          <Brain className='w-4 h-4 mr-2' />
+                          Start AI Evaluation
+                        </Button>
+                      </motion.div>
                     )}
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           )}
         </DialogContent>
       </Dialog>
 
       {/* Enhanced Delete Submission Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className='bg-white text-gray-900'>
+        <AlertDialogContent className='bg-white text-gray-900 w-[95vw] max-w-md mx-auto'>
           <AlertDialogHeader>
             <AlertDialogTitle className='text-red-600 font-bold flex items-center gap-2'>
               <AlertTriangle className='w-5 h-5' />
@@ -3122,7 +3598,11 @@ const FormSubmissionsPage: React.FC = () => {
             </AlertDialogTitle>
           </AlertDialogHeader>
 
-          <div className='text-gray-700 px-6'>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className='text-gray-700 px-6'
+          >
             <span className='block mb-4'>
               This will permanently delete the submission and all associated
               files from cloud storage.
@@ -3140,17 +3620,17 @@ const FormSubmissionsPage: React.FC = () => {
                     {/* Submission Details */}
                     <div className='p-3 bg-gray-50 rounded-md border border-gray-200'>
                       <div className='text-sm'>
-                        <p className='font-medium text-gray-900'>
+                        <p className='font-medium text-gray-900 break-words'>
                           Submission:{' '}
                           {formatDateTime(submission?.submittedAt || '')}
                         </p>
                         {submission && hasFullNameField && (
-                          <p className='text-gray-600 mt-1'>
+                          <p className='text-gray-600 mt-1 break-words'>
                             Submitter: {getFullNameFromSubmission(submission)}
                           </p>
                         )}
                         {submission && hasEmailField && (
-                          <p className='text-gray-600 mt-1'>
+                          <p className='text-gray-600 mt-1 break-words'>
                             Email: {getEmailFromSubmission(submission)}
                           </p>
                         )}
@@ -3161,7 +3641,7 @@ const FormSubmissionsPage: React.FC = () => {
                     {fileCount > 0 && (
                       <div className='p-3 bg-yellow-50 rounded-md border border-yellow-200'>
                         <div className='flex items-center gap-2 text-yellow-800 mb-2'>
-                          <AlertTriangle className='w-4 h-4' />
+                          <AlertTriangle className='w-4 h-4 flex-shrink-0' />
                           <span className='font-medium'>
                             Files to be deleted:
                           </span>
@@ -3170,7 +3650,9 @@ const FormSubmissionsPage: React.FC = () => {
                           {submission?.files
                             ?.slice(0, 3)
                             .map((file: any, index: number) => (
-                              <div key={index}>• {file.originalName}</div>
+                              <div key={index} className='truncate'>
+                                • {file.originalName}
+                              </div>
                             ))}
                           {fileCount > 3 && (
                             <div>• and {fileCount - 3} more files...</div>
@@ -3183,7 +3665,7 @@ const FormSubmissionsPage: React.FC = () => {
                     {aiEvaluations[submissionToDelete] && (
                       <div className='p-3 bg-purple-50 rounded-md border border-purple-200'>
                         <div className='flex items-center gap-2 text-purple-800 mb-1'>
-                          <Brain className='w-4 h-4' />
+                          <Brain className='w-4 h-4 flex-shrink-0' />
                           <span className='font-medium'>
                             AI evaluation will also be deleted
                           </span>
@@ -3201,16 +3683,16 @@ const FormSubmissionsPage: React.FC = () => {
             <span className='block mt-4 font-medium text-red-600'>
               This action cannot be undone.
             </span>
-          </div>
+          </motion.div>
 
-          <AlertDialogFooter>
+          <AlertDialogFooter className='flex-col sm:flex-row gap-2'>
             <AlertDialogCancel
               onClick={() => {
                 setShowDeleteDialog(false);
                 setSubmissionToDelete(null);
               }}
               disabled={isDeletingSubmissions}
-              className='border-gray-300 hover:bg-gray-50'
+              className='w-full sm:w-auto border-gray-300 hover:bg-gray-50'
             >
               Cancel
             </AlertDialogCancel>
@@ -3221,7 +3703,7 @@ const FormSubmissionsPage: React.FC = () => {
                 }
               }}
               disabled={isDeletingSubmissions}
-              className='bg-red-600 hover:bg-red-700 text-white'
+              className='w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white'
             >
               {isDeletingSubmissions ? (
                 <>
@@ -3245,24 +3727,22 @@ const FormSubmissionsPage: React.FC = () => {
         onOpenChange={setShowAIEvaluationModal}
       >
         <DialogContent
+          className='w-[95vw] h-[90vh] max-w-4xl max-h-[90vh] overflow-y-auto bg-white p-0'
           style={{
             width: '55vw',
-            height: '90vh',
             maxWidth: '95vw',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            backgroundColor: 'white',
           }}
-          className='[&>button]:top-7 [&>button]:right-4 [&>button]:cursor-pointer'
         >
-          <DialogHeader className='border-b border-gray-200 pb-4'>
-            <DialogTitle className='flex items-center gap-2 text-xl font-bold text-gray-900'>
-              <Brain className='w-6 h-6 text-purple-600' />
-              AI Evaluation Results
+          <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white z-10'>
+            <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2 text-lg md:text-xl font-bold text-gray-900'>
+              <div className='flex items-center gap-2'>
+                <Brain className='w-6 h-6 text-purple-600' />
+                AI Evaluation Results
+              </div>
               {selectedEvaluation && (
                 <Badge
                   variant='secondary'
-                  className={`ml-2 ${
+                  className={`w-fit ${
                     selectedEvaluation.formType === 'quiz'
                       ? 'bg-blue-100 text-blue-800'
                       : selectedEvaluation.formType === 'survey'
@@ -3278,51 +3758,87 @@ const FormSubmissionsPage: React.FC = () => {
                 </Badge>
               )}
             </DialogTitle>
+            <DialogDescription className='text-gray-600'>
+              Comprehensive AI-powered analysis including sentiment evaluation,
+              performance metrics, and actionable insights for this submission.
+            </DialogDescription>
           </DialogHeader>
 
           {selectedEvaluation && (
-            <div className='space-y-6 pt-4'>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className='space-y-6 p-4 md:p-6'
+            >
               {/* Quiz Results */}
               {selectedEvaluation.formType === 'quiz' &&
                 selectedEvaluation.quizResults && (
-                  <div className='space-y-6'>
+                  <motion.div
+                    variants={staggerContainer}
+                    initial='initial'
+                    animate='animate'
+                    className='space-y-6'
+                  >
                     {/* Enhanced Quiz Summary */}
-                    <div className='bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-gradient-to-r from-blue-50 to-indigo-50 p-4 md:p-6 rounded-lg border border-blue-200'
+                    >
                       <h3 className='text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2'>
                         <Star className='w-5 h-5' />
                         Quiz Performance Summary
                       </h3>
-                      <div className='grid grid-cols-2 md:grid-cols-4 gap-6'>
+                      <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6'>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-blue-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className='text-3xl md:text-4xl font-bold text-blue-600 mb-2'
+                          >
                             {selectedEvaluation.quizResults.percentage}%
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Overall Score
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-green-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className='text-3xl md:text-4xl font-bold text-green-600 mb-2'
+                          >
                             {selectedEvaluation.quizResults.correctAnswers}
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Correct Answers
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-red-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className='text-3xl md:text-4xl font-bold text-red-600 mb-2'
+                          >
                             {selectedEvaluation.quizResults.totalQuestions -
                               selectedEvaluation.quizResults.correctAnswers}
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Incorrect Answers
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-gray-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className='text-3xl md:text-4xl font-bold text-gray-600 mb-2'
+                          >
                             {selectedEvaluation.quizResults.totalQuestions}
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Total Questions
                           </div>
                         </div>
@@ -3357,8 +3873,13 @@ const FormSubmissionsPage: React.FC = () => {
                           </span>
                         </div>
                         <div className='w-full bg-gray-200 rounded-full h-3'>
-                          <div
-                            className={`h-3 rounded-full transition-all duration-500 ${
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${selectedEvaluation.quizResults.percentage}%`,
+                            }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                            className={`h-3 rounded-full ${
                               selectedEvaluation.quizResults.percentage >= 80
                                 ? 'bg-green-500'
                                 : selectedEvaluation.quizResults.percentage >=
@@ -3369,16 +3890,16 @@ const FormSubmissionsPage: React.FC = () => {
                                 ? 'bg-yellow-500'
                                 : 'bg-red-500'
                             }`}
-                            style={{
-                              width: `${selectedEvaluation.quizResults.percentage}%`,
-                            }}
-                          ></div>
+                          />
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Question-by-Question Analysis */}
-                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
                       <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
                         <FileText className='w-5 h-5' />
                         Detailed Question Analysis
@@ -3386,16 +3907,19 @@ const FormSubmissionsPage: React.FC = () => {
                       <div className='space-y-4'>
                         {selectedEvaluation.quizResults.explanations.map(
                           (explanation, index) => (
-                            <div
+                            <motion.div
                               key={explanation.questionId}
-                              className={`p-5 rounded-lg border-l-4 ${
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className={`p-4 md:p-5 rounded-lg border-l-4 ${
                                 explanation.isCorrect
                                   ? 'border-l-green-500 bg-green-50'
                                   : 'border-l-red-500 bg-red-50'
                               }`}
                             >
-                              <div className='flex items-start justify-between mb-3'>
-                                <h4 className='font-medium text-gray-900 flex-1'>
+                              <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3'>
+                                <h4 className='font-medium text-gray-900 flex-1 break-words'>
                                   <span className='text-sm text-gray-600 mr-2'>
                                     Question {index + 1}:
                                   </span>
@@ -3407,11 +3931,11 @@ const FormSubmissionsPage: React.FC = () => {
                                       ? 'default'
                                       : 'destructive'
                                   }
-                                  className={
+                                  className={`flex-shrink-0 ${
                                     explanation.isCorrect
                                       ? 'bg-green-100 text-green-800 border-green-200'
                                       : 'bg-red-100 text-red-800 border-red-200'
-                                  }
+                                  }`}
                                 >
                                   {explanation.isCorrect ? (
                                     <>
@@ -3428,13 +3952,13 @@ const FormSubmissionsPage: React.FC = () => {
                               </div>
 
                               <div className='space-y-3 text-sm'>
-                                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                                   <div>
-                                    <span className='font-medium text-gray-700'>
+                                    <span className='font-medium text-gray-700 block mb-1'>
                                       Your Answer:
                                     </span>
                                     <div
-                                      className={`mt-1 p-3 rounded border ${
+                                      className={`p-3 rounded border break-words ${
                                         explanation.isCorrect
                                           ? 'bg-green-100 border-green-200 text-green-800'
                                           : 'bg-red-100 border-red-200 text-red-800'
@@ -3446,10 +3970,10 @@ const FormSubmissionsPage: React.FC = () => {
 
                                   {!explanation.isCorrect && (
                                     <div>
-                                      <span className='font-medium text-gray-700'>
+                                      <span className='font-medium text-gray-700 block mb-1'>
                                         Correct Answer:
                                       </span>
-                                      <div className='mt-1 p-3 bg-green-100 border border-green-200 text-green-800 rounded'>
+                                      <div className='p-3 bg-green-100 border border-green-200 text-green-800 rounded break-words'>
                                         {explanation.correctAnswer}
                                       </div>
                                     </div>
@@ -3457,67 +3981,90 @@ const FormSubmissionsPage: React.FC = () => {
                                 </div>
 
                                 <div className='mt-4 p-4 bg-white rounded-lg border'>
-                                  <span className='font-medium text-gray-700 flex items-center gap-2'>
+                                  <span className='font-medium text-gray-700 flex items-center gap-2 mb-2'>
                                     <FileText className='w-4 h-4' />
                                     Explanation:
                                   </span>
-                                  <p className='mt-2 text-gray-900 leading-relaxed'>
+                                  <p className='text-gray-900 leading-relaxed break-words'>
                                     {explanation.explanation}
                                   </p>
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           )
                         )}
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                 )}
 
               {/* Enhanced Survey Results */}
               {selectedEvaluation.formType === 'survey' &&
                 selectedEvaluation.surveyResults && (
-                  <div className='space-y-6'>
+                  <motion.div
+                    variants={staggerContainer}
+                    initial='initial'
+                    animate='animate'
+                    className='space-y-6'
+                  >
                     {/* Sentiment Overview */}
-                    <div className='bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border border-green-200'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-gradient-to-r from-green-50 to-emerald-50 p-4 md:p-6 rounded-lg border border-green-200'
+                    >
                       <h3 className='text-lg font-semibold text-green-900 mb-4 flex items-center gap-2'>
                         <Brain className='w-5 h-5' />
                         Sentiment Analysis Overview
                       </h3>
-                      <div className='grid grid-cols-3 gap-6 mb-6'>
+                      <div className='grid grid-cols-3 gap-4 md:gap-6 mb-6'>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-green-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className='text-3xl md:text-4xl font-bold text-green-600 mb-2'
+                          >
                             {
                               selectedEvaluation.surveyResults.overallSentiment
                                 .positive
                             }
                             %
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Positive
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-yellow-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className='text-3xl md:text-4xl font-bold text-yellow-600 mb-2'
+                          >
                             {
                               selectedEvaluation.surveyResults.overallSentiment
                                 .neutral
                             }
                             %
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Neutral
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-red-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className='text-3xl md:text-4xl font-bold text-red-600 mb-2'
+                          >
                             {
                               selectedEvaluation.surveyResults.overallSentiment
                                 .negative
                             }
                             %
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Negative
                           </div>
                         </div>
@@ -3525,7 +4072,7 @@ const FormSubmissionsPage: React.FC = () => {
 
                       {/* Enhanced Visual Sentiment Bar */}
                       <div className='space-y-3'>
-                        <div className='flex items-center justify-between text-sm font-medium'>
+                        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm font-medium gap-2'>
                           <span>Overall Sentiment Distribution</span>
                           <span className='text-green-600'>
                             {selectedEvaluation.surveyResults.overallSentiment
@@ -3542,52 +4089,64 @@ const FormSubmissionsPage: React.FC = () => {
                         </div>
                         <div className='w-full bg-gray-200 rounded-full h-4 overflow-hidden'>
                           <div className='flex h-full'>
-                            <div
-                              className='bg-green-500 transition-all duration-700'
-                              style={{
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
                                 width: `${selectedEvaluation.surveyResults.overallSentiment.positive}%`,
                               }}
+                              transition={{ duration: 0.7, delay: 0.3 }}
+                              className='bg-green-500'
                               title={`${selectedEvaluation.surveyResults.overallSentiment.positive}% Positive`}
-                            ></div>
-                            <div
-                              className='bg-yellow-500 transition-all duration-700'
-                              style={{
+                            />
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
                                 width: `${selectedEvaluation.surveyResults.overallSentiment.neutral}%`,
                               }}
+                              transition={{ duration: 0.7, delay: 0.5 }}
+                              className='bg-yellow-500'
                               title={`${selectedEvaluation.surveyResults.overallSentiment.neutral}% Neutral`}
-                            ></div>
-                            <div
-                              className='bg-red-500 transition-all duration-700'
-                              style={{
+                            />
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
                                 width: `${selectedEvaluation.surveyResults.overallSentiment.negative}%`,
                               }}
+                              transition={{ duration: 0.7, delay: 0.7 }}
+                              className='bg-red-500'
                               title={`${selectedEvaluation.surveyResults.overallSentiment.negative}% Negative`}
-                            ></div>
+                            />
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Enhanced Key Metrics */}
-                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
                       <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
                         <Star className='w-5 h-5' />
                         Key Performance Metrics
                       </h3>
-                      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+                      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6'>
                         {selectedEvaluation.surveyResults.keyMetrics.map(
                           (metric, index) => (
-                            <div
+                            <motion.div
                               key={index}
-                              className='p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-gray-200'
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className='p-4 md:p-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-gray-200'
                             >
-                              <div className='flex items-center justify-between mb-3'>
-                                <h4 className='font-medium text-gray-900'>
+                              <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3'>
+                                <h4 className='font-medium text-gray-900 break-words'>
                                   {metric.metric}
                                 </h4>
                                 <Badge
                                   variant='secondary'
-                                  className={`${
+                                  className={`w-fit ${
                                     metric.trend === 'up'
                                       ? 'bg-green-100 text-green-800 border-green-200'
                                       : metric.trend === 'down'
@@ -3605,7 +4164,12 @@ const FormSubmissionsPage: React.FC = () => {
                                   {metric.trend}
                                 </Badge>
                               </div>
-                              <div className='text-3xl font-bold text-blue-600 mb-2'>
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: index * 0.1 + 0.3 }}
+                                className='text-2xl md:text-3xl font-bold text-blue-600 mb-2'
+                              >
                                 {metric.value}
                                 {metric.metric
                                   .toLowerCase()
@@ -3613,17 +4177,11 @@ const FormSubmissionsPage: React.FC = () => {
                                 metric.metric.toLowerCase().includes('quality')
                                   ? '/100'
                                   : ''}
-                              </div>
+                              </motion.div>
                               <div className='w-full bg-gray-200 rounded-full h-2'>
-                                <div
-                                  className={`h-2 rounded-full transition-all duration-500 ${
-                                    metric.trend === 'up'
-                                      ? 'bg-green-500'
-                                      : metric.trend === 'down'
-                                      ? 'bg-red-500'
-                                      : 'bg-yellow-500'
-                                  }`}
-                                  style={{
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{
                                     width: `${Math.min(
                                       100,
                                       (metric.value /
@@ -3638,25 +4196,42 @@ const FormSubmissionsPage: React.FC = () => {
                                         100
                                     )}%`,
                                   }}
-                                ></div>
+                                  transition={{
+                                    duration: 0.5,
+                                    delay: index * 0.1 + 0.5,
+                                  }}
+                                  className={`h-2 rounded-full ${
+                                    metric.trend === 'up'
+                                      ? 'bg-green-500'
+                                      : metric.trend === 'down'
+                                      ? 'bg-red-500'
+                                      : 'bg-yellow-500'
+                                  }`}
+                                />
                               </div>
-                            </div>
+                            </motion.div>
                           )
                         )}
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Enhanced Insights */}
-                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-6'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6'
+                    >
                       <h3 className='text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2'>
                         <AlertCircle className='w-5 h-5' />
                         Key Insights & Recommendations
                       </h3>
-                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                         {selectedEvaluation.surveyResults.insights.map(
                           (insight, index) => (
-                            <div
+                            <motion.div
                               key={index}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
                               className='flex items-start gap-3 p-4 bg-white rounded-lg border border-blue-200'
                             >
                               <div className='w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5'>
@@ -3664,28 +4239,34 @@ const FormSubmissionsPage: React.FC = () => {
                                   {index + 1}
                                 </span>
                               </div>
-                              <div className='flex-1'>
-                                <p className='text-gray-900 leading-relaxed'>
+                              <div className='flex-1 min-w-0'>
+                                <p className='text-gray-900 leading-relaxed break-words'>
                                   {insight}
                                 </p>
                               </div>
-                            </div>
+                            </motion.div>
                           )
                         )}
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Response Quality Indicator */}
-                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
                       <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
                         <CheckCircle className='w-5 h-5' />
                         Response Quality Assessment
                       </h3>
-                      <div className='flex items-center justify-between mb-3'>
+                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3'>
                         <span className='text-gray-700 font-medium'>
                           Overall Quality Score
                         </span>
-                        <span
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.3 }}
                           className={`text-lg font-bold ${
                             selectedEvaluation.surveyResults.responseQuality >=
                             80
@@ -3700,11 +4281,16 @@ const FormSubmissionsPage: React.FC = () => {
                           }`}
                         >
                           {selectedEvaluation.surveyResults.responseQuality}/100
-                        </span>
+                        </motion.span>
                       </div>
                       <div className='w-full bg-gray-200 rounded-full h-4'>
-                        <div
-                          className={`h-4 rounded-full transition-all duration-500 ${
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{
+                            width: `${selectedEvaluation.surveyResults.responseQuality}%`,
+                          }}
+                          transition={{ duration: 0.5, delay: 0.5 }}
+                          className={`h-4 rounded-full ${
                             selectedEvaluation.surveyResults.responseQuality >=
                             80
                               ? 'bg-green-500'
@@ -3716,10 +4302,7 @@ const FormSubmissionsPage: React.FC = () => {
                               ? 'bg-yellow-500'
                               : 'bg-red-500'
                           }`}
-                          style={{
-                            width: `${selectedEvaluation.surveyResults.responseQuality}%`,
-                          }}
-                        ></div>
+                        />
                       </div>
                       <p className='text-sm text-gray-600 mt-2'>
                         {selectedEvaluation.surveyResults.responseQuality >= 80
@@ -3732,24 +4315,32 @@ const FormSubmissionsPage: React.FC = () => {
                           ? 'Fair - Responses are adequate but could be more detailed'
                           : 'Poor - Responses lack detail and depth'}
                       </p>
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                 )}
 
               {/* Enhanced Feedback Results */}
               {selectedEvaluation.formType === 'feedback' &&
                 selectedEvaluation.feedbackResults && (
-                  <div className='space-y-6'>
+                  <motion.div
+                    variants={staggerContainer}
+                    initial='initial'
+                    animate='animate'
+                    className='space-y-6'
+                  >
                     {/* Sentiment Analysis with Priority */}
-                    <div className='bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200'>
-                      <div className='flex items-center justify-between mb-4'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-gradient-to-r from-orange-50 to-red-50 p-4 md:p-6 rounded-lg border border-orange-200'
+                    >
+                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4'>
                         <h3 className='text-lg font-semibold text-orange-900 flex items-center gap-2'>
                           <Brain className='w-5 h-5' />
                           Feedback Sentiment Analysis
                         </h3>
                         <Badge
                           variant='destructive'
-                          className={`${
+                          className={`w-fit ${
                             selectedEvaluation.feedbackResults.urgencyLevel ===
                             'high'
                               ? 'bg-red-100 text-red-800 border-red-200'
@@ -3778,40 +4369,55 @@ const FormSubmissionsPage: React.FC = () => {
                         </Badge>
                       </div>
 
-                      <div className='grid grid-cols-3 gap-6 mb-6'>
+                      <div className='grid grid-cols-3 gap-4 md:gap-6 mb-6'>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-green-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className='text-3xl md:text-4xl font-bold text-green-600 mb-2'
+                          >
                             {
                               selectedEvaluation.feedbackResults
                                 .sentimentBreakdown.positive
                             }
                             %
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Positive
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-yellow-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className='text-3xl md:text-4xl font-bold text-yellow-600 mb-2'
+                          >
                             {
                               selectedEvaluation.feedbackResults
                                 .sentimentBreakdown.neutral
                             }
                             %
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Neutral
                           </div>
                         </div>
                         <div className='text-center'>
-                          <div className='text-4xl font-bold text-red-600 mb-2'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className='text-3xl md:text-4xl font-bold text-red-600 mb-2'
+                          >
                             {
                               selectedEvaluation.feedbackResults
                                 .sentimentBreakdown.negative
                             }
                             %
-                          </div>
-                          <div className='text-sm text-gray-600 font-medium'>
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
                             Negative
                           </div>
                         </div>
@@ -3819,7 +4425,7 @@ const FormSubmissionsPage: React.FC = () => {
 
                       {/* Enhanced Visual Sentiment Bar */}
                       <div className='space-y-3'>
-                        <div className='flex items-center justify-between text-sm font-medium'>
+                        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm font-medium gap-2'>
                           <span>Feedback Sentiment Distribution</span>
                           <span
                             className={`${
@@ -3839,31 +4445,40 @@ const FormSubmissionsPage: React.FC = () => {
                         </div>
                         <div className='w-full bg-gray-200 rounded-full h-4 overflow-hidden'>
                           <div className='flex h-full'>
-                            <div
-                              className='bg-green-500 transition-all duration-700'
-                              style={{
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
                                 width: `${selectedEvaluation.feedbackResults.sentimentBreakdown.positive}%`,
                               }}
-                            ></div>
-                            <div
-                              className='bg-yellow-500 transition-all duration-700'
-                              style={{
+                              transition={{ duration: 0.7, delay: 0.3 }}
+                              className='bg-green-500'
+                            />
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
                                 width: `${selectedEvaluation.feedbackResults.sentimentBreakdown.neutral}%`,
                               }}
-                            ></div>
-                            <div
-                              className='bg-red-500 transition-all duration-700'
-                              style={{
+                              transition={{ duration: 0.7, delay: 0.5 }}
+                              className='bg-yellow-500'
+                            />
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
                                 width: `${selectedEvaluation.feedbackResults.sentimentBreakdown.negative}%`,
                               }}
-                            ></div>
+                              transition={{ duration: 0.7, delay: 0.7 }}
+                              className='bg-red-500'
+                            />
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Enhanced Critical Themes */}
-                    <div className='bg-white border border-gray-200 rounded-lg p-6'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
                       <h3 className='text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2'>
                         <AlertTriangle className='w-5 h-5' />
                         Critical Themes Analysis
@@ -3871,9 +4486,12 @@ const FormSubmissionsPage: React.FC = () => {
                       <div className='space-y-5'>
                         {selectedEvaluation.feedbackResults.criticalThemes.map(
                           (theme, index) => (
-                            <div
+                            <motion.div
                               key={index}
-                              className={`p-5 rounded-lg border-l-4 ${
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className={`p-4 md:p-5 rounded-lg border-l-4 ${
                                 theme.severity === 'high'
                                   ? 'border-l-red-500 bg-red-50'
                                   : theme.severity === 'medium'
@@ -3881,14 +4499,14 @@ const FormSubmissionsPage: React.FC = () => {
                                   : 'border-l-green-500 bg-green-50'
                               }`}
                             >
-                              <div className='flex items-center justify-between mb-3'>
-                                <h4 className='font-medium text-gray-900 text-lg'>
+                              <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3'>
+                                <h4 className='font-medium text-gray-900 text-base md:text-lg break-words'>
                                   {theme.theme}
                                 </h4>
-                                <div className='flex items-center gap-3'>
+                                <div className='flex flex-col sm:flex-row items-start sm:items-center gap-3'>
                                   <Badge
                                     variant='secondary'
-                                    className={`${
+                                    className={`w-fit ${
                                       theme.severity === 'high'
                                         ? 'bg-red-100 text-red-800 border-red-200'
                                         : theme.severity === 'medium'
@@ -3918,13 +4536,13 @@ const FormSubmissionsPage: React.FC = () => {
                                 <span className='font-medium text-gray-700 text-sm block mb-2'>
                                   Representative Examples:
                                 </span>
-                                <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
                                   {theme.examples
                                     .slice(0, 4)
                                     .map((example, exampleIndex) => (
                                       <div
                                         key={exampleIndex}
-                                        className='bg-white p-3 rounded border text-sm text-gray-800 leading-relaxed'
+                                        className='bg-white p-3 rounded border text-sm text-gray-800 leading-relaxed break-words'
                                       >
                                         &ldquo;
                                         {example.length > 100
@@ -3935,14 +4553,17 @@ const FormSubmissionsPage: React.FC = () => {
                                     ))}
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           )
                         )}
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Enhanced Actionable Insights */}
-                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-6'>
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6'
+                    >
                       <h3 className='text-lg font-semibold text-blue-900 mb-6 flex items-center gap-2'>
                         <CheckCircle className='w-5 h-5' />
                         Actionable Insights & Recommendations
@@ -3950,20 +4571,23 @@ const FormSubmissionsPage: React.FC = () => {
                       <div className='space-y-4'>
                         {selectedEvaluation.feedbackResults.actionableInsights.map(
                           (insight, index) => (
-                            <div
+                            <motion.div
                               key={index}
-                              className='flex items-start gap-4 p-5 bg-white rounded-lg border border-blue-200 shadow-sm'
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className='flex items-start gap-4 p-4 md:p-5 bg-white rounded-lg border border-blue-200 shadow-sm'
                             >
                               <div className='w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5'>
                                 <span className='text-blue-600 text-sm font-bold'>
                                   {index + 1}
                                 </span>
                               </div>
-                              <div className='flex-1'>
-                                <p className='text-gray-900 leading-relaxed font-medium'>
+                              <div className='flex-1 min-w-0'>
+                                <p className='text-gray-900 leading-relaxed font-medium break-words'>
                                   {insight}
                                 </p>
-                                <div className='mt-2 flex items-center gap-2'>
+                                <div className='mt-2 flex flex-wrap items-center gap-2'>
                                   <Badge
                                     variant='outline'
                                     className='text-xs bg-blue-50 border-blue-200'
@@ -3977,33 +4601,37 @@ const FormSubmissionsPage: React.FC = () => {
                                   </span>
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           )
                         )}
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                 )}
 
               {/* General Form Results */}
               {selectedEvaluation.formType === 'general' && (
-                <div className='bg-gray-50 border border-gray-200 rounded-lg p-6'>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className='bg-gray-50 border border-gray-200 rounded-lg p-4 md:p-6'
+                >
                   <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
                     <FileText className='w-5 h-5' />
                     General Analysis
                   </h3>
                   <div className='p-4 bg-white rounded border'>
-                    <p className='text-gray-700 leading-relaxed'>
+                    <p className='text-gray-700 leading-relaxed break-words'>
                       {selectedEvaluation.feedback}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               )}
-            </div>
+            </motion.div>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 };
 

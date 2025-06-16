@@ -1244,54 +1244,6 @@ export default function PublicFormPage() {
           </div>
         );
 
-        return fieldWrapper(
-          <div>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div className='border rounded-md p-4 bg-gray-50'>
-              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                {[
-                  'Product A - $19.99',
-                  'Product B - $29.99',
-                  'Product C - $39.99',
-                ].map((product, index) => (
-                  <label
-                    key={index}
-                    className='flex items-center space-x-2 cursor-pointer bg-white p-3 rounded border hover:bg-gray-50'
-                  >
-                    <input
-                      type='checkbox'
-                      value={product}
-                      checked={Array.isArray(value) && value.includes(product)}
-                      onChange={e => {
-                        const currentValues = Array.isArray(value) ? value : [];
-                        if (e.target.checked) {
-                          handleInputChange(field.id, [
-                            ...currentValues,
-                            product,
-                          ]);
-                        } else {
-                          handleInputChange(
-                            field.id,
-                            currentValues.filter(v => v !== product)
-                          );
-                        }
-                      }}
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span className='text-sm'>{product}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
       case FieldType.SIGNATURE:
         return fieldWrapper(
           <SignatureField

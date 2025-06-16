@@ -20,7 +20,7 @@ import {
 import { FieldType, Field } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Image, Upload } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDrop } from 'react-dnd';
 import { toast } from 'sonner';
@@ -37,10 +37,12 @@ import { AppDispatch } from '@/redux/store';
 // Interface for panel state
 interface FormCanvasProps {
   isPanelExpanded?: boolean;
+  onPanelToggle?: (isOpen: boolean) => void;
 }
 
 export default function FormCanvas({
   isPanelExpanded = false,
+  onPanelToggle,
 }: FormCanvasProps) {
   const dispatch = useDispatch<AppDispatch>();
   const params = useParams();
@@ -129,7 +131,7 @@ export default function FormCanvas({
     }
   }, [editingLabelId]);
 
-  // Form Builder Warnings Component
+  // Form Builder Warnings Component - Updated for consistent full width
   const FormBuilderWarnings = ({ form }: { form: any }) => {
     const hasRequiredFields = form?.pages?.some((page: any) =>
       page.fields?.some((field: any) => field.required === true)
@@ -141,12 +143,16 @@ export default function FormCanvas({
 
     if (!hasAnyFields) {
       return (
-        <div className='mx-auto my-4 p-4 bg-orange-50 border border-orange-200 rounded-lg max-w-3xl'>
-          <div className='flex items-center'>
-            <div className='text-orange-600 mr-2'>⚠️</div>
-            <div>
-              <h3 className='font-medium text-orange-900'>No Fields Added</h3>
-              <p className='text-orange-700 text-sm mt-1'>
+        <div className='w-full max-w-3xl mx-auto my-4 p-4 bg-orange-50 border border-orange-200 rounded-lg'>
+          <div className='flex items-start'>
+            <div className='text-orange-600 mr-3 mt-0.5 flex-shrink-0'>⚠️</div>
+            <div className='flex-1 min-w-0'>
+              {' '}
+              {/* flex-1 and min-w-0 for full width */}
+              <h3 className='font-medium text-orange-900 mb-1'>
+                No Fields Added
+              </h3>
+              <p className='text-orange-700 text-sm leading-relaxed'>
                 Your form has no fields. Add some fields from the left panel to
                 collect user data.
               </p>
@@ -158,14 +164,16 @@ export default function FormCanvas({
 
     if (!hasRequiredFields && form?.isPublished) {
       return (
-        <div className='mx-auto my-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-3xl'>
-          <div className='flex items-center'>
-            <div className='text-yellow-600 mr-2'>💡</div>
-            <div>
-              <h3 className='font-medium text-yellow-900'>
+        <div className='w-full max-w-3xl mx-auto my-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
+          <div className='flex items-start'>
+            <div className='text-yellow-600 mr-3 mt-0.5 flex-shrink-0'>💡</div>
+            <div className='flex-1 min-w-0'>
+              {' '}
+              {/* flex-1 and min-w-0 for full width */}
+              <h3 className='font-medium text-yellow-900 mb-1'>
                 No Required Fields
               </h3>
-              <p className='text-yellow-700 text-sm mt-1'>
+              <p className='text-yellow-700 text-sm leading-relaxed'>
                 Your published form has no required fields. Users can submit
                 empty forms. Consider making some fields required.
               </p>
@@ -218,12 +226,17 @@ export default function FormCanvas({
 
   // Set up drop target for the current page canvas
   const currentPage = getCurrentPage();
+
+  // Main drop target for the entire form canvas
   const [{ isOver, canDrop }, dropRef] = useDrop(
     () => ({
       accept: ItemTypes.FORM_ELEMENT,
-      canDrop: () => !!currentPage,
-      drop: (item: { fieldType: FieldType }, monitor) => {
-        if (!monitor.didDrop() && currentPage) {
+      canDrop: () => {
+        return !!currentPage;
+      },
+      drop: (item: { fieldType: FieldType }) => {
+        // Only handle the drop if current page exists
+        if (currentPage) {
           dispatch(
             addFieldAtIndex({
               type: item.fieldType,
@@ -233,7 +246,9 @@ export default function FormCanvas({
           );
 
           toast.success(
-            `${item.fieldType} field added to page ${
+            `${item.fieldType
+              .replace(/_/g, ' ')
+              .toLowerCase()} field added to page ${
               (form?.currentPageIndex || 0) + 1
             }`
           );
@@ -248,6 +263,36 @@ export default function FormCanvas({
     [currentPage, form?.currentPageIndex]
   );
 
+  // Separate drop target specifically for empty form state
+  const [{ isOver: isEmptyOver, canDrop: canEmptyDrop }, emptyDropRef] =
+    useDrop(
+      () => ({
+        accept: ItemTypes.FORM_ELEMENT,
+        canDrop: () => !!currentPage && currentPage.fields?.length === 0,
+        drop: (item: { fieldType: FieldType }) => {
+          if (currentPage) {
+            dispatch(
+              addFieldAtIndex({
+                type: item.fieldType,
+                index: 0,
+                pageId: currentPage.id,
+              })
+            );
+
+            toast.success(
+              `${item.fieldType.replace(/_/g, ' ').toLowerCase()} field added!`
+            );
+          }
+          return undefined;
+        },
+        collect: monitor => ({
+          isOver: !!monitor.isOver({ shallow: true }),
+          canDrop: !!monitor.canDrop(),
+        }),
+      }),
+      [currentPage]
+    );
+
   // Field event handlers
   const handleFieldClick = (fieldId: string) => {
     if (isPreviewMode || !form) return;
@@ -258,6 +303,16 @@ export default function FormCanvas({
       dispatch(selectField(fieldId));
     }
   };
+
+  const combinedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      emptyDropRef(node);
+      if (formCanvasRef.current !== node) {
+        formCanvasRef.current = node;
+      }
+    },
+    [emptyDropRef]
+  );
 
   const handleSettingsClick = (e: React.MouseEvent, fieldId: string) => {
     e.stopPropagation();
@@ -390,6 +445,14 @@ export default function FormCanvas({
       })
     );
     toast.success(`Added new ${type.replace(/_/g, ' ').toLowerCase()} field`);
+  };
+  const handleEmptyStateClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (onPanelToggle) {
+      onPanelToggle(true);
+    }
   };
 
   // Render field function
@@ -1261,7 +1324,7 @@ export default function FormCanvas({
       >
         <motion.div
           ref={logoAreaRef}
-          className={`max-w-3xl w-full mx-auto my-8 mt-11 transition-colors cursor-pointer overflow-visible ${
+          className={`max-w-3xl w-full mx-auto transition-colors cursor-pointer overflow-visible mt-2 mb-2 sm:mt-8 sm:mb-8 md:mt-11 md:mb-8 ${
             form.logo
               ? 'border-transparent'
               : isLogoHovered
@@ -1271,12 +1334,12 @@ export default function FormCanvas({
           style={{
             minHeight:
               form.logo?.size && form.logo.size > 70
-                ? '180px'
+                ? 'clamp(80px, 15vw, 180px)' // Responsive between 80px and 180px
                 : form.logo?.size && form.logo.size > 50
-                ? '120px'
-                : '60px',
+                ? 'clamp(60px, 12vw, 120px)' // Responsive between 60px and 120px
+                : 'clamp(50px, 10vw, 60px)',
             transition:
-              'min-height 0.3s ease, border-color 0.3s ease, background-color 0.3s ease',
+              'min-height 0.3s ease, border-color 0.3s ease, background-color 0.3s ease, margin 0.3s ease',
           }}
           onMouseEnter={() => setIsLogoHovered(true)}
           onMouseLeave={() => setIsLogoHovered(false)}
@@ -1454,41 +1517,95 @@ export default function FormCanvas({
             }
           }}
         >
-          <div>
-            {/* Drop zone before any fields */}
-            {!isPreviewMode && (
-              <DropZone
-                index={0}
-                pageId={currentPage.id}
-                onDrop={handleAddFieldAtIndex}
-              />
-            )}
+          <div className='min-h-[130px]'>
+            {fields.length === 0 && !isPreviewMode ? (
+              <div
+                ref={combinedRef}
+                onClick={handleEmptyStateClick}
+                onMouseDown={e => e.preventDefault()} // Prevent drag start
+                className={`
+      flex flex-col items-center justify-center min-h-[130px] mx-4 my-8 
+      border-2 border-dashed rounded-lg transition-all duration-300 ease-in-out cursor-pointer
+      ${
+        isEmptyOver && canEmptyDrop
+          ? 'border-blue-400 bg-blue-50 text-blue-600 scale-105'
+          : 'border-gray-300 text-gray-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600'
+      }
+    `}
+              >
+                <div className='text-center px-4 pointer-events-none'>
+                  {' '}
+                  {/* Add pointer-events-none */}
+                  <div
+                    className={`text-lg font-medium mb-2 transition-colors duration-300 ${
+                      isEmptyOver && canEmptyDrop
+                        ? 'text-blue-700'
+                        : 'text-gray-600'
+                    }`}
+                  >
+                    {isEmptyOver && canEmptyDrop
+                      ? 'Drop your field here!'
+                      : 'Drag your first question here from the left'}
+                  </div>
+                  <div
+                    className={`text-sm transition-colors duration-300 ${
+                      isEmptyOver && canEmptyDrop
+                        ? 'text-blue-500'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    {isEmptyOver && canEmptyDrop
+                      ? 'Release to add the field'
+                      : 'Or click here to open elements panel'}
+                  </div>
+                </div>
 
-            {/* Fields with drop zones between them */}
-            {fields.map((field, index) => (
-              <div key={field.id}>
-                {renderField(field, index, currentPage.id)}
-
-                {/* Drop zone after each field */}
+                {/* Animated drop indicator */}
+                {isEmptyOver && canEmptyDrop && (
+                  <div className='mt-4 flex space-x-1 pointer-events-none'>
+                    <div
+                      className='w-2 h-2 bg-blue-500 rounded-full animate-bounce'
+                      style={{ animationDelay: '0ms' }}
+                    ></div>
+                    <div
+                      className='w-2 h-2 bg-blue-500 rounded-full animate-bounce'
+                      style={{ animationDelay: '150ms' }}
+                    ></div>
+                    <div
+                      className='w-2 h-2 bg-blue-500 rounded-full animate-bounce'
+                      style={{ animationDelay: '300ms' }}
+                    ></div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Drop zone before any fields - only when fields exist */}
                 {!isPreviewMode && (
                   <DropZone
-                    index={index + 1}
+                    index={0}
                     pageId={currentPage.id}
                     onDrop={handleAddFieldAtIndex}
                   />
                 )}
-              </div>
-            ))}
 
-            {/* Empty Form State */}
-            {fields.length === 0 && !isPreviewMode && (
-              <div className='flex flex-col mt-4 items-center justify-center h-30 border-2 border-dashed border-gray-300 rounded-lg mx-4 mb-4 pt-4'>
-                <div className='text-gray-500 mb-4'>
-                  Drag your first question here from the left.
-                </div>
-              </div>
+                {/* Fields with drop zones between them */}
+                {fields.map((field, index) => (
+                  <div key={field.id}>
+                    {renderField(field, index, currentPage.id)}
+
+                    {/* Drop zone after each field */}
+                    {!isPreviewMode && (
+                      <DropZone
+                        index={index + 1}
+                        pageId={currentPage.id}
+                        onDrop={handleAddFieldAtIndex}
+                      />
+                    )}
+                  </div>
+                ))}
+              </>
             )}
-
             {/* Dynamic Buttons - Next, Back, Submit */}
             <div className='px-4 mt-2 mb-8 pt-3 pb-6 flex justify-center'>
               {/* Show Back button on pages after the first */}

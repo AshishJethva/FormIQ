@@ -22,6 +22,7 @@ import {
   Mail,
   Users,
   Shield,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -64,6 +65,32 @@ export default function FormSettingsPage() {
     delay: 1000,
     enableToast: false,
   });
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 15, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 400,
+        damping: 25,
+      },
+    },
+  };
 
   // Initialize with proper defaults and ensure both settings are ON by default
   useEffect(() => {
@@ -323,51 +350,73 @@ export default function FormSettingsPage() {
 
   if (!form) {
     return (
-      <div className='flex items-center justify-center h-64'>
-        <div className='text-center'>
-          <Loader2 className='w-8 h-8 animate-spin mx-auto mb-4 text-gray-500' />
-          <div className='text-gray-500'>Loading form settings...</div>
+      <div className='bg-[#F3F3FE] min-h-screen'>
+        <div className='flex items-center justify-center h-screen px-4'>
+          <motion.div
+            className='text-center'
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className='w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3'>
+              <Loader2 className='w-6 h-6 animate-spin text-orange-500' />
+            </div>
+            <div className='text-gray-600 font-medium'>
+              Loading form settings...
+            </div>
+            <div className='text-gray-400 text-sm mt-1'>
+              Please wait while we fetch your data
+            </div>
+          </motion.div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className='bg-[#F3F3FE] min-h-screen'>
-      <div className='max-w-4xl mx-auto p-8 bg-[#F3F3FE] min-h-screen'>
+    <div className='bg-gradient-to-br from-[#F3F3FE] via-[#F8F8FF] to-[#F0F0FD] min-h-screen'>
+      <motion.div
+        className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6'
+        variants={containerVariants}
+        initial='hidden'
+        animate='visible'
+      >
         {/* Header */}
-        <div className='mb-8'>
-          <div className='flex items-center mb-4'>
-            <div className='w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center mr-4'>
-              <Settings className='w-6 h-6 text-white' />
-            </div>
+        <motion.div className='my-4 sm:mb-6' variants={cardVariants}>
+          <div className='flex items-center mb-3'>
+            <motion.div
+              className='w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mr-3 shadow-md'
+              whileHover={{ scale: 1.05, rotate: 3 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Settings className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
+            </motion.div>
             <div>
-              <h1 className='text-2xl font-bold text-gray-900'>
-                FORM SETTINGS
+              <h1 className='text-xl sm:text-2xl font-bold text-gray-900 tracking-tight'>
+                Form Settings
               </h1>
-              <p className='text-gray-600'>
+              <p className='text-gray-600 text-sm'>
                 Customize form status and properties
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className='space-y-8'>
+        <div className='space-y-4 mt-8 sm:space-y-5'>
           {/* Form Title */}
           <motion.div
-            className='bg-white rounded-lg p-6'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            className='bg-white/70 backdrop-blur-sm rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100/50 hover:shadow-md transition-all duration-300'
+            variants={cardVariants}
+            whileHover={{ y: -1 }}
           >
-            <div className='mb-4'>
+            <div className='mb-3'>
               <Label
                 htmlFor='form-title'
-                className='text-lg font-medium text-gray-900'
+                className='text-sm font-semibold text-gray-900 block mb-1'
               >
-                Title
+                Form Title
               </Label>
-              <p className='text-sm text-gray-600 mt-1'>
+              <p className='text-xs text-gray-600'>
                 Enter a name for your form (press Enter to save)
               </p>
             </div>
@@ -379,76 +428,87 @@ export default function FormSettingsPage() {
                 onBlur={handleTitleBlur}
                 onKeyDown={handleTitleKeyDown}
                 placeholder='Enter form title'
-                className={`text-lg pr-10 ${
-                  titleError ? 'border-red-500' : ''
+                className={`h-9 text-sm pr-10 transition-all duration-300 border border-gray-300 bg-white  shadow-md hover:shadow-md focus:shadow-md focus:ring-0 focus-visible:ring-0 focus:outline-none rounded-lg ${
+                  titleError ? 'border-red-400 bg-red-50/30' : ''
                 }`}
                 disabled={isSavingTitle}
               />
               {isSavingTitle && (
-                <div className='absolute right-3 top-1/2 transform -translate-y-1/2'>
-                  <Loader2 className='w-4 h-4 animate-spin text-blue-500' />
-                </div>
+                <motion.div
+                  className='absolute right-3 top-1/2 transform -translate-y-1/2'
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <Loader2 className='w-4 h-4 animate-spin text-orange-500' />
+                </motion.div>
               )}
             </div>
             {titleError && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className='text-red-600 text-sm mt-2 flex items-center'
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                className='text-red-600 text-xs mt-2 flex items-start bg-red-50 p-2 rounded border border-red-200'
               >
-                <AlertCircle className='w-4 h-4 mr-1' />
-                {titleError}
-              </motion.p>
+                <AlertCircle className='w-3 h-3 mr-1 mt-0.5 flex-shrink-0' />
+                <span>{titleError}</span>
+              </motion.div>
             )}
           </motion.div>
 
           {/* Form Status */}
           <motion.div
-            className='bg-white rounded-lg p-6'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            className='bg-white/70 backdrop-blur-sm rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100/50 hover:shadow-md transition-all duration-300'
+            variants={cardVariants}
+            whileHover={{ y: -1 }}
           >
-            <div className='mb-4'>
-              <Label className='text-lg font-medium text-gray-900'>
+            <div className='mb-3'>
+              <Label className='text-sm font-semibold text-gray-900 block mb-1'>
                 Form Status
               </Label>
-              <p className='text-sm text-gray-600 mt-1'>
+              <p className='text-xs text-gray-600'>
                 Enable or disable form submissions
               </p>
             </div>
 
-            <div
-              className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            <motion.div
+              className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-300 ${
                 isSavingStatus
-                  ? 'border-blue-200 bg-blue-50 cursor-not-allowed'
+                  ? 'border-blue-300 bg-blue-50 cursor-not-allowed'
                   : isFormEnabled
-                  ? 'border-green-200 bg-green-50 hover:border-green-300'
-                  : 'border-red-200 bg-red-50 hover:border-red-300'
+                  ? 'border-green-300 bg-green-50 hover:border-green-400 hover:bg-green-100'
+                  : 'border-red-300 bg-red-50 hover:border-red-400 hover:bg-red-100'
               }`}
               onClick={!isSavingStatus ? handleFormStatusToggle : undefined}
+              whileHover={!isSavingStatus ? { scale: 1.01 } : {}}
+              whileTap={!isSavingStatus ? { scale: 0.99 } : {}}
             >
               <div className='flex items-center'>
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 ${
+                <motion.div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 shadow-sm ${
                     isSavingStatus
                       ? 'bg-blue-500'
                       : isFormEnabled
                       ? 'bg-green-500'
                       : 'bg-red-500'
                   }`}
+                  animate={isSavingStatus ? { rotate: 360 } : {}}
+                  transition={
+                    isSavingStatus
+                      ? { duration: 1, repeat: Infinity, ease: 'linear' }
+                      : {}
+                  }
                 >
                   {isSavingStatus ? (
-                    <Loader2 className='w-5 h-5 text-white animate-spin' />
+                    <Loader2 className='w-4 h-4 text-white animate-spin' />
                   ) : isFormEnabled ? (
-                    <CheckCircle className='w-5 h-5 text-white' />
+                    <CheckCircle className='w-4 h-4 text-white' />
                   ) : (
-                    <XCircle className='w-5 h-5 text-white' />
+                    <XCircle className='w-4 h-4 text-white' />
                   )}
-                </div>
+                </motion.div>
                 <div>
                   <h3
-                    className={`font-medium ${
+                    className={`font-semibold text-sm ${
                       isSavingStatus
                         ? 'text-blue-800'
                         : isFormEnabled
@@ -463,7 +523,7 @@ export default function FormSettingsPage() {
                       : 'DISABLED'}
                   </h3>
                   <p
-                    className={`text-sm ${
+                    className={`text-xs mt-0.5 ${
                       isSavingStatus
                         ? 'text-blue-600'
                         : isFormEnabled
@@ -474,99 +534,90 @@ export default function FormSettingsPage() {
                     {isSavingStatus
                       ? 'Updating form status...'
                       : isFormEnabled
-                      ? 'Your form is currently visible and able to receive submissions'
-                      : 'Your form is currently disabled and cannot receive submissions'}
+                      ? 'Form is visible and accepting submissions'
+                      : 'Form is disabled and cannot receive submissions'}
                   </p>
                 </div>
               </div>
               {!isSavingStatus && (
-                <div className='text-gray-400'>
-                  <svg
-                    className='w-5 h-5'
-                    fill='currentColor'
-                    viewBox='0 0 20 20'
-                  >
-                    <path
-                      fillRule='evenodd'
-                      d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z'
-                      clipRule='evenodd'
-                    />
-                  </svg>
-                </div>
+                <motion.div className='text-gray-400' whileHover={{ x: 2 }}>
+                  <ChevronRight className='w-4 h-4' />
+                </motion.div>
               )}
-            </div>
+            </motion.div>
 
             {statusError && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className='text-red-600 text-sm mt-2 flex items-center'
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                className='text-red-600 text-xs mt-2 flex items-start bg-red-50 p-2 rounded border border-red-200'
               >
-                <AlertCircle className='w-4 h-4 mr-1' />
-                {statusError}
-              </motion.p>
+                <AlertCircle className='w-3 h-3 mr-1 mt-0.5 flex-shrink-0' />
+                <span>{statusError}</span>
+              </motion.div>
             )}
           </motion.div>
 
-          {/* Submission Controls with Better UX and Default ON State */}
+          {/* Submission Controls */}
           <motion.div
-            className='bg-white rounded-lg p-6'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            className='bg-white/70 backdrop-blur-sm rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100/50 hover:shadow-md transition-all duration-300'
+            variants={cardVariants}
+            whileHover={{ y: -1 }}
           >
-            <div className='mb-6'>
-              <Label className='text-lg font-medium text-gray-900 flex items-center'>
-                <Shield className='w-5 h-5 mr-2' />
+            <div className='mb-4'>
+              <Label className='text-sm font-semibold text-gray-900 flex items-center mb-1'>
+                <Shield className='w-4 h-4 mr-2 text-orange-500' />
                 Submission Controls
               </Label>
-              <p className='text-sm text-gray-600 mt-1'>
-                Control how users can submit your form (both enabled by default
-                for maximum flexibility)
+              <p className='text-xs text-gray-600'>
+                Control how users can submit your form
               </p>
             </div>
 
-            <div className='space-y-4'>
-              {/* Allow Multiple Submissions (IP-based) - DEFAULT ON */}
-              <div
-                className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            <div className='space-y-3'>
+              {/* Allow Multiple Submissions */}
+              <motion.div
+                className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-300 ${
                   allowMultipleSubmissions
-                    ? 'border-green-200 bg-green-50 hover:border-green-300'
-                    : 'border-orange-200 bg-orange-50 hover:border-orange-300'
+                    ? 'border-green-300 bg-green-50 hover:border-green-400'
+                    : 'border-orange-300 bg-orange-50 hover:border-orange-400'
                 }`}
                 onClick={handleMultipleSubmissionsToggle}
+                whileHover={{ scale: 1.005 }}
+                whileTap={{ scale: 0.995 }}
               >
-                <div className='flex items-center'>
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
+                <div className='flex items-center flex-1'>
+                  <motion.div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center mr-3 shadow-sm ${
                       allowMultipleSubmissions
                         ? 'bg-green-500'
                         : 'bg-orange-500'
                     }`}
+                    whileHover={{ scale: 1.1 }}
                   >
                     {allowMultipleSubmissions ? (
-                      <CheckCircle className='w-4 h-4 text-white' />
+                      <CheckCircle className='w-3.5 h-3.5 text-white' />
                     ) : (
-                      <XCircle className='w-4 h-4 text-white' />
+                      <XCircle className='w-3.5 h-3.5 text-white' />
                     )}
-                  </div>
-                  <div>
-                    <h4 className='font-medium text-gray-900 flex items-center'>
-                      <Users className='w-4 h-4 mr-2' />
-                      Allow Multiple Submissions
-                      <span className='ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full'>
+                  </motion.div>
+                  <div className='flex-1 min-w-0'>
+                    <h4 className='font-medium text-sm text-gray-900 flex items-center gap-2 mb-0.5'>
+                      <Users className='w-3.5 h-3.5' />
+                      <span>Allow Multiple Submissions</span>
+                      <span className='px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded font-medium'>
                         RECOMMENDED
                       </span>
                     </h4>
-                    <p className='text-sm text-gray-600'>
+                    <p className='text-xs text-gray-600 leading-relaxed'>
                       {allowMultipleSubmissions
-                        ? 'Users can submit multiple times from the same device/IP - provides maximum flexibility'
-                        : 'Users limited to one submission per device/IP (24 hours) - may reduce submissions'}
+                        ? 'Users can submit multiple times - maximum flexibility'
+                        : 'One submission per device/IP (24h) - may reduce submissions'}
                     </p>
                   </div>
                 </div>
                 <div
-                  className={`text-sm font-mono px-3 py-1 rounded-full ${
+                  className={`text-xs font-mono px-2 py-1 rounded ${
                     allowMultipleSubmissions
                       ? 'bg-green-100 text-green-800'
                       : 'bg-orange-100 text-orange-800'
@@ -574,61 +625,66 @@ export default function FormSettingsPage() {
                 >
                   {allowMultipleSubmissions ? 'ON' : 'OFF'}
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Allow Multiple Email Submissions - DEFAULT ON */}
-              <div
-                className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              {/* Allow Multiple Email Submissions */}
+              <motion.div
+                className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-300 ${
                   !allowMultipleSubmissions
-                    ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-100'
+                    ? 'opacity-50 cursor-not-allowed border-gray-300 bg-gray-100'
                     : allowMultipleEmailSubmissions
-                    ? 'border-blue-200 bg-blue-50 hover:border-blue-300'
-                    : 'border-orange-200 bg-orange-50 hover:border-orange-300'
+                    ? 'border-blue-300 bg-blue-50 hover:border-blue-400'
+                    : 'border-orange-300 bg-orange-50 hover:border-orange-400'
                 }`}
                 onClick={
                   allowMultipleSubmissions
                     ? handleMultipleEmailSubmissionsToggle
                     : undefined
                 }
+                whileHover={allowMultipleSubmissions ? { scale: 1.005 } : {}}
+                whileTap={allowMultipleSubmissions ? { scale: 0.995 } : {}}
               >
-                <div className='flex items-center'>
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
+                <div className='flex items-center flex-1'>
+                  <motion.div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center mr-3 shadow-sm ${
                       !allowMultipleSubmissions
                         ? 'bg-gray-300'
                         : allowMultipleEmailSubmissions
                         ? 'bg-blue-500'
                         : 'bg-orange-500'
                     }`}
+                    whileHover={allowMultipleSubmissions ? { scale: 1.1 } : {}}
                   >
                     {allowMultipleEmailSubmissions &&
                     allowMultipleSubmissions ? (
-                      <CheckCircle className='w-4 h-4 text-white' />
+                      <CheckCircle className='w-3.5 h-3.5 text-white' />
                     ) : (
-                      <XCircle className='w-4 h-4 text-white' />
+                      <XCircle className='w-3.5 h-3.5 text-white' />
                     )}
-                  </div>
-                  <div>
-                    <h4 className='font-medium text-gray-900 flex items-center'>
-                      <Mail className='w-4 h-4 mr-2' />
-                      Allow Multiple Submissions from Same Email
+                  </motion.div>
+                  <div className='flex-1 min-w-0'>
+                    <h4 className='font-medium text-sm text-gray-900 flex items-center gap-2 mb-0.5'>
+                      <Mail className='w-3.5 h-3.5' />
+                      <span className='truncate'>
+                        Multiple Submissions per Email
+                      </span>
                       {allowMultipleSubmissions && (
-                        <span className='ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full'>
+                        <span className='px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-medium'>
                           FLEXIBLE
                         </span>
                       )}
                     </h4>
-                    <p className='text-sm text-gray-600'>
+                    <p className='text-xs text-gray-600 leading-relaxed'>
                       {!allowMultipleSubmissions
-                        ? 'Enable "Allow Multiple Submissions" first to use this option'
+                        ? 'Enable multiple submissions first'
                         : allowMultipleEmailSubmissions
-                        ? 'Same email address can submit multiple times - ideal for forms requiring updates'
-                        : 'Each email address limited to one submission (24 hours) - may limit legitimate use cases'}
+                        ? 'Same email can submit multiple times'
+                        : 'Each email limited to one submission (24h)'}
                     </p>
                   </div>
                 </div>
                 <div
-                  className={`text-sm font-mono px-3 py-1 rounded-full ${
+                  className={`text-xs font-mono px-2 py-1 rounded ${
                     !allowMultipleSubmissions
                       ? 'bg-gray-100 text-gray-500'
                       : allowMultipleEmailSubmissions
@@ -642,21 +698,24 @@ export default function FormSettingsPage() {
                     ? 'ON'
                     : 'OFF'}
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Status Info with Better Explanation */}
-              <div
-                className={`border rounded-lg p-4 ${
+              {/* Status Info */}
+              <motion.div
+                className={`border rounded-lg p-3 ${
                   allowMultipleSubmissions && allowMultipleEmailSubmissions
                     ? 'bg-green-50 border-green-200'
                     : allowMultipleSubmissions
                     ? 'bg-blue-50 border-blue-200'
                     : 'bg-orange-50 border-orange-200'
                 }`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
               >
                 <div className='flex items-start'>
                   <Eye
-                    className={`w-5 h-5 mr-2 mt-0.5 flex-shrink-0 ${
+                    className={`w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${
                       allowMultipleSubmissions && allowMultipleEmailSubmissions
                         ? 'text-green-600'
                         : allowMultipleSubmissions
@@ -665,7 +724,7 @@ export default function FormSettingsPage() {
                     }`}
                   />
                   <div
-                    className={`text-sm ${
+                    className={`text-xs ${
                       allowMultipleSubmissions && allowMultipleEmailSubmissions
                         ? 'text-green-800'
                         : allowMultipleSubmissions
@@ -673,10 +732,8 @@ export default function FormSettingsPage() {
                         : 'text-orange-800'
                     }`}
                   >
-                    <p className='font-medium mb-2'>
-                      Current Configuration Status:
-                    </p>
-                    <div className='space-y-2'>
+                    <p className='font-medium mb-2'>Current Status:</p>
+                    <div className='space-y-1.5'>
                       <div className='flex items-center'>
                         <div
                           className={`w-2 h-2 rounded-full mr-2 ${
@@ -704,7 +761,7 @@ export default function FormSettingsPage() {
                           }`}
                         ></div>
                         <span className='font-medium'>
-                          Same Email Multiple Times:
+                          Same Email Multiple:
                         </span>
                         <span className='ml-1'>
                           {allowMultipleEmailSubmissions &&
@@ -712,49 +769,47 @@ export default function FormSettingsPage() {
                             ? 'Enabled'
                             : allowMultipleSubmissions
                             ? 'Disabled'
-                            : 'Disabled (Parent setting off)'}
+                            : 'Disabled'}
                         </span>
                       </div>
-                      <div className='mt-3 p-3 bg-white bg-opacity-50 rounded border-l-4 border-current'>
-                        <p className='font-medium text-sm'>
-                          Result:{' '}
+                      <div className='mt-2 p-2 bg-white bg-opacity-60 rounded border-l-2 border-current'>
+                        <p className='font-medium text-xs mb-1'>
                           {!allowMultipleSubmissions
-                            ? '🔒 Strict mode - One submission per device/IP address (24 hours)'
+                            ? '🔒 Strict: One per device/IP (24h)'
                             : !allowMultipleEmailSubmissions
-                            ? 'Flexible mode - Multiple submissions allowed, but each email only once (24 hours)'
-                            : 'Maximum flexibility - Unlimited submissions allowed from any user'}
+                            ? '🔄 Flexible: Multiple submissions, one per email (24h)'
+                            : '🚀 Maximum: Unlimited submissions allowed'}
                         </p>
-                        <p className='text-xs mt-1 opacity-75'>
+                        <p className='text-xs opacity-75'>
                           {allowMultipleSubmissions &&
                           allowMultipleEmailSubmissions
-                            ? 'Best for: Feedback forms, surveys, applications requiring updates, general contact forms'
+                            ? 'Best for: General forms, feedback, surveys'
                             : allowMultipleSubmissions
-                            ? 'Best for: Registration forms, newsletter signups, one-per-person submissions'
-                            : 'Best for: Voting, contests, limited-entry forms, preventing spam'}
+                            ? 'Best for: Registration, newsletter signups'
+                            : 'Best for: Voting, contests, limited entries'}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
 
           {/* Submit Button Text */}
           <motion.div
-            className='bg-white rounded-lg p-6'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            className='bg-white/70 backdrop-blur-sm rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100/50 hover:shadow-md transition-all duration-300'
+            variants={cardVariants}
+            whileHover={{ y: -1 }}
           >
-            <div className='mb-4'>
+            <div className='mb-3'>
               <Label
                 htmlFor='submit-button-text'
-                className='text-lg font-medium text-gray-900'
+                className='text-sm font-semibold text-gray-900 block mb-1'
               >
                 Submit Button Text
               </Label>
-              <p className='text-sm text-gray-600 mt-1'>
+              <p className='text-xs text-gray-600'>
                 Customize the text on your submit button
               </p>
             </div>
@@ -763,24 +818,24 @@ export default function FormSettingsPage() {
               value={submitButtonText}
               onChange={handleSubmitButtonTextChange}
               placeholder='Submit'
+              className='h-9 text-sm border border-gray-300 shadow-md hover:shadow-md focus:shadow-lg focus:ring-0 focus-visible:ring-0 focus:outline-none rounded-lg transition-all duration-300 resize-none bg-white'
             />
           </motion.div>
 
           {/* Thank You Message */}
           <motion.div
-            className='bg-white rounded-lg p-6'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            className='bg-white/70 backdrop-blur-sm rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100/50 hover:shadow-md transition-all duration-300'
+            variants={cardVariants}
+            whileHover={{ y: -1 }}
           >
-            <div className='mb-4'>
+            <div className='mb-3'>
               <Label
                 htmlFor='thankyou-message'
-                className='text-lg font-medium text-gray-900'
+                className='text-sm font-semibold text-gray-900 block mb-1'
               >
                 Thank You Message
               </Label>
-              <p className='text-sm text-gray-600 mt-1'>
+              <p className='text-xs text-gray-600'>
                 Message shown after form submission
               </p>
             </div>
@@ -789,20 +844,41 @@ export default function FormSettingsPage() {
               value={thankyouMessage}
               onChange={handleThankyouMessageChange}
               placeholder='Thank you for your submission!'
-              rows={3}
+              rows={2}
+              className='text-sm border border-gray-300 bg-white shadow-md hover:shadow-md focus:shadow-lg focus:ring-0 focus-visible:ring-0 focus:outline-none rounded-lg transition-all duration-300 resize-none'
             />
           </motion.div>
 
           {/* Save Status */}
-          <div className='text-center'>
-            <p className='text-sm text-green-600 flex items-center justify-center'>
-              <CheckCircle className='w-4 h-4 mr-2' />
-              Settings are automatically saved
-              {isSaving && <span className='ml-2'>• Saving...</span>}
-            </p>
-          </div>
+          <motion.div className='text-center py-3' variants={cardVariants}>
+            <motion.div
+              className='inline-flex items-center px-3 py-1.5 bg-green-50 border border-green-200 rounded-full'
+              whileHover={{ scale: 1.02 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <CheckCircle className='w-3.5 h-3.5 mr-1.5 text-green-600' />
+              <p className='text-xs text-green-700 font-medium'>
+                Settings auto-saved
+                {isSaving && (
+                  <motion.span
+                    className='ml-1.5 flex items-center'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    •
+                    <Loader2 className='w-3 h-3 animate-spin ml-1' />
+                  </motion.span>
+                )}
+              </p>
+            </motion.div>
+          </motion.div>
         </div>
-      </div>
+
+        {/* Bottom Spacing */}
+        <div className='h-4 sm:h-6'></div>
+      </motion.div>
     </div>
   );
 }

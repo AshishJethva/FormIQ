@@ -1,5 +1,3 @@
-// export default Sidebar;
-
 // src/components/dashboard/Sidebar.tsx
 'use client';
 
@@ -307,18 +305,16 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
           <p className='text-sm text-gray-600'>My Workspace</p>
         </div>
 
-        <motion.div
-          whileHover={{ scale: 1.02, backgroundColor: '#DADEF3' }}
-          whileTap={{ scale: 0.98 }}
+        <div
           className={cn(
-            `flex items-center p-3 rounded-md cursor-pointer transition-colors`,
+            `flex items-center p-3 rounded-md cursor-pointer transition-all duration-200`,
             activeTab === 'All' ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
           )}
           onClick={() => handleTabChange('All')}
         >
           <LayoutGrid className='mr-3 h-4 w-4' />
           <span className='text-sm'>All</span>
-        </motion.div>
+        </div>
 
         <div className='border-t border-gray-200 mt-6'></div>
 
@@ -446,12 +442,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
 
                   {/* Create label option when no labels exist */}
                   {!labelsLoading && labels.length === 0 && !searchTerm && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      whileHover={{ backgroundColor: '#f3f4f6', scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className='p-3 rounded-md cursor-pointer transition-colors'
+                    <div
+                      className='p-3 rounded-md cursor-pointer transition-all duration-200 hover:bg-[#f3f4f6]'
                       onClick={() => setShowLabelModal(true)}
                     >
                       <div className='flex items-center'>
@@ -460,7 +452,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                           Create a label
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
 
                   {/* Label items */}
@@ -471,9 +463,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.05 }}
-                        whileHover={{ scale: 1.02, backgroundColor: '#DADEF3' }}
                         className={cn(
-                          'group flex items-center justify-between p-3 rounded-md cursor-pointer transition-all my-0.5',
+                          'group flex items-center justify-between p-3 rounded-md cursor-pointer transition-all duration-200 my-0.5',
                           activeTab === `label-${label.id}`
                             ? 'bg-[#C8CEED]'
                             : 'hover:bg-[#DADEF3]'
@@ -483,16 +474,11 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
                         }
                       >
                         <div className='flex items-center overflow-hidden'>
-                          <motion.div
-                            whileHover={{ scale: 1.1 }}
-                            transition={{ type: 'spring', stiffness: 400 }}
-                          >
-                            <Circle
-                              className='mr-3 h-4 w-4 flex-shrink-0'
-                              fill={label.color}
-                              color={label.color}
-                            />
-                          </motion.div>
+                          <Circle
+                            className='mr-3 h-4 w-4 flex-shrink-0'
+                            fill={label.color}
+                            color={label.color}
+                          />
                           <span className='text-sm truncate'>{label.name}</span>
                         </div>
 
@@ -570,10 +556,8 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.5 + index * 0.1 }}
-            whileHover={{ scale: 1.02, backgroundColor: '#DADEF3' }}
-            whileTap={{ scale: 0.98 }}
             className={cn(
-              'flex items-center p-3 rounded-md cursor-pointer transition-colors',
+              'flex items-center p-3 rounded-md cursor-pointer transition-all duration-200',
               activeTab === item.key ? 'bg-[#C8CEED]' : 'hover:bg-[#DADEF3]'
             )}
             onClick={() => handleTabChange(item.key)}

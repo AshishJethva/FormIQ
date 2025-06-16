@@ -6,31 +6,33 @@ import { Input } from '@/components/ui/input';
 import FormLogo from '../logo/FormLogo';
 import FileUploadField from '@/components/form-builder/canvas/FileUploadField';
 import SignatureField from '@/components/form-builder/canvas/SignatureField';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PreviewFormProps {
   form: Form;
   formData: Record<string, any>;
   setFormData: (data: Record<string, any>) => void;
-  fileData: Record<string, any>; //  ADD: Accept fileData from parent
-  setFileData: (data: Record<string, any>) => void; //  ADD: Accept setFileData from parent
+  fileData: Record<string, any>;
+  setFileData: (data: Record<string, any>) => void;
   currentPageIndex: number;
   setCurrentPageIndex: (index: number) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
-  errors: Record<string, string>; //  ADD: Accept errors from parent
+  errors: Record<string, string>;
 }
 
 export default function PreviewForm({
   form,
   formData,
   setFormData,
-  fileData, //  USE: fileData from parent
-  setFileData, //  USE: setFileData from parent
+  fileData,
+  setFileData,
   currentPageIndex,
   setCurrentPageIndex,
   onSubmit,
   isSubmitting,
-  errors, //  USE: errors from parent
+  errors,
 }: PreviewFormProps) {
   const currentPage = form.pages[currentPageIndex];
   const isFirstPage = currentPageIndex === 0;
@@ -70,49 +72,76 @@ export default function PreviewForm({
     const value = formData[field.id] || '';
     const fieldError = errors[field.id];
 
+    const fieldWrapperVariants = {
+      hidden: { opacity: 0, y: 20 },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.3, ease: 'easeOut' },
+      },
+    };
+
     switch (field.type) {
       case FieldType.IMAGE:
         return (
-          <FileUploadField
+          <motion.div
             key={field.id}
-            fieldId={field.id}
-            formId={form.id || 'preview'}
-            label={field.label}
-            required={field.required}
-            helpText={field.helpText}
-            accept={field.accept || 'image/*'}
-            multiple={field.multiple || false}
-            fieldType='image'
-            value={fileData[field.id]}
-            onChange={value => handleFileChange(field.id, value)}
-            error={fieldError}
-            readOnly={false}
-          />
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <FileUploadField
+              fieldId={field.id}
+              formId={form.id || 'preview'}
+              label={field.label}
+              required={field.required}
+              helpText={field.helpText}
+              accept={field.accept || 'image/*'}
+              multiple={field.multiple || false}
+              fieldType='image'
+              value={fileData[field.id]}
+              onChange={value => handleFileChange(field.id, value)}
+              error={fieldError}
+              readOnly={false}
+            />
+          </motion.div>
         );
 
       case FieldType.FILE_UPLOAD:
         return (
-          <FileUploadField
+          <motion.div
             key={field.id}
-            fieldId={field.id}
-            formId={form.id || 'preview'}
-            label={field.label}
-            required={field.required}
-            helpText={field.helpText}
-            accept={field.accept || '*/*'}
-            multiple={field.multiple || false}
-            fieldType='fileUpload'
-            value={fileData[field.id]}
-            onChange={value => handleFileChange(field.id, value)}
-            error={fieldError}
-            readOnly={false}
-          />
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <FileUploadField
+              fieldId={field.id}
+              formId={form.id || 'preview'}
+              label={field.label}
+              required={field.required}
+              helpText={field.helpText}
+              accept={field.accept || '*/*'}
+              multiple={field.multiple || false}
+              fieldType='fileUpload'
+              value={fileData[field.id]}
+              onChange={value => handleFileChange(field.id, value)}
+              error={fieldError}
+              readOnly={false}
+            />
+          </motion.div>
         );
 
       case FieldType.SHORT_TEXT:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -120,23 +149,42 @@ export default function PreviewForm({
               placeholder={field.placeholder || 'Enter your answer'}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.LONG_TEXT:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -147,23 +195,42 @@ export default function PreviewForm({
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               rows={field.rows || 3}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 resize-none transition-all duration-200 text-sm sm:text-base hover:border-gray-300 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : ''
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.PARAGRAPH:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -175,32 +242,58 @@ export default function PreviewForm({
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
               rows={field.rows || 5}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 resize-none transition-all duration-200 text-sm sm:text-base hover:border-gray-300 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : ''
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.DROPDOWN:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <select
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 bg-white transition-all duration-200 text-sm sm:text-base hover:border-gray-300 appearance-none bg-no-repeat bg-right bg-[length:16px] ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : ''
               }`}
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")",
+                backgroundPosition: 'right 0.75rem center',
+              }}
             >
               <option value=''>Select an option...</option>
               {field.options && field.options.length > 0 ? (
@@ -217,28 +310,49 @@ export default function PreviewForm({
                 </>
               )}
             </select>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.SINGLE_CHOICE:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <div className='space-y-2'>
+              {' '}
+              {/* Changed from space-y-3 to space-y-2 */}
               {field.options && field.options.length > 0 ? (
                 field.options.map((option, index) => (
-                  <label
+                  <motion.label
                     key={index}
-                    className='flex items-center space-x-2 cursor-pointer'
+                    className='flex items-center space-x-2 cursor-pointer p-2 rounded-md border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all duration-200'
+                    whileHover={{ scale: 1.005 }}
+                    whileTap={{ scale: 0.995 }}
                   >
                     <input
                       type='radio'
@@ -248,77 +362,84 @@ export default function PreviewForm({
                       onChange={e =>
                         handleInputChange(field.id, e.target.value)
                       }
-                      className='text-blue-500 focus:ring-blue-500'
+                      className='w-4 h-4 text-blue-600'
                     />
-                    <span>{option.label}</span>
-                  </label>
+                    <span className='text-sm text-gray-700 font-medium'>
+                      {' '}
+                      {option.label}
+                    </span>
+                  </motion.label>
                 ))
               ) : (
                 <>
-                  <label className='flex items-center space-x-2 cursor-pointer'>
-                    <input
-                      type='radio'
-                      name={field.id}
-                      value='option1'
-                      checked={value === 'option1'}
-                      onChange={e =>
-                        handleInputChange(field.id, e.target.value)
-                      }
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span>Option 1</span>
-                  </label>
-                  <label className='flex items-center space-x-2 cursor-pointer'>
-                    <input
-                      type='radio'
-                      name={field.id}
-                      value='option2'
-                      checked={value === 'option2'}
-                      onChange={e =>
-                        handleInputChange(field.id, e.target.value)
-                      }
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span>Option 2</span>
-                  </label>
-                  <label className='flex items-center space-x-2 cursor-pointer'>
-                    <input
-                      type='radio'
-                      name={field.id}
-                      value='option3'
-                      checked={value === 'option3'}
-                      onChange={e =>
-                        handleInputChange(field.id, e.target.value)
-                      }
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span>Option 3</span>
-                  </label>
+                  {['Option 1', 'Option 2', 'Option 3'].map((label, index) => (
+                    <motion.label
+                      key={index}
+                      className='flex items-center space-x-2 cursor-pointer p-2 rounded-md border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all duration-200'
+                      whileHover={{ scale: 1.005 }}
+                      whileTap={{ scale: 0.995 }}
+                    >
+                      <input
+                        type='radio'
+                        name={field.id}
+                        value={`option${index + 1}`}
+                        checked={value === `option${index + 1}`}
+                        onChange={e =>
+                          handleInputChange(field.id, e.target.value)
+                        }
+                        className='w-4 h-4 text-blue-600'
+                      />
+                      <span className='text-sm text-gray-700 font-medium'>
+                        {label}
+                      </span>
+                    </motion.label>
+                  ))}
                 </>
               )}
             </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.MULTIPLE_CHOICE:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
             <div className='space-y-2'>
+              {' '}
+              {/* Changed from space-y-3 to space-y-2 */}
               {field.options && field.options.length > 0 ? (
                 field.options.map((option, index) => (
-                  <label
+                  <motion.label
                     key={index}
-                    className='flex items-center space-x-2 cursor-pointer'
+                    className='flex items-center space-x-2 cursor-pointer p-2 rounded-md border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all duration-200'
+                    whileHover={{ scale: 1.005 }}
+                    whileTap={{ scale: 0.995 }}
                   >
                     <input
                       type='checkbox'
@@ -340,104 +461,87 @@ export default function PreviewForm({
                           );
                         }
                       }}
-                      className='text-blue-500 focus:ring-blue-500'
+                      className='w-4 h-4 text-blue-600 '
                     />
-                    <span>{option.label}</span>
-                  </label>
+                    <span className='text-sm text-gray-700 font-medium'>
+                      {option.label}
+                    </span>
+                  </motion.label>
                 ))
               ) : (
                 <>
-                  <label className='flex items-center space-x-2 cursor-pointer'>
-                    <input
-                      type='checkbox'
-                      value='option1'
-                      checked={
-                        Array.isArray(value) && value.includes('option1')
-                      }
-                      onChange={e => {
-                        const currentValues = Array.isArray(value) ? value : [];
-                        if (e.target.checked) {
-                          handleInputChange(field.id, [
-                            ...currentValues,
-                            'option1',
-                          ]);
-                        } else {
-                          handleInputChange(
-                            field.id,
-                            currentValues.filter(v => v !== 'option1')
-                          );
+                  {['Option 1', 'Option 2', 'Option 3'].map((label, index) => (
+                    <motion.label
+                      key={index}
+                      className='flex items-center space-x-2 cursor-pointer p-2 rounded-md border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all duration-200'
+                      whileHover={{ scale: 1.005 }}
+                      whileTap={{ scale: 0.995 }}
+                    >
+                      <input
+                        type='checkbox'
+                        value={`option${index + 1}`}
+                        checked={
+                          Array.isArray(value) &&
+                          value.includes(`option${index + 1}`)
                         }
-                      }}
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span>Option 1</span>
-                  </label>
-                  <label className='flex items-center space-x-2 cursor-pointer'>
-                    <input
-                      type='checkbox'
-                      value='option2'
-                      checked={
-                        Array.isArray(value) && value.includes('option2')
-                      }
-                      onChange={e => {
-                        const currentValues = Array.isArray(value) ? value : [];
-                        if (e.target.checked) {
-                          handleInputChange(field.id, [
-                            ...currentValues,
-                            'option2',
-                          ]);
-                        } else {
-                          handleInputChange(
-                            field.id,
-                            currentValues.filter(v => v !== 'option2')
-                          );
-                        }
-                      }}
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span>Option 2</span>
-                  </label>
-                  <label className='flex items-center space-x-2 cursor-pointer'>
-                    <input
-                      type='checkbox'
-                      value='option3'
-                      checked={
-                        Array.isArray(value) && value.includes('option3')
-                      }
-                      onChange={e => {
-                        const currentValues = Array.isArray(value) ? value : [];
-                        if (e.target.checked) {
-                          handleInputChange(field.id, [
-                            ...currentValues,
-                            'option3',
-                          ]);
-                        } else {
-                          handleInputChange(
-                            field.id,
-                            currentValues.filter(v => v !== 'option3')
-                          );
-                        }
-                      }}
-                      className='text-blue-500 focus:ring-blue-500'
-                    />
-                    <span>Option 3</span>
-                  </label>
+                        onChange={e => {
+                          const currentValues = Array.isArray(value)
+                            ? value
+                            : [];
+                          if (e.target.checked) {
+                            handleInputChange(field.id, [
+                              ...currentValues,
+                              `option${index + 1}`,
+                            ]);
+                          } else {
+                            handleInputChange(
+                              field.id,
+                              currentValues.filter(
+                                v => v !== `option${index + 1}`
+                              )
+                            );
+                          }
+                        }}
+                        className='w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-1 rounded'
+                      />
+                      <span className='text-sm text-gray-700 font-medium'>
+                        {label}
+                      </span>
+                    </motion.label>
+                  ))}
                 </>
               )}
             </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.NUMBER:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -449,23 +553,42 @@ export default function PreviewForm({
               min={field.min}
               max={field.max}
               step={field.step || 1}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.TIME:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -473,40 +596,65 @@ export default function PreviewForm({
               type='time'
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.HEADING:
         return (
-          <div key={field.id} className='mb-6'>
+          <motion.div
+            key={field.id}
+            className='mb-8 sm:mb-12'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
             <h3
-              className={`text-3xl font-semibold text-gray-700 border-b border-gray-200 pb-4 ${
+              className={`text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-800 border-b-2 border-gray-200 pb-4 ${
                 field.labelAlignment === 'RIGHT' ? 'text-right' : 'text-left'
               }`}
             >
               {field.label}
             </h3>
-          </div>
+          </motion.div>
         );
 
       case FieldType.FULL_NAME:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
               <div>
                 <Input
                   placeholder='First Name'
@@ -517,8 +665,10 @@ export default function PreviewForm({
                       firstName: e.target.value,
                     })
                   }
-                  className={`w-full ${
-                    fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                    fieldError
+                      ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                      : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                   }`}
                 />
               </div>
@@ -532,25 +682,44 @@ export default function PreviewForm({
                       lastName: e.target.value,
                     })
                   }
-                  className={`w-full ${
-                    fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                    fieldError
+                      ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                      : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                   }`}
                 />
               </div>
             </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.EMAIL:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -559,24 +728,43 @@ export default function PreviewForm({
               placeholder={field.placeholder || 'your.email@example.com'}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
               autoComplete='email'
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.PHONE:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -599,27 +787,46 @@ export default function PreviewForm({
                 }
               }}
               maxLength={10}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.ADDRESS:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
-            <div className='space-y-3'>
+            <div className='space-y-3 sm:space-y-4'>
               <Input
                 placeholder='Street Address'
                 value={value.street || ''}
@@ -629,11 +836,13 @@ export default function PreviewForm({
                     street: e.target.value,
                   })
                 }
-                className={`w-full ${
-                  fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                  fieldError
+                    ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                    : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                 }`}
               />
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
                 <Input
                   placeholder='City'
                   value={value.city || ''}
@@ -643,8 +852,10 @@ export default function PreviewForm({
                       city: e.target.value,
                     })
                   }
-                  className={`w-full ${
-                    fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                    fieldError
+                      ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                      : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                   }`}
                 />
                 <Input
@@ -656,8 +867,10 @@ export default function PreviewForm({
                       state: e.target.value,
                     })
                   }
-                  className={`w-full ${
-                    fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                    fieldError
+                      ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                      : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                   }`}
                 />
               </div>
@@ -670,24 +883,43 @@ export default function PreviewForm({
                     zipCode: e.target.value,
                   })
                 }
-                className={`w-full ${
-                  fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                  fieldError
+                    ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                    : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                 }`}
               />
             </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.DATE_PICKER:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -695,27 +927,46 @@ export default function PreviewForm({
               type='date'
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.APPOINTMENT:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
               <div>
                 <Input
                   type='date'
@@ -726,11 +977,15 @@ export default function PreviewForm({
                       date: e.target.value,
                     })
                   }
-                  className={`w-full ${
-                    fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                    fieldError
+                      ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                      : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                   }`}
                 />
-                <span className='text-sm text-gray-500 mt-1'>Date</span>
+                <span className='text-xs sm:text-sm text-gray-500 mt-1 block'>
+                  Date
+                </span>
               </div>
               <div>
                 <Input
@@ -742,84 +997,59 @@ export default function PreviewForm({
                       time: e.target.value,
                     })
                   }
-                  className={`w-full ${
-                    fieldError ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                    fieldError
+                      ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                      : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
                   }`}
                 />
-                <span className='text-sm text-gray-500 mt-1'>Time</span>
+                <span className='text-xs sm:text-sm text-gray-500 mt-1 block'>
+                  Time
+                </span>
               </div>
             </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
-        );
-
-        return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
-              {field.label}
-              {field.required && <span className='text-red-500 ml-1'>*</span>}
-            </label>
-            <div className='border border-gray-300 rounded-md overflow-hidden'>
-              <div className='flex bg-gray-100 p-3 border-b border-gray-300'>
-                <div className='flex-1 font-medium text-gray-700'>Product</div>
-                <div className='w-24 font-medium text-gray-700 text-center'>
-                  Price
-                </div>
-                <div className='w-24 font-medium text-gray-700 text-center'>
-                  Qty
-                </div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
               </div>
-              <div className='p-3 flex items-center border-b border-gray-200'>
-                <div className='flex-1 text-gray-700'>Sample Product</div>
-                <div className='w-24 text-center'>$19.99</div>
-                <div className='w-24 text-center'>
-                  <Input
-                    type='number'
-                    min='0'
-                    defaultValue='1'
-                    onChange={e =>
-                      handleInputChange(field.id, { quantity: e.target.value })
-                    }
-                    className='w-16 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
-              </div>
-              <div className='p-3 flex justify-between bg-gray-50'>
-                <span className='font-medium text-gray-700'>Total:</span>
-                <span className='font-medium text-gray-700'>$19.99</span>
-              </div>
-            </div>
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
             )}
-            {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
-            )}
-          </div>
+          </motion.div>
         );
 
       case FieldType.SIGNATURE:
         return (
-          <SignatureField
+          <motion.div
             key={field.id}
-            fieldId={field.id}
-            label={field.label}
-            required={field.required}
-            helpText={field.helpText}
-            value={value}
-            onChange={value => handleInputChange(field.id, value)}
-            error={fieldError}
-            readOnly={false}
-          />
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <SignatureField
+              fieldId={field.id}
+              label={field.label}
+              required={field.required}
+              helpText={field.helpText}
+              value={value}
+              onChange={value => handleInputChange(field.id, value)}
+              error={fieldError}
+              readOnly={false}
+            />
+          </motion.div>
         );
 
       case FieldType.FILL_BLANK: {
-        //  USE ACTUAL FIELD CONFIGURATION from builder
         const beforeText =
           field.fillBlankTemplate?.beforeText || 'I agree to the';
         const blankPlaceholder =
@@ -828,53 +1058,74 @@ export default function PreviewForm({
           field.fillBlankTemplate?.afterText || 'and conditions.';
 
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
 
-            {/*  PREVIEW: Show the configured template with interactive blank */}
-            <div className='border border-gray-300 rounded-lg p-4 bg-gray-50'>
+            <div className='border-2 border-gray-200 rounded-lg p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-white transition-all duration-200 hover:border-gray-300'>
               <div className='flex flex-wrap items-center gap-2 text-gray-700 mb-3'>
-                <span className='text-base'>{beforeText}</span>
+                <span className='text-sm sm:text-base font-medium'>
+                  {beforeText}
+                </span>
                 <input
                   type='text'
                   placeholder={blankPlaceholder}
                   value={value || ''}
                   onChange={e => handleInputChange(field.id, e.target.value)}
-                  className={`px-3 py-2 border-b-2 border-blue-500 bg-blue-50 text-blue-700 min-w-[120px] focus:outline-none focus:bg-white focus:border-blue-600 text-center ${
-                    fieldError ? 'border-red-500 bg-red-50' : ''
+                  className={`px-3 py-2 border-b-2 border-blue-500 bg-blue-50 text-blue-700 min-w-[120px] focus:outline-none focus:bg-white focus:border-blue-600 text-center font-medium text-sm sm:text-base transition-all duration-200 ${
+                    fieldError ? 'border-red-500 bg-red-50 text-red-700' : ''
                   }`}
                 />
-                <span className='text-base'>{afterText}</span>
+                <span className='text-sm sm:text-base font-medium'>
+                  {afterText}
+                </span>
               </div>
 
-              {/*  Show what user typed */}
               {value && (
-                <div className='text-sm text-green-600 mt-2'>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className='text-xs sm:text-sm text-green-600 mt-2 font-medium'
+                >
                   ✓ Your answer: &quot;{value}&quot;
-                </div>
+                </motion.div>
               )}
             </div>
 
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
       }
 
       case FieldType.PRODUCT_LIST: {
-        //  USE ACTUAL PRODUCT CONFIGURATION from builder
         const products = field.productListConfig?.products || [
           { id: '1', name: 'Sample Product', price: 19.99, quantity: 1 },
         ];
 
-        // Initialize value as object if not already
         const currentSelections = value || {};
 
         const handleProductQuantityChange = (
@@ -890,7 +1141,6 @@ export default function PreviewForm({
           handleInputChange(field.id, updatedSelections);
         };
 
-        // Calculate total
         const calculateTotal = () => {
           return products.reduce((total, product) => {
             const quantity = currentSelections[product.id] || 0;
@@ -899,34 +1149,79 @@ export default function PreviewForm({
         };
 
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-4 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
 
-            {/*  PREVIEW: Show configured products with quantity selectors */}
-            <div className='border border-gray-300 rounded-md overflow-hidden bg-white'>
+            <div className='border-2 border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm transition-all duration-200 hover:shadow-md'>
               {/* Header */}
-              <div className='bg-gray-100 p-3 border-b border-gray-300'>
-                <div className='grid grid-cols-12 gap-2 font-medium text-gray-700 text-sm'>
+              <div className='bg-gradient-to-r from-gray-100 to-gray-50 p-3 sm:p-4 border-b border-gray-200'>
+                <div className='hidden sm:grid sm:grid-cols-12 gap-2 font-semibold text-gray-700 text-sm'>
                   <div className='col-span-6'>Product</div>
                   <div className='col-span-3 text-center'>Price</div>
                   <div className='col-span-3 text-center'>Quantity</div>
                 </div>
+                <div className='sm:hidden text-center font-semibold text-gray-700 text-sm'>
+                  Product Selection
+                </div>
               </div>
 
-              {/*  Product List from Builder Configuration */}
+              {/* Product List */}
               <div className='divide-y divide-gray-200'>
                 {products.map(product => (
-                  <div key={product.id} className='p-3'>
-                    <div className='grid grid-cols-12 gap-2 items-center'>
+                  <motion.div
+                    key={product.id}
+                    className='p-3 sm:p-4 hover:bg-gray-50 transition-colors duration-200'
+                    whileHover={{ scale: 1.005 }}
+                  >
+                    {/* Mobile Layout */}
+                    <div className='sm:hidden space-y-3'>
+                      <div className='text-gray-900 font-semibold text-base'>
+                        {product.name}
+                      </div>
+                      <div className='flex justify-between items-center'>
+                        <span className='text-gray-700 font-medium'>
+                          ${product.price.toFixed(2)}
+                        </span>
+                        <div className='flex items-center space-x-2'>
+                          <label className='text-sm text-gray-600 font-medium'>
+                            Qty:
+                          </label>
+                          <input
+                            type='number'
+                            min='0'
+                            max='99'
+                            value={currentSelections[product.id] || 0}
+                            onChange={e =>
+                              handleProductQuantityChange(
+                                product.id,
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                            className={`w-16 px-2 py-1 border-2 border-gray-200 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
+                              fieldError ? 'border-red-400' : ''
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Desktop Layout */}
+                    <div className='hidden sm:grid sm:grid-cols-12 gap-2 items-center'>
                       <div className='col-span-6'>
-                        <div className='text-gray-900 font-medium'>
+                        <div className='text-gray-900 font-semibold text-base'>
                           {product.name}
                         </div>
                       </div>
-                      <div className='col-span-3 text-center text-gray-700'>
+                      <div className='col-span-3 text-center text-gray-700 font-medium'>
                         ${product.price.toFixed(2)}
                       </div>
                       <div className='col-span-3 text-center'>
@@ -941,28 +1236,33 @@ export default function PreviewForm({
                               parseInt(e.target.value) || 0
                             )
                           }
-                          className={`w-16 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            fieldError ? 'border-red-500' : ''
+                          className={`w-16 px-2 py-1 border-2 border-gray-200 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
+                            fieldError ? 'border-red-400' : ''
                           }`}
                         />
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
-              {/*  Total Section */}
-              <div className='bg-gray-50 p-3 border-t border-gray-300'>
-                <div className='flex justify-between items-center'>
-                  <span className='font-medium text-gray-700'>Total:</span>
-                  <span className='font-bold text-lg text-green-600'>
+              {/* Total Section */}
+              <div className='bg-gradient-to-r from-gray-50 to-gray-100 p-3 sm:p-4 border-t border-gray-200'>
+                <div className='flex justify-between items-center mb-3'>
+                  <span className='font-semibold text-gray-800 text-base sm:text-lg'>
+                    Total:
+                  </span>
+                  <span className='font-semibold text-lg sm:text-xl text-green-600'>
                     ${calculateTotal().toFixed(2)}
                   </span>
                 </div>
 
-                {/*  Show selected items summary */}
                 {Object.keys(currentSelections).length > 0 && (
-                  <div className='mt-2 text-sm text-gray-600'>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className='text-xs sm:text-sm text-gray-600 space-y-1'
+                  >
                     {Object.keys(currentSelections).map(productId => {
                       const product = products.find(p => p.id === productId);
                       const quantity = currentSelections[productId];
@@ -971,29 +1271,48 @@ export default function PreviewForm({
                           <span>
                             {product.name} (×{quantity})
                           </span>
-                          <span>${(product.price * quantity).toFixed(2)}</span>
+                          <span className='font-medium'>
+                            ${(product.price * quantity).toFixed(2)}
+                          </span>
                         </div>
                       ) : null;
                     })}
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </div>
 
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
       }
 
       default:
         return (
-          <div key={field.id} className='mb-6'>
-            <label className='block text-gray-700 mb-2 font-medium'>
+          <motion.div
+            key={field.id}
+            className='mb-6 sm:mb-8'
+            variants={fieldWrapperVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
               {field.required && <span className='text-red-500 ml-1'>*</span>}
             </label>
@@ -1001,89 +1320,163 @@ export default function PreviewForm({
               placeholder={field.placeholder || field.label}
               value={value}
               onChange={e => handleInputChange(field.id, e.target.value)}
-              className={`w-full ${
-                fieldError ? 'border-red-500 focus:ring-red-500' : ''
+              className={`w-full transition-all duration-200 text-sm sm:text-base py-3 px-4 rounded-lg border-2 focus:ring-4 focus:ring-blue-100 ${
+                fieldError
+                  ? 'border-red-400 focus:ring-red-100 focus:border-red-500'
+                  : 'border-gray-200 focus:border-blue-400 hover:border-gray-300'
               }`}
             />
-            {fieldError && (
-              <div className='text-red-500 text-sm mt-2'>{fieldError}</div>
-            )}
+            <AnimatePresence>
+              {fieldError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='text-red-500 text-xs sm:text-sm mt-2 font-medium'
+                >
+                  {fieldError}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {field.helpText && (
-              <div className='text-sm text-gray-500 mt-2'>{field.helpText}</div>
+              <div className='text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed'>
+                {field.helpText}
+              </div>
             )}
-          </div>
+          </motion.div>
         );
     }
   };
 
+  const pageVariants = {
+    hidden: { opacity: 0, x: 50 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.4,
+        ease: 'easeOut',
+        when: 'beforeChildren',
+        staggerChildren: 0.1,
+      },
+    },
+    exit: {
+      opacity: 0,
+      x: -50,
+      transition: { duration: 0.3 },
+    },
+  };
+
   return (
-    <div className='max-w-3xl mx-auto p-8'>
-      {/* Logo */}
-      {form.logo && form.logo.src && (
-        <div className='mb-8 w-full'>
-          <FormLogo />
-        </div>
-      )}
-
-      {/* Form Title */}
-      <div className='mb-8'>
-        <h1 className='text-3xl font-bold text-gray-900'>{form.title}</h1>
-        {form.description && (
-          <p className='text-gray-600 mt-2'>{form.description}</p>
-        )}
-      </div>
-
-      {/* Form Fields */}
-      <div className='space-y-6'>
-        {currentPage?.fields?.map(field => renderField(field))}
-      </div>
-
-      {/* Navigation Buttons */}
-      <div className='flex justify-between items-center mt-8 pt-6 border-t border-gray-200'>
-        {!isFirstPage ? (
-          <button
-            onClick={handleBack}
-            className='px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors cursor-pointer'
+    <div className='min-h-screen bg-gradient-to-br from-gray-50 to-white'>
+      <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12'>
+        {/* Logo */}
+        {form.logo && form.logo.src && (
+          <motion.div
+            style={{ marginBottom: '3rem' }}
+            className='mb-6 sm:mb-8 w-full flex justify-center'
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            Back
-          </button>
-        ) : (
-          <div></div>
+            <FormLogo />
+          </motion.div>
         )}
 
-        {!isLastPage ? (
-          <button
-            onClick={handleNext}
-            className='px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors cursor-pointer'
+        {/* Form Content */}
+        <AnimatePresence mode='wait' initial={false}>
+          <motion.div
+            key={currentPageIndex}
+            variants={pageVariants}
+            initial='hidden'
+            animate='visible'
+            exit='exit'
+            className='bg-white rounded-sm shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8'
           >
-            Next
-          </button>
-        ) : (
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className='px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+            {/* Form Fields */}
+            <div className='space-y-6 sm:space-y-8'>
+              {currentPage?.fields?.map(field => renderField(field))}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Navigation Buttons */}
+        <motion.div
+          className='flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 pt-6 border-t border-gray-200'
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          {!isFirstPage ? (
+            <motion.button
+              onClick={handleBack}
+              whileHover={{ scale: 1.02, x: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className='w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium text-sm sm:text-base shadow-sm hover:shadow-md'
+            >
+              <ChevronLeft className='w-4 h-4 mr-2' />
+              Back
+            </motion.button>
+          ) : (
+            <div className='hidden sm:block'></div>
+          )}
+
+          {!isLastPage ? (
+            <motion.button
+              onClick={handleNext}
+              whileHover={{ scale: 1.02, x: 2 }}
+              whileTap={{ scale: 0.98 }}
+              className='w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium text-sm sm:text-base shadow-lg hover:shadow-xl'
+            >
+              Next
+              <ChevronRight className='w-4 h-4 ml-2' />
+            </motion.button>
+          ) : (
+            <motion.button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              whileHover={!isSubmitting ? { scale: 1.02 } : {}}
+              whileTap={!isSubmitting ? { scale: 0.98 } : {}}
+              className='w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base shadow-lg hover:shadow-xl disabled:hover:shadow-lg'
+            >
+              {isSubmitting ? (
+                <div className='flex items-center justify-center'>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                  Submitting...
+                </div>
+              ) : (
+                form.settings?.submitButtonText || 'Submit Form'
+              )}
+            </motion.button>
+          )}
+        </motion.div>
+
+        {/* Page Indicator */}
+        {form.pages.length > 1 && (
+          <motion.div
+            className='flex justify-center items-center mt-6 sm:mt-8 space-x-2 sm:space-x-3'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
           >
-            {isSubmitting
-              ? 'Submitting...'
-              : form.settings?.submitButtonText || 'Submit'}
-          </button>
+            {form.pages.map((_, index) => (
+              <motion.div
+                key={index}
+                className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 cursor-pointer ${
+                  index === currentPageIndex
+                    ? 'bg-blue-600 scale-125'
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+                whileHover={{ scale: index === currentPageIndex ? 1.25 : 1.1 }}
+                onClick={() => setCurrentPageIndex(index)}
+              />
+            ))}
+            <div className='ml-3 sm:ml-4 text-xs sm:text-sm text-gray-500 font-medium'>
+              {currentPageIndex + 1} of {form.pages.length}
+            </div>
+          </motion.div>
         )}
       </div>
-
-      {/* Page Indicator */}
-      {form.pages.length > 1 && (
-        <div className='flex justify-center items-center mt-4 space-x-2'>
-          {form.pages.map((_, index) => (
-            <div
-              key={index}
-              className={`w-2 h-2 rounded-full ${
-                index === currentPageIndex ? 'bg-blue-500' : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

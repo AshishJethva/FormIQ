@@ -33,28 +33,73 @@ import DraggableElement from './DraggableElement';
 
 interface ElementsPanelProps {
   onPanelToggle?: (isExpanded: boolean) => void;
+  forceOpen?: boolean;
 }
 
-export default function ElementsPanel({ onPanelToggle }: ElementsPanelProps) {
+export default function ElementsPanel({
+  onPanelToggle,
+  forceOpen = false,
+}: ElementsPanelProps) {
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
 
   // Toggle panel expanded/collapsed state
   const togglePanel = () => {
     const newState = !isPanelExpanded;
+    console.log('🔄 ElementsPanel togglePanel:', {
+      oldState: isPanelExpanded,
+      newState,
+      onPanelToggle: !!onPanelToggle,
+    });
+
     setIsPanelExpanded(newState);
 
-    // Notify parent component about the state change
     if (onPanelToggle) {
       onPanelToggle(newState);
     }
   };
 
-  // Notify parent when component mounts
+  // Handle external force open
   useEffect(() => {
+    console.log('🎯 ElementsPanel forceOpen effect:', {
+      forceOpen,
+      isPanelExpanded,
+      shouldOpen: forceOpen && !isPanelExpanded,
+    });
+
+    if (forceOpen && !isPanelExpanded) {
+      console.log('🚀 Force opening ElementsPanel...');
+      setIsPanelExpanded(true);
+      if (onPanelToggle) {
+        onPanelToggle(true);
+      }
+    }
+  }, [forceOpen, isPanelExpanded, onPanelToggle]);
+
+  // Debug the panel state
+  useEffect(() => {
+    console.log('📊 ElementsPanel state changed:', {
+      isPanelExpanded,
+      forceOpen,
+    });
+  }, [isPanelExpanded, forceOpen]);
+
+  // Mount effect with debugging
+  useEffect(() => {
+    console.log('🏗️ ElementsPanel mounted:', {
+      isPanelExpanded,
+      onPanelToggle: !!onPanelToggle,
+    });
+
     if (onPanelToggle) {
       onPanelToggle(isPanelExpanded);
     }
   }, []);
+
+  console.log('🔍 ElementsPanel render:', {
+    isPanelExpanded,
+    forceOpen,
+    shouldShowPanel: isPanelExpanded,
+  });
 
   // Animation variants for the panel
   const panelVariants = {

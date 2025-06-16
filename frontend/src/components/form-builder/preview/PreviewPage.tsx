@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import PreviewHeader from './PreviewHeader';
 import PreviewForm from './PreviewForm';
@@ -38,11 +38,35 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
   if (!formWithId) {
     return (
-      <div className='min-h-screen bg-gray-100 flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4'></div>
-          <p className='text-gray-600'>Loading form preview...</p>
-        </div>
+      <div className='min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4'>
+        <motion.div
+          className='text-center'
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div
+            className='w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6'
+            animate={{
+              rotate: 360,
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              rotate: { duration: 2, repeat: Infinity, ease: 'linear' },
+              scale: { duration: 1.5, repeat: Infinity },
+            }}
+          >
+            <div className='w-full h-full border-4 border-blue-500 border-t-transparent rounded-full'></div>
+          </motion.div>
+          <motion.p
+            className='text-gray-600 text-sm sm:text-base font-medium'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Loading form preview...
+          </motion.p>
+        </motion.div>
       </div>
     );
   }
@@ -1048,17 +1072,21 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     switch (selectedDevice) {
       case 'phone':
         return {
-          width: '375px',
-          height: '667px',
+          width: '100%',
+          maxWidth: '400px',
+          height: '667px', // Fixed height for mobile
           className:
-            'mx-auto border-8 border-gray-800 rounded-[2.5rem] bg-white shadow-2xl overflow-hidden mt-7',
+            'mx-auto border-4 border-gray-300 rounded-[2.5rem] bg-white shadow-2xl overflow-hidden mt-4 sm:mt-0 relative',
+          innerClassName: '', // No padding - form fills entire area
         };
       case 'tablet':
         return {
-          width: '768px',
-          height: '1024px',
+          width: '100%',
+          maxWidth: '768px',
+          height: '100%', // Fixed height for tablet
           className:
-            'mx-auto border-4 border-gray-600 rounded-2xl bg-white shadow-2xl overflow-hidden mt-7',
+            'mx-auto border-4 border-gray-300 rounded-4xl bg-white shadow-2xl overflow-hidden mt-4 sm:mt-1 relative',
+          innerClassName: '', // No padding - form fills entire area
         };
       case 'desktop':
       default:
@@ -1066,102 +1094,168 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           width: '100%',
           height: '100%',
           className:
-            'w-full h-full bg-white shadow-lg rounded-lg overflow-hidden mt-7',
+            'w-full h-full bg-white shadow-xl rounded-lg sm:rounded-xl overflow-hidden mt-4 sm:mt-0',
+          innerClassName: '', // Normal padding for desktop
         };
     }
   };
 
   const deviceStyles = getDeviceStyles();
 
-  //  SUCCESS STATE with enhanced animations
+  //  SUCCESS STATE
   if (isSubmitted) {
     return (
-      <div className='min-h-screen bg-gray-100 flex flex-col'>
-        <PreviewHeader
-          shareableLink={shareableLink}
-          onFillForm={handleFillForm}
-          selectedDevice={selectedDevice}
-          onDeviceChange={handleDeviceChange}
-          formId={formId}
-        />
+      <div className='min-h-screen bg-white flex flex-col'>
+        <style jsx>{`
+          .scrollbar-hide {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+        <motion.div
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        >
+          <PreviewHeader
+            shareableLink={shareableLink}
+            onFillForm={handleFillForm}
+            selectedDevice={selectedDevice}
+            onDeviceChange={handleDeviceChange}
+            formId={formId}
+          />
+        </motion.div>
 
-        <div className='flex-1 flex items-center justify-center p-8'>
-          <div
+        <div className='flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8'>
+          <motion.div
             className={deviceStyles.className}
             style={{
               width: deviceStyles.width,
-              height:
-                selectedDevice !== 'desktop' ? deviceStyles.height : 'auto',
-              maxHeight:
-                selectedDevice !== 'desktop' ? deviceStyles.height : 'none',
+              maxWidth: deviceStyles.maxWidth,
+              height: deviceStyles.height,
             }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
           >
-            <div className='p-8 flex items-center justify-center h-full'>
+            {/* CRITICAL CHANGE: Add flex centering container */}
+            <div
+              className={`h-full overflow-y-auto flex items-center justify-center ${
+                selectedDevice === 'phone'
+                  ? 'scrollbar-hide'
+                  : 'scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100'
+              }`}
+              style={{ padding: 0, margin: 0 }}
+            >
               <motion.div
-                className='text-center max-w-md mx-auto'
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
+                className={`text-center w-full max-w-md mx-auto ${
+                  selectedDevice === 'phone' ? 'px-6 py-8' : 'px-8 py-12'
+                }`} // Add padding for breathing room
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
               >
                 <motion.div
-                  className='w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6'
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                  className='w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8'
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{
+                    delay: 0.4,
+                    type: 'spring',
+                    stiffness: 200,
+                    duration: 0.8,
+                  }}
                 >
-                  <svg
-                    className='w-12 h-12 text-green-500'
+                  <motion.svg
+                    className='w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-emerald-600'
                     fill='currentColor'
                     viewBox='0 0 20 20'
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.8, type: 'spring', stiffness: 300 }}
                   >
                     <path
                       fillRule='evenodd'
                       d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
                       clipRule='evenodd'
                     />
-                  </svg>
+                  </motion.svg>
                 </motion.div>
 
                 <motion.h1
-                  className='text-3xl font-bold text-gray-900 mb-4'
-                  initial={{ opacity: 0, y: 20 }}
+                  className={`font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-3 sm:mb-4 lg:mb-6 ${
+                    selectedDevice === 'phone'
+                      ? 'text-xl sm:text-2xl'
+                      : 'text-2xl sm:text-3xl lg:text-4xl'
+                  }`}
+                  initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.6, duration: 0.6 }}
                 >
                   Thank You!
                 </motion.h1>
 
                 <motion.p
-                  className='text-gray-600 mb-6'
+                  className={`text-gray-600 mb-4 sm:mb-6 lg:mb-8 leading-relaxed ${
+                    selectedDevice === 'phone'
+                      ? 'text-xs sm:text-sm px-2'
+                      : 'text-sm sm:text-base px-4'
+                  }`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.8, duration: 0.6 }}
                 >
                   {form?.settings?.thankyouMessage ||
-                    'Your submission has been received successfully.'}
+                    'Your submission has been received successfully. We appreciate your response!'}
                 </motion.p>
 
-                {submissionId && (
-                  <motion.div
-                    className='bg-gray-50 rounded-lg p-4 mb-6'
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <p className='text-sm text-gray-600'>Submission ID:</p>
-                    <p className='font-mono text-sm text-gray-800'>
-                      {submissionId}
-                    </p>
-                  </motion.div>
-                )}
+                <AnimatePresence>
+                  {submissionId && (
+                    <motion.div
+                      className={`bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg sm:rounded-xl border border-gray-100 mb-4 sm:mb-6 lg:mb-8 ${
+                        selectedDevice === 'phone' ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
+                      }`}
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                      transition={{ delay: 1.0, duration: 0.5 }}
+                    >
+                      <p
+                        className={`text-gray-600 mb-2 font-medium ${
+                          selectedDevice === 'phone'
+                            ? 'text-xs'
+                            : 'text-xs sm:text-sm'
+                        }`}
+                      >
+                        Submission ID:
+                      </p>
+                      <p
+                        className={`font-mono text-gray-800 bg-white px-3 py-2 rounded border break-all ${
+                          selectedDevice === 'phone'
+                            ? 'text-xs'
+                            : 'text-xs sm:text-sm'
+                        }`}
+                      >
+                        {submissionId}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <motion.div
-                  className='space-y-3'
-                  initial={{ opacity: 0, y: 20 }}
+                  className={`space-y-3 ${
+                    selectedDevice === 'phone'
+                      ? 'space-y-2 sm:space-y-3'
+                      : 'sm:space-y-4'
+                  }`}
+                  initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
+                  transition={{ delay: 1.2, duration: 0.6 }}
                 >
-                  <button
+                  <motion.button
                     onClick={() => {
                       setIsSubmitted(false);
                       setSubmissionId('');
@@ -1170,68 +1264,166 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
                       setCurrentPageIndex(0);
                       setErrors({});
                     }}
-                    className='w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md transition-colors font-medium cursor-pointer'
+                    className={`w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg sm:rounded-xl transition-all duration-300 font-medium cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-[1.02] ${
+                      selectedDevice === 'phone'
+                        ? 'px-4 py-2.5 text-sm'
+                        : 'px-6 py-3 sm:py-4 text-sm sm:text-base'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     Submit Another Response
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     onClick={() => window.open(shareableLink, '_blank')}
-                    className='w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-md transition-colors font-medium cursor-pointer'
+                    className={`w-full bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 rounded-lg sm:rounded-xl transition-all duration-300 font-medium cursor-pointer shadow-md hover:shadow-lg transform hover:scale-[1.02] ${
+                      selectedDevice === 'phone'
+                        ? 'px-4 py-2.5 text-sm'
+                        : 'px-6 py-3 sm:py-4 text-sm sm:text-base'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     Open Form in New Tab
-                  </button>
+                  </motion.button>
                 </motion.div>
               </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     );
   }
 
-  //  MAIN PREVIEW INTERFACE
+  //  MAIN PREVIEW INTERFACE - Fully Mobile Responsive
   return (
-    <div className='min-h-screen bg-[#F3F3FE] flex flex-col'>
-      <PreviewHeader
-        shareableLink={shareableLink}
-        onFillForm={handleFillForm}
-        selectedDevice={selectedDevice}
-        onDeviceChange={handleDeviceChange}
-        formId={formId}
-      />
+    <div className='min-h-screen bg-white flex flex-col'>
+      <motion.div
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className='sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm'
+      >
+        <PreviewHeader
+          shareableLink={shareableLink}
+          onFillForm={handleFillForm}
+          selectedDevice={selectedDevice}
+          onDeviceChange={handleDeviceChange}
+          formId={formId}
+        />
+      </motion.div>
 
-      <div className='flex-1 flex items-center justify-center p-8'>
-        <div
+      <motion.div
+        className='flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8'
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, delay: 0.2 }}
+      >
+        <motion.div
           className={deviceStyles.className}
           style={{
             width: deviceStyles.width,
-            height: selectedDevice !== 'desktop' ? deviceStyles.height : 'auto',
-            maxHeight:
-              selectedDevice !== 'desktop' ? deviceStyles.height : 'none',
+            maxWidth: deviceStyles.maxWidth,
+            height: deviceStyles.height,
+          }}
+          layout
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        >
+          {/* Add device details for phone */}
+          {selectedDevice === 'phone' && (
+            <>
+              {/* Home indicator */}
+              <div className='absolute bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gray-400 rounded-full'></div>
+              {/* Speaker */}
+              <div className='absolute top-4 left-1/2 transform -translate-x-1/2 w-16 h-1.5 bg-gray-400 rounded-full'></div>
+            </>
+          )}
+
+          <div
+            className={`h-full overflow-y-auto ${
+              selectedDevice === 'phone'
+                ? 'scrollbar-hide'
+                : 'scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100'
+            } ${deviceStyles.innerClassName || ''}`}
+            style={{ padding: 0, margin: 0 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className='h-full w-full'
+            >
+              <div
+                className={`h-full ${
+                  selectedDevice === 'phone'
+                    ? 'overflow-y-auto scrollbar-hide'
+                    : 'overflow-y-auto'
+                }`}
+              >
+                <PreviewFormWithFileSupport
+                  form={formWithId} // Pass form with proper ID
+                  formData={formData}
+                  setFormData={setFormData}
+                  fileData={fileData}
+                  setFileData={setFileData}
+                  currentPageIndex={currentPageIndex}
+                  setCurrentPageIndex={setCurrentPageIndex}
+                  onSubmit={handleSubmit}
+                  isSubmitting={isSubmitting}
+                  errors={errors}
+                />
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Floating Action Button for Mobile - Fill Form */}
+      <motion.div
+        className='fixed bottom-6 right-6 sm:hidden z-40'
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 1, type: 'spring', stiffness: 200 }}
+      >
+        <motion.button
+          onClick={handleFillForm}
+          className='w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg flex items-center justify-center'
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          animate={{
+            boxShadow: [
+              '0 4px 20px rgba(168, 85, 247, 0.4)',
+              '0 8px 30px rgba(168, 85, 247, 0.6)',
+              '0 4px 20px rgba(168, 85, 247, 0.4)',
+            ],
+          }}
+          transition={{
+            boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
           }}
         >
-          <div className='h-full overflow-y-auto'>
-            <PreviewFormWithFileSupport
-              form={formWithId} // Pass form with proper ID
-              formData={formData}
-              setFormData={setFormData}
-              fileData={fileData}
-              setFileData={setFileData}
-              currentPageIndex={currentPageIndex}
-              setCurrentPageIndex={setCurrentPageIndex}
-              onSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
-              errors={errors}
+          <svg
+            className='w-6 h-6'
+            fill='none'
+            stroke='currentColor'
+            viewBox='0 0 24 24'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth={2}
+              d='M12 6v6m0 0v6m0-6h6m-6 0H6'
             />
-          </div>
-        </div>
-      </div>
+          </svg>
+        </motion.button>
+      </motion.div>
+
+      {/* Removed background decorative elements */}
     </div>
   );
 }
 
-//  WRAPPER COMPONENT for file support
+//  WRAPPER COMPONENT for file support - Enhanced with mobile responsiveness
 function PreviewFormWithFileSupport({
   form,
   formData,
@@ -1256,17 +1448,24 @@ function PreviewFormWithFileSupport({
   errors: Record<string, string>;
 }) {
   return (
-    <PreviewForm
-      form={form}
-      formData={formData}
-      setFormData={setFormData}
-      fileData={fileData}
-      setFileData={setFileData}
-      currentPageIndex={currentPageIndex}
-      setCurrentPageIndex={setCurrentPageIndex}
-      onSubmit={onSubmit}
-      isSubmitting={isSubmitting}
-      errors={errors}
-    />
+    <motion.div
+      className='w-full h-full'
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      <PreviewForm
+        form={form}
+        formData={formData}
+        setFormData={setFormData}
+        fileData={fileData}
+        setFileData={setFileData}
+        currentPageIndex={currentPageIndex}
+        setCurrentPageIndex={setCurrentPageIndex}
+        onSubmit={onSubmit}
+        isSubmitting={isSubmitting}
+        errors={errors}
+      />
+    </motion.div>
   );
 }
