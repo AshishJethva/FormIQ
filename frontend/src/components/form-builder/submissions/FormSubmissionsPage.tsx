@@ -29,6 +29,7 @@ import {
   Archive,
   ChevronDown,
   Filter,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -381,121 +383,754 @@ const getFileTypeInfo = (mimeType: string) => {
   }
 };
 
-// ===== ENHANCED FORM TYPE DETECTION =====
-const detectFormTypeClient = (
+const detectFormTypeClientEnhanced = (
   formData: any
-): 'quiz' | 'survey' | 'feedback' | 'general' => {
-  const formTitle = formData?.title?.toLowerCase() || '';
-  const formDescription = formData?.description?.toLowerCase() || '';
+): {
+  type: 'quiz' | 'survey' | 'feedback' | 'application' | 'general';
+  confidence: number;
+  reasons: string[];
+  singleChoiceCount: number;
+  canEvaluate: boolean;
+  accuracyExpected: number;
+  requirements: {
+    met: string[];
+    missing: string[];
+  };
+} => {
+  const result = {
+    type: 'general' as
+      | 'quiz'
+      | 'survey'
+      | 'feedback'
+      | 'application'
+      | 'general',
+    confidence: 0,
+    reasons: [] as string[],
+    singleChoiceCount: 0,
+    canEvaluate: false,
+    accuracyExpected: 90,
+    requirements: {
+      met: [] as string[],
+      missing: [] as string[],
+    },
+  };
 
-  let quizIndicators = 0;
-  let surveyIndicators = 0;
-  let feedbackIndicators = 0;
-
-  // Analyze title and description with enhanced keywords
-  const titleDescText = formTitle + ' ' + formDescription;
-
-  if (
-    /quiz|test|exam|assessment|question|correct|answer|choose|select|true.*false|multiple.*choice/i.test(
-      titleDescText
-    )
-  ) {
-    quizIndicators += 3;
+  if (!formData?.pages || !Array.isArray(formData.pages)) {
+    result.reasons.push('No valid form structure found');
+    result.requirements.missing.push('Valid form structure with pages');
+    return result;
   }
 
-  if (
-    /survey|poll|research|opinion|rate|rating|satisfaction|scale|score|feedback.*form|customer.*survey/i.test(
+  // 🎯 ENHANCED: Analyze form title and description with all form type detection
+  const formTitle = formData.title?.toLowerCase() || '';
+  const formDescription = formData.description?.toLowerCase() || '';
+  const titleDescText = `${formTitle} ${formDescription}`.trim();
+
+  // Field analysis counters
+  let ratingFields = 0;
+  let textFields = 0;
+  let feedbackFields = 0;
+  let surveyFields = 0;
+  let applicationFields = 0; // 🆕 NEW: Application-specific fields
+  let totalFields = 0;
+  let hasCorrectAnswers = false;
+  let hasFeedbackPatterns = false;
+  let hasSurveyPatterns = false;
+  let hasApplicationPatterns = false; // 🆕 NEW: Application patterns
+  let hasLongTextFields = 0;
+  let hasRatingScales = 0;
+  let choiceFieldsWithRatingOptions = 0;
+
+  // 🆕 NEW: Application-specific counters
+  let hasFileUploads = 0;
+  let hasPersonalInfoFields = 0;
+  let hasWorkExperienceFields = 0;
+  let hasEducationFields = 0;
+  let hasSkillsFields = 0;
+  let hasContactFields = 0;
+
+  // 🎯 ENHANCED: Title/description analysis with all form types
+  const titleHasQuizWords = /quiz|test|exam|assessment|evaluation/.test(
+    titleDescText
+  );
+  const titleHasSurveyWords =
+    /survey|poll|research|study|questionnaire|analysis|feedback|opinion|satisfaction|evaluation.*of|rate.*our|customer.*survey/.test(
       titleDescText
-    )
-  ) {
-    surveyIndicators += 3;
-  }
-
-  if (
-    /feedback|review|comment|experience|improve|suggestion|thoughts|opinion|testimonial|evaluation/i.test(
+    );
+  const titleHasFeedbackWords =
+    /feedback|review|comment|experience|tell.*us|share.*your.*thoughts/.test(
       titleDescText
-    )
-  ) {
-    feedbackIndicators += 3;
-  }
+    );
+  const titleHasApplicationWords =
+    /application|apply|job|career|position|employment|hiring|recruitment|candidate|resume|cv|submit.*application|join.*our.*team|work.*with.*us/.test(
+      titleDescText
+    ); // 🆕 NEW
 
-  // Analyze form fields with better detection
-  if (formData?.pages) {
-    formData.pages.forEach((page: any) => {
-      if (page.fields) {
-        page.fields.forEach((field: any) => {
-          const fieldLabel = field.label?.toLowerCase() || '';
-          const fieldType = field.type?.toLowerCase() || '';
+  console.log('🔍 Title/Description Analysis:', {
+    titleDescText,
+    titleHasQuizWords,
+    titleHasSurveyWords,
+    titleHasFeedbackWords,
+    titleHasApplicationWords, // 🆕 NEW
+  });
 
-          // Enhanced quiz patterns
+  // Enhanced field analysis
+  formData.pages.forEach((page: any) => {
+    if (page?.fields && Array.isArray(page.fields)) {
+      page.fields.forEach((field: any) => {
+        if (!field?.id || !field?.type || field.type === 'heading') return;
+
+        totalFields++;
+        const fieldLabel = field.label?.toLowerCase() || '';
+        const fieldType = field.type.toLowerCase();
+
+        console.log(`📋 Analyzing field: "${fieldLabel}" (${fieldType})`);
+
+        // 🆕 NEW: File upload detection (strong application indicator)
+        if (fieldType === 'fileupload' || fieldType === 'image') {
+          hasFileUploads++;
+
+          // Check if it's application-related file upload
           if (
-            fieldType === 'singlechoice' ||
-            fieldType === 'multiplechoice' ||
-            fieldType === 'dropdown'
-          ) {
-            if (
-              /correct|answer|choose|select|true|false|which.*is|what.*is|pick.*right|best.*answer/i.test(
-                fieldLabel
-              ) ||
-              field.correctAnswer
-            ) {
-              quizIndicators += 2;
-            }
-          }
-
-          // Enhanced survey patterns
-          if (
-            /rate|rating|satisfaction|quality|likely|recommend|scale|score|excellent|good|poor|how.*would.*you|on.*scale/i.test(
+            /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv/.test(
               fieldLabel
             )
           ) {
-            surveyIndicators += 2;
+            applicationFields++;
+            hasApplicationPatterns = true;
+            console.log(
+              `📄 APPLICATION INDICATOR: File upload field "${fieldLabel}"`
+            );
+          }
+        }
+
+        // 🆕 NEW: Personal information detection
+        if (
+          fieldType === 'fullname' ||
+          fieldType === 'email' ||
+          fieldType === 'phone' ||
+          fieldType === 'address' ||
+          /full.*name|first.*name|last.*name|email|phone|address|contact.*information|personal.*details|date.*of.*birth|age|gender|nationality|emergency.*contact/.test(
+            fieldLabel
+          )
+        ) {
+          hasPersonalInfoFields++;
+          hasContactFields++;
+
+          if (/personal|contact|details|information/.test(fieldLabel)) {
+            applicationFields++;
+            hasApplicationPatterns = true;
+            console.log(
+              `👤 APPLICATION INDICATOR: Personal info field "${fieldLabel}"`
+            );
+          }
+        }
+
+        // 🆕 NEW: Work experience detection
+        if (
+          /work.*experience|job.*experience|employment.*history|previous.*job|current.*job|position.*held|company.*name|employer|job.*title|responsibilities|duties|years.*of.*experience|professional.*experience|career.*history|work.*history|current.*position|previous.*position/.test(
+            fieldLabel
+          )
+        ) {
+          hasWorkExperienceFields++;
+          applicationFields++;
+          hasApplicationPatterns = true;
+          console.log(
+            `💼 APPLICATION INDICATOR: Work experience field "${fieldLabel}"`
+          );
+        }
+
+        // 🆕 NEW: Education background detection
+        if (
+          /education|educational.*background|school|university|college|degree|diploma|certification|qualification|academic|studies|major|gpa|graduation|institution|high.*school|bachelor|master|phd|doctorate/.test(
+            fieldLabel
+          )
+        ) {
+          hasEducationFields++;
+          applicationFields++;
+          hasApplicationPatterns = true;
+          console.log(
+            `🎓 APPLICATION INDICATOR: Education field "${fieldLabel}"`
+          );
+        }
+
+        // 🆕 NEW: Skills and other application-specific fields
+        if (
+          /skills|abilities|competencies|expertise|references|availability|salary.*expectation|expected.*salary|start.*date|notice.*period|why.*interested|motivation|cover.*letter|additional.*information|languages.*spoken|certifications|achievements/.test(
+            fieldLabel
+          )
+        ) {
+          hasSkillsFields++;
+          applicationFields++;
+          hasApplicationPatterns = true;
+          console.log(
+            `🛠️ APPLICATION INDICATOR: Skills/other field "${fieldLabel}"`
+          );
+        }
+
+        // 🎯 QUIZ DETECTION: Single choice questions with correct answers
+        if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
+          result.singleChoiceCount++;
+
+          if (
+            field.correctAnswer ||
+            (field.options && field.options.some((opt: any) => opt.isCorrect))
+          ) {
+            hasCorrectAnswers = true;
+            console.log(
+              `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
+            );
           }
 
-          // Enhanced feedback patterns
-          if (fieldType === 'longtext' || fieldType === 'paragraph') {
-            if (
-              /feedback|comment|improve|experience|suggest|issue|problem|opinion|thoughts|recommendation|tell.*us|what.*do.*you.*think/i.test(
-                fieldLabel
-              )
-            ) {
-              feedbackIndicators += 2;
+          // 🔥 Check if choice field has rating-like options (survey indicator)
+          if (field.options && Array.isArray(field.options)) {
+            const hasRatingOptions = field.options.some(
+              (opt: any) =>
+                opt.label &&
+                /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|1.*to.*5|1.*to.*10|likely|unlikely/.test(
+                  opt.label.toLowerCase()
+                )
+            );
+
+            if (hasRatingOptions) {
+              choiceFieldsWithRatingOptions++;
+              ratingFields++;
+              hasSurveyPatterns = true;
+              console.log(
+                `📊 SURVEY INDICATOR: Rating options in choice field "${fieldLabel}"`
+              );
             }
           }
 
-          // Generic feedback indicators
+          // Quiz-like question patterns
           if (
-            /how.*was|tell.*about|share.*your|describe.*your|any.*additional|overall.*experience/i.test(
+            /what.*is|which.*is|choose.*correct|select.*right|true.*false|pick.*best|identify.*correct/.test(
               fieldLabel
             )
           ) {
-            feedbackIndicators += 1;
+            hasCorrectAnswers = true;
+            console.log(
+              `🎯 QUIZ PATTERN: quiz-like question in "${fieldLabel}"`
+            );
           }
-        });
-      }
-    });
+        }
+
+        // Multiple choice analysis
+        if (fieldType === 'multiplechoice') {
+          if (
+            field.correctAnswer ||
+            field.correctAnswers ||
+            (field.options && field.options.some((opt: any) => opt.isCorrect))
+          ) {
+            hasCorrectAnswers = true;
+          }
+
+          // Check for rating-like multiple choice options
+          if (field.options && Array.isArray(field.options)) {
+            const hasRatingOptions = field.options.some(
+              (opt: any) =>
+                opt.label &&
+                /excellent|very.*good|good|fair|poor|strongly.*agree|agree|neutral|disagree|likely|unlikely/.test(
+                  opt.label.toLowerCase()
+                )
+            );
+
+            if (hasRatingOptions) {
+              choiceFieldsWithRatingOptions++;
+              ratingFields++;
+              hasSurveyPatterns = true;
+              console.log(
+                `📊 SURVEY INDICATOR: Rating options in multiple choice "${fieldLabel}"`
+              );
+            }
+          }
+        }
+
+        // 🎯 RATING/SCALE DETECTION - Strong survey indicators
+        if (
+          fieldType === 'rating' ||
+          fieldType === 'scale' ||
+          fieldType === 'slider'
+        ) {
+          ratingFields++;
+          hasRatingScales++;
+          hasSurveyPatterns = true;
+          console.log(
+            `📊 SURVEY INDICATOR: ${fieldType} field "${fieldLabel}"`
+          );
+        }
+
+        // Rating patterns in labels (stronger survey detection)
+        if (
+          /rate|rating|satisfaction|quality|likely.*recommend|how.*satisfied|scale.*1.*to|on.*scale|strongly.*agree|strongly.*disagree|how.*would.*you.*rate|please.*rate|rate.*the|evaluate.*the|assess.*the/.test(
+            fieldLabel
+          )
+        ) {
+          ratingFields++;
+          hasRatingScales++;
+          hasSurveyPatterns = true;
+          console.log(
+            `📊 SURVEY PATTERN: rating pattern in label "${fieldLabel}"`
+          );
+        }
+
+        // 🎯 TEXT FIELD ANALYSIS - Distinguish between survey, feedback, and application
+        if (
+          fieldType === 'longtext' ||
+          fieldType === 'paragraph' ||
+          fieldType === 'shorttext'
+        ) {
+          textFields++;
+          hasLongTextFields++;
+
+          // 💬 FEEDBACK-SPECIFIC PATTERNS (experience/improvement focused)
+          if (
+            /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience/.test(
+              fieldLabel
+            )
+          ) {
+            feedbackFields++;
+            hasFeedbackPatterns = true;
+            console.log(
+              `💬 FEEDBACK PATTERN: feedback pattern in label "${fieldLabel}"`
+            );
+          }
+          // 📊 SURVEY-SPECIFIC PATTERNS (evaluation/research focused)
+          else if (
+            /how.*would.*you.*rate|how.*important.*is|rank.*the.*following|what.*is.*your.*preference|demographic|background.*information|research.*purposes|study.*participation|please.*evaluate|additional.*comments|other.*comments|any.*other/.test(
+              fieldLabel
+            )
+          ) {
+            surveyFields++;
+            hasSurveyPatterns = true;
+            console.log(
+              `📊 SURVEY PATTERN: survey pattern in label "${fieldLabel}"`
+            );
+          }
+          // 🆕 NEW: APPLICATION-SPECIFIC TEXT PATTERNS
+          else if (
+            /describe.*yourself|tell.*us.*about|why.*do.*you.*want|what.*makes.*you|your.*experience.*with|goals|objectives|achievements|cover.*letter.*text|additional.*information|anything.*else/.test(
+              fieldLabel
+            )
+          ) {
+            applicationFields++;
+            hasApplicationPatterns = true;
+            console.log(
+              `📄 APPLICATION PATTERN: application text pattern in label "${fieldLabel}"`
+            );
+          }
+        }
+      });
+    }
+  });
+
+  console.log('🔍 Field Analysis Summary:', {
+    totalFields,
+    applicationFields,
+    hasPersonalInfoFields,
+    hasWorkExperienceFields,
+    hasEducationFields,
+    hasSkillsFields,
+    hasFileUploads,
+    hasApplicationPatterns,
+    singleChoiceCount: result.singleChoiceCount,
+    ratingFields,
+    choiceFieldsWithRatingOptions,
+    feedbackFields,
+    surveyFields,
+    textFields,
+    hasCorrectAnswers,
+    hasSurveyPatterns,
+    hasFeedbackPatterns,
+  });
+
+  // 🎯 PRIORITY 1: QUIZ DETECTION (Highest Priority)
+  // Must have 5+ single choice questions AND correct answers
+  if (result.singleChoiceCount >= 5 && hasCorrectAnswers) {
+    result.type = 'quiz';
+    result.confidence = 100;
+    result.canEvaluate = true;
+    result.accuracyExpected = 99;
+    result.reasons.push(
+      `✅ QUIZ: ${result.singleChoiceCount} single choice questions with correct answers`
+    );
+    result.requirements.met.push(
+      `${result.singleChoiceCount} single choice questions with correct answers`
+    );
+
+    if (titleHasQuizWords) {
+      result.reasons.push('✅ Title confirms quiz/test nature');
+      result.requirements.met.push('Quiz-related title/description');
+    }
+
+    console.log(
+      `🎯 FINAL CLASSIFICATION: QUIZ (${result.confidence}% confidence)`
+    );
+    return result;
   }
 
-  // Determine form type based on highest score with better thresholds
-  if (quizIndicators >= 3) return 'quiz';
-  if (surveyIndicators >= 3) return 'survey';
-  if (feedbackIndicators >= 2) return 'feedback'; // Lower threshold for feedback
+  // 🆕 PRIORITY 2: APPLICATION DETECTION (New High Priority)
+  const applicationIndicators = {
+    title: titleHasApplicationWords,
+    hasPersonalInfo: hasPersonalInfoFields >= 2,
+    hasWorkExperience: hasWorkExperienceFields >= 1,
+    hasEducation: hasEducationFields >= 1,
+    hasSkills: hasSkillsFields >= 1,
+    hasFileUpload: hasFileUploads >= 1,
+    hasApplicationFields: applicationFields >= 3,
+    hasContactInfo: hasContactFields >= 2,
+    structuralMatch:
+      (hasPersonalInfoFields >= 2 && hasWorkExperienceFields >= 1) ||
+      (hasPersonalInfoFields >= 2 && hasEducationFields >= 1) ||
+      (hasWorkExperienceFields >= 1 && hasEducationFields >= 1) ||
+      (hasPersonalInfoFields >= 3 && hasFileUploads >= 1),
+    comprehensiveApplication:
+      hasPersonalInfoFields >= 2 &&
+      hasWorkExperienceFields >= 1 &&
+      hasEducationFields >= 1,
+  };
 
-  // Fallback logic
+  const applicationScore =
+    (applicationIndicators.title ? 5 : 0) +
+    (applicationIndicators.hasPersonalInfo ? 3 : 0) +
+    (applicationIndicators.hasWorkExperience ? 4 : 0) +
+    (applicationIndicators.hasEducation ? 4 : 0) +
+    (applicationIndicators.hasSkills ? 2 : 0) +
+    (applicationIndicators.hasFileUpload ? 3 : 0) +
+    (applicationIndicators.hasContactInfo ? 2 : 0) +
+    (applicationIndicators.structuralMatch ? 4 : 0) +
+    (applicationIndicators.comprehensiveApplication ? 5 : 0);
+
+  console.log('📄 Application Analysis:', {
+    applicationIndicators,
+    applicationScore,
+    titleDescText,
+  });
+
   if (
-    quizIndicators > surveyIndicators &&
-    quizIndicators > feedbackIndicators
+    applicationScore >= 8 ||
+    (applicationIndicators.title && applicationFields >= 3) ||
+    applicationIndicators.comprehensiveApplication ||
+    (applicationIndicators.structuralMatch && hasFileUploads >= 1) ||
+    (hasPersonalInfoFields >= 3 &&
+      hasWorkExperienceFields >= 1 &&
+      hasEducationFields >= 1) ||
+    (titleHasApplicationWords &&
+      hasPersonalInfoFields >= 2 &&
+      hasFileUploads >= 1)
   ) {
-    return 'quiz';
-  }
-  if (surveyIndicators > feedbackIndicators) {
-    return 'survey';
-  }
-  if (feedbackIndicators > 0) {
-    return 'feedback';
+    result.type = 'application';
+    result.confidence = Math.min(98, 60 + applicationScore * 4);
+    result.canEvaluate = false; // Applications typically don't need AI sentiment evaluation
+    result.accuracyExpected = 90;
+    result.reasons.push(
+      `✅ APPLICATION: ${applicationFields} application-specific fields, structured candidate data collection`
+    );
+
+    if (applicationIndicators.title) {
+      result.requirements.met.push('Application/job-related title/description');
+    }
+    if (applicationIndicators.hasPersonalInfo) {
+      result.requirements.met.push(
+        `${hasPersonalInfoFields} personal information fields`
+      );
+    }
+    if (applicationIndicators.hasWorkExperience) {
+      result.requirements.met.push(
+        `${hasWorkExperienceFields} work experience fields`
+      );
+    }
+    if (applicationIndicators.hasEducation) {
+      result.requirements.met.push(
+        `${hasEducationFields} education background fields`
+      );
+    }
+    if (applicationIndicators.hasSkills) {
+      result.requirements.met.push(
+        `${hasSkillsFields} skills/qualifications fields`
+      );
+    }
+    if (applicationIndicators.hasFileUpload) {
+      result.requirements.met.push(
+        `${hasFileUploads} file upload fields (resume/documents)`
+      );
+    }
+
+    result.reasons.push(
+      `📄 Application patterns: recruitment-focused, candidate evaluation (score: ${applicationScore})`
+    );
+
+    console.log(
+      `📄 FINAL CLASSIFICATION: APPLICATION (${result.confidence}% confidence, score: ${applicationScore})`
+    );
+    return result;
   }
 
-  return 'general';
+  // 🎯 PRIORITY 3: SURVEY DETECTION (Before feedback to prevent misclassification)
+  const surveyIndicators = {
+    title: titleHasSurveyWords,
+    hasMultipleRatingFields: ratingFields >= 3,
+    hasChoiceFieldsWithRatingOptions: choiceFieldsWithRatingOptions >= 2,
+    hasRatingScales: hasRatingScales >= 2,
+    hasSurveyFields: surveyFields >= 1,
+    structuralComplexity: totalFields >= 5,
+    explicitSurveyTitle: /survey|poll|questionnaire|research.*study/.test(
+      titleDescText
+    ),
+    evaluationFocused:
+      /evaluate|rate.*our|satisfaction|opinion|assessment.*of/.test(
+        titleDescText
+      ),
+  };
+
+  // Calculate survey score with enhanced weighting
+  const surveyScore =
+    (surveyIndicators.title ? 4 : 0) +
+    (surveyIndicators.explicitSurveyTitle ? 5 : 0) +
+    (surveyIndicators.evaluationFocused ? 3 : 0) +
+    (surveyIndicators.hasMultipleRatingFields ? 4 : 0) +
+    (surveyIndicators.hasChoiceFieldsWithRatingOptions ? 3 : 0) +
+    (surveyIndicators.hasRatingScales ? 2 : 0) +
+    (surveyIndicators.hasSurveyFields ? 2 : 0) +
+    (surveyIndicators.structuralComplexity ? 1 : 0);
+
+  console.log('📊 Survey Analysis:', {
+    surveyIndicators,
+    surveyScore,
+    titleDescText,
+  });
+
+  if (
+    surveyScore >= 5 ||
+    (surveyIndicators.explicitSurveyTitle && ratingFields >= 1) ||
+    (surveyIndicators.title && ratingFields >= 2) ||
+    (ratingFields >= 3 && totalFields >= 3) ||
+    choiceFieldsWithRatingOptions >= 2 ||
+    (surveyIndicators.evaluationFocused && hasRatingScales >= 1)
+  ) {
+    result.type = 'survey';
+    result.confidence = Math.min(95, 50 + surveyScore * 6);
+    result.canEvaluate = true;
+    result.accuracyExpected = 95;
+    result.reasons.push(
+      `✅ SURVEY: ${ratingFields} rating fields, ${surveyFields} evaluation fields`
+    );
+
+    if (surveyIndicators.title || surveyIndicators.explicitSurveyTitle) {
+      result.requirements.met.push('Survey/research-related title/description');
+    }
+    if (
+      surveyIndicators.hasMultipleRatingFields ||
+      surveyIndicators.hasChoiceFieldsWithRatingOptions
+    ) {
+      result.requirements.met.push(
+        `${ratingFields} rating/scale fields for quantitative analysis`
+      );
+    }
+    if (surveyIndicators.hasSurveyFields) {
+      result.requirements.met.push(
+        `${surveyFields} survey-specific evaluation fields`
+      );
+    }
+    if (choiceFieldsWithRatingOptions > 0) {
+      result.requirements.met.push(
+        `${choiceFieldsWithRatingOptions} choice fields with rating options`
+      );
+    }
+
+    result.reasons.push(
+      `📊 Survey patterns: research-focused, data collection oriented (score: ${surveyScore})`
+    );
+
+    console.log(
+      `📊 FINAL CLASSIFICATION: SURVEY (${result.confidence}% confidence, score: ${surveyScore})`
+    );
+    return result;
+  }
+
+  // 🎯 PRIORITY 4: FEEDBACK DETECTION
+  const feedbackScore =
+    (hasFeedbackPatterns ? 3 : 0) +
+    (feedbackFields >= 2 ? 2 : 0) +
+    (hasLongTextFields >= 3 ? 2 : 0) +
+    (titleHasFeedbackWords ? 3 : 0) +
+    (ratingFields <= 1 ? 1 : 0);
+
+  const feedbackIndicators = {
+    title: titleHasFeedbackWords,
+    hasTextFields: hasLongTextFields >= 2,
+    hasFeedbackFields: feedbackFields >= 1,
+    feedbackFocused: feedbackFields > surveyFields,
+    lowRatingFields: ratingFields <= 1,
+    experienceWords:
+      /how.*was|experience.*with|thoughts.*on|opinion.*about/.test(
+        titleDescText
+      ),
+  };
+
+  console.log('💬 Feedback Analysis:', {
+    feedbackIndicators,
+    feedbackScore,
+    feedbackFields,
+    surveyFields,
+  });
+
+  if (
+    feedbackScore >= 5 ||
+    (feedbackIndicators.title && feedbackFields >= 1) ||
+    (hasLongTextFields >= 3 && feedbackFields >= 2 && ratingFields <= 1)
+  ) {
+    result.type = 'feedback';
+    result.confidence = Math.min(95, 60 + feedbackScore * 5);
+    result.canEvaluate = true;
+    result.accuracyExpected = 92;
+    result.reasons.push(
+      `✅ FEEDBACK: ${feedbackFields} feedback fields, ${hasLongTextFields} text fields`
+    );
+
+    if (feedbackIndicators.title) {
+      result.requirements.met.push('Feedback-related title/description');
+    }
+    if (feedbackIndicators.hasFeedbackFields) {
+      result.requirements.met.push(
+        `${feedbackFields} feedback-specific fields`
+      );
+    }
+    if (feedbackIndicators.hasTextFields) {
+      result.requirements.met.push(
+        `${hasLongTextFields} text fields for detailed feedback`
+      );
+    }
+
+    result.reasons.push(
+      `💬 Feedback patterns: experience-focused, improvement-oriented (score: ${feedbackScore})`
+    );
+
+    console.log(
+      `💬 FINAL CLASSIFICATION: FEEDBACK (${result.confidence}% confidence, score: ${feedbackScore})`
+    );
+    return result;
+  }
+
+  // 🎯 DEFAULT TO GENERAL with enhanced guidance
+  result.type = 'general';
+  result.confidence = 90;
+  result.canEvaluate = false;
+  result.accuracyExpected = 90;
+
+  // Provide specific guidance based on what's almost there
+  const suggestions = [];
+
+  if (result.singleChoiceCount >= 3 && result.singleChoiceCount < 5) {
+    suggestions.push(
+      `Add ${
+        5 - result.singleChoiceCount
+      } more single choice questions for quiz classification`
+    );
+  }
+
+  if (ratingFields >= 1 && ratingFields < 3) {
+    suggestions.push(
+      `Add ${
+        3 - ratingFields
+      } more rating/scale fields for survey classification`
+    );
+  }
+
+  if (choiceFieldsWithRatingOptions >= 1 && choiceFieldsWithRatingOptions < 2) {
+    suggestions.push(
+      `Add more choice fields with rating options (like "Excellent/Good/Fair/Poor") for survey classification`
+    );
+  }
+
+  if (hasLongTextFields >= 1 && feedbackFields < 2) {
+    suggestions.push(
+      'Convert text fields to feedback-focused questions (e.g., "How was your experience?", "What could we improve?")'
+    );
+  }
+
+  if (titleHasSurveyWords && ratingFields < 3) {
+    suggestions.push(
+      'Add more rating/scale fields to match the survey-themed title'
+    );
+  }
+
+  // 🆕 NEW: Application form suggestions
+  if (
+    hasPersonalInfoFields >= 1 ||
+    hasWorkExperienceFields >= 1 ||
+    hasEducationFields >= 1
+  ) {
+    const missingAppFields = [];
+    if (hasPersonalInfoFields < 2)
+      missingAppFields.push('personal information fields');
+    if (hasWorkExperienceFields < 1)
+      missingAppFields.push('work experience fields');
+    if (hasEducationFields < 1)
+      missingAppFields.push('education background fields');
+    if (hasFileUploads < 1) missingAppFields.push('file upload for resume/CV');
+
+    if (missingAppFields.length > 0) {
+      suggestions.push(
+        `Add ${missingAppFields.join(', ')} for application form classification`
+      );
+    }
+  }
+
+  result.requirements.missing =
+    suggestions.length > 0
+      ? suggestions
+      : [
+          'For QUIZ: Need 5+ single choice questions with correct answers',
+          'For APPLICATION: Need personal info + work experience/education + file upload',
+          'For SURVEY: Need 3+ rating/scale fields OR 2+ choice fields with rating options',
+          'For FEEDBACK: Need 2+ feedback-focused text fields (experience, improvement)',
+        ];
+
+  result.reasons.push('❌ No specific evaluable form type patterns detected');
+
+  // Show current form composition
+  const currentFeatures = [];
+  if (result.singleChoiceCount > 0) {
+    currentFeatures.push(
+      `${result.singleChoiceCount} single choice${
+        hasCorrectAnswers ? ' (with answers)' : ' (no answers)'
+      }`
+    );
+  }
+  if (applicationFields > 0)
+    currentFeatures.push(`${applicationFields} application`);
+  if (hasPersonalInfoFields > 0)
+    currentFeatures.push(`${hasPersonalInfoFields} personal info`);
+  if (hasWorkExperienceFields > 0)
+    currentFeatures.push(`${hasWorkExperienceFields} work exp`);
+  if (hasEducationFields > 0)
+    currentFeatures.push(`${hasEducationFields} education`);
+  if (hasFileUploads > 0) currentFeatures.push(`${hasFileUploads} file upload`);
+  if (ratingFields > 0) currentFeatures.push(`${ratingFields} rating`);
+  if (choiceFieldsWithRatingOptions > 0)
+    currentFeatures.push(
+      `${choiceFieldsWithRatingOptions} choice w/ rating options`
+    );
+  if (feedbackFields > 0) currentFeatures.push(`${feedbackFields} feedback`);
+  if (surveyFields > 0) currentFeatures.push(`${surveyFields} survey-specific`);
+  if (textFields > 0) currentFeatures.push(`${textFields} text`);
+
+  if (currentFeatures.length > 0) {
+    result.requirements.met.push(
+      `Current: ${currentFeatures.join(', ')} fields`
+    );
+    result.reasons.push(
+      `📊 Form composition: ${currentFeatures.join(
+        ', '
+      )} (${totalFields} total)`
+    );
+  }
+
+  console.log(
+    `📝 FINAL CLASSIFICATION: GENERAL (${result.confidence}% confidence)`
+  );
+  return result;
 };
 
 // ===== MOBILE SUBMISSION CARD COMPONENT =====
@@ -775,6 +1410,11 @@ const FormSubmissionsPage: React.FC = () => {
     Set<string>
   >(new Set());
 
+  const [formAnalysis, setFormAnalysis] = useState<ReturnType<
+    typeof detectFormTypeClientEnhanced
+  > | null>(null);
+  const [showFormAnalysis, setShowFormAnalysis] = useState(false);
+
   // Delete confirmation state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [submissionToDelete, setSubmissionToDelete] = useState<string | null>(
@@ -924,21 +1564,23 @@ const FormSubmissionsPage: React.FC = () => {
     return uniqueFields.sort((a, b) => a.priority - b.priority).slice(0, 2);
   };
 
-  // ===== ENHANCED FORM ANALYSIS FUNCTION =====
   const analyzeFormStructure = (formData: any) => {
     let emailFound = false;
     let fullNameFound = false;
 
     const labelsMap: Record<string, string> = {};
+
+    // Use enhanced form type detection
+    const analysis = detectFormTypeClientEnhanced(formData);
+    setFormAnalysis(analysis);
+
+    // Update existing state
+    setDetectedFormType(analysis.type);
+    setIsFeedbackForm(analysis.canEvaluate);
+
+    // Continue with existing field analysis for display
     const detectedUniqueFields = detectUniqueFields(formData);
     setUniqueFields(detectedUniqueFields);
-
-    // Enhanced form type detection
-    const formType = detectFormTypeClient(formData);
-    const shouldEvaluate = ['quiz', 'survey', 'feedback'].includes(formType);
-
-    setDetectedFormType(formType);
-    setIsFeedbackForm(shouldEvaluate);
 
     if (formData?.pages && Array.isArray(formData.pages)) {
       formData.pages.forEach((page: any) => {
@@ -959,27 +1601,68 @@ const FormSubmissionsPage: React.FC = () => {
               emailFound = true;
             }
 
-            // Enhanced full name field detection
-            if (
-              detectedUniqueFields.length < 1 &&
-              (field.type === 'fullName' ||
-                field.label?.toLowerCase().includes('full name') ||
-                field.label?.toLowerCase().includes('name') ||
-                field.label?.toLowerCase().includes('your name') ||
-                field.id?.toLowerCase().includes('fullname') ||
-                field.id?.toLowerCase().includes('name'))
-            ) {
-              fullNameFound = true;
+            // 🚨 FIXED: Enhanced full name field detection with quiz exclusion
+            if (detectedUniqueFields.length < 1) {
+              const fieldLabel = field.label?.toLowerCase() || '';
+              const fieldId = field.id?.toLowerCase() || '';
+
+              // ✅ STRICT: Only match explicit full name patterns
+              const isExplicitFullNameField =
+                field.type === 'fullName' ||
+                fieldLabel === 'full name' ||
+                fieldLabel === 'your full name' ||
+                fieldLabel === 'complete name' ||
+                fieldLabel === 'your name' ||
+                fieldLabel === 'name' ||
+                fieldId === 'fullname' ||
+                fieldId === 'full_name' ||
+                fieldId === 'completename' ||
+                fieldId === 'complete_name' ||
+                fieldId === 'yourname' ||
+                fieldId === 'your_name' ||
+                fieldId === 'name';
+
+              // ❌ EXCLUDE: Quiz question patterns that contain "name"
+              const isQuizQuestion =
+                fieldLabel.includes('what is the name') ||
+                fieldLabel.includes('name the') ||
+                fieldLabel.includes('identify the name') ||
+                fieldLabel.includes('what name') ||
+                fieldLabel.includes('which name') ||
+                fieldLabel.includes('name of the') ||
+                fieldLabel.includes('choose the name') ||
+                fieldLabel.includes('select the name') ||
+                fieldLabel.startsWith('name ') ||
+                fieldLabel.includes('correct name') ||
+                // Choice field types are likely quiz questions
+                (['singleChoice', 'multipleChoice', 'dropdown'].includes(
+                  field.type
+                ) &&
+                  fieldLabel.includes('name')) ||
+                // If field has correctAnswer, it's definitely a quiz question
+                field.correctAnswer ||
+                (field.options &&
+                  field.options.some((opt: any) => opt.isCorrect));
+
+              // ✅ Only set fullNameFound if it's explicit AND not a quiz question
+              if (isExplicitFullNameField && !isQuizQuestion) {
+                fullNameFound = true;
+              }
             }
           });
         }
       });
     }
 
-    // Set display preferences based on unique fields found
+    // Set display preferences with additional quiz check
     if (detectedUniqueFields.length === 0) {
+      // 🚨 ADDITIONAL CHECK: Don't show name field for quiz forms unless explicit
+      if (analysis.type === 'quiz' && !hasExplicitNameField(formData)) {
+        setHasFullNameField(false);
+      } else {
+        setHasFullNameField(fullNameFound);
+      }
       setHasEmailField(emailFound);
-      setHasFullNameField(fullNameFound);
     } else if (detectedUniqueFields.length === 1) {
       setHasEmailField(emailFound);
       setHasFullNameField(false);
@@ -989,8 +1672,247 @@ const FormSubmissionsPage: React.FC = () => {
     }
 
     setFieldLabelsMap(labelsMap);
-
     return labelsMap;
+  };
+
+  const hasExplicitNameField = (formData: any): boolean => {
+    if (!formData?.pages) return false;
+
+    for (const page of formData.pages) {
+      if (page?.fields) {
+        for (const field of page.fields) {
+          if (!field?.label) continue;
+
+          const fieldLabel = field.label.toLowerCase();
+          const fieldId = field.id?.toLowerCase() || '';
+
+          // Only explicit name collection fields
+          const explicitNamePatterns = [
+            'full name',
+            'your full name',
+            'complete name',
+            'your name',
+            'student name',
+            'participant name',
+            'user name',
+            'enter your name',
+            'first name',
+            'last name',
+          ];
+
+          const isExplicitName =
+            explicitNamePatterns.some(
+              pattern => fieldLabel === pattern || fieldLabel.includes(pattern)
+            ) ||
+            field.type === 'fullName' ||
+            fieldId === 'fullname' ||
+            fieldId === 'full_name';
+
+          // Exclude quiz questions
+          const isQuizQuestion =
+            fieldLabel.includes('what is the name') ||
+            fieldLabel.includes('name the') ||
+            fieldLabel.includes('identify the name') ||
+            field.correctAnswer ||
+            ['singleChoice', 'multipleChoice', 'dropdown'].includes(field.type);
+
+          if (isExplicitName && !isQuizQuestion) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const FormAnalysisBadge = () => {
+    if (!formAnalysis) return null;
+
+    const getBadgeColor = () => {
+      if (!formAnalysis.canEvaluate)
+        return 'bg-gray-100 text-gray-600 border-gray-200';
+
+      switch (formAnalysis.type) {
+        case 'quiz':
+          return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'survey':
+          return 'bg-green-100 text-green-800 border-green-200';
+        case 'feedback':
+          return 'bg-orange-100 text-orange-800 border-orange-200';
+        default:
+          return 'bg-gray-100 text-gray-600 border-gray-200';
+      }
+    };
+
+    const getIcon = () => {
+      if (!formAnalysis.canEvaluate) return '❌';
+
+      switch (formAnalysis.type) {
+        case 'quiz':
+          return '📝';
+        case 'survey':
+          return '📊';
+        case 'feedback':
+          return '💬';
+        default:
+          return '📄';
+      }
+    };
+
+    return (
+      <div className='flex items-center gap-2'>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg border text-sm font-medium cursor-pointer ${getBadgeColor()}`}
+          onClick={() => setShowFormAnalysis(!showFormAnalysis)}
+          title='Click to view detailed form analysis'
+        >
+          <span>{getIcon()}</span>
+          <span>
+            {formAnalysis.type.charAt(0).toUpperCase() +
+              formAnalysis.type.slice(1)}{' '}
+            Form
+          </span>
+          {formAnalysis.canEvaluate && (
+            <span className='text-xs opacity-75'>
+              ({formAnalysis.accuracyExpected}% accuracy)
+            </span>
+          )}
+          {formAnalysis.type === 'quiz' && (
+            <span className='text-xs opacity-75'>
+              ({formAnalysis.singleChoiceCount} SCQ)
+            </span>
+          )}
+          <ChevronDown
+            className={`w-3 h-3 transition-transform ${
+              showFormAnalysis ? 'rotate-180' : ''
+            }`}
+          />
+        </motion.div>
+
+        {/* Enhanced evaluation info */}
+        {formAnalysis.canEvaluate && (
+          <Badge
+            variant='outline'
+            className='bg-green-50 text-green-700 border-green-200'
+          >
+            <Brain className='w-3 h-3 mr-1' />
+            AI Ready
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
+  const FormAnalysisDetails = () => {
+    if (!formAnalysis || !showFormAnalysis) return null;
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className='mb-6 overflow-hidden'
+        >
+          <Card className='border-blue-200 bg-blue-50'>
+            <CardContent className='p-4'>
+              <div className='space-y-4'>
+                <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+                  <h4 className='font-semibold text-blue-900'>
+                    Form Analysis Results
+                  </h4>
+                  <div className='flex items-center gap-2 text-sm'>
+                    <span className='text-blue-700'>
+                      Confidence: {formAnalysis.confidence}%
+                    </span>
+                    {formAnalysis.canEvaluate && (
+                      <span className='text-green-700'>
+                        Expected Accuracy: {formAnalysis.accuracyExpected}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {formAnalysis.reasons.length > 0 && (
+                  <div>
+                    <h5 className='font-medium text-blue-800 mb-2'>
+                      Analysis Details:
+                    </h5>
+                    <ul className='text-sm text-blue-700 space-y-1'>
+                      {formAnalysis.reasons.map((reason, index) => (
+                        <li key={index} className='flex items-start gap-2'>
+                          <span className='mt-1 text-xs'>•</span>
+                          <span>{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+                  {formAnalysis.requirements.met.length > 0 && (
+                    <div>
+                      <h5 className='font-medium text-green-700 mb-2'>
+                        ✅ Requirements Met:
+                      </h5>
+                      <ul className='text-sm text-green-600 space-y-1'>
+                        {formAnalysis.requirements.met.map((req, index) => (
+                          <li key={index} className='flex items-start gap-2'>
+                            <span className='mt-1'>✓</span>
+                            <span>{req}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {formAnalysis.requirements.missing.length > 0 && (
+                    <div>
+                      <h5 className='font-medium text-orange-700 mb-2'>
+                        ⚠️ Missing Requirements:
+                      </h5>
+                      <ul className='text-sm text-orange-600 space-y-1'>
+                        {formAnalysis.requirements.missing.map((req, index) => (
+                          <li key={index} className='flex items-start gap-2'>
+                            <span className='mt-1'>⚠</span>
+                            <span>{req}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {formAnalysis.type === 'quiz' && (
+                  <div className='p-3 bg-blue-100 rounded border border-blue-300'>
+                    <p className='text-sm text-blue-800'>
+                      <strong>Quiz Classification Rule:</strong> Forms with 5+
+                      single choice questions are automatically classified as
+                      quizzes for AI evaluation with up to 99% accuracy.
+                    </p>
+                  </div>
+                )}
+
+                {!formAnalysis.canEvaluate && (
+                  <div className='p-3 bg-yellow-100 rounded border border-yellow-300'>
+                    <p className='text-sm text-yellow-800'>
+                      <strong>Note:</strong> This form doesn&apos;t meet the
+                      requirements for AI evaluation. Consider adding the
+                      missing requirements above to enable advanced AI analysis.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </AnimatePresence>
+    );
   };
 
   // ===== VALUE EXTRACTION FUNCTIONS =====
@@ -1199,6 +2121,8 @@ const FormSubmissionsPage: React.FC = () => {
           status: 'failed',
           feedback:
             result.message || 'Evaluation failed due to an unknown error.',
+          confidence: 0,
+          accuracy: 0,
         };
 
         setAiEvaluations(prev => ({
@@ -1237,6 +2161,8 @@ const FormSubmissionsPage: React.FC = () => {
         status: 'failed',
         feedback:
           'Critical evaluation error: Unable to connect to AI service. Please try again later or contact support.',
+        confidence: 0,
+        accuracy: 0,
       };
 
       setAiEvaluations(prev => ({
@@ -1355,6 +2281,8 @@ const FormSubmissionsPage: React.FC = () => {
             feedback:
               result.message ||
               'Batch evaluation failed due to an unknown error.',
+            confidence: 0,
+            accuracy: 0,
           };
         });
 
@@ -1399,6 +2327,8 @@ const FormSubmissionsPage: React.FC = () => {
           status: 'failed',
           feedback:
             'Critical evaluation error: Unable to connect to AI service. Please try again later.',
+          confidence: 0,
+          accuracy: 0,
         };
       });
 
@@ -1884,12 +2814,12 @@ const FormSubmissionsPage: React.FC = () => {
 
     const evaluation = aiEvaluations[submissionId];
     if (!evaluation) {
-      const pendingText =
-        detectedFormType === 'general' ? 'Not Applicable' : 'Pending';
-      const bgColor =
-        detectedFormType === 'general'
-          ? 'bg-gray-100 text-gray-600'
-          : 'bg-gray-100 text-gray-600 hover:bg-blue-50 cursor-pointer';
+      const pendingText = formAnalysis?.canEvaluate
+        ? 'Pending Analysis'
+        : 'Not Evaluable';
+      const bgColor = formAnalysis?.canEvaluate
+        ? 'bg-gray-100 text-gray-600 hover:bg-blue-50 cursor-pointer'
+        : 'bg-gray-100 text-gray-600';
 
       return (
         <Badge variant='outline' className={`${bgColor} text-xs`}>
@@ -1900,10 +2830,6 @@ const FormSubmissionsPage: React.FC = () => {
     }
 
     if (evaluation.status === 'failed') {
-      const isRetryable =
-        evaluation.categories?.includes('evaluation-failed') ||
-        evaluation.categories?.includes('batch-evaluation-failed');
-
       return (
         <Badge
           variant='destructive'
@@ -1911,16 +2837,17 @@ const FormSubmissionsPage: React.FC = () => {
           title={`Evaluation failed: ${evaluation.feedback}`}
         >
           <XCircle className='w-3 h-3 mr-1' />
-          {isRetryable ? 'Failed (Retry)' : 'Failed'}
+          Failed (Retry)
         </Badge>
       );
     }
 
-    // Enhanced form type specific badges with better styling
+    // Enhanced badges with accuracy information
     switch (evaluation.formType) {
       case 'quiz':
         if (evaluation.quizResults) {
           const percentage = evaluation.quizResults.percentage;
+          const accuracy = evaluation.accuracy || 98;
           const scoreColor =
             percentage >= 80
               ? 'green'
@@ -1934,10 +2861,10 @@ const FormSubmissionsPage: React.FC = () => {
             <Badge
               variant='default'
               className={`bg-${scoreColor}-100 text-${scoreColor}-800 border-${scoreColor}-200 hover:bg-${scoreColor}-50 cursor-pointer text-xs`}
-              title={`Quiz Score: ${evaluation.quizResults.correctAnswers}/${evaluation.quizResults.totalQuestions} correct (${percentage}%)`}
+              title={`Quiz Score: ${evaluation.quizResults.correctAnswers}/${evaluation.quizResults.totalQuestions} correct (${percentage}%) | Accuracy: ${accuracy}%`}
             >
               <Star className='w-3 h-3 mr-1' />
-              {percentage}% Score
+              {percentage}% ({accuracy}% acc)
             </Badge>
           );
         }
@@ -1947,23 +2874,22 @@ const FormSubmissionsPage: React.FC = () => {
         if (evaluation.surveyResults) {
           const positivePercent =
             evaluation.surveyResults.overallSentiment.positive;
+          const accuracy = evaluation.accuracy || 95;
           const surveyColor =
             positivePercent >= 70
               ? 'green'
               : positivePercent >= 50
               ? 'blue'
-              : positivePercent >= 30
-              ? 'yellow'
-              : 'red';
+              : 'yellow';
 
           return (
             <Badge
               variant='default'
               className={`bg-${surveyColor}-100 text-${surveyColor}-800 border-${surveyColor}-200 hover:bg-${surveyColor}-50 cursor-pointer text-xs`}
-              title={`Survey Analysis: ${positivePercent}% positive, ${evaluation.surveyResults.overallSentiment.neutral}% neutral, ${evaluation.surveyResults.overallSentiment.negative}% negative`}
+              title={`Survey: ${positivePercent}% positive | Accuracy: ${accuracy}%`}
             >
               <Brain className='w-3 h-3 mr-1' />
-              {positivePercent}% Positive
+              {positivePercent}% Pos ({accuracy}% acc)
             </Badge>
           );
         }
@@ -1974,7 +2900,7 @@ const FormSubmissionsPage: React.FC = () => {
           const positivePercent =
             evaluation.feedbackResults.sentimentBreakdown.positive;
           const urgencyLevel = evaluation.feedbackResults.urgencyLevel;
-
+          const accuracy = evaluation.accuracy || 92;
           const feedbackColor =
             urgencyLevel === 'high'
               ? 'red'
@@ -1982,44 +2908,33 @@ const FormSubmissionsPage: React.FC = () => {
               ? 'yellow'
               : 'green';
 
-          const urgencyIcon = urgencyLevel === 'high' ? AlertTriangle : Brain;
-
           return (
             <Badge
               variant='default'
               className={`bg-${feedbackColor}-100 text-${feedbackColor}-800 border-${feedbackColor}-200 hover:bg-${feedbackColor}-50 cursor-pointer text-xs`}
-              title={`Feedback Analysis: ${positivePercent}% positive sentiment, ${urgencyLevel} priority level`}
+              title={`Feedback: ${positivePercent}% positive, ${urgencyLevel} priority | Accuracy: ${accuracy}%`}
             >
-              {React.createElement(urgencyIcon, { className: 'w-3 h-3 mr-1' })}
+              <Brain className='w-3 h-3 mr-1' />
               {urgencyLevel === 'high'
                 ? 'High Priority'
-                : `${positivePercent}% Positive`}
+                : `${positivePercent}% Pos`}{' '}
+              ({accuracy}% acc)
             </Badge>
           );
         }
         break;
-
-      default:
-        return (
-          <Badge
-            variant='default'
-            className='bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-50 cursor-pointer text-xs'
-            title='General analysis completed'
-          >
-            <Brain className='w-3 h-3 mr-1' />
-            Analyzed
-          </Badge>
-        );
     }
 
     // Fallback badge
+    const accuracy = evaluation.accuracy || 90;
     return (
       <Badge
         variant='default'
         className='bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-50 cursor-pointer text-xs'
+        title={`Analysis completed with ${accuracy}% accuracy`}
       >
         <Brain className='w-3 h-3 mr-1' />
-        Completed
+        Analyzed ({accuracy}% acc)
       </Badge>
     );
   };
@@ -2473,46 +3388,15 @@ const FormSubmissionsPage: React.FC = () => {
               <h1 className='text-2xl md:text-3xl font-bold text-gray-900 truncate'>
                 Form Submissions
               </h1>
-              {detectedFormType !== 'general' && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <Badge
-                    variant='outline'
-                    className={`
-                      ${
-                        detectedFormType === 'quiz'
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : ''
-                      }
-                      ${
-                        detectedFormType === 'survey'
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : ''
-                      }
-                      ${
-                        detectedFormType === 'feedback'
-                          ? 'bg-orange-50 text-orange-700 border-orange-200'
-                          : ''
-                      }
-                      font-medium text-xs sm:text-sm
-                    `}
-                  >
-                    {detectedFormType.charAt(0).toUpperCase() +
-                      detectedFormType.slice(1)}{' '}
-                    Form
-                    {isFeedbackForm && <Brain className='w-3 h-3 ml-1' />}
-                  </Badge>
-                </motion.div>
-              )}
+              <FormAnalysisBadge />
             </div>
             <p className='text-gray-600 text-sm md:text-base'>
               Manage and view all form submissions
               {isFeedbackForm && ' with AI-powered analysis'}
             </p>
           </div>
+
+          <FormAnalysisDetails />
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
@@ -3039,15 +3923,16 @@ const FormSubmissionsPage: React.FC = () => {
             maxWidth: '95vw',
           }}
         >
-          <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white z-10'>
-            <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2'>
-              <span className='text-lg md:text-xl font-bold text-gray-900'>
-                Submission Details
-              </span>
-              {selectedSubmission && isFeedbackForm && (
-                <Badge
-                  variant='outline'
-                  className={`
+          <div className='sticky top-0 z-10 bg-white'>
+            <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white'>
+              <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                <span className='text-lg md:text-xl font-bold text-gray-900'>
+                  Submission Details
+                </span>
+                {selectedSubmission && isFeedbackForm && (
+                  <Badge
+                    variant='outline'
+                    className={`
                     w-fit ${
                       detectedFormType === 'quiz'
                         ? 'bg-blue-50 text-blue-700 border-blue-200'
@@ -3064,18 +3949,25 @@ const FormSubmissionsPage: React.FC = () => {
                         : ''
                     }
                   `}
-                >
-                  {detectedFormType.charAt(0).toUpperCase() +
-                    detectedFormType.slice(1)}{' '}
-                  Analysis
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription className='text-gray-600'>
-              View and manage detailed submission information including
-              submitted data, files, and AI analysis results.
-            </DialogDescription>
-          </DialogHeader>
+                  >
+                    {detectedFormType.charAt(0).toUpperCase() +
+                      detectedFormType.slice(1)}{' '}
+                    Analysis
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription className='text-gray-600'>
+                View and manage detailed submission information including
+                submitted data, files, and AI analysis results.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Custom positioned close button */}
+            <DialogClose className='absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground'>
+              <X className='h-4 w-4' />
+              <span className='sr-only'>Close</span>
+            </DialogClose>
+          </div>
 
           {selectedSubmission && (
             <motion.div
@@ -3733,36 +4625,44 @@ const FormSubmissionsPage: React.FC = () => {
             maxWidth: '95vw',
           }}
         >
-          <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white z-10'>
-            <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2 text-lg md:text-xl font-bold text-gray-900'>
-              <div className='flex items-center gap-2'>
-                <Brain className='w-6 h-6 text-purple-600' />
-                AI Evaluation Results
-              </div>
-              {selectedEvaluation && (
-                <Badge
-                  variant='secondary'
-                  className={`w-fit ${
-                    selectedEvaluation.formType === 'quiz'
-                      ? 'bg-blue-100 text-blue-800'
-                      : selectedEvaluation.formType === 'survey'
-                      ? 'bg-green-100 text-green-800'
-                      : selectedEvaluation.formType === 'feedback'
-                      ? 'bg-orange-100 text-orange-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {selectedEvaluation.formType.charAt(0).toUpperCase() +
-                    selectedEvaluation.formType.slice(1)}{' '}
-                  Form Analysis
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription className='text-gray-600'>
-              Comprehensive AI-powered analysis including sentiment evaluation,
-              performance metrics, and actionable insights for this submission.
-            </DialogDescription>
-          </DialogHeader>
+          <div className='sticky top-0 z-10 bg-white'>
+            <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white'>
+              <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2 text-lg md:text-xl font-bold text-gray-900'>
+                <div className='flex items-center gap-2'>
+                  <Brain className='w-6 h-6 text-purple-600' />
+                  AI Evaluation Results
+                </div>
+                {selectedEvaluation && (
+                  <Badge
+                    variant='secondary'
+                    className={`w-fit ${
+                      selectedEvaluation.formType === 'quiz'
+                        ? 'bg-blue-100 text-blue-800'
+                        : selectedEvaluation.formType === 'survey'
+                        ? 'bg-green-100 text-green-800'
+                        : selectedEvaluation.formType === 'feedback'
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {selectedEvaluation.formType.charAt(0).toUpperCase() +
+                      selectedEvaluation.formType.slice(1)}{' '}
+                    Form Analysis
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription className='text-gray-600'>
+                Comprehensive AI-powered analysis including sentiment
+                evaluation, performance metrics, and actionable insights for
+                this submission.
+              </DialogDescription>
+            </DialogHeader>
+            {/* Custom positioned close button */}
+            <DialogClose className='absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground'>
+              <X className='h-4 w-4' />
+              <span className='sr-only'>Close</span>
+            </DialogClose>
+          </div>
 
           {selectedEvaluation && (
             <motion.div

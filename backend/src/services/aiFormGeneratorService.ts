@@ -1,4 +1,4 @@
-// src/services/aiFormGeneratorService.ts
+// src/services/aiFormGeneratorService.ts - COMPLETE ENHANCED VERSION WITH FORM TYPE DETECTION FIX
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,7 +13,7 @@ export class AIFormGeneratorService {
 
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite', // Updated model ID
+      model: 'gemini-2.0-flash-lite',
       generationConfig: {
         temperature: 0.2,
         topK: 40,
@@ -44,8 +44,14 @@ export class AIFormGeneratorService {
         };
       }
 
-      // Generate form config
-      const systemPrompt = this.buildSystemPrompt(prompt.trim());
+      // 🎯 FIXED: Detect intended form type from user prompt BEFORE generation
+      const intendedFormType = this.detectIntendedFormType(prompt.trim());
+
+      // Generate form config with explicit form type guidance
+      const systemPrompt = this.buildSystemPrompt(
+        prompt.trim(),
+        intendedFormType
+      );
       const result = await this.model.generateContent(systemPrompt);
       const response = await result.response;
       const generatedText = response.text();
@@ -60,10 +66,19 @@ export class AIFormGeneratorService {
         };
       }
 
-      // Clean and enhance form config
+      // Clean and enhance form config with EXPLICIT form type
       let formConfig = parseResult.data;
-      formConfig = this.cleanFormConfigForMongoDB(formConfig);
+      formConfig = this.cleanFormConfigForMongoDB(formConfig, intendedFormType);
       formConfig = this.addUniqueIds(formConfig);
+      formConfig = this.enforceFormTypeStructure(
+        formConfig,
+        intendedFormType,
+        prompt
+      );
+      formConfig.title = await this.generateUniqueTitle(
+        formConfig.title,
+        userId
+      );
 
       const generationTime = Date.now() - startTime;
 
@@ -84,6 +99,562 @@ export class AIFormGeneratorService {
     }
   }
 
+  private async generateUniqueTitle(
+    baseTitle: string,
+    userId: string
+  ): Promise<string> {
+    try {
+      // First, check if the base title is available
+      const existingForm = await this.checkTitleExists(baseTitle, userId);
+      if (!existingForm) {
+        return baseTitle;
+      }
+
+      // If title exists, generate variations
+      let uniqueTitle = baseTitle;
+      let counter = 1;
+      let maxAttempts = 10;
+
+      while (counter <= maxAttempts) {
+        // Strategy 1: Add timestamp-based suffix
+        if (counter <= 3) {
+          const timestamp = new Date()
+            .toISOString()
+            .slice(5, 16)
+            .replace(/[-:]/g, '');
+          uniqueTitle = `${baseTitle} ${timestamp}`;
+        }
+        // Strategy 2: Add incremental number
+        else if (counter <= 6) {
+          uniqueTitle = `${baseTitle} (${counter - 3})`;
+        }
+        // Strategy 3: Add descriptive suffix
+        else if (counter === 7) {
+          uniqueTitle = `${baseTitle} - Copy`;
+        } else if (counter === 8) {
+          uniqueTitle = `${baseTitle} - Version ${counter - 6}`;
+        }
+        // Strategy 4: Add user-specific suffix
+        else {
+          const userSuffix = userId.slice(-4);
+          uniqueTitle = `${baseTitle} - ${userSuffix}${counter}`;
+        }
+
+        // Check if this variation is available
+        const exists = await this.checkTitleExists(uniqueTitle, userId);
+        if (!exists) {
+          console.log(`✅ Generated unique title: "${uniqueTitle}"`);
+          return uniqueTitle;
+        }
+
+        counter++;
+      }
+
+      // Fallback: Add UUID if all attempts failed
+      const { v4: uuidv4 } = require('uuid');
+      uniqueTitle = `${baseTitle} - ${uuidv4().slice(0, 8)}`;
+      console.log(`🔄 Fallback unique title: "${uniqueTitle}"`);
+      return uniqueTitle;
+    } catch (error) {
+      console.error('❌ Error generating unique title:', error);
+      // Fallback to timestamp
+      const timestamp = Date.now();
+      return `${baseTitle} ${timestamp}`;
+    }
+  }
+
+  private async checkTitleExists(
+    title: string,
+    userId: string
+  ): Promise<boolean> {
+    try {
+      // This would connect to your database to check
+      // You'll need to import your Form model here
+      const Form = require('../models/Form'); // Adjust path as needed
+
+      const existingForm = await Form.findOne({
+        title: title,
+        userId: userId,
+      });
+
+      return !!existingForm;
+    } catch (error) {
+      console.error('❌ Error checking title existence:', error);
+      return false; // Assume it doesn't exist if check fails
+    }
+  }
+
+  // 🎯 NEW METHOD: Detect intended form type from user prompt
+  private detectIntendedFormType(
+    prompt: string
+  ): 'quiz' | 'survey' | 'feedback' | 'general' {
+    const lowerPrompt = prompt.toLowerCase();
+
+    // QUIZ DETECTION - Highest priority
+    const quizKeywords = [
+      'quiz',
+      'test',
+      'assessment',
+      'exam',
+      'evaluation',
+      'question',
+      'correct answer',
+      'multiple choice questions',
+      'true or false',
+      'choose the correct',
+      'select the right',
+      'knowledge test',
+      'academic',
+      'learning',
+      'educational',
+      'course quiz',
+    ];
+
+    for (const keyword of quizKeywords) {
+      if (lowerPrompt.includes(keyword)) {
+        console.log(`🎯 Quiz detected by keyword: "${keyword}"`);
+        return 'quiz';
+      }
+    }
+
+    // FEEDBACK DETECTION - Second priority
+    const feedbackKeywords = [
+      'feedback',
+      'review',
+      'comment',
+      'experience',
+      'opinion',
+      'tell us what you think',
+      'share your thoughts',
+      'how was your',
+      'improvement',
+      'suggestion',
+      'testimonial',
+      'rating experience',
+      'customer feedback',
+      'user experience',
+      'service review',
+      'product review',
+      'how did we do',
+      'rate our service',
+    ];
+
+    for (const keyword of feedbackKeywords) {
+      if (lowerPrompt.includes(keyword)) {
+        console.log(`🎯 Feedback detected by keyword: "${keyword}"`);
+        return 'feedback';
+      }
+    }
+
+    // SURVEY DETECTION - Third priority
+    const surveyKeywords = [
+      'survey',
+      'poll',
+      'research',
+      'study',
+      'questionnaire',
+      'data collection',
+      'market research',
+      'satisfaction survey',
+      'demographic',
+      'statistical',
+      'analysis',
+      'respondent',
+      'participant',
+      'census',
+      'opinion poll',
+      'customer survey',
+    ];
+
+    for (const keyword of surveyKeywords) {
+      if (lowerPrompt.includes(keyword)) {
+        console.log(`🎯 Survey detected by keyword: "${keyword}"`);
+        return 'survey';
+      }
+    }
+
+    console.log(`🎯 No specific type detected, defaulting to general`);
+    return 'general';
+  }
+
+  // 🚨 NEW METHOD: Enforce form structure based on intended type
+  private enforceFormTypeStructure(
+    config: any,
+    intendedType: string,
+    originalPrompt: string
+  ): any {
+    console.log(`🔧 Enforcing ${intendedType} structure...`);
+
+    switch (intendedType) {
+      case 'quiz':
+        return this.enforceQuizStructure(config, originalPrompt);
+      case 'feedback':
+        return this.enforceFeedbackStructure(config, originalPrompt);
+      case 'survey':
+        return this.enforceSurveyStructure(config, originalPrompt);
+      default:
+        return config;
+    }
+  }
+
+  // 🎯 QUIZ STRUCTURE ENFORCER
+  private enforceQuizStructure(config: any, prompt: string): any {
+    console.log(
+      '🎯 Enforcing QUIZ structure with 5+ single choice questions...'
+    );
+
+    if (!config.pages || !Array.isArray(config.pages)) {
+      config.pages = [{ id: uuidv4(), fields: [] }];
+    }
+
+    let singleChoiceCount = 0;
+    let totalQuestions = 0;
+
+    // Count existing single choice questions
+    config.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields.forEach((field: any) => {
+          if (field.type === 'singleChoice' || field.type === 'dropdown') {
+            singleChoiceCount++;
+            totalQuestions++;
+          } else if (field.type === 'multipleChoice') {
+            totalQuestions++;
+          }
+        });
+      }
+    });
+
+    // 🚨 CRITICAL: Ensure minimum 5 single choice questions for quiz classification
+    if (singleChoiceCount < 5) {
+      const questionsToAdd = 5 - singleChoiceCount;
+      console.log(
+        `🔧 Adding ${questionsToAdd} single choice questions to meet quiz requirements`
+      );
+
+      const quizQuestions = this.generateQuizQuestions(prompt, questionsToAdd);
+
+      // Add to first page
+      if (!config.pages[0].fields) {
+        config.pages[0].fields = [];
+      }
+
+      config.pages[0].fields.push(...quizQuestions);
+    }
+
+    // Ensure all choice fields have correct answers
+    config.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields.forEach((field: any) => {
+          if (
+            ['singleChoice', 'multipleChoice', 'dropdown'].includes(field.type)
+          ) {
+            if (
+              !field.correctAnswer &&
+              field.options &&
+              field.options.length > 0
+            ) {
+              // Set second option as correct by default
+              field.options[1] = field.options[1] || {
+                label: 'Correct Option',
+                value: 'correct',
+              };
+              field.options[1].isCorrect = true;
+              field.correctAnswer = field.options[1].value;
+              console.log(
+                `✅ Added correct answer to quiz question: ${field.label}`
+              );
+            }
+          }
+        });
+      }
+    });
+
+    // Update title to reflect quiz nature if not already
+    if (
+      !config.title.toLowerCase().includes('quiz') &&
+      !config.title.toLowerCase().includes('test') &&
+      !config.title.toLowerCase().includes('assessment')
+    ) {
+      config.title = config.title + ' Quiz';
+    }
+
+    return config;
+  }
+
+  // 🎯 FEEDBACK STRUCTURE ENFORCER
+  private enforceFeedbackStructure(config: any, prompt: string): any {
+    console.log(
+      '💬 Enforcing FEEDBACK structure with text fields and experience questions...'
+    );
+
+    if (!config.pages || !Array.isArray(config.pages)) {
+      config.pages = [{ id: uuidv4(), fields: [] }];
+    }
+
+    let feedbackFieldCount = 0;
+    let textFieldCount = 0;
+
+    // Count existing feedback-related fields
+    config.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields.forEach((field: any) => {
+          const fieldLabel = field.label?.toLowerCase() || '';
+
+          if (field.type === 'longText' || field.type === 'paragraph') {
+            textFieldCount++;
+
+            if (
+              /feedback|comment|improve|experience|suggest|issue|problem|opinion|thoughts|recommendation|tell.*us|what.*do.*you.*think|how.*was|describe|explain|any.*additional/.test(
+                fieldLabel
+              )
+            ) {
+              feedbackFieldCount++;
+            }
+          }
+        });
+      }
+    });
+
+    // 🚨 CRITICAL: Ensure sufficient feedback fields
+    if (feedbackFieldCount < 2 || textFieldCount < 3) {
+      console.log(
+        `🔧 Adding feedback fields (current: ${feedbackFieldCount} feedback, ${textFieldCount} text)`
+      );
+
+      const feedbackFields = this.generateFeedbackFields(prompt);
+
+      if (!config.pages[0].fields) {
+        config.pages[0].fields = [];
+      }
+
+      config.pages[0].fields.push(...feedbackFields);
+    }
+
+    // Remove or convert quiz-like fields
+    config.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields = page.fields.map((field: any) => {
+          // Remove correctAnswer from choice fields in feedback forms
+          if (
+            ['singleChoice', 'multipleChoice', 'dropdown'].includes(field.type)
+          ) {
+            delete field.correctAnswer;
+            if (field.options) {
+              field.options.forEach((option: any) => {
+                delete option.isCorrect;
+              });
+            }
+          }
+          return field;
+        });
+      }
+    });
+
+    return config;
+  }
+
+  // 🎯 SURVEY STRUCTURE ENFORCER
+  private enforceSurveyStructure(config: any, prompt: string): any {
+    console.log(
+      '📊 Enforcing SURVEY structure with choice-based rating questions...'
+    );
+
+    if (!config.pages || !Array.isArray(config.pages)) {
+      config.pages = [{ id: uuidv4(), fields: [] }];
+    }
+
+    let ratingFieldCount = 0;
+    let choiceFieldCount = 0;
+
+    // Count existing survey-related fields (including rating-like choice fields)
+    config.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields.forEach((field: any) => {
+          const fieldLabel = field.label?.toLowerCase() || '';
+
+          // Count rating-like patterns in choice fields or actual rating fields
+          if (
+            field.type === 'rating' ||
+            field.type === 'scale' ||
+            /rate|rating|satisfaction|quality|likely|recommend|score|scale|strongly.*agree|very.*satisfied/.test(
+              fieldLabel
+            )
+          ) {
+            ratingFieldCount++;
+          }
+
+          // Count choice fields that could be rating-like
+          if (
+            ['singleChoice', 'multipleChoice', 'dropdown'].includes(field.type)
+          ) {
+            choiceFieldCount++;
+            // If it has rating-like labels, count as rating field
+            if (
+              field.options &&
+              field.options.some((opt: any) =>
+                /satisfied|excellent|poor|star|rate|quality|likely/.test(
+                  opt.label?.toLowerCase() || ''
+                )
+              )
+            ) {
+              ratingFieldCount++;
+            }
+          }
+        });
+      }
+    });
+
+    // 🚨 CRITICAL: Ensure sufficient rating/evaluation fields for survey
+    if (ratingFieldCount < 3) {
+      console.log(
+        `🔧 Adding rating-style choice fields for survey (current: ${ratingFieldCount})`
+      );
+
+      const surveyFields = this.generateSurveyFields(prompt);
+
+      if (!config.pages[0].fields) {
+        config.pages[0].fields = [];
+      }
+
+      config.pages[0].fields.push(...surveyFields);
+    }
+
+    // Remove correctAnswer from choice fields in surveys (no right/wrong answers)
+    config.pages.forEach((page: any) => {
+      if (page.fields) {
+        page.fields = page.fields.map((field: any) => {
+          if (
+            ['singleChoice', 'multipleChoice', 'dropdown'].includes(field.type)
+          ) {
+            delete field.correctAnswer;
+            if (field.options) {
+              field.options.forEach((option: any) => {
+                delete option.isCorrect;
+              });
+            }
+          }
+          return field;
+        });
+      }
+    });
+
+    return config;
+  }
+
+  // Generate quiz questions
+  private generateQuizQuestions(prompt: string, count: number): any[] {
+    const questions = [];
+
+    for (let i = 0; i < count; i++) {
+      questions.push({
+        id: uuidv4(),
+        type: 'singleChoice',
+        label: `Question ${i + 1}: Choose the correct answer`,
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Select the most appropriate answer',
+        options: [
+          { label: 'Option A', value: 'a' },
+          { label: 'Option B (Correct)', value: 'b', isCorrect: true },
+          { label: 'Option C', value: 'c' },
+          { label: 'Option D', value: 'd' },
+        ],
+        correctAnswer: 'b',
+      });
+    }
+
+    return questions;
+  }
+
+  // Generate feedback fields
+  private generateFeedbackFields(prompt: string): any[] {
+    return [
+      {
+        id: uuidv4(),
+        type: 'longText',
+        label: 'How was your overall experience?',
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Please describe your experience in detail',
+        rows: 4,
+      },
+      {
+        id: uuidv4(),
+        type: 'paragraph',
+        label: 'What could we improve?',
+        labelAlignment: 'LEFT',
+        required: false,
+        helpText: 'Share any suggestions for improvement',
+        rows: 4,
+      },
+      {
+        id: uuidv4(),
+        type: 'longText',
+        label: 'Any additional feedback or comments?',
+        labelAlignment: 'LEFT',
+        required: false,
+        helpText: 'Feel free to share any other thoughts',
+        rows: 3,
+      },
+    ];
+  }
+
+  // Generate survey fields
+  private generateSurveyFields(prompt: string): any[] {
+    return [
+      {
+        id: uuidv4(),
+        type: 'singleChoice', // Use singleChoice instead of rating
+        label: 'How would you rate your satisfaction?',
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Select your satisfaction level',
+        options: [
+          { label: '⭐ Very Dissatisfied', value: '1' },
+          { label: '⭐⭐ Dissatisfied', value: '2' },
+          { label: '⭐⭐⭐ Neutral', value: '3' },
+          { label: '⭐⭐⭐⭐ Satisfied', value: '4' },
+          { label: '⭐⭐⭐⭐⭐ Very Satisfied', value: '5' },
+        ],
+      },
+      {
+        id: uuidv4(),
+        type: 'singleChoice',
+        label: 'How likely are you to recommend us?',
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Select the option that best describes your likelihood',
+        options: [
+          { label: 'Very Likely', value: 'very_likely' },
+          { label: 'Likely', value: 'likely' },
+          { label: 'Neutral', value: 'neutral' },
+          { label: 'Unlikely', value: 'unlikely' },
+          { label: 'Very Unlikely', value: 'very_unlikely' },
+        ],
+      },
+      {
+        id: uuidv4(),
+        type: 'singleChoice', // Use singleChoice instead of rating
+        label: 'Rate the quality of our service',
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Choose a rating from 1 (poor) to 10 (excellent)',
+        options: [
+          { label: '1 - Very Poor', value: '1' },
+          { label: '2 - Poor', value: '2' },
+          { label: '3 - Below Average', value: '3' },
+          { label: '4 - Fair', value: '4' },
+          { label: '5 - Average', value: '5' },
+          { label: '6 - Above Average', value: '6' },
+          { label: '7 - Good', value: '7' },
+          { label: '8 - Very Good', value: '8' },
+          { label: '9 - Excellent', value: '9' },
+          { label: '10 - Outstanding', value: '10' },
+        ],
+      },
+    ];
+  }
+
   private hasQuizFields(config: any): boolean {
     if (!config.pages) return false;
 
@@ -99,11 +670,23 @@ export class AIFormGeneratorService {
     return false;
   }
 
-  private buildSystemPrompt(userPrompt: string): string {
+  // Updated system prompt with explicit form type guidance
+  private buildSystemPrompt(
+    userPrompt: string,
+    intendedFormType?: string
+  ): string {
+    const typeSpecificInstructions = intendedFormType
+      ? this.getTypeSpecificInstructions(intendedFormType)
+      : '';
+
+    const formTypeHeader = intendedFormType
+      ? `🎯 CRITICAL: This MUST be a ${intendedFormType.toUpperCase()} form type. Follow the specific requirements below:\n\n${typeSpecificInstructions}\n\n`
+      : '';
+
     return `
 You are an expert form builder AI assistant. Create a professional form configuration based on the user's requirements.
 
-CRITICAL INSTRUCTIONS:
+${formTypeHeader}CRITICAL INSTRUCTIONS:
 1. Return ONLY valid JSON - no explanations, markdown, or extra text
 2. Follow the exact structure and field types provided
 3. Generate logical, user-friendly field labels
@@ -117,7 +700,7 @@ AVAILABLE FIELD TYPES (use exact values):
 - "longText": Multi-line text input (3-4 lines)
 - "paragraph": Large text area for detailed responses
 - "dropdown": Select from predefined options (must include options array)
-- "singleChoice": Radio buttons for single selection (must include options array)
+- "singleChoice": Radio buttons for single selection (must include options array) - USE FOR RATING SCALES
 - "multipleChoice": Checkboxes for multiple selections (must include options array)
 - "number": Numeric input with validation (can include min/max)
 - "image": Image upload field
@@ -132,6 +715,19 @@ AVAILABLE FIELD TYPES (use exact values):
 - "signature": Digital signature capture with customizable instructions
 - "fillBlank": Fill-in-the-blank text with customizable template
 - "productList": Product catalog with pricing and quantity selection
+
+🚨 IMPORTANT: For rating/satisfaction questions, use "singleChoice" with star/number options like:
+{
+  "type": "singleChoice",
+  "label": "How satisfied are you?",
+  "options": [
+    {"label": "⭐ Very Dissatisfied", "value": "1"},
+    {"label": "⭐⭐ Dissatisfied", "value": "2"},
+    {"label": "⭐⭐⭐ Neutral", "value": "3"},
+    {"label": "⭐⭐⭐⭐ Satisfied", "value": "4"},
+    {"label": "⭐⭐⭐⭐⭐ Very Satisfied", "value": "5"}
+  ]
+}
 
 ENHANCED FIELD CONFIGURATIONS:
 
@@ -299,9 +895,100 @@ USER REQUEST: "${userPrompt}"
 Generate the form configuration now:`;
   }
 
-  private cleanFormConfigForMongoDB(config: any): any {
+  private getTypeSpecificInstructions(formType: string): string {
+    switch (formType) {
+      case 'quiz':
+        return `
+🎯 QUIZ FORM REQUIREMENTS:
+- MUST include at least 5 single choice questions (singleChoice or dropdown type)
+- EVERY choice field MUST have "correctAnswer" property set
+- EVERY choice field MUST have at least one option marked with "isCorrect": true
+- Questions should test knowledge, understanding, or learning
+- Use clear, educational question formats like "What is...", "Which of the following...", "Choose the correct..."
+- Include explanatory help text for complex questions
+- Title should include words like "Quiz", "Test", "Assessment", or "Evaluation"
+
+Example quiz field:
+{
+  "type": "singleChoice",
+  "label": "What is the capital of France?",
+  "options": [
+    {"label": "London", "value": "london"},
+    {"label": "Paris", "value": "paris", "isCorrect": true},
+    {"label": "Berlin", "value": "berlin"}
+  ],
+  "correctAnswer": "paris",
+  "required": true,
+  "helpText": "Choose the correct capital city"
+}`;
+
+      case 'feedback':
+        return `
+💬 FEEDBACK FORM REQUIREMENTS:
+- MUST include at least 3-4 text fields (longText, paragraph types)
+- Focus on collecting opinions, experiences, and suggestions
+- Use questions like "How was your experience?", "What could we improve?", "Share your thoughts"
+- NO correctAnswer properties on any fields
+- Include rating or satisfaction questions if relevant
+- Encourage detailed, open-ended responses
+- Title should include words like "Feedback", "Review", "Experience", "Tell us"
+
+Example feedback field:
+{
+  "type": "longText",
+  "label": "How was your overall experience with our service?",
+  "required": true,
+  "helpText": "Please describe your experience in detail",
+  "rows": 4
+}`;
+
+      case 'survey':
+        return `
+📊 SURVEY FORM REQUIREMENTS:
+- MUST include at least 3 rating/satisfaction questions using singleChoice with star/number options
+- Include demographic or preference questions (singleChoice, multipleChoice)
+- Focus on data collection, research, and statistical analysis
+- NO correctAnswer properties on any fields
+- Use singleChoice fields with rating scales, satisfaction measures, likelihood questions
+- Include both quantitative (rating scales) and qualitative (text) questions
+- Title should include words like "Survey", "Research", "Study", "Poll"
+
+Example survey rating field:
+{
+  "type": "singleChoice",
+  "label": "How satisfied are you with our service?",
+  "options": [
+    {"label": "⭐ Very Dissatisfied", "value": "1"},
+    {"label": "⭐⭐ Dissatisfied", "value": "2"},
+    {"label": "⭐⭐⭐ Neutral", "value": "3"},
+    {"label": "⭐⭐⭐⭐ Satisfied", "value": "4"},
+    {"label": "⭐⭐⭐⭐⭐ Very Satisfied", "value": "5"}
+  ]
+}`;
+
+      default:
+        return `
+📝 GENERAL FORM REQUIREMENTS:
+- Include a mix of relevant field types based on the prompt
+- Focus on data collection and user input
+- Use appropriate field types for the specific use case
+- No specific structural requirements
+`;
+    }
+  }
+
+  private cleanFormConfigForMongoDB(config: any, intendedType?: string): any {
     // Detect if this is a quiz form
-    const isQuizForm = this.detectQuizForm(config);
+    const isQuizForm = intendedType === 'quiz' || this.detectQuizForm(config);
+
+    // Log the cleaning process
+    if (intendedType === 'quiz') {
+      console.log('🎯 Cleaning config as QUIZ form...');
+    } else if (intendedType === 'feedback') {
+      console.log('💬 Cleaning config as FEEDBACK form...');
+    } else if (intendedType === 'survey') {
+      console.log('📊 Cleaning config as SURVEY form...');
+    }
 
     if (config.pages && Array.isArray(config.pages)) {
       config.pages = config.pages.map((page: any) => ({
@@ -398,7 +1085,7 @@ Generate the form configuration now:`;
                   }))
                   .filter((option: any) => option.label && option.value);
 
-                // 🎯 CRITICAL: Handle correctAnswer properly
+                // 🎯 CRITICAL: Handle correctAnswer properly based on intended type
                 if (field.correctAnswer) {
                   cleanField.correctAnswer = String(field.correctAnswer);
                 } else {
@@ -408,11 +1095,21 @@ Generate the form configuration now:`;
                   );
                   if (correctOption) {
                     cleanField.correctAnswer = correctOption.value;
-                  } else if (isQuizForm) {
+                  } else if (isQuizForm || intendedType === 'quiz') {
                     // For quiz forms, force a correct answer
-                    cleanField.options[1].isCorrect = true; // Make second option correct
-                    cleanField.correctAnswer = cleanField.options[1].value;
+                    if (cleanField.options.length > 1) {
+                      cleanField.options[1].isCorrect = true; // Make second option correct
+                      cleanField.correctAnswer = cleanField.options[1].value;
+                    }
                   }
+                }
+
+                // 🚨 CRITICAL: Remove correctAnswer for feedback/survey forms
+                if (intendedType === 'feedback' || intendedType === 'survey') {
+                  delete cleanField.correctAnswer;
+                  cleanField.options.forEach((option: any) => {
+                    delete option.isCorrect;
+                  });
                 }
 
                 // If no valid options, create defaults with correct answer
@@ -424,7 +1121,9 @@ Generate the form configuration now:`;
                       isQuizForm
                     );
                   cleanField.options = defaultOptions.options;
-                  cleanField.correctAnswer = defaultOptions.correctAnswer;
+                  if (isQuizForm) {
+                    cleanField.correctAnswer = defaultOptions.correctAnswer;
+                  }
                 }
               } else {
                 // Generate default options if missing
@@ -435,7 +1134,13 @@ Generate the form configuration now:`;
                     isQuizForm
                   );
                 cleanField.options = defaultOptions.options;
-                cleanField.correctAnswer = defaultOptions.correctAnswer;
+                if (
+                  isQuizForm &&
+                  intendedType !== 'feedback' &&
+                  intendedType !== 'survey'
+                ) {
+                  cleanField.correctAnswer = defaultOptions.correctAnswer;
+                }
               }
             }
 
@@ -445,6 +1150,11 @@ Generate the form configuration now:`;
               if (field.max !== undefined) cleanField.max = Number(field.max);
               if (field.step !== undefined)
                 cleanField.step = Number(field.step);
+            }
+
+            if (field.type === 'rating' || field.type === 'scale') {
+              if (field.min !== undefined) cleanField.min = Number(field.min);
+              if (field.max !== undefined) cleanField.max = Number(field.max);
             }
 
             if (field.type === 'longText' || field.type === 'paragraph') {
@@ -1033,6 +1743,8 @@ Generate the form configuration now:`;
           'singleChoice',
           'multipleChoice',
           'number',
+          'rating',
+          'scale',
           'image',
           'fileUpload',
           'time',
@@ -1595,6 +2307,9 @@ Generate the form configuration now:`;
           return 'Select products and specify quantities for your order';
         }
         return 'Choose your preferred options from the available products';
+      case 'rating':
+      case 'scale':
+        return 'Rate based on your experience';
       case 'shortText':
         if (lowerLabel.includes('name')) return 'Enter your full name';
         if (lowerLabel.includes('company')) return 'Enter your company name';
@@ -1775,6 +2490,7 @@ Generate the form configuration now:`;
         'Enhanced signature field configurations',
         'Contextual fill-blank templates',
         'Smart product list generation',
+        'Form type detection and enforcement',
       ],
     };
   }
@@ -1899,6 +2615,46 @@ Generate the form configuration now:`;
     } catch (error: any) {
       return { error: error.message };
     }
+  }
+
+  // Method to test form type detection
+  testFormTypeDetection(prompt: string): {
+    detectedType: string;
+    confidence: string;
+    keywords: string[];
+  } {
+    const detectedType = this.detectIntendedFormType(prompt);
+
+    // Simple confidence calculation based on keyword matching
+    const lowerPrompt = prompt.toLowerCase();
+    let matchedKeywords: string[] = [];
+    let confidence = 'medium';
+
+    const allKeywords = {
+      quiz: ['quiz', 'test', 'assessment', 'exam', 'evaluation', 'question'],
+      feedback: ['feedback', 'review', 'comment', 'experience', 'opinion'],
+      survey: ['survey', 'poll', 'research', 'study', 'questionnaire'],
+    };
+
+    if (detectedType !== 'general') {
+      matchedKeywords = allKeywords[
+        detectedType as keyof typeof allKeywords
+      ].filter(keyword => lowerPrompt.includes(keyword));
+
+      if (matchedKeywords.length >= 2) {
+        confidence = 'high';
+      } else if (matchedKeywords.length === 1) {
+        confidence = 'medium';
+      } else {
+        confidence = 'low';
+      }
+    }
+
+    return {
+      detectedType,
+      confidence,
+      keywords: matchedKeywords,
+    };
   }
 }
 
