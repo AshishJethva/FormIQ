@@ -184,13 +184,54 @@ export class AIFormGeneratorService {
     }
   }
 
-  // 🎯 NEW METHOD: Detect intended form type from user prompt
   private detectIntendedFormType(
     prompt: string
   ): 'quiz' | 'survey' | 'feedback' | 'general' {
     const lowerPrompt = prompt.toLowerCase();
 
-    // QUIZ DETECTION - Highest priority
+    // 🎯 FEEDBACK DETECTION - Enhanced with more patterns
+    const feedbackKeywords = [
+      'feedback',
+      'review',
+      'comment',
+      'experience',
+      'opinion',
+      'tell us what you think',
+      'share your thoughts',
+      'how was your',
+      'improvement',
+      'suggestion',
+      'testimonial',
+      'rating experience',
+      'customer feedback',
+      'user experience',
+      'service review',
+      'product review',
+      'how did we do',
+      'rate our service',
+      'what did you think',
+      'any suggestions',
+      'how can we improve',
+      'feedback form',
+      'review form',
+      'experience form',
+      'thoughts on',
+      'opinion about',
+      'what could we',
+      'better experience',
+      'customer experience',
+      'user feedback',
+    ];
+
+    // Check for feedback keywords first (higher priority)
+    for (const keyword of feedbackKeywords) {
+      if (lowerPrompt.includes(keyword)) {
+        console.log(`💬 FEEDBACK detected by keyword: "${keyword}"`);
+        return 'feedback';
+      }
+    }
+
+    // 🎯 QUIZ DETECTION
     const quizKeywords = [
       'quiz',
       'test',
@@ -217,36 +258,7 @@ export class AIFormGeneratorService {
       }
     }
 
-    // FEEDBACK DETECTION - Second priority
-    const feedbackKeywords = [
-      'feedback',
-      'review',
-      'comment',
-      'experience',
-      'opinion',
-      'tell us what you think',
-      'share your thoughts',
-      'how was your',
-      'improvement',
-      'suggestion',
-      'testimonial',
-      'rating experience',
-      'customer feedback',
-      'user experience',
-      'service review',
-      'product review',
-      'how did we do',
-      'rate our service',
-    ];
-
-    for (const keyword of feedbackKeywords) {
-      if (lowerPrompt.includes(keyword)) {
-        console.log(`🎯 Feedback detected by keyword: "${keyword}"`);
-        return 'feedback';
-      }
-    }
-
-    // SURVEY DETECTION - Third priority
+    // 🎯 SURVEY DETECTION
     const surveyKeywords = [
       'survey',
       'poll',
@@ -268,12 +280,12 @@ export class AIFormGeneratorService {
 
     for (const keyword of surveyKeywords) {
       if (lowerPrompt.includes(keyword)) {
-        console.log(`🎯 Survey detected by keyword: "${keyword}"`);
+        console.log(`📊 Survey detected by keyword: "${keyword}"`);
         return 'survey';
       }
     }
 
-    console.log(`🎯 No specific type detected, defaulting to general`);
+    console.log(`📝 No specific type detected, defaulting to general`);
     return 'general';
   }
 
@@ -381,7 +393,6 @@ export class AIFormGeneratorService {
     return config;
   }
 
-  // 🎯 FEEDBACK STRUCTURE ENFORCER
   private enforceFeedbackStructure(config: any, prompt: string): any {
     console.log(
       '💬 Enforcing FEEDBACK structure with text fields and experience questions...'
@@ -393,6 +404,7 @@ export class AIFormGeneratorService {
 
     let feedbackFieldCount = 0;
     let textFieldCount = 0;
+    let experienceFieldCount = 0;
 
     // Count existing feedback-related fields
     config.pages.forEach((page: any) => {
@@ -403,34 +415,47 @@ export class AIFormGeneratorService {
           if (field.type === 'longText' || field.type === 'paragraph') {
             textFieldCount++;
 
+            // Enhanced feedback pattern detection
             if (
-              /feedback|comment|improve|experience|suggest|issue|problem|opinion|thoughts|recommendation|tell.*us|what.*do.*you.*think|how.*was|describe|explain|any.*additional/.test(
+              /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience|thoughts.*on|opinion.*about|better.*experience/.test(
                 fieldLabel
               )
             ) {
               feedbackFieldCount++;
+            }
+
+            // Experience-specific patterns
+            if (
+              /experience|how.*was|describe.*your|tell.*us.*about|thoughts.*on|what.*did.*you.*think/.test(
+                fieldLabel
+              )
+            ) {
+              experienceFieldCount++;
             }
           }
         });
       }
     });
 
-    // 🚨 CRITICAL: Ensure sufficient feedback fields
-    if (feedbackFieldCount < 2 || textFieldCount < 3) {
-      console.log(
-        `🔧 Adding feedback fields (current: ${feedbackFieldCount} feedback, ${textFieldCount} text)`
-      );
+    console.log(
+      `Current feedback structure: ${feedbackFieldCount} feedback fields, ${textFieldCount} text fields, ${experienceFieldCount} experience fields`
+    );
 
-      const feedbackFields = this.generateFeedbackFields(prompt);
+    // 🚨 CRITICAL: Ensure sufficient feedback fields (at least 3 feedback-specific fields)
+    if (feedbackFieldCount < 3 || textFieldCount < 4) {
+      console.log(`🔧 Adding feedback fields to meet requirements`);
+
+      const feedbackFields = this.generateEnhancedFeedbackFields(prompt);
 
       if (!config.pages[0].fields) {
         config.pages[0].fields = [];
       }
 
+      // Add new feedback fields
       config.pages[0].fields.push(...feedbackFields);
     }
 
-    // Remove or convert quiz-like fields
+    // Remove or convert quiz-like fields and rating scales that might confuse detection
     config.pages.forEach((page: any) => {
       if (page.fields) {
         page.fields = page.fields.map((field: any) => {
@@ -445,12 +470,97 @@ export class AIFormGeneratorService {
               });
             }
           }
+
+          // Convert rating fields to text fields to avoid survey classification
+          if (field.type === 'rating' || field.type === 'scale') {
+            field.type = 'longText';
+            field.rows = 3;
+            if (
+              field.label &&
+              !field.label.toLowerCase().includes('feedback')
+            ) {
+              field.label = field.label + ' - Please share your feedback';
+            }
+            delete field.min;
+            delete field.max;
+          }
+
           return field;
         });
       }
     });
 
+    // Update title to reflect feedback nature if not already
+    if (
+      !config.title.toLowerCase().includes('feedback') &&
+      !config.title.toLowerCase().includes('review') &&
+      !config.title.toLowerCase().includes('experience')
+    ) {
+      config.title = config.title + ' Feedback';
+    }
+
+    // Update description to emphasize feedback collection
+    if (
+      !config.description ||
+      !config.description.toLowerCase().includes('feedback')
+    ) {
+      config.description = config.description
+        ? config.description +
+          ' Please share your valuable feedback and experience with us.'
+        : 'Please share your valuable feedback and experience with us.';
+    }
+
     return config;
+  }
+
+  private generateEnhancedFeedbackFields(prompt: string): any[] {
+    return [
+      {
+        id: uuidv4(),
+        type: 'longText',
+        label: 'How was your overall experience?',
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Please describe your overall experience in detail',
+        rows: 4,
+      },
+      {
+        id: uuidv4(),
+        type: 'paragraph',
+        label: 'What did you think about our service?',
+        labelAlignment: 'LEFT',
+        required: true,
+        helpText: 'Share your thoughts and opinions about our service',
+        rows: 4,
+      },
+      {
+        id: uuidv4(),
+        type: 'longText',
+        label: 'What could we improve?',
+        labelAlignment: 'LEFT',
+        required: false,
+        helpText: 'Please share any suggestions for improvement',
+        rows: 4,
+      },
+      {
+        id: uuidv4(),
+        type: 'paragraph',
+        label: 'Any additional feedback or comments?',
+        labelAlignment: 'LEFT',
+        required: false,
+        helpText: 'Feel free to share any other thoughts or feedback',
+        rows: 3,
+      },
+      {
+        id: uuidv4(),
+        type: 'longText',
+        label: 'How can we better serve you in the future?',
+        labelAlignment: 'LEFT',
+        required: false,
+        helpText: 'Tell us about your expectations and how we can meet them',
+        rows: 3,
+      },
+    ];
   }
 
   // 🎯 SURVEY STRUCTURE ENFORCER
@@ -700,7 +810,7 @@ AVAILABLE FIELD TYPES (use exact values):
 - "longText": Multi-line text input (3-4 lines)
 - "paragraph": Large text area for detailed responses
 - "dropdown": Select from predefined options (must include options array)
-- "singleChoice": Radio buttons for single selection (must include options array) - USE FOR RATING SCALES
+- "singleChoice": Radio buttons for single selection (must include options array)
 - "multipleChoice": Checkboxes for multiple selections (must include options array)
 - "number": Numeric input with validation (can include min/max)
 - "image": Image upload field
@@ -721,11 +831,11 @@ AVAILABLE FIELD TYPES (use exact values):
   "type": "singleChoice",
   "label": "How satisfied are you?",
   "options": [
-    {"label": "⭐ Very Dissatisfied", "value": "1"},
-    {"label": "⭐⭐ Dissatisfied", "value": "2"},
-    {"label": "⭐⭐⭐ Neutral", "value": "3"},
-    {"label": "⭐⭐⭐⭐ Satisfied", "value": "4"},
-    {"label": "⭐⭐⭐⭐⭐ Very Satisfied", "value": "5"}
+    {"label": "⭐", "value": "1"},
+    {"label": "⭐⭐", "value": "2"},
+    {"label": "⭐⭐⭐", "value": "3"},
+    {"label": "⭐⭐⭐⭐", "value": "4"},
+    {"label": "⭐⭐⭐⭐⭐", "value": "5"}
   ]
 }
 
@@ -924,23 +1034,38 @@ Example quiz field:
 
       case 'feedback':
         return `
-💬 FEEDBACK FORM REQUIREMENTS:
-- MUST include at least 3-4 text fields (longText, paragraph types)
-- Focus on collecting opinions, experiences, and suggestions
-- Use questions like "How was your experience?", "What could we improve?", "Share your thoughts"
+💬 FEEDBACK FORM REQUIREMENTS - CRITICAL:
+- MUST include at least 4-5 text fields (longText, paragraph types) 
+- MUST focus on collecting opinions, experiences, and suggestions
+- MUST use feedback-specific question patterns like:
+  * "How was your overall experience?"
+  * "What did you think about our service?"
+  * "What could we improve?"
+  * "Any additional feedback or comments?"
+  * "How can we better serve you?"
+  * "Share your thoughts about..."
+  * "Tell us about your experience with..."
 - NO correctAnswer properties on any fields
-- Include rating or satisfaction questions if relevant
-- Encourage detailed, open-ended responses
+- NO rating or scale fields (use longText instead)
+- NO single choice fields with rating options
+- Use longText and paragraph field types exclusively for main questions
 - Title should include words like "Feedback", "Review", "Experience", "Tell us"
+- Description should emphasize feedback collection and experience sharing
 
-Example feedback field:
+Example feedback field structure:
 {
   "type": "longText",
   "label": "How was your overall experience with our service?",
   "required": true,
   "helpText": "Please describe your experience in detail",
   "rows": 4
-}`;
+}
+
+AVOID these patterns for feedback forms:
+- Rating scales or numerical ratings
+- Multiple choice questions with satisfaction levels
+- Any fields that look like survey research questions
+- Fields with correctAnswer properties`;
 
       case 'survey':
         return `
@@ -958,11 +1083,11 @@ Example survey rating field:
   "type": "singleChoice",
   "label": "How satisfied are you with our service?",
   "options": [
-    {"label": "⭐ Very Dissatisfied", "value": "1"},
-    {"label": "⭐⭐ Dissatisfied", "value": "2"},
-    {"label": "⭐⭐⭐ Neutral", "value": "3"},
-    {"label": "⭐⭐⭐⭐ Satisfied", "value": "4"},
-    {"label": "⭐⭐⭐⭐⭐ Very Satisfied", "value": "5"}
+    {"label": "⭐", "value": "1"},
+    {"label": "⭐⭐", "value": "2"},
+    {"label": "⭐⭐⭐", "value": "3"},
+    {"label": "⭐⭐⭐⭐", "value": "4"},
+    {"label": "⭐⭐⭐⭐⭐", "value": "5"}
   ]
 }`;
 

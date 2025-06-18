@@ -441,6 +441,8 @@ const detectFormTypeClientEnhanced = (
   let hasRatingScales = 0;
   let choiceFieldsWithRatingOptions = 0;
 
+  let experienceFields = 0;
+
   // 🆕 NEW: Application-specific counters
   let hasFileUploads = 0;
   let hasPersonalInfoFields = 0;
@@ -449,30 +451,21 @@ const detectFormTypeClientEnhanced = (
   let hasSkillsFields = 0;
   let hasContactFields = 0;
 
-  // 🎯 ENHANCED: Title/description analysis with all form types
+  const titleHasFeedbackWords =
+    /feedback|review|comment|experience|tell.*us|share.*your.*thoughts|how.*was|what.*did.*you.*think|thoughts.*on|opinion.*about/.test(
+      titleDescText
+    );
   const titleHasQuizWords = /quiz|test|exam|assessment|evaluation/.test(
     titleDescText
   );
   const titleHasSurveyWords =
-    /survey|poll|research|study|questionnaire|analysis|feedback|opinion|satisfaction|evaluation.*of|rate.*our|customer.*survey/.test(
-      titleDescText
-    );
-  const titleHasFeedbackWords =
-    /feedback|review|comment|experience|tell.*us|share.*your.*thoughts/.test(
+    /survey|poll|research|study|questionnaire|analysis|demographic/.test(
       titleDescText
     );
   const titleHasApplicationWords =
     /application|apply|job|career|position|employment|hiring|recruitment|candidate|resume|cv|submit.*application|join.*our.*team|work.*with.*us/.test(
       titleDescText
-    ); // 🆕 NEW
-
-  console.log('🔍 Title/Description Analysis:', {
-    titleDescText,
-    titleHasQuizWords,
-    titleHasSurveyWords,
-    titleHasFeedbackWords,
-    titleHasApplicationWords, // 🆕 NEW
-  });
+    );
 
   // Enhanced field analysis
   formData.pages.forEach((page: any) => {
@@ -581,38 +574,6 @@ const detectFormTypeClientEnhanced = (
               `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
             );
           }
-
-          // 🔥 Check if choice field has rating-like options (survey indicator)
-          if (field.options && Array.isArray(field.options)) {
-            const hasRatingOptions = field.options.some(
-              (opt: any) =>
-                opt.label &&
-                /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|1.*to.*5|1.*to.*10|likely|unlikely/.test(
-                  opt.label.toLowerCase()
-                )
-            );
-
-            if (hasRatingOptions) {
-              choiceFieldsWithRatingOptions++;
-              ratingFields++;
-              hasSurveyPatterns = true;
-              console.log(
-                `📊 SURVEY INDICATOR: Rating options in choice field "${fieldLabel}"`
-              );
-            }
-          }
-
-          // Quiz-like question patterns
-          if (
-            /what.*is|which.*is|choose.*correct|select.*right|true.*false|pick.*best|identify.*correct/.test(
-              fieldLabel
-            )
-          ) {
-            hasCorrectAnswers = true;
-            console.log(
-              `🎯 QUIZ PATTERN: quiz-like question in "${fieldLabel}"`
-            );
-          }
         }
 
         // Multiple choice analysis
@@ -630,7 +591,7 @@ const detectFormTypeClientEnhanced = (
             const hasRatingOptions = field.options.some(
               (opt: any) =>
                 opt.label &&
-                /excellent|very.*good|good|fair|poor|strongly.*agree|agree|neutral|disagree|likely|unlikely/.test(
+                /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|1.*to.*5|1.*to.*10|likely|unlikely/.test(
                   opt.label.toLowerCase()
                 )
             );
@@ -643,6 +604,54 @@ const detectFormTypeClientEnhanced = (
                 `📊 SURVEY INDICATOR: Rating options in multiple choice "${fieldLabel}"`
               );
             }
+          }
+        }
+
+        // 🎯 ENHANCED FEEDBACK DETECTION (HIGHEST PRIORITY)
+        // 🎯 ENHANCED FEEDBACK DETECTION (HIGHEST PRIORITY)
+        if (fieldType === 'longtext' || fieldType === 'paragraph') {
+          textFields++;
+
+          if (fieldType === 'longtext') {
+            hasLongTextFields++;
+          }
+          // 💬 ENHANCED FEEDBACK PATTERNS - More comprehensive detection
+          if (
+            /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience|thoughts.*on|opinion.*about|better.*experience|how.*did.*we.*do|rate.*our.*service|your.*experience.*was|overall.*experience|service.*experience|thoughts.*about|comments.*about/.test(
+              fieldLabel
+            )
+          ) {
+            feedbackFields++;
+            hasFeedbackPatterns = true;
+            console.log(
+              `💬 FEEDBACK PATTERN: feedback pattern in label "${fieldLabel}"`
+            );
+          }
+
+          // 🆕 EXPERIENCE-SPECIFIC PATTERNS (Strong feedback indicators)
+          if (
+            /experience|how.*was|describe.*your|tell.*us.*about.*your|thoughts.*on.*your|what.*did.*you.*think.*about/.test(
+              fieldLabel
+            )
+          ) {
+            experienceFields++;
+            hasFeedbackPatterns = true;
+            console.log(
+              `💬 EXPERIENCE PATTERN: experience pattern in label "${fieldLabel}"`
+            );
+          }
+
+          // 📊 SURVEY-SPECIFIC TEXT PATTERNS (Research/data collection focused)
+          if (
+            /how.*would.*you.*rate|how.*important.*is|rank.*the.*following|what.*is.*your.*preference|demographic|background.*information|research.*purposes|study.*participation|please.*evaluate|additional.*comments.*for.*research|other.*comments.*for.*study/.test(
+              fieldLabel
+            )
+          ) {
+            surveyFields++;
+            hasSurveyPatterns = true;
+            console.log(
+              `📊 SURVEY PATTERN: survey research pattern in label "${fieldLabel}"`
+            );
           }
         }
 
@@ -695,18 +704,7 @@ const detectFormTypeClientEnhanced = (
               `💬 FEEDBACK PATTERN: feedback pattern in label "${fieldLabel}"`
             );
           }
-          // 📊 SURVEY-SPECIFIC PATTERNS (evaluation/research focused)
-          else if (
-            /how.*would.*you.*rate|how.*important.*is|rank.*the.*following|what.*is.*your.*preference|demographic|background.*information|research.*purposes|study.*participation|please.*evaluate|additional.*comments|other.*comments|any.*other/.test(
-              fieldLabel
-            )
-          ) {
-            surveyFields++;
-            hasSurveyPatterns = true;
-            console.log(
-              `📊 SURVEY PATTERN: survey pattern in label "${fieldLabel}"`
-            );
-          }
+
           // 🆕 NEW: APPLICATION-SPECIFIC TEXT PATTERNS
           else if (
             /describe.*yourself|tell.*us.*about|why.*do.*you.*want|what.*makes.*you|your.*experience.*with|goals|objectives|achievements|cover.*letter.*text|additional.*information|anything.*else/.test(
@@ -722,26 +720,6 @@ const detectFormTypeClientEnhanced = (
         }
       });
     }
-  });
-
-  console.log('🔍 Field Analysis Summary:', {
-    totalFields,
-    applicationFields,
-    hasPersonalInfoFields,
-    hasWorkExperienceFields,
-    hasEducationFields,
-    hasSkillsFields,
-    hasFileUploads,
-    hasApplicationPatterns,
-    singleChoiceCount: result.singleChoiceCount,
-    ratingFields,
-    choiceFieldsWithRatingOptions,
-    feedbackFields,
-    surveyFields,
-    textFields,
-    hasCorrectAnswers,
-    hasSurveyPatterns,
-    hasFeedbackPatterns,
   });
 
   // 🎯 PRIORITY 1: QUIZ DETECTION (Highest Priority)
