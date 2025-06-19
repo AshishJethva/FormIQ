@@ -78,14 +78,6 @@ export const uploadFormFile = async (
         'Content-Type': 'multipart/form-data',
       },
       timeout: 60000, // 60 second timeout for large files
-      onUploadProgress: progressEvent => {
-        if (progressEvent.total) {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`Upload progress: ${percentCompleted}%`);
-        }
-      },
     });
 
     return response.data.data;
@@ -146,14 +138,6 @@ export const uploadFormImage = async (
         'Content-Type': 'multipart/form-data',
       },
       timeout: 60000,
-      onUploadProgress: progressEvent => {
-        if (progressEvent.total) {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`Image upload progress: ${percentCompleted}%`);
-        }
-      },
     });
 
     return response.data.data;
@@ -209,14 +193,6 @@ export const uploadMultipleFiles = async (
           'Content-Type': 'multipart/form-data',
         },
         timeout: 120000, // 2 minutes for multiple files
-        onUploadProgress: progressEvent => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            console.log(`Multiple files upload progress: ${percentCompleted}%`);
-          }
-        },
       }
     );
 

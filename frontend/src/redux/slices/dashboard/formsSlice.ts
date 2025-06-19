@@ -424,15 +424,10 @@ export const formsSlice = createSlice({
         };
       }>
     ) => {
-      const { formId, details } = action.payload;
+      const { formId } = action.payload;
 
       // Remove form from state
       state.forms = state.forms.filter(form => form.id !== formId);
-
-      console.log('Redux: Form completely deleted:', {
-        formId,
-        ...details,
-      });
     },
 
     bulkDeleteFormsCompletely: (
@@ -447,7 +442,7 @@ export const formsSlice = createSlice({
         }>;
       }>
     ) => {
-      const { formIds, results } = action.payload;
+      const { results } = action.payload;
 
       // Remove successfully deleted forms
       const successfulDeletions = results
@@ -457,12 +452,6 @@ export const formsSlice = createSlice({
       state.forms = state.forms.filter(
         form => !successfulDeletions.includes(form.id)
       );
-
-      console.log('Redux: Bulk deletion completed:', {
-        requested: formIds.length,
-        successful: successfulDeletions.length,
-        failed: results.filter(r => !r.success).length,
-      });
     },
 
     // Bulk actions - move multiple forms to trash

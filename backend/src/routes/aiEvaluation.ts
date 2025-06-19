@@ -23,7 +23,7 @@ const validateFormForEvaluation = (
       return { isValid: false, error: 'Form has no pages to evaluate' };
     }
 
-    // 🎯 FIXED: Enhanced field analysis for accurate type detection
+    // Enhanced field analysis for accurate type detection
     let totalFields = 0;
     let singleChoiceCount = 0;
     let multipleChoiceCount = 0;
@@ -32,8 +32,22 @@ const validateFormForEvaluation = (
     let textFields = 0;
     let hasCorrectAnswers = false;
     let evaluableFields = 0;
+    let hasRatingScales = 0;
+    let choiceFieldsWithRatingOptions = 0;
 
-    console.log('🔍 Analyzing form structure for evaluation...');
+    // APPLICATION DETECTION VARIABLES
+    let hasPersonalInfoFields = 0;
+    let hasWorkExperienceFields = 0;
+    let hasEducationFields = 0;
+    let hasSkillsFields = 0;
+    let hasFileUploads = 0;
+    let hasApplicationPatterns = false;
+    let applicationFields = 0;
+
+    // Check title and description for type hints
+    const formTitle = form.title?.toLowerCase() || '';
+    const formDescription = form.description?.toLowerCase() || '';
+    const titleDescText = `${formTitle} ${formDescription}`;
 
     form.pages.forEach((page: any) => {
       if (page?.fields && Array.isArray(page.fields)) {
@@ -43,34 +57,89 @@ const validateFormForEvaluation = (
             const fieldLabel = field.label?.toLowerCase() || '';
             const fieldType = field.type.toLowerCase();
 
-            console.log(`📋 Field: "${fieldLabel}" (${fieldType})`);
+            // APPLICATION FIELD DETECTION (HIGH PRIORITY)
 
-            // 🎯 QUIZ DETECTION: Single choice with correct answers
+            // Personal information detection
+            if (
+              fieldType === 'fullname' ||
+              fieldType === 'email' ||
+              fieldType === 'phone' ||
+              fieldType === 'address' ||
+              /full.*name|first.*name|last.*name|email|phone|address|contact.*information|personal.*details|date.*of.*birth|age|gender|nationality|emergency.*contact/i.test(
+                fieldLabel
+              )
+            ) {
+              hasPersonalInfoFields++;
+              applicationFields++;
+              if (/personal|contact|details|information/i.test(fieldLabel)) {
+                hasApplicationPatterns = true;
+              }
+            }
+
+            // Work experience detection
+            if (
+              /work.*experience|job.*experience|employment.*history|previous.*job|current.*job|position.*held|company.*name|employer|job.*title|responsibilities|duties|years.*of.*experience|professional.*experience|career.*history|work.*history|current.*position|previous.*position/i.test(
+                fieldLabel
+              )
+            ) {
+              hasWorkExperienceFields++;
+              applicationFields++;
+              hasApplicationPatterns = true;
+              evaluableFields++;
+            }
+
+            // Education background detection
+            if (
+              /education|educational.*background|school|university|college|degree|diploma|certification|qualification|academic|studies|major|gpa|graduation|institution|high.*school|bachelor|master|phd|doctorate/i.test(
+                fieldLabel
+              )
+            ) {
+              hasEducationFields++;
+              applicationFields++;
+              hasApplicationPatterns = true;
+              evaluableFields++;
+            }
+
+            // Skills and competencies detection
+            if (
+              /skills|abilities|competencies|expertise|technical.*skills|soft.*skills|programming.*languages|languages.*spoken|certifications|achievements|portfolio|references|availability|salary.*expectation|expected.*salary|start.*date|notice.*period|why.*interested|motivation|cover.*letter|additional.*information/i.test(
+                fieldLabel
+              )
+            ) {
+              hasSkillsFields++;
+              applicationFields++;
+              hasApplicationPatterns = true;
+              evaluableFields++;
+            }
+
+            // File upload detection (resume, CV, portfolio)
+            if (
+              fieldType === 'fileupload' ||
+              fieldType === 'image' ||
+              /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv/i.test(
+                fieldLabel
+              )
+            ) {
+              hasFileUploads++;
+              if (/resume|cv|portfolio/i.test(fieldLabel)) {
+                applicationFields++;
+                hasApplicationPatterns = true;
+                evaluableFields++;
+              }
+            }
+
+            // QUIZ DETECTION: Single choice with correct answers
             if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
               singleChoiceCount++;
               evaluableFields++;
 
-              // 🚨 CRITICAL: Check for correctAnswer property (primary quiz indicator)
+              // Check for correctAnswer property (primary quiz indicator)
               if (
                 field.correctAnswer ||
                 (field.options &&
                   field.options.some((opt: any) => opt.isCorrect))
               ) {
                 hasCorrectAnswers = true;
-                console.log(
-                  `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
-                );
-              }
-
-              // Also check for quiz-like question patterns
-              if (
-                /what.*is|which.*is|choose.*correct|select.*right|true.*false|pick.*best|identify/.test(
-                  fieldLabel
-                )
-              ) {
-                console.log(
-                  `🎯 QUIZ PATTERN: quiz-like question in "${fieldLabel}"`
-                );
               }
             }
 
@@ -86,13 +155,26 @@ const validateFormForEvaluation = (
                   field.options.some((opt: any) => opt.isCorrect))
               ) {
                 hasCorrectAnswers = true;
-                console.log(
-                  `🎯 QUIZ INDICATOR: correct answers in multiple choice "${fieldLabel}"`
-                );
+              } else {
+                // Check for rating-like options in multiple choice (SURVEY)
+                if (field.options && Array.isArray(field.options)) {
+                  const hasRatingOptions = field.options.some(
+                    (opt: any) =>
+                      opt.label &&
+                      /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|likely|unlikely|1.*star|2.*star|3.*star|4.*star|5.*star/i.test(
+                        opt.label
+                      )
+                  );
+
+                  if (hasRatingOptions) {
+                    choiceFieldsWithRatingOptions++;
+                    ratingFields++;
+                  }
+                }
               }
             }
 
-            // 🎯 SURVEY DETECTION: Rating/scale fields
+            // SURVEY DETECTION: Rating/scale fields
             if (
               fieldType === 'rating' ||
               fieldType === 'scale' ||
@@ -100,25 +182,42 @@ const validateFormForEvaluation = (
             ) {
               ratingFields++;
               evaluableFields++;
-              console.log(
-                `📊 SURVEY INDICATOR: ${fieldType} field "${fieldLabel}"`
-              );
+              evaluableFields++;
             }
 
-            // Rating patterns in labels
+            // Single choice with rating patterns (SURVEY, NOT QUIZ)
             if (
-              /rate|rating|satisfaction|quality|likely.*recommend|how.*satisfied|scale.*1.*to|strongly.*agree|very.*satisfied/.test(
+              (fieldType === 'singlechoice' || fieldType === 'dropdown') &&
+              !field.correctAnswer
+            ) {
+              if (field.options && Array.isArray(field.options)) {
+                const hasRatingOptions = field.options.some(
+                  (opt: any) =>
+                    opt.label &&
+                    /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|likely|unlikely|1.*star|2.*star|3.*star|4.*star|5.*star/i.test(
+                      opt.label
+                    )
+                );
+
+                if (hasRatingOptions) {
+                  choiceFieldsWithRatingOptions++;
+                  ratingFields++;
+                }
+              }
+            }
+
+            // Rating patterns in labels (SURVEY)
+            if (
+              /rate|rating|satisfaction|quality|likely.*recommend|how.*satisfied|scale.*1.*to|strongly.*agree|very.*satisfied|how.*would.*you.*rate|please.*rate|rate.*the|evaluate.*the|assess.*the|satisfaction.*level|quality.*of/i.test(
                 fieldLabel
               )
             ) {
               ratingFields++;
+              hasRatingScales++;
               evaluableFields++;
-              console.log(
-                `📊 SURVEY PATTERN: rating pattern in "${fieldLabel}"`
-              );
             }
 
-            // 🎯 FEEDBACK DETECTION: Text fields with feedback patterns
+            // FEEDBACK DETECTION: Text fields with feedback patterns
             if (
               fieldType === 'longtext' ||
               fieldType === 'paragraph' ||
@@ -126,32 +225,29 @@ const validateFormForEvaluation = (
             ) {
               textFields++;
 
-              // Specific feedback patterns
+              // ENHANCED FEEDBACK PATTERNS - More comprehensive detection
               if (
-                /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|describe.*your.*experience|rate.*your.*experience/.test(
+                /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience|thoughts.*on|opinion.*about|better.*experience|how.*did.*we.*do|rate.*our.*service|your.*experience.*was|overall.*experience|service.*experience|thoughts.*about|comments.*about/i.test(
                   fieldLabel
                 )
               ) {
                 feedbackFields++;
                 evaluableFields++;
-                console.log(
-                  `💬 FEEDBACK INDICATOR: feedback pattern in "${fieldLabel}"`
-                );
+              }
+
+              // EXPERIENCE-SPECIFIC PATTERNS (Strong feedback indicators)
+              if (
+                /experience|how.*was|describe.*your|tell.*us.*about.*your|thoughts.*on.*your|what.*did.*you.*think.*about/i.test(
+                  fieldLabel
+                )
+              ) {
+                feedbackFields++;
+                evaluableFields++;
               }
             }
           }
         });
       }
-    });
-
-    console.log(`📊 Analysis Results:`, {
-      totalFields,
-      singleChoiceCount,
-      ratingFields,
-      feedbackFields,
-      textFields,
-      hasCorrectAnswers,
-      evaluableFields,
     });
 
     if (totalFields === 0) {
@@ -166,20 +262,13 @@ const validateFormForEvaluation = (
       };
     }
 
-    // 🎯 FIXED: Enhanced form type determination with STRICT criteria
     let formType = 'general';
     let canEvaluate = false;
     let expectedAccuracy = 90;
     let confidence = 0;
     let reasons = [];
 
-    // Check title and description for type hints
-    const formTitle = form.title?.toLowerCase() || '';
-    const formDescription = form.description?.toLowerCase() || '';
-    const titleDescText = `${formTitle} ${formDescription}`;
-
-    // 🎯 PRIORITY 1: QUIZ CLASSIFICATION
-    // STRICT: Must have 5+ single choice questions AND correct answers
+    // PRIORITY 1: QUIZ CLASSIFICATION
     if (singleChoiceCount >= 5 && hasCorrectAnswers) {
       formType = 'quiz';
       canEvaluate = true;
@@ -188,54 +277,111 @@ const validateFormForEvaluation = (
       reasons.push(
         `QUIZ: ${singleChoiceCount} single choice questions with correct answers (≥5 required)`
       );
-      console.log(
-        `🎯 CLASSIFIED AS QUIZ: ${singleChoiceCount} SCQ with correct answers`
-      );
+
+      if (ratingFields > 0) {
+        reasons.push(
+          `Note: ${ratingFields} rating fields found but overridden by quiz classification`
+        );
+      }
     }
-    // 🎯 PRIORITY 2: FEEDBACK CLASSIFICATION
-    // Focus on experience and improvement feedback
-    else if (
-      feedbackFields >= 2 ||
-      (textFields >= 3 && feedbackFields >= 1) ||
-      (/feedback|review|comment|experience|tell.*us/.test(titleDescText) &&
-        textFields >= 2)
-    ) {
-      formType = 'feedback';
-      canEvaluate = true;
-      confidence = 90;
-      expectedAccuracy = 92;
-      reasons.push(
-        `FEEDBACK: ${feedbackFields} feedback fields, ${textFields} text fields`
-      );
-      console.log(
-        `💬 CLASSIFIED AS FEEDBACK: ${feedbackFields} feedback fields, ${textFields} text fields`
-      );
-    }
-    // 🎯 PRIORITY 3: SURVEY CLASSIFICATION
-    // Research/data collection with rating scales
-    else if (
-      ratingFields >= 3 ||
-      (ratingFields >= 2 && totalFields >= 5) ||
-      (/survey|poll|research|study|questionnaire/.test(titleDescText) &&
-        ratingFields >= 2)
-    ) {
-      formType = 'survey';
-      canEvaluate = true;
-      confidence = 85;
-      expectedAccuracy = 95;
-      reasons.push(
-        `SURVEY: ${ratingFields} rating fields, ${totalFields} total fields`
-      );
-      console.log(`📊 CLASSIFIED AS SURVEY: ${ratingFields} rating fields`);
-    }
-    // 🎯 FALLBACK: General form
+
+    // 🎯 PRIORITY 2: APPLICATION CLASSIFICATION (NEW HIGH PRIORITY)
     else {
-      reasons.push(
-        `GENERAL: ${singleChoiceCount} SCQ${hasCorrectAnswers ? ' (with answers)' : ''}, ${ratingFields} rating, ${feedbackFields} feedback, ${textFields} text fields`
-      );
-      console.log(
-        `📝 CLASSIFIED AS GENERAL: Not enough criteria for specific type`
-      );
+      const applicationIndicators = {
+        title:
+          /application|apply|job|career|position|employment|hiring|recruitment|candidate|resume|cv|submit.*application|join.*our.*team|work.*with.*us/i.test(
+            titleDescText
+          ),
+        hasPersonalInfo: hasPersonalInfoFields >= 2,
+        hasWorkExperience: hasWorkExperienceFields >= 1,
+        hasEducation: hasEducationFields >= 1,
+        hasSkills: hasSkillsFields >= 1,
+        hasFileUpload: hasFileUploads >= 1,
+        hasApplicationFields: applicationFields >= 3,
+        hasApplicationPatterns: hasApplicationPatterns,
+        structuralMatch:
+          (hasPersonalInfoFields >= 2 && hasWorkExperienceFields >= 1) ||
+          (hasPersonalInfoFields >= 2 && hasEducationFields >= 1) ||
+          (hasWorkExperienceFields >= 1 && hasEducationFields >= 1),
+        comprehensiveApplication:
+          hasPersonalInfoFields >= 2 &&
+          hasWorkExperienceFields >= 1 &&
+          hasEducationFields >= 1,
+      };
+
+      const applicationScore = Object.values(applicationIndicators).filter(
+        Boolean
+      ).length;
+
+      if (
+        applicationScore >= 4 ||
+        (applicationIndicators.title && applicationFields >= 3) ||
+        applicationIndicators.comprehensiveApplication ||
+        (applicationIndicators.structuralMatch && hasFileUploads >= 1) ||
+        (hasPersonalInfoFields >= 3 &&
+          hasWorkExperienceFields >= 1 &&
+          hasEducationFields >= 1) ||
+        (applicationIndicators.title &&
+          hasPersonalInfoFields >= 2 &&
+          hasFileUploads >= 1) ||
+        (hasApplicationPatterns &&
+          hasPersonalInfoFields >= 2 &&
+          hasFileUploads >= 1)
+      ) {
+        formType = 'application';
+        canEvaluate = true;
+        confidence = Math.min(98, 60 + applicationScore * 4);
+        expectedAccuracy = 90;
+        reasons.push(
+          `APPLICATION: ${applicationFields} application-specific fields, structured candidate data collection`
+        );
+
+        if (hasApplicationPatterns) {
+          reasons.push('Application-specific field patterns detected');
+        }
+      }
+
+      // 🎯 PRIORITY 3: SURVEY CLASSIFICATION
+      // Must have rating/scale elements WITHOUT correct answers
+      else if (
+        ratingFields >= 3 ||
+        choiceFieldsWithRatingOptions >= 2 ||
+        hasRatingScales >= 2 ||
+        (/survey|poll|research|study|questionnaire|analysis|demographic/i.test(
+          titleDescText
+        ) &&
+          ratingFields >= 2)
+      ) {
+        formType = 'survey';
+        canEvaluate = true;
+        confidence = 85;
+        expectedAccuracy = 95;
+        reasons.push(
+          `SURVEY: ${ratingFields} rating fields, ${choiceFieldsWithRatingOptions} choice fields with rating options`
+        );
+      }
+      // 🎯 PRIORITY 4: FEEDBACK CLASSIFICATION
+      // Focus on experience and improvement feedback
+      else if (
+        feedbackFields >= 2 ||
+        (textFields >= 3 && feedbackFields >= 1) ||
+        (/feedback|review|comment|experience|tell.*us/i.test(titleDescText) &&
+          textFields >= 2)
+      ) {
+        formType = 'feedback';
+        canEvaluate = true;
+        confidence = 90;
+        expectedAccuracy = 92;
+        reasons.push(
+          `FEEDBACK: ${feedbackFields} feedback fields, ${textFields} text fields`
+        );
+      }
+      // 🎯 FALLBACK: General form
+      else {
+        reasons.push(
+          `GENERAL: ${singleChoiceCount} SCQ${hasCorrectAnswers ? ' (with answers)' : ''}, ${ratingFields} rating, ${feedbackFields} feedback, ${textFields} text fields`
+        );
+      }
     }
 
     const analysis = {
@@ -252,18 +398,27 @@ const validateFormForEvaluation = (
       confidence,
       evaluableFields,
       reasons,
+      choiceFieldsWithRatingOptions,
+      hasRatingScales,
+      hasPersonalInfoFields,
+      hasWorkExperienceFields,
+      hasEducationFields,
+      hasSkillsFields,
+      hasFileUploads,
+      applicationFields,
+      hasApplicationPatterns,
       titleHints: {
-        hasQuizWords: /quiz|test|exam|assessment/.test(titleDescText),
-        hasFeedbackWords: /feedback|review|comment|experience/.test(
+        hasQuizWords: /quiz|test|exam|assessment/i.test(titleDescText),
+        hasFeedbackWords: /feedback|review|comment|experience/i.test(
           titleDescText
         ),
-        hasSurveyWords: /survey|poll|research|study/.test(titleDescText),
+        hasSurveyWords: /survey|poll|research|study/i.test(titleDescText),
+        hasApplicationWords:
+          /application|apply|job|career|hiring|recruitment/i.test(
+            titleDescText
+          ),
       },
     };
-
-    console.log(
-      `🎯 FINAL CLASSIFICATION: ${formType.toUpperCase()} (${confidence}% confidence, ${expectedAccuracy}% expected accuracy)`
-    );
 
     return { isValid: true, analysis };
   } catch (error: any) {
@@ -326,7 +481,6 @@ const validateSubmissionForEvaluation = (
       };
     }
 
-    console.log(`✅ Submission validation passed with ${quality}% quality`);
     return { isValid: true, quality };
   } catch (error: any) {
     console.error('❌ Enhanced submission validation error:', error);
@@ -403,8 +557,25 @@ router.post(
             analysis?.feedbackFields < 2
           ) {
             reason += `Almost feedback: has ${analysis.feedbackFields} feedback field but needs 2+ for evaluation. `;
+          } else if (
+            analysis?.hasPersonalInfoFields >= 1 ||
+            analysis?.hasWorkExperienceFields >= 1 ||
+            analysis?.hasEducationFields >= 1
+          ) {
+            reason += `Almost application: has some application fields but needs: `;
+            const missingAppFields = [];
+            if (analysis.hasPersonalInfoFields < 2)
+              missingAppFields.push('2+ personal information fields');
+            if (analysis.hasWorkExperienceFields < 1)
+              missingAppFields.push('work experience fields');
+            if (analysis.hasEducationFields < 1)
+              missingAppFields.push('education background fields');
+            if (analysis.hasFileUploads < 1)
+              missingAppFields.push('file upload for resume/CV');
+            reason += missingAppFields.join(', ') + '. ';
           } else {
             reason += `Requirements: 5+ single choice questions with correct answers (quiz), `;
+            reason += `2+ personal info + work experience/education + file upload (application), `;
             reason += `3+ rating fields (survey), or 2+ feedback fields (feedback). `;
             reason += `Current: ${analysis?.singleChoiceCount || 0} SCQ, ${analysis?.ratingFields || 0} rating, ${analysis?.feedbackFields || 0} feedback fields.`;
           }
@@ -412,11 +583,6 @@ router.post(
 
         throw new ApiError(reason, 400);
       }
-
-      // Step 8: Perform enhanced AI evaluation with accuracy tracking
-      console.log(
-        `🚀 Starting ${formValidation.analysis.formType} evaluation with ${formValidation.analysis.expectedAccuracy}% expected accuracy`
-      );
 
       let evaluation;
       try {
@@ -590,6 +756,7 @@ router.post(
         throw new ApiError(
           `Form not suitable for batch AI evaluation. Form type: ${analysis?.formType}. ` +
             `Requirements: Quiz needs 5+ single choice questions (has ${analysis?.singleChoiceCount || 0}), ` +
+            `Application needs 2+ personal info + work experience/education + file upload (has ${analysis?.applicationFields || 0} app fields), ` +
             `Survey needs 3+ rating fields (has ${analysis?.ratingFields || 0}), ` +
             `Feedback needs 2+ feedback fields (has ${analysis?.feedbackFields || 0}).`,
           400
@@ -621,13 +788,6 @@ router.post(
           error: validation.error,
         };
       });
-
-      console.log(
-        `🚀 Starting batch ${formValidation.analysis.formType} evaluation for ${submissions.length} submissions`
-      );
-      console.log(
-        `📊 Expected accuracy: ${formValidation.analysis.expectedAccuracy}%`
-      );
 
       // Process evaluations with enhanced accuracy tracking
       const evaluations = [];
@@ -714,10 +874,6 @@ router.post(
 
           const submissionTime = Date.now() - submissionStartTime;
           evaluations.push(evaluation);
-
-          console.log(
-            `✅ Submission ${i + 1}/${submissions.length} processed in ${submissionTime}ms`
-          );
         } catch (error: any) {
           const submissionTime = Date.now() - submissionStartTime;
           console.error(`❌ Failed to process submission ${i + 1}:`, {
@@ -791,10 +947,6 @@ router.post(
           errors: errors.length > 0 ? errors : undefined,
         },
       });
-
-      console.log(
-        `🎯 Batch evaluation completed: ${averageAccuracy.toFixed(1)}% average accuracy`
-      );
     } catch (error: any) {
       const totalTime = Date.now() - startTime;
       console.error('❌ Enhanced batch evaluation error:', {
@@ -1045,10 +1197,6 @@ router.post(
       }
 
       const testSubmissionId = 'test_' + Date.now();
-
-      console.log(
-        `🧪 Testing ${formValidation.analysis.formType} evaluation with ${formValidation.analysis.expectedAccuracy}% expected accuracy`
-      );
 
       const evaluation =
         await aiEvaluationService.evaluateSubmissionWithValidation(

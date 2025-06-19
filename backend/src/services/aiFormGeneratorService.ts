@@ -1,4 +1,4 @@
-// src/services/aiFormGeneratorService.ts - COMPLETE ENHANCED VERSION WITH FORM TYPE DETECTION FIX
+// src/services/aiFormGeneratorService.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -143,7 +143,6 @@ export class AIFormGeneratorService {
         // Check if this variation is available
         const exists = await this.checkTitleExists(uniqueTitle, userId);
         if (!exists) {
-          console.log(`✅ Generated unique title: "${uniqueTitle}"`);
           return uniqueTitle;
         }
 
@@ -153,7 +152,7 @@ export class AIFormGeneratorService {
       // Fallback: Add UUID if all attempts failed
       const { v4: uuidv4 } = require('uuid');
       uniqueTitle = `${baseTitle} - ${uuidv4().slice(0, 8)}`;
-      console.log(`🔄 Fallback unique title: "${uniqueTitle}"`);
+
       return uniqueTitle;
     } catch (error) {
       console.error('❌ Error generating unique title:', error);
@@ -226,7 +225,6 @@ export class AIFormGeneratorService {
     // Check for feedback keywords first (higher priority)
     for (const keyword of feedbackKeywords) {
       if (lowerPrompt.includes(keyword)) {
-        console.log(`💬 FEEDBACK detected by keyword: "${keyword}"`);
         return 'feedback';
       }
     }
@@ -253,7 +251,6 @@ export class AIFormGeneratorService {
 
     for (const keyword of quizKeywords) {
       if (lowerPrompt.includes(keyword)) {
-        console.log(`🎯 Quiz detected by keyword: "${keyword}"`);
         return 'quiz';
       }
     }
@@ -280,12 +277,10 @@ export class AIFormGeneratorService {
 
     for (const keyword of surveyKeywords) {
       if (lowerPrompt.includes(keyword)) {
-        console.log(`📊 Survey detected by keyword: "${keyword}"`);
         return 'survey';
       }
     }
 
-    console.log(`📝 No specific type detected, defaulting to general`);
     return 'general';
   }
 
@@ -295,8 +290,6 @@ export class AIFormGeneratorService {
     intendedType: string,
     originalPrompt: string
   ): any {
-    console.log(`🔧 Enforcing ${intendedType} structure...`);
-
     switch (intendedType) {
       case 'quiz':
         return this.enforceQuizStructure(config, originalPrompt);
@@ -311,10 +304,6 @@ export class AIFormGeneratorService {
 
   // 🎯 QUIZ STRUCTURE ENFORCER
   private enforceQuizStructure(config: any, prompt: string): any {
-    console.log(
-      '🎯 Enforcing QUIZ structure with 5+ single choice questions...'
-    );
-
     if (!config.pages || !Array.isArray(config.pages)) {
       config.pages = [{ id: uuidv4(), fields: [] }];
     }
@@ -339,9 +328,6 @@ export class AIFormGeneratorService {
     // 🚨 CRITICAL: Ensure minimum 5 single choice questions for quiz classification
     if (singleChoiceCount < 5) {
       const questionsToAdd = 5 - singleChoiceCount;
-      console.log(
-        `🔧 Adding ${questionsToAdd} single choice questions to meet quiz requirements`
-      );
 
       const quizQuestions = this.generateQuizQuestions(prompt, questionsToAdd);
 
@@ -372,9 +358,6 @@ export class AIFormGeneratorService {
               };
               field.options[1].isCorrect = true;
               field.correctAnswer = field.options[1].value;
-              console.log(
-                `✅ Added correct answer to quiz question: ${field.label}`
-              );
             }
           }
         });
@@ -394,10 +377,6 @@ export class AIFormGeneratorService {
   }
 
   private enforceFeedbackStructure(config: any, prompt: string): any {
-    console.log(
-      '💬 Enforcing FEEDBACK structure with text fields and experience questions...'
-    );
-
     if (!config.pages || !Array.isArray(config.pages)) {
       config.pages = [{ id: uuidv4(), fields: [] }];
     }

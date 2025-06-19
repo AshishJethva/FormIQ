@@ -46,8 +46,6 @@ router.post(
         originalPromptLength: prompt.length,
       });
 
-     
-
       const result = await aiService.generateForm(sanitizedPrompt, userId);
 
       if (!result.success) {
@@ -64,8 +62,6 @@ router.post(
       }
 
       const formConfig = result.data;
-
-      
 
       const newForm = new Form({
         title: formConfig.title,
@@ -369,8 +365,6 @@ router.post(
           message: 'Form not found',
         });
       }
-
-    
 
       // Generate new logo
       const logoResult = await aiService.generateFormLogoPublic(

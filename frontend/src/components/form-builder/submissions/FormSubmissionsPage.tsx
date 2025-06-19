@@ -30,6 +30,11 @@ import {
   ChevronDown,
   Filter,
   X,
+  Briefcase, // For work experience
+  GraduationCap, // For education
+  Award, // For skills/certifications
+  Target, // For scoring
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -421,7 +426,7 @@ const detectFormTypeClientEnhanced = (
     return result;
   }
 
-  // 🎯 ENHANCED: Analyze form title and description with all form type detection
+  // Analyze form title and description with all form type detection
   const formTitle = formData.title?.toLowerCase() || '';
   const formDescription = formData.description?.toLowerCase() || '';
   const titleDescText = `${formTitle} ${formDescription}`.trim();
@@ -431,19 +436,18 @@ const detectFormTypeClientEnhanced = (
   let textFields = 0;
   let feedbackFields = 0;
   let surveyFields = 0;
-  let applicationFields = 0; // 🆕 NEW: Application-specific fields
+  let applicationFields = 0;
   let totalFields = 0;
   let hasCorrectAnswers = false;
   let hasFeedbackPatterns = false;
   let hasSurveyPatterns = false;
-  let hasApplicationPatterns = false; // 🆕 NEW: Application patterns
+  let hasApplicationPatterns = false;
   let hasLongTextFields = 0;
   let hasRatingScales = 0;
   let choiceFieldsWithRatingOptions = 0;
-
   let experienceFields = 0;
 
-  // 🆕 NEW: Application-specific counters
+  // Application-specific counters
   let hasFileUploads = 0;
   let hasPersonalInfoFields = 0;
   let hasWorkExperienceFields = 0;
@@ -477,15 +481,87 @@ const detectFormTypeClientEnhanced = (
         const fieldLabel = field.label?.toLowerCase() || '';
         const fieldType = field.type.toLowerCase();
 
-        console.log(`📋 Analyzing field: "${fieldLabel}" (${fieldType})`);
+        console.log(
+          `📋 FIXED: Analyzing field: "${fieldLabel}" (${fieldType})`
+        );
 
-        // 🆕 NEW: File upload detection (strong application indicator)
+        // 🎯 QUIZ DETECTION: Single choice questions with correct answers (HIGHEST PRIORITY)
+        if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
+          result.singleChoiceCount++;
+
+          // 🚨 CRITICAL: Check for correctAnswer property (PRIMARY quiz indicator)
+          if (
+            field.correctAnswer ||
+            (field.options && field.options.some((opt: any) => opt.isCorrect))
+          ) {
+            hasCorrectAnswers = true;
+            console.log(
+              `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
+            );
+          } else {
+            // 🔧 FIXED: Check if this single choice has rating options (SURVEY, NOT QUIZ)
+            if (field.options && Array.isArray(field.options)) {
+              const hasRatingOptions = field.options.some(
+                (opt: any) =>
+                  opt.label &&
+                  /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|1.*star|2.*star|3.*star|4.*star|5.*star|likely|unlikely/i.test(
+                    opt.label
+                  )
+              );
+
+              if (hasRatingOptions) {
+                choiceFieldsWithRatingOptions++;
+                ratingFields++;
+                hasSurveyPatterns = true;
+                console.log(
+                  `📊 SURVEY INDICATOR: Rating options in single choice "${fieldLabel}" (NOT QUIZ)`
+                );
+              }
+            }
+          }
+        }
+
+        // Multiple choice analysis with FIXED logic
+        if (fieldType === 'multiplechoice') {
+          if (
+            field.correctAnswer ||
+            field.correctAnswers ||
+            (field.options && field.options.some((opt: any) => opt.isCorrect))
+          ) {
+            hasCorrectAnswers = true;
+            console.log(
+              `🎯 QUIZ INDICATOR: correct answers in multiple choice "${fieldLabel}"`
+            );
+          } else {
+            // Check for rating-like multiple choice options (SURVEY)
+            if (field.options && Array.isArray(field.options)) {
+              const hasRatingOptions = field.options.some(
+                (opt: any) =>
+                  opt.label &&
+                  /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|likely|unlikely/i.test(
+                    opt.label
+                  )
+              );
+
+              if (hasRatingOptions) {
+                choiceFieldsWithRatingOptions++;
+                ratingFields++;
+                hasSurveyPatterns = true;
+                console.log(
+                  `📊 SURVEY INDICATOR: Rating options in multiple choice "${fieldLabel}"`
+                );
+              }
+            }
+          }
+        }
+
+        // File upload detection (strong application indicator)
         if (fieldType === 'fileupload' || fieldType === 'image') {
           hasFileUploads++;
 
           // Check if it's application-related file upload
           if (
-            /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv/.test(
+            /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv/i.test(
               fieldLabel
             )
           ) {
@@ -497,20 +573,20 @@ const detectFormTypeClientEnhanced = (
           }
         }
 
-        // 🆕 NEW: Personal information detection
+        // Personal information detection
         if (
           fieldType === 'fullname' ||
           fieldType === 'email' ||
           fieldType === 'phone' ||
           fieldType === 'address' ||
-          /full.*name|first.*name|last.*name|email|phone|address|contact.*information|personal.*details|date.*of.*birth|age|gender|nationality|emergency.*contact/.test(
+          /full.*name|first.*name|last.*name|email|phone|address|contact.*information|personal.*details|date.*of.*birth|age|gender|nationality|emergency.*contact/i.test(
             fieldLabel
           )
         ) {
           hasPersonalInfoFields++;
           hasContactFields++;
 
-          if (/personal|contact|details|information/.test(fieldLabel)) {
+          if (/personal|contact|details|information/i.test(fieldLabel)) {
             applicationFields++;
             hasApplicationPatterns = true;
             console.log(
@@ -519,9 +595,9 @@ const detectFormTypeClientEnhanced = (
           }
         }
 
-        // 🆕 NEW: Work experience detection
+        // Work experience detection
         if (
-          /work.*experience|job.*experience|employment.*history|previous.*job|current.*job|position.*held|company.*name|employer|job.*title|responsibilities|duties|years.*of.*experience|professional.*experience|career.*history|work.*history|current.*position|previous.*position/.test(
+          /work.*experience|job.*experience|employment.*history|previous.*job|current.*job|position.*held|company.*name|employer|job.*title|responsibilities|duties|years.*of.*experience|professional.*experience|career.*history|work.*history|current.*position|previous.*position/i.test(
             fieldLabel
           )
         ) {
@@ -533,9 +609,9 @@ const detectFormTypeClientEnhanced = (
           );
         }
 
-        // 🆕 NEW: Education background detection
+        // Education background detection
         if (
-          /education|educational.*background|school|university|college|degree|diploma|certification|qualification|academic|studies|major|gpa|graduation|institution|high.*school|bachelor|master|phd|doctorate/.test(
+          /education|educational.*background|school|university|college|degree|diploma|certification|qualification|academic|studies|major|gpa|graduation|institution|high.*school|bachelor|master|phd|doctorate/i.test(
             fieldLabel
           )
         ) {
@@ -547,9 +623,9 @@ const detectFormTypeClientEnhanced = (
           );
         }
 
-        // 🆕 NEW: Skills and other application-specific fields
+        // Skills and other application-specific fields
         if (
-          /skills|abilities|competencies|expertise|references|availability|salary.*expectation|expected.*salary|start.*date|notice.*period|why.*interested|motivation|cover.*letter|additional.*information|languages.*spoken|certifications|achievements/.test(
+          /skills|abilities|competencies|expertise|references|availability|salary.*expectation|expected.*salary|start.*date|notice.*period|why.*interested|motivation|cover.*letter|additional.*information|languages.*spoken|certifications|achievements/i.test(
             fieldLabel
           )
         ) {
@@ -561,101 +637,7 @@ const detectFormTypeClientEnhanced = (
           );
         }
 
-        // 🎯 QUIZ DETECTION: Single choice questions with correct answers
-        if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
-          result.singleChoiceCount++;
-
-          if (
-            field.correctAnswer ||
-            (field.options && field.options.some((opt: any) => opt.isCorrect))
-          ) {
-            hasCorrectAnswers = true;
-            console.log(
-              `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
-            );
-          }
-        }
-
-        // Multiple choice analysis
-        if (fieldType === 'multiplechoice') {
-          if (
-            field.correctAnswer ||
-            field.correctAnswers ||
-            (field.options && field.options.some((opt: any) => opt.isCorrect))
-          ) {
-            hasCorrectAnswers = true;
-          }
-
-          // Check for rating-like multiple choice options
-          if (field.options && Array.isArray(field.options)) {
-            const hasRatingOptions = field.options.some(
-              (opt: any) =>
-                opt.label &&
-                /excellent|very.*good|good|fair|poor|very.*poor|strongly.*agree|agree|neutral|disagree|strongly.*disagree|very.*satisfied|satisfied|dissatisfied|very.*dissatisfied|⭐|★|1.*to.*5|1.*to.*10|likely|unlikely/.test(
-                  opt.label.toLowerCase()
-                )
-            );
-
-            if (hasRatingOptions) {
-              choiceFieldsWithRatingOptions++;
-              ratingFields++;
-              hasSurveyPatterns = true;
-              console.log(
-                `📊 SURVEY INDICATOR: Rating options in multiple choice "${fieldLabel}"`
-              );
-            }
-          }
-        }
-
-        // 🎯 ENHANCED FEEDBACK DETECTION (HIGHEST PRIORITY)
-        // 🎯 ENHANCED FEEDBACK DETECTION (HIGHEST PRIORITY)
-        if (fieldType === 'longtext' || fieldType === 'paragraph') {
-          textFields++;
-
-          if (fieldType === 'longtext') {
-            hasLongTextFields++;
-          }
-          // 💬 ENHANCED FEEDBACK PATTERNS - More comprehensive detection
-          if (
-            /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience|thoughts.*on|opinion.*about|better.*experience|how.*did.*we.*do|rate.*our.*service|your.*experience.*was|overall.*experience|service.*experience|thoughts.*about|comments.*about/.test(
-              fieldLabel
-            )
-          ) {
-            feedbackFields++;
-            hasFeedbackPatterns = true;
-            console.log(
-              `💬 FEEDBACK PATTERN: feedback pattern in label "${fieldLabel}"`
-            );
-          }
-
-          // 🆕 EXPERIENCE-SPECIFIC PATTERNS (Strong feedback indicators)
-          if (
-            /experience|how.*was|describe.*your|tell.*us.*about.*your|thoughts.*on.*your|what.*did.*you.*think.*about/.test(
-              fieldLabel
-            )
-          ) {
-            experienceFields++;
-            hasFeedbackPatterns = true;
-            console.log(
-              `💬 EXPERIENCE PATTERN: experience pattern in label "${fieldLabel}"`
-            );
-          }
-
-          // 📊 SURVEY-SPECIFIC TEXT PATTERNS (Research/data collection focused)
-          if (
-            /how.*would.*you.*rate|how.*important.*is|rank.*the.*following|what.*is.*your.*preference|demographic|background.*information|research.*purposes|study.*participation|please.*evaluate|additional.*comments.*for.*research|other.*comments.*for.*study/.test(
-              fieldLabel
-            )
-          ) {
-            surveyFields++;
-            hasSurveyPatterns = true;
-            console.log(
-              `📊 SURVEY PATTERN: survey research pattern in label "${fieldLabel}"`
-            );
-          }
-        }
-
-        // 🎯 RATING/SCALE DETECTION - Strong survey indicators
+        // 🎯 SURVEY DETECTION: Rating/scale fields
         if (
           fieldType === 'rating' ||
           fieldType === 'scale' ||
@@ -671,7 +653,7 @@ const detectFormTypeClientEnhanced = (
 
         // Rating patterns in labels (stronger survey detection)
         if (
-          /rate|rating|satisfaction|quality|likely.*recommend|how.*satisfied|scale.*1.*to|on.*scale|strongly.*agree|strongly.*disagree|how.*would.*you.*rate|please.*rate|rate.*the|evaluate.*the|assess.*the/.test(
+          /rate|rating|satisfaction|quality|likely.*recommend|how.*satisfied|scale.*1.*to|on.*scale|strongly.*agree|strongly.*disagree|how.*would.*you.*rate|please.*rate|rate.*the|evaluate.*the|assess.*the/i.test(
             fieldLabel
           )
         ) {
@@ -683,7 +665,7 @@ const detectFormTypeClientEnhanced = (
           );
         }
 
-        // 🎯 TEXT FIELD ANALYSIS - Distinguish between survey, feedback, and application
+        // 🎯 FEEDBACK DETECTION: Text fields with feedback patterns
         if (
           fieldType === 'longtext' ||
           fieldType === 'paragraph' ||
@@ -694,7 +676,7 @@ const detectFormTypeClientEnhanced = (
 
           // 💬 FEEDBACK-SPECIFIC PATTERNS (experience/improvement focused)
           if (
-            /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience/.test(
+            /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience/i.test(
               fieldLabel
             )
           ) {
@@ -705,9 +687,22 @@ const detectFormTypeClientEnhanced = (
             );
           }
 
-          // 🆕 NEW: APPLICATION-SPECIFIC TEXT PATTERNS
+          // Experience-specific patterns
+          if (
+            /experience|how.*was|describe.*your|tell.*us.*about|thoughts.*on.*your|what.*did.*you.*think.*about/i.test(
+              fieldLabel
+            )
+          ) {
+            experienceFields++;
+            hasFeedbackPatterns = true;
+            console.log(
+              `💬 EXPERIENCE PATTERN: experience pattern in label "${fieldLabel}"`
+            );
+          }
+
+          // APPLICATION-SPECIFIC TEXT PATTERNS
           else if (
-            /describe.*yourself|tell.*us.*about|why.*do.*you.*want|what.*makes.*you|your.*experience.*with|goals|objectives|achievements|cover.*letter.*text|additional.*information|anything.*else/.test(
+            /describe.*yourself|tell.*us.*about|why.*do.*you.*want|what.*makes.*you|your.*experience.*with|goals|objectives|achievements|cover.*letter.*text|additional.*information|anything.*else/i.test(
               fieldLabel
             )
           ) {
@@ -715,6 +710,19 @@ const detectFormTypeClientEnhanced = (
             hasApplicationPatterns = true;
             console.log(
               `📄 APPLICATION PATTERN: application text pattern in label "${fieldLabel}"`
+            );
+          }
+
+          // SURVEY-SPECIFIC TEXT PATTERNS (Research/data collection focused)
+          else if (
+            /how.*would.*you.*rate|how.*important.*is|rank.*the.*following|what.*is.*your.*preference|demographic|background.*information|research.*purposes|study.*participation|please.*evaluate|additional.*comments.*for.*research|other.*comments.*for.*study/i.test(
+              fieldLabel
+            )
+          ) {
+            surveyFields++;
+            hasSurveyPatterns = true;
+            console.log(
+              `📊 SURVEY PATTERN: survey research pattern in label "${fieldLabel}"`
             );
           }
         }
@@ -741,15 +749,25 @@ const detectFormTypeClientEnhanced = (
       result.requirements.met.push('Quiz-related title/description');
     }
 
+    // 🚨 OVERRIDE: Even if there are rating fields, if it's a quiz, it stays a quiz
+    if (ratingFields > 0) {
+      result.reasons.push(
+        `Note: ${ratingFields} rating fields found but overridden by quiz classification`
+      );
+    }
+
     console.log(
       `🎯 FINAL CLASSIFICATION: QUIZ (${result.confidence}% confidence)`
     );
     return result;
   }
 
-  // 🆕 PRIORITY 2: APPLICATION DETECTION (New High Priority)
+  // 🎯 PRIORITY 2: APPLICATION DETECTION (New High Priority)
   const applicationIndicators = {
-    title: titleHasApplicationWords,
+    title:
+      /application|apply|job|career|position|employment|hiring|recruitment|candidate|resume|cv|submit.*application|join.*our.*team|work.*with.*us/i.test(
+        titleDescText
+      ),
     hasPersonalInfo: hasPersonalInfoFields >= 2,
     hasWorkExperience: hasWorkExperienceFields >= 1,
     hasEducation: hasEducationFields >= 1,
@@ -757,36 +775,23 @@ const detectFormTypeClientEnhanced = (
     hasFileUpload: hasFileUploads >= 1,
     hasApplicationFields: applicationFields >= 3,
     hasContactInfo: hasContactFields >= 2,
+    hasApplicationPatterns: hasApplicationPatterns,
     structuralMatch:
       (hasPersonalInfoFields >= 2 && hasWorkExperienceFields >= 1) ||
       (hasPersonalInfoFields >= 2 && hasEducationFields >= 1) ||
-      (hasWorkExperienceFields >= 1 && hasEducationFields >= 1) ||
-      (hasPersonalInfoFields >= 3 && hasFileUploads >= 1),
+      (hasWorkExperienceFields >= 1 && hasEducationFields >= 1),
     comprehensiveApplication:
       hasPersonalInfoFields >= 2 &&
       hasWorkExperienceFields >= 1 &&
       hasEducationFields >= 1,
   };
 
-  const applicationScore =
-    (applicationIndicators.title ? 5 : 0) +
-    (applicationIndicators.hasPersonalInfo ? 3 : 0) +
-    (applicationIndicators.hasWorkExperience ? 4 : 0) +
-    (applicationIndicators.hasEducation ? 4 : 0) +
-    (applicationIndicators.hasSkills ? 2 : 0) +
-    (applicationIndicators.hasFileUpload ? 3 : 0) +
-    (applicationIndicators.hasContactInfo ? 2 : 0) +
-    (applicationIndicators.structuralMatch ? 4 : 0) +
-    (applicationIndicators.comprehensiveApplication ? 5 : 0);
-
-  console.log('📄 Application Analysis:', {
-    applicationIndicators,
-    applicationScore,
-    titleDescText,
-  });
+  const applicationScore = Object.values(applicationIndicators).filter(
+    Boolean
+  ).length;
 
   if (
-    applicationScore >= 8 ||
+    applicationScore >= 4 ||
     (applicationIndicators.title && applicationFields >= 3) ||
     applicationIndicators.comprehensiveApplication ||
     (applicationIndicators.structuralMatch && hasFileUploads >= 1) ||
@@ -795,15 +800,22 @@ const detectFormTypeClientEnhanced = (
       hasEducationFields >= 1) ||
     (titleHasApplicationWords &&
       hasPersonalInfoFields >= 2 &&
+      hasFileUploads >= 1) ||
+    (hasApplicationPatterns &&
+      hasPersonalInfoFields >= 2 &&
       hasFileUploads >= 1)
   ) {
     result.type = 'application';
     result.confidence = Math.min(98, 60 + applicationScore * 4);
-    result.canEvaluate = false; // Applications typically don't need AI sentiment evaluation
+    result.canEvaluate = true;
     result.accuracyExpected = 90;
     result.reasons.push(
-      `✅ APPLICATION: ${applicationFields} application-specific fields, structured candidate data collection`
+      `APPLICATION: ${applicationFields} application-specific fields, structured candidate data collection`
     );
+
+    if (hasApplicationPatterns) {
+      result.reasons.push('📄 Application-specific field patterns detected');
+    }
 
     if (applicationIndicators.title) {
       result.requirements.met.push('Application/job-related title/description');
@@ -852,47 +864,39 @@ const detectFormTypeClientEnhanced = (
     hasRatingScales: hasRatingScales >= 2,
     hasSurveyFields: surveyFields >= 1,
     structuralComplexity: totalFields >= 5,
-    explicitSurveyTitle: /survey|poll|questionnaire|research.*study/.test(
+    explicitSurveyTitle: /survey|poll|questionnaire|research.*study/i.test(
       titleDescText
     ),
     evaluationFocused:
-      /evaluate|rate.*our|satisfaction|opinion|assessment.*of/.test(
+      /evaluate|rate.*our|satisfaction|opinion|assessment.*of/i.test(
         titleDescText
       ),
+    hasSurveyPatterns: hasSurveyPatterns,
   };
 
   // Calculate survey score with enhanced weighting
-  const surveyScore =
-    (surveyIndicators.title ? 4 : 0) +
-    (surveyIndicators.explicitSurveyTitle ? 5 : 0) +
-    (surveyIndicators.evaluationFocused ? 3 : 0) +
-    (surveyIndicators.hasMultipleRatingFields ? 4 : 0) +
-    (surveyIndicators.hasChoiceFieldsWithRatingOptions ? 3 : 0) +
-    (surveyIndicators.hasRatingScales ? 2 : 0) +
-    (surveyIndicators.hasSurveyFields ? 2 : 0) +
-    (surveyIndicators.structuralComplexity ? 1 : 0);
-
-  console.log('📊 Survey Analysis:', {
-    surveyIndicators,
-    surveyScore,
-    titleDescText,
-  });
+  const surveyScore = Object.values(surveyIndicators).filter(Boolean).length;
 
   if (
-    surveyScore >= 5 ||
+    surveyScore >= 3 ||
     (surveyIndicators.explicitSurveyTitle && ratingFields >= 1) ||
     (surveyIndicators.title && ratingFields >= 2) ||
     (ratingFields >= 3 && totalFields >= 3) ||
     choiceFieldsWithRatingOptions >= 2 ||
-    (surveyIndicators.evaluationFocused && hasRatingScales >= 1)
+    (surveyIndicators.evaluationFocused && hasRatingScales >= 1) ||
+    (hasSurveyPatterns && ratingFields >= 2)
   ) {
     result.type = 'survey';
     result.confidence = Math.min(95, 50 + surveyScore * 6);
     result.canEvaluate = true;
     result.accuracyExpected = 95;
     result.reasons.push(
-      `✅ SURVEY: ${ratingFields} rating fields, ${surveyFields} evaluation fields`
+      `✅ SURVEY: ${ratingFields} rating fields, ${choiceFieldsWithRatingOptions} choice fields with rating options`
     );
+
+    if (hasSurveyPatterns) {
+      result.reasons.push('📊 Survey-specific field patterns detected');
+    }
 
     if (surveyIndicators.title || surveyIndicators.explicitSurveyTitle) {
       result.requirements.met.push('Survey/research-related title/description');
@@ -929,10 +933,14 @@ const detectFormTypeClientEnhanced = (
   // 🎯 PRIORITY 4: FEEDBACK DETECTION
   const feedbackScore =
     (hasFeedbackPatterns ? 3 : 0) +
-    (feedbackFields >= 2 ? 2 : 0) +
-    (hasLongTextFields >= 3 ? 2 : 0) +
-    (titleHasFeedbackWords ? 3 : 0) +
-    (ratingFields <= 1 ? 1 : 0);
+      (feedbackFields >= 2 ? 2 : 0) +
+      (hasLongTextFields >= 3 ? 2 : 0) +
+      (titleHasFeedbackWords ? 3 : 0) +
+      (ratingFields <= 1 ? 1 : 0) +
+      experienceFields >=
+    2
+      ? 2
+      : 0;
 
   const feedbackIndicators = {
     title: titleHasFeedbackWords,
@@ -941,9 +949,10 @@ const detectFormTypeClientEnhanced = (
     feedbackFocused: feedbackFields > surveyFields,
     lowRatingFields: ratingFields <= 1,
     experienceWords:
-      /how.*was|experience.*with|thoughts.*on|opinion.*about/.test(
+      /how.*was|experience.*with|thoughts.*on|opinion.*about/i.test(
         titleDescText
       ),
+    hasExperienceFields: experienceFields >= 2,
   };
 
   console.log('💬 Feedback Analysis:', {
@@ -956,7 +965,8 @@ const detectFormTypeClientEnhanced = (
   if (
     feedbackScore >= 5 ||
     (feedbackIndicators.title && feedbackFields >= 1) ||
-    (hasLongTextFields >= 3 && feedbackFields >= 2 && ratingFields <= 1)
+    (hasLongTextFields >= 3 && feedbackFields >= 2 && ratingFields <= 1) ||
+    (experienceFields >= 3 && hasLongTextFields >= 2)
   ) {
     result.type = 'feedback';
     result.confidence = Math.min(95, 60 + feedbackScore * 5);
@@ -965,6 +975,12 @@ const detectFormTypeClientEnhanced = (
     result.reasons.push(
       `✅ FEEDBACK: ${feedbackFields} feedback fields, ${hasLongTextFields} text fields`
     );
+
+    if (experienceFields >= 2) {
+      result.reasons.push(
+        `💬 ${experienceFields} experience-focused fields detected`
+      );
+    }
 
     if (feedbackIndicators.title) {
       result.requirements.met.push('Feedback-related title/description');
@@ -977,6 +993,12 @@ const detectFormTypeClientEnhanced = (
     if (feedbackIndicators.hasTextFields) {
       result.requirements.met.push(
         `${hasLongTextFields} text fields for detailed feedback`
+      );
+    }
+
+    if (feedbackIndicators.hasExperienceFields) {
+      result.requirements.met.push(
+        `${experienceFields} experience-focused fields`
       );
     }
 
@@ -1033,7 +1055,7 @@ const detectFormTypeClientEnhanced = (
     );
   }
 
-  // 🆕 NEW: Application form suggestions
+  // Application form suggestions
   if (
     hasPersonalInfoFields >= 1 ||
     hasWorkExperienceFields >= 1 ||
@@ -1554,7 +1576,10 @@ const FormSubmissionsPage: React.FC = () => {
 
     // Update existing state
     setDetectedFormType(analysis.type);
-    setIsFeedbackForm(analysis.canEvaluate);
+    setIsFeedbackForm(
+      analysis.canEvaluate &&
+        ['quiz', 'survey', 'feedback', 'application'].includes(analysis.type)
+    );
 
     // Continue with existing field analysis for display
     const detectedUniqueFields = detectUniqueFields(formData);
@@ -1718,6 +1743,8 @@ const FormSubmissionsPage: React.FC = () => {
           return 'bg-green-100 text-green-800 border-green-200';
         case 'feedback':
           return 'bg-orange-100 text-orange-800 border-orange-200';
+        case 'application':
+          return 'bg-purple-100 text-purple-800 border-purple-200';
         default:
           return 'bg-gray-100 text-gray-600 border-gray-200';
       }
@@ -1733,6 +1760,8 @@ const FormSubmissionsPage: React.FC = () => {
           return '📊';
         case 'feedback':
           return '💬';
+        case 'application':
+          return '📄';
         default:
           return '📄';
       }
@@ -1763,6 +1792,9 @@ const FormSubmissionsPage: React.FC = () => {
             <span className='text-xs opacity-75'>
               ({formAnalysis.singleChoiceCount} SCQ)
             </span>
+          )}
+          {formAnalysis.type === 'application' && (
+            <span className='text-xs opacity-75'>(Candidate Eval)</span>
           )}
           <ChevronDown
             className={`w-3 h-3 transition-transform ${
@@ -1893,7 +1925,6 @@ const FormSubmissionsPage: React.FC = () => {
     );
   };
 
-  // ===== VALUE EXTRACTION FUNCTIONS =====
   // Function to get value from submission by field ID with choice field support
   const getFieldValueFromSubmission = (
     submission: Submission,
@@ -2896,6 +2927,49 @@ const FormSubmissionsPage: React.FC = () => {
               {urgencyLevel === 'high'
                 ? 'High Priority'
                 : `${positivePercent}% Pos`}{' '}
+              ({accuracy}% acc)
+            </Badge>
+          );
+        }
+        break;
+
+      case 'application':
+        if (evaluation.applicationResults) {
+          const overallScore = evaluation.applicationResults.overallScore;
+          const applicationStrength =
+            evaluation.applicationResults.applicationStrength;
+          const recommendedAction =
+            evaluation.applicationResults.recommendedAction;
+          const accuracy = evaluation.accuracy || 90;
+
+          const applicationColor =
+            overallScore >= 80
+              ? 'green'
+              : overallScore >= 70
+              ? 'blue'
+              : overallScore >= 60
+              ? 'yellow'
+              : 'red';
+
+          const actionIcon =
+            recommendedAction === 'hire'
+              ? '✅'
+              : recommendedAction === 'interview'
+              ? '🤝'
+              : recommendedAction === 'consider'
+              ? '🤔'
+              : '❌';
+
+          return (
+            <Badge
+              variant='default'
+              className={`bg-${applicationColor}-100 text-${applicationColor}-800 border-${applicationColor}-200 hover:bg-${applicationColor}-50 cursor-pointer text-xs`}
+              title={`Application: ${overallScore}% score, ${applicationStrength} candidate, recommend: ${recommendedAction} | Accuracy: ${accuracy}%`}
+            >
+              <span className='mr-1'>{actionIcon}</span>
+              {overallScore}%{' '}
+              {applicationStrength.charAt(0).toUpperCase() +
+                applicationStrength.slice(1)}{' '}
               ({accuracy}% acc)
             </Badge>
           );
@@ -5482,6 +5556,683 @@ const FormSubmissionsPage: React.FC = () => {
                             </motion.div>
                           )
                         )}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+
+              {selectedEvaluation.formType === 'application' &&
+                selectedEvaluation.applicationResults && (
+                  <motion.div
+                    variants={staggerContainer}
+                    initial='initial'
+                    animate='animate'
+                    className='space-y-6'
+                  >
+                    {/* Application Summary */}
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-gradient-to-r from-purple-50 to-indigo-50 p-4 md:p-6 rounded-lg border border-purple-200'
+                    >
+                      <h3 className='text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2'>
+                        <Briefcase className='w-5 h-5' />
+                        Application Evaluation Summary
+                      </h3>
+
+                      <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6'>
+                        <div className='text-center'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className='text-3xl md:text-4xl font-bold text-purple-600 mb-2'
+                          >
+                            {selectedEvaluation.applicationResults.overallScore}
+                            %
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
+                            Overall Score
+                          </div>
+                        </div>
+
+                        <div className='text-center'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className='text-3xl md:text-4xl font-bold text-blue-600 mb-2'
+                          >
+                            {
+                              selectedEvaluation.applicationResults
+                                .fieldCompletion.completionPercentage
+                            }
+                            %
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
+                            Field Completion
+                          </div>
+                        </div>
+
+                        <div className='text-center'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className='text-3xl md:text-4xl font-bold text-green-600 mb-2'
+                          >
+                            {
+                              selectedEvaluation.applicationResults
+                                .qualificationMatching.overallMatch
+                            }
+                            %
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
+                            Qualification Match
+                          </div>
+                        </div>
+
+                        <div className='text-center'>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className='text-3xl md:text-4xl font-bold text-orange-600 mb-2'
+                          >
+                            {
+                              selectedEvaluation.applicationResults
+                                .keywordAnalysis.keywordScore
+                            }
+                            %
+                          </motion.div>
+                          <div className='text-xs md:text-sm text-gray-600 font-medium'>
+                            Keyword Match
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Application Strength Indicator */}
+                      <div className='mt-6 p-4 bg-white rounded-lg'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <span className='text-sm font-medium text-gray-700'>
+                            Application Strength
+                          </span>
+                          <span
+                            className={`text-sm font-bold ${
+                              selectedEvaluation.applicationResults
+                                .applicationStrength === 'excellent'
+                                ? 'text-green-600'
+                                : selectedEvaluation.applicationResults
+                                    .applicationStrength === 'strong'
+                                ? 'text-blue-600'
+                                : selectedEvaluation.applicationResults
+                                    .applicationStrength === 'moderate'
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                            }`}
+                          >
+                            {selectedEvaluation.applicationResults.applicationStrength
+                              .charAt(0)
+                              .toUpperCase() +
+                              selectedEvaluation.applicationResults.applicationStrength.slice(
+                                1
+                              )}{' '}
+                            Candidate
+                          </span>
+                        </div>
+                        <div className='w-full bg-gray-200 rounded-full h-3'>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${selectedEvaluation.applicationResults.overallScore}%`,
+                            }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                            className={`h-3 rounded-full ${
+                              selectedEvaluation.applicationResults
+                                .applicationStrength === 'excellent'
+                                ? 'bg-green-500'
+                                : selectedEvaluation.applicationResults
+                                    .applicationStrength === 'strong'
+                                ? 'bg-blue-500'
+                                : selectedEvaluation.applicationResults
+                                    .applicationStrength === 'moderate'
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                            }`}
+                          />
+                        </div>
+
+                        {/* Recommendation */}
+                        <div className='mt-4 flex items-center justify-between'>
+                          <span className='text-sm font-medium text-gray-700'>
+                            Recommendation:
+                          </span>
+                          <Badge
+                            variant='outline'
+                            className={`${
+                              selectedEvaluation.applicationResults
+                                .recommendedAction === 'hire'
+                                ? 'bg-green-100 text-green-800 border-green-200'
+                                : selectedEvaluation.applicationResults
+                                    .recommendedAction === 'interview'
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : selectedEvaluation.applicationResults
+                                    .recommendedAction === 'consider'
+                                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                : 'bg-red-100 text-red-800 border-red-200'
+                            }`}
+                          >
+                            {selectedEvaluation.applicationResults
+                              .recommendedAction === 'hire' && '✅ '}
+                            {selectedEvaluation.applicationResults
+                              .recommendedAction === 'interview' && '🤝 '}
+                            {selectedEvaluation.applicationResults
+                              .recommendedAction === 'consider' && '🤔 '}
+                            {selectedEvaluation.applicationResults
+                              .recommendedAction === 'reject' && '❌ '}
+                            {selectedEvaluation.applicationResults.recommendedAction
+                              .charAt(0)
+                              .toUpperCase() +
+                              selectedEvaluation.applicationResults.recommendedAction.slice(
+                                1
+                              )}
+                          </Badge>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Score Breakdown */}
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <Target className='w-5 h-5' />
+                        Detailed Score Breakdown
+                      </h3>
+                      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6'>
+                        {[
+                          {
+                            label: 'Personal Info',
+                            score:
+                              selectedEvaluation.applicationResults
+                                .scoreBreakdown.personalInfo,
+                            maxScore: 20,
+                            color: 'blue',
+                            icon: <User className='w-4 h-4' />,
+                          },
+                          {
+                            label: 'Experience',
+                            score:
+                              selectedEvaluation.applicationResults
+                                .scoreBreakdown.experience,
+                            maxScore: 30,
+                            color: 'green',
+                            icon: <Briefcase className='w-4 h-4' />,
+                          },
+                          {
+                            label: 'Education',
+                            score:
+                              selectedEvaluation.applicationResults
+                                .scoreBreakdown.education,
+                            maxScore: 20,
+                            color: 'purple',
+                            icon: <GraduationCap className='w-4 h-4' />,
+                          },
+                          {
+                            label: 'Skills',
+                            score:
+                              selectedEvaluation.applicationResults
+                                .scoreBreakdown.skills,
+                            maxScore: 20,
+                            color: 'orange',
+                            icon: <Award className='w-4 h-4' />,
+                          },
+                          {
+                            label: 'Additional',
+                            score:
+                              selectedEvaluation.applicationResults
+                                .scoreBreakdown.additional,
+                            maxScore: 10,
+                            color: 'indigo',
+                            icon: <Star className='w-4 h-4' />,
+                          },
+                        ].map((item, index) => (
+                          <motion.div
+                            key={item.label}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`p-4 md:p-5 bg-gradient-to-br from-${item.color}-50 to-${item.color}-100 rounded-lg border border-${item.color}-200`}
+                          >
+                            <div className='flex items-center justify-between mb-3'>
+                              <div className='flex items-center gap-2'>
+                                {item.icon}
+                                <h4 className='font-medium text-gray-900'>
+                                  {item.label}
+                                </h4>
+                              </div>
+                              <span
+                                className={`text-lg font-bold text-${item.color}-600`}
+                              >
+                                {item.score}/{item.maxScore}
+                              </span>
+                            </div>
+                            <div className='w-full bg-gray-200 rounded-full h-2'>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{
+                                  width: `${
+                                    (item.score / item.maxScore) * 100
+                                  }%`,
+                                }}
+                                transition={{
+                                  duration: 0.5,
+                                  delay: index * 0.1 + 0.3,
+                                }}
+                                className={`h-2 rounded-full bg-${item.color}-500`}
+                              />
+                            </div>
+                            <div className='mt-2 text-xs text-gray-600'>
+                              {Math.round((item.score / item.maxScore) * 100)}%
+                              of maximum
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+
+                    {/* Qualification Matching */}
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <UserCheck className='w-5 h-5' />
+                        Qualification Assessment
+                      </h3>
+
+                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+                        {/* Qualification Scores */}
+                        <div>
+                          <h4 className='font-medium text-gray-800 mb-3'>
+                            Qualification Scores
+                          </h4>
+                          <div className='space-y-3'>
+                            {[
+                              {
+                                label: 'Experience Match',
+                                score:
+                                  selectedEvaluation.applicationResults
+                                    .qualificationMatching.experienceScore,
+                                icon: <Briefcase className='w-4 h-4' />,
+                              },
+                              {
+                                label: 'Education Match',
+                                score:
+                                  selectedEvaluation.applicationResults
+                                    .qualificationMatching.educationScore,
+                                icon: <GraduationCap className='w-4 h-4' />,
+                              },
+                              {
+                                label: 'Skills Match',
+                                score:
+                                  selectedEvaluation.applicationResults
+                                    .qualificationMatching.skillsScore,
+                                icon: <Award className='w-4 h-4' />,
+                              },
+                              {
+                                label: 'Certifications Match',
+                                score:
+                                  selectedEvaluation.applicationResults
+                                    .qualificationMatching.certificationsScore,
+                                icon: <Award className='w-4 h-4' />,
+                              },
+                            ].map((qual, index) => (
+                              <div
+                                key={qual.label}
+                                className='flex items-center gap-3'
+                              >
+                                <div className='text-blue-600'>{qual.icon}</div>
+                                <div className='flex-1'>
+                                  <div className='flex items-center justify-between mb-1'>
+                                    <span className='text-sm font-medium text-gray-700'>
+                                      {qual.label}
+                                    </span>
+                                    <span className='text-sm font-bold text-gray-900'>
+                                      {qual.score}%
+                                    </span>
+                                  </div>
+                                  <div className='w-full bg-gray-200 rounded-full h-2'>
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${qual.score}%` }}
+                                      transition={{
+                                        duration: 0.5,
+                                        delay: index * 0.1,
+                                      }}
+                                      className={`h-2 rounded-full ${
+                                        qual.score >= 80
+                                          ? 'bg-green-500'
+                                          : qual.score >= 60
+                                          ? 'bg-blue-500'
+                                          : qual.score >= 40
+                                          ? 'bg-yellow-500'
+                                          : 'bg-red-500'
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Strengths and Gaps */}
+                        <div className='space-y-4'>
+                          {/* Strengths */}
+                          <div>
+                            <h4 className='font-medium text-green-800 mb-2 flex items-center gap-2'>
+                              <CheckCircle className='w-4 h-4' />
+                              Key Strengths
+                            </h4>
+                            <div className='space-y-2'>
+                              {selectedEvaluation.applicationResults.qualificationMatching.strengths.map(
+                                (strength, index) => (
+                                  <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className='flex items-start gap-2 p-2 bg-green-50 rounded border border-green-200'
+                                  >
+                                    <span className='text-green-600 mt-0.5'>
+                                      ✓
+                                    </span>
+                                    <span className='text-sm text-green-800 break-words'>
+                                      {strength}
+                                    </span>
+                                  </motion.div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Keyword Analysis */}
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <Hash className='w-5 h-5' />
+                        Keyword Analysis
+                      </h3>
+
+                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+                        {/* Relevant Keywords */}
+                        <div>
+                          <h4 className='font-medium text-gray-800 mb-3'>
+                            Relevant Keywords Found (
+                            {
+                              selectedEvaluation.applicationResults
+                                .keywordAnalysis.relevantKeywords.length
+                            }
+                            )
+                          </h4>
+                          <div className='space-y-2 max-h-60 overflow-y-auto'>
+                            {selectedEvaluation.applicationResults.keywordAnalysis.relevantKeywords.map(
+                              (keyword, index) => (
+                                <motion.div
+                                  key={index}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: index * 0.05 }}
+                                  className='flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200'
+                                >
+                                  <div className='flex items-center gap-2'>
+                                    <Badge
+                                      variant='outline'
+                                      className={`text-xs ${
+                                        keyword.category === 'skill'
+                                          ? 'bg-green-100 text-green-800 border-green-200'
+                                          : keyword.category === 'technology'
+                                          ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                          : keyword.category === 'certification'
+                                          ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                          : 'bg-orange-100 text-orange-800 border-orange-200'
+                                      }`}
+                                    >
+                                      {keyword.category}
+                                    </Badge>
+                                    <span className='text-sm font-medium text-gray-900'>
+                                      {keyword.keyword}
+                                    </span>
+                                  </div>
+                                  <div className='flex items-center gap-1 text-xs text-gray-600'>
+                                    <span>×{keyword.frequency}</span>
+                                    <span className='mx-1'>•</span>
+                                    <span>W:{keyword.weight}</span>
+                                  </div>
+                                </motion.div>
+                              )
+                            )}
+                            {selectedEvaluation.applicationResults
+                              .keywordAnalysis.relevantKeywords.length ===
+                              0 && (
+                              <div className='p-4 bg-gray-50 rounded border border-gray-200 text-center'>
+                                <span className='text-sm text-gray-600'>
+                                  No relevant keywords found
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Missing Keywords */}
+                        <div>
+                          <h4 className='font-medium text-gray-800 mb-3'>
+                            Recommended Keywords (
+                            {
+                              selectedEvaluation.applicationResults
+                                .keywordAnalysis.missingKeywords.length
+                            }
+                            )
+                          </h4>
+                          {selectedEvaluation.applicationResults.keywordAnalysis
+                            .missingKeywords.length > 0 ? (
+                            <div className='space-y-2 max-h-60 overflow-y-auto'>
+                              {selectedEvaluation.applicationResults.keywordAnalysis.missingKeywords.map(
+                                (keyword, index) => (
+                                  <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    className='p-2 bg-gray-50 rounded border border-gray-200'
+                                  >
+                                    <span className='text-sm text-gray-700'>
+                                      {keyword}
+                                    </span>
+                                  </motion.div>
+                                )
+                              )}
+                            </div>
+                          ) : (
+                            <div className='p-4 bg-green-50 rounded border border-green-200 text-center'>
+                              <span className='text-sm text-green-700'>
+                                ✅ All recommended keywords found in application
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Keyword Score */}
+                      <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <span className='text-sm font-medium text-gray-700'>
+                            Keyword Match Score
+                          </span>
+                          <span className='text-lg font-bold text-blue-600'>
+                            {
+                              selectedEvaluation.applicationResults
+                                .keywordAnalysis.keywordScore
+                            }
+                            %
+                          </span>
+                        </div>
+                        <div className='w-full bg-gray-200 rounded-full h-3'>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${selectedEvaluation.applicationResults.keywordAnalysis.keywordScore}%`,
+                            }}
+                            transition={{ duration: 0.5, delay: 0.5 }}
+                            className={`h-3 rounded-full ${
+                              selectedEvaluation.applicationResults
+                                .keywordAnalysis.keywordScore >= 80
+                                ? 'bg-green-500'
+                                : selectedEvaluation.applicationResults
+                                    .keywordAnalysis.keywordScore >= 60
+                                ? 'bg-blue-500'
+                                : selectedEvaluation.applicationResults
+                                    .keywordAnalysis.keywordScore >= 40
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                    {/* AI Recommendations */}
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6'
+                    >
+                      <h3 className='text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2'>
+                        <Brain className='w-5 h-5' />
+                        AI Recommendations & Next Steps
+                      </h3>
+                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+                        {selectedEvaluation.applicationResults.aiRecommendations.map(
+                          (recommendation, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className='flex items-start gap-3 p-4 bg-white rounded-lg border border-blue-200'
+                            >
+                              <div className='w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5'>
+                                <span className='text-blue-600 text-sm font-bold'>
+                                  {index + 1}
+                                </span>
+                              </div>
+                              <div className='flex-1 min-w-0'>
+                                <p className='text-gray-900 leading-relaxed font-medium break-words'>
+                                  {recommendation}
+                                </p>
+                              </div>
+                            </motion.div>
+                          )
+                        )}
+                      </div>
+                    </motion.div>
+
+                    {/* Field Completion Details */}
+                    <motion.div
+                      variants={fadeInUp}
+                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                    >
+                      <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                        <CheckCircle className='w-5 h-5' />
+                        Application Completeness
+                      </h3>
+
+                      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+                        <div className='lg:col-span-2'>
+                          <div className='flex items-center justify-between mb-4'>
+                            <span className='text-sm font-medium text-gray-700'>
+                              Field Completion Rate
+                            </span>
+                            <span className='text-lg font-bold text-blue-600'>
+                              {
+                                selectedEvaluation.applicationResults
+                                  .fieldCompletion.completedFields
+                              }
+                              /
+                              {
+                                selectedEvaluation.applicationResults
+                                  .fieldCompletion.totalFields
+                              }{' '}
+                              fields
+                            </span>
+                          </div>
+                          <div className='w-full bg-gray-200 rounded-full h-4 mb-4'>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{
+                                width: `${selectedEvaluation.applicationResults.fieldCompletion.completionPercentage}%`,
+                              }}
+                              transition={{ duration: 0.5, delay: 0.3 }}
+                              className='h-4 rounded-full bg-blue-500'
+                            />
+                          </div>
+
+                          {/* Missing Fields */}
+                          {selectedEvaluation.applicationResults.fieldCompletion
+                            .missingFields.length > 0 && (
+                            <div className='mt-4'>
+                              <h4 className='font-medium text-orange-800 mb-2'>
+                                Missing Fields
+                              </h4>
+                              <div className='space-y-1'>
+                                {selectedEvaluation.applicationResults.fieldCompletion.missingFields.map(
+                                  (field, index) => (
+                                    <div
+                                      key={index}
+                                      className='text-sm text-orange-700 bg-orange-50 px-2 py-1 rounded'
+                                    >
+                                      • {field}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Critical Missing */}
+                        <div>
+                          {selectedEvaluation.applicationResults.fieldCompletion
+                            .criticalMissing.length > 0 ? (
+                            <div>
+                              <h4 className='font-medium text-red-800 mb-2'>
+                                ❌ Critical Missing
+                              </h4>
+                              <div className='space-y-2'>
+                                {selectedEvaluation.applicationResults.fieldCompletion.criticalMissing.map(
+                                  (field, index) => (
+                                    <div
+                                      key={index}
+                                      className='text-sm text-red-700 bg-red-50 px-3 py-2 rounded border border-red-200'
+                                    >
+                                      {field}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className='p-4 bg-green-50 rounded border border-green-200 text-center'>
+                              <span className='text-sm text-green-700'>
+                                ✅ All critical fields completed
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   </motion.div>
