@@ -317,7 +317,7 @@ export const deleteFileCompletely = async (
       await deleteFormFile(file.publicId, resourceType);
     } catch (cloudError: any) {
       console.warn(
-        '⚠️ Cloud storage deletion failed, continuing with database cleanup:',
+        ' Cloud storage deletion failed, continuing with database cleanup:',
         cloudError.message
       );
     }
@@ -701,7 +701,7 @@ export const downloadFileEnhanced = async (
 
       return { success: true, method: 'authenticated-fetch' };
     } catch (fetchError) {
-      console.warn('⚠️ Authenticated fetch failed:', fetchError);
+      console.warn(' Authenticated fetch failed:', fetchError);
     }
   }
 

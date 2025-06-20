@@ -146,7 +146,7 @@ export const sendPasswordResetEmail = async (
           </div>
           
           <div class="warning">
-            <span class="warning-icon">⚠️</span>
+            <span class="warning-icon"></span>
             <strong>Important:</strong> This password reset link will expire in <strong>${expiresIn}</strong> for security reasons.
           </div>
           
@@ -209,7 +209,6 @@ export const sendPasswordResetEmail = async (
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log('Password reset email sent:', info.messageId);
   } catch (error) {
     console.error('Error sending password reset email:', error);
     throw new Error('Failed to send password reset email');

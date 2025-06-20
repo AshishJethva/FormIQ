@@ -18,7 +18,6 @@ import {
   PlusSquare,
   Loader2,
   CreditCard,
-  Zap,
   Menu,
   X,
 } from 'lucide-react';
@@ -146,7 +145,6 @@ export default function DashboardPage() {
     const planType = currentProfile?.profile.plan.type ?? 'STARTER';
     const formsLimit = currentProfile?.profile.plan.formsLimit ?? 5;
     const formsUsed = currentProfile?.profile.plan.formsUsed ?? 0;
-    const remainingForms = formsLimit - formsUsed;
 
     // Check if user can create more forms BEFORE attempting creation
     if (!canCreate) {
@@ -171,26 +169,6 @@ export default function DashboardPage() {
         });
       }
       return;
-    }
-
-    // Show warning when approaching limit (but still allow creation)
-    if (remainingForms <= 2 && remainingForms > 0) {
-      const isLastForm = remainingForms === 1;
-
-      toast.warning(
-        isLastForm ? '⚠️ Last Form Available!' : '⚠️ Almost at Limit!',
-        {
-          description: isLastForm
-            ? `This will be your last form in the ${planType} plan. Consider upgrading for unlimited forms.`
-            : `Only ${remainingForms} forms left in your ${planType} plan. Consider upgrading soon.`,
-          action: {
-            label: 'Upgrade',
-            onClick: () => router.push('/myaccount/upgrade'),
-          },
-          duration: 2000,
-          icon: <Zap className='w-5 h-5' />,
-        }
-      );
     }
 
     setIsCreatingForm(true);

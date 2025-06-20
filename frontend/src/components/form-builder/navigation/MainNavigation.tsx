@@ -10,7 +10,7 @@ import {
 } from '@/redux/slices/formBuilder/formBuilderSlice';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import { Loader2, Eye, EyeOff, Smartphone, Monitor } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MainNavigationProps {
@@ -105,7 +105,6 @@ export default function MainNavigation({
   const handleTabChange = async (tab: string) => {
     // Don't allow tab changes during preview mode
     if (isPreviewEnabled && tab !== 'BUILD') {
-      toast.info('Exit preview mode to access other tabs');
       return;
     }
 
@@ -372,16 +371,6 @@ export default function MainNavigation({
         >
           {/* Preview Label with Icon */}
           <div className='flex items-center space-x-2'>
-            <motion.div
-              animate={{ rotate: isPreviewEnabled ? 360 : 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              {isPreviewEnabled ? (
-                <Monitor className='w-4 h-4 text-white' />
-              ) : (
-                <Smartphone className='w-4 h-4 text-white/80' />
-              )}
-            </motion.div>
             <span className='text-sm lg:text-base font-medium text-white/90'>
               Preview Form
             </span>

@@ -250,14 +250,6 @@ export default function LogoPropertiesPanel({
         {
           headers,
           timeout: 60000, // 60 second timeout
-          onUploadProgress: progressEvent => {
-            if (progressEvent.total) {
-              const percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              console.log(`Upload progress: ${percentCompleted}%`);
-            }
-          },
         }
       );
 

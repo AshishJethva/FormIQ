@@ -185,10 +185,9 @@ export default function PropertiesPanel() {
 
     dispatch(removeField({ fieldId: field.id, pageId }));
     dispatch(togglePropertiesPanel(false));
-    toast.info(`${field.label} field removed`);
   };
 
-  //  ENHANCED: Option management functions (now properly after hooks)
+  // Option management functions
   const addOption = () => {
     const newOption = {
       label: `Option ${options.length + 1}`,

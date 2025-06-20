@@ -145,7 +145,7 @@ export default function FormCanvas({
       return (
         <div className='w-full max-w-3xl mx-auto my-4 p-4 bg-orange-50 border border-orange-200 rounded-lg'>
           <div className='flex items-start'>
-            <div className='text-orange-600 mr-3 mt-0.5 flex-shrink-0'>⚠️</div>
+            <div className='text-orange-600 mr-3 mt-0.5 flex-shrink-0'></div>
             <div className='flex-1 min-w-0'>
               {' '}
               {/* flex-1 and min-w-0 for full width */}
@@ -331,23 +331,19 @@ export default function FormCanvas({
     if (!form || !form.pages) return;
 
     let pageId = '';
-    let field: Field | undefined;
 
     for (const page of form.pages) {
       if (!page || !page.fields) continue;
       const foundField = page.fields.find(f => f.id === fieldId);
       if (foundField) {
         pageId = page.id;
-        field = foundField;
+
         break;
       }
     }
 
     if (pageId && fieldId) {
       dispatch(removeField({ fieldId, pageId }));
-      if (field) {
-        toast.info(`${field.label} field removed`);
-      }
     }
   };
 

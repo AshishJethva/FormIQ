@@ -97,7 +97,7 @@ export default function FormBuilderPage() {
     return (
       <div className='flex items-center justify-center min-h-screen bg-gray-100'>
         <div className='text-center'>
-          <div className='text-red-500 text-6xl mb-4'>⚠️</div>
+          <div className='text-red-500 text-6xl mb-4'></div>
           <h1 className='text-2xl font-bold text-gray-800 mb-2'>
             Failed to Load Form
           </h1>

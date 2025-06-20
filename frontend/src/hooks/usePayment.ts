@@ -90,10 +90,6 @@ export const usePayment = () => {
         modal: {
           ondismiss: () => {
             setProcessingPlan(null);
-            toast.info('Payment Cancelled', {
-              description:
-                'You can upgrade anytime from your account settings.',
-            });
           },
         },
       };

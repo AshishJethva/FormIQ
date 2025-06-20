@@ -190,7 +190,6 @@ const FormsList: React.FC<FormsListProps> = ({
 
     try {
       let successCount = 0;
-      let failCount = 0;
       const errors: string[] = [];
 
       for (const item of itemsToDelete) {
@@ -205,7 +204,6 @@ const FormsList: React.FC<FormsListProps> = ({
           }
         } catch (error: any) {
           console.error(`Failed to delete form ${item.id}:`, error);
-          failCount++;
           errors.push(`${item.name}: ${error.message}`);
         }
       }
@@ -227,11 +225,6 @@ const FormsList: React.FC<FormsListProps> = ({
             icon: <Trash2 className='w-5 h-5' />,
           }
         );
-      } else if (successCount > 0) {
-        toast.warning('⚠️ Partial Success', {
-          description: `${successCount} forms deleted, ${failCount} failed. Form count updated for successful deletions.`,
-          duration: 10000,
-        });
       } else {
         toast.error('All Deletions Failed', {
           description: `Failed to delete any of the ${itemsToDelete.length} forms. Please try again.`,

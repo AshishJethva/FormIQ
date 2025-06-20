@@ -49,23 +49,23 @@ export const createDeletionConfirmation = (
             count - 2
           } more...`;
 
-    return `⚠️ PERMANENT DELETION WARNING ⚠️\n\nThis will permanently delete:\n\n${itemList}\n\n📊 Impact:\n• ${count} form${
+    return ` PERMANENT DELETION WARNING \n\nThis will permanently delete:\n\n${itemList}\n\n📊 Impact:\n• ${count} form${
       isPlural ? 's' : ''
     }\n• ${totalSubmissions} submission${
       totalSubmissions === 1 ? '' : 's'
     }\n• ${totalFiles} file${
       totalFiles === 1 ? '' : 's'
-    } from cloud storage\n• All form logos and assets\n\n🚨 THIS ACTION CANNOT BE UNDONE\nAll data will be permanently removed from our servers.\n`;
+    } from cloud storage\n• All form logos and assets\n\nTHIS ACTION CANNOT BE UNDONE\nAll data will be permanently removed from our servers.\n`;
   }
 
   if (type === 'submission') {
     const totalFiles = items.reduce((sum, item) => sum + (item.files || 0), 0);
 
-    return `⚠️ PERMANENT DELETION WARNING ⚠️\n\nThis will permanently delete:\n• ${count} submission${
+    return ` PERMANENT DELETION WARNING \n\nThis will permanently delete:\n• ${count} submission${
       isPlural ? 's' : ''
     }\n• ${totalFiles} associated file${
       totalFiles === 1 ? '' : 's'
-    } from storage\n• All submission data\n\n🚨 THIS ACTION CANNOT BE UNDONE\nAll files will be permanently removed from cloud storage.\n\nAre you sure you want to continue?`;
+    } from storage\n• All submission data\n\nTHIS ACTION CANNOT BE UNDONE\nAll files will be permanently removed from cloud storage.\n\nAre you sure you want to continue?`;
   }
 
   if (type === 'file') {
@@ -76,7 +76,7 @@ export const createDeletionConfirmation = (
             count - 2
           } more files...`;
 
-    return `⚠️ FILE DELETION WARNING ⚠️\n\nThis will permanently delete:\n\n${fileList}\n\n🚨 THIS ACTION CANNOT BE UNDONE\nFile${
+    return ` FILE DELETION WARNING \n\nThis will permanently delete:\n\n${fileList}\n\nTHIS ACTION CANNOT BE UNDONE\nFile${
       isPlural ? 's' : ''
     } will be permanently removed from cloud storage.\n\nAre you sure you want to continue?`;
   }
@@ -145,19 +145,6 @@ export const showDeletionResults = (
         duration: 1000,
       }
     );
-  } else if (details.itemsDeleted > 0) {
-    // Partial success
-    toast.warning('Partial Success', {
-      description: [
-        `${details.itemsDeleted}/${details.itemsProcessed} ${type}s deleted`,
-        details.itemsFailed > 0 ? `${details.itemsFailed} failed` : '',
-        details.filesDeleted > 0 ? `${details.filesDeleted} files removed` : '',
-        details.filesFailed > 0 ? `${details.filesFailed} files failed` : '',
-      ]
-        .filter(Boolean)
-        .join(' • '),
-      duration: 10000,
-    });
   } else {
     // Complete failure
     toast.error('Deletion Failed', {

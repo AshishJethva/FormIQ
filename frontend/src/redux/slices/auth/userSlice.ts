@@ -137,8 +137,6 @@ const logInUser =
 
       // Check if user needs verification
       if (userObj.requiresVerification) {
-        toast.info('Your account needs verification');
-
         // Store user ID for verification
         localStorage.setItem('user_id', userObj.user_id);
 

@@ -30,11 +30,14 @@ import {
   ChevronDown,
   Filter,
   X,
-  Briefcase, // For work experience
-  GraduationCap, // For education
-  Award, // For skills/certifications
-  Target, // For scoring
+  Briefcase,
+  GraduationCap,
+  Award,
+  Target,
   UserCheck,
+  MessageSquare,
+  BarChart3,
+  UserX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -309,36 +312,70 @@ interface UniqueField {
 }
 
 // ===== FILE HANDLING FUNCTIONS =====
-// Enhanced function to get files for a specific field from submission.files array
-const getFilesForField = (submission: Submission, fieldId: string): any[] => {
-  if (!submission.files || !Array.isArray(submission.files)) return [];
-
-  return submission.files.filter((file: any) => file.fieldId === fieldId);
-};
 
 // Check if a field has files (either in files array or data object)
 const fieldHasFiles = (submission: Submission, fieldId: string): boolean => {
-  // Check submission.files array first
-  const filesFromArray = getFilesForField(submission, fieldId);
-  if (filesFromArray.length > 0) return true;
+  // PRIORITY 1: Check submission.files array first (MOST RELIABLE)
+  if (submission.files && Array.isArray(submission.files)) {
+    const filesFromArray = submission.files.filter(
+      (file: any) => file.fieldId === fieldId
+    );
+    if (filesFromArray.length > 0) {
+      return true;
+    }
+  }
 
-  // Check data object for legacy file storage
+  // PRIORITY 2: Check data object for legacy file storage
   const value = submission.data[fieldId];
-  if (!value) return false;
+  if (!value) {
+    return false;
+  }
 
   // Check for file-like objects
   if (typeof value === 'object' && !Array.isArray(value)) {
-    return (
-      !!(value.originalName && value.url) || !!(value.fileName && value.url)
+    const hasFileProperties = !!(
+      (value.originalName && value.url) ||
+      (value.fileName && value.url) ||
+      value.publicId ||
+      value.cloudinaryUrl
     );
+    if (hasFileProperties) {
+      return true;
+    }
   }
 
+  // Check for array of files
   if (Array.isArray(value) && value.length > 0) {
-    const firstItem = value[0];
-    return (
-      !!(firstItem?.originalName && firstItem?.url) ||
-      !!(firstItem?.fileName && firstItem?.url)
+    const hasFiles = value.some(
+      item =>
+        item &&
+        typeof item === 'object' &&
+        ((item.originalName && item.url) ||
+          (item.fileName && item.url) ||
+          item.publicId ||
+          item.cloudinaryUrl)
     );
+    if (hasFiles) {
+      return true;
+    }
+  }
+
+  // Check for string values that might be file URLs
+  if (typeof value === 'string') {
+    // Check if it's a Cloudinary URL or file URL
+    if (
+      value.includes('cloudinary.com') ||
+      value.includes('res.cloudinary.com') ||
+      (value.startsWith('http') &&
+        (value.includes('/upload/') || value.includes('/image/')))
+    ) {
+      return true;
+    }
+
+    // Check if it's a base64 data URL
+    if (value.startsWith('data:')) {
+      return true;
+    }
   }
 
   return false;
@@ -349,23 +386,75 @@ const getAllFilesForField = (
   submission: Submission,
   fieldId: string
 ): any[] => {
-  const filesFromArray = getFilesForField(submission, fieldId);
-
-  // If we have files in the files array, use those
-  if (filesFromArray.length > 0) {
-    return filesFromArray;
+  // PRIORITY 1: Check submission.files array first
+  if (submission.files && Array.isArray(submission.files)) {
+    const filesFromArray = submission.files.filter(
+      (file: any) => file.fieldId === fieldId
+    );
+    if (filesFromArray.length > 0) {
+      return filesFromArray;
+    }
   }
 
-  // Otherwise check data object for legacy files
+  // PRIORITY 2: Check data object for legacy files
   const value = submission.data[fieldId];
-  if (!value) return [];
-
-  if (Array.isArray(value)) {
-    return value.filter(item => item?.originalName && item?.url);
+  if (!value) {
+    return [];
   }
 
+  // Handle array of files
+  if (Array.isArray(value)) {
+    const validFiles = value.filter(
+      item =>
+        item &&
+        typeof item === 'object' &&
+        (item.originalName || item.fileName) &&
+        item.url
+    );
+    if (validFiles.length > 0) {
+      return validFiles;
+    }
+  }
+
+  // Handle single file object
   if (typeof value === 'object' && value.originalName && value.url) {
     return [value];
+  }
+
+  // Handle string URLs (convert to file objects)
+  if (typeof value === 'string') {
+    if (
+      value.includes('cloudinary.com') ||
+      value.includes('res.cloudinary.com') ||
+      value.startsWith('http') ||
+      value.startsWith('data:')
+    ) {
+      // Extract filename from URL or use field label
+      let fileName = 'uploaded-file';
+      try {
+        if (value.includes('/')) {
+          const urlParts = value.split('/');
+          fileName = urlParts[urlParts.length - 1] || fileName;
+        }
+      } catch (e) {
+        // Keep default filename
+        console.error(`Error extracting filename from URL: ${e}`);
+      }
+
+      return [
+        {
+          originalName: fileName,
+          fileName: fileName,
+          url: value,
+          publicId: `extracted_${fieldId}_${Date.now()}`,
+          size: 0,
+          mimeType: value.startsWith('data:image')
+            ? 'image/png'
+            : 'application/octet-stream',
+          uploadedAt: new Date().toISOString(),
+        },
+      ];
+    }
   }
 
   return [];
@@ -481,23 +570,16 @@ const detectFormTypeClientEnhanced = (
         const fieldLabel = field.label?.toLowerCase() || '';
         const fieldType = field.type.toLowerCase();
 
-        console.log(
-          `📋 FIXED: Analyzing field: "${fieldLabel}" (${fieldType})`
-        );
-
-        // 🎯 QUIZ DETECTION: Single choice questions with correct answers (HIGHEST PRIORITY)
+        // QUIZ DETECTION: Single choice questions with correct answers (HIGHEST PRIORITY)
         if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
           result.singleChoiceCount++;
 
-          // 🚨 CRITICAL: Check for correctAnswer property (PRIMARY quiz indicator)
+          // Check for correctAnswer property (PRIMARY quiz indicator)
           if (
             field.correctAnswer ||
             (field.options && field.options.some((opt: any) => opt.isCorrect))
           ) {
             hasCorrectAnswers = true;
-            console.log(
-              `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
-            );
           } else {
             // 🔧 FIXED: Check if this single choice has rating options (SURVEY, NOT QUIZ)
             if (field.options && Array.isArray(field.options)) {
@@ -513,9 +595,6 @@ const detectFormTypeClientEnhanced = (
                 choiceFieldsWithRatingOptions++;
                 ratingFields++;
                 hasSurveyPatterns = true;
-                console.log(
-                  `📊 SURVEY INDICATOR: Rating options in single choice "${fieldLabel}" (NOT QUIZ)`
-                );
               }
             }
           }
@@ -529,9 +608,6 @@ const detectFormTypeClientEnhanced = (
             (field.options && field.options.some((opt: any) => opt.isCorrect))
           ) {
             hasCorrectAnswers = true;
-            console.log(
-              `🎯 QUIZ INDICATOR: correct answers in multiple choice "${fieldLabel}"`
-            );
           } else {
             // Check for rating-like multiple choice options (SURVEY)
             if (field.options && Array.isArray(field.options)) {
@@ -547,9 +623,6 @@ const detectFormTypeClientEnhanced = (
                 choiceFieldsWithRatingOptions++;
                 ratingFields++;
                 hasSurveyPatterns = true;
-                console.log(
-                  `📊 SURVEY INDICATOR: Rating options in multiple choice "${fieldLabel}"`
-                );
               }
             }
           }
@@ -567,9 +640,6 @@ const detectFormTypeClientEnhanced = (
           ) {
             applicationFields++;
             hasApplicationPatterns = true;
-            console.log(
-              `📄 APPLICATION INDICATOR: File upload field "${fieldLabel}"`
-            );
           }
         }
 
@@ -589,9 +659,6 @@ const detectFormTypeClientEnhanced = (
           if (/personal|contact|details|information/i.test(fieldLabel)) {
             applicationFields++;
             hasApplicationPatterns = true;
-            console.log(
-              `👤 APPLICATION INDICATOR: Personal info field "${fieldLabel}"`
-            );
           }
         }
 
@@ -604,9 +671,6 @@ const detectFormTypeClientEnhanced = (
           hasWorkExperienceFields++;
           applicationFields++;
           hasApplicationPatterns = true;
-          console.log(
-            `💼 APPLICATION INDICATOR: Work experience field "${fieldLabel}"`
-          );
         }
 
         // Education background detection
@@ -618,9 +682,6 @@ const detectFormTypeClientEnhanced = (
           hasEducationFields++;
           applicationFields++;
           hasApplicationPatterns = true;
-          console.log(
-            `🎓 APPLICATION INDICATOR: Education field "${fieldLabel}"`
-          );
         }
 
         // Skills and other application-specific fields
@@ -632,12 +693,9 @@ const detectFormTypeClientEnhanced = (
           hasSkillsFields++;
           applicationFields++;
           hasApplicationPatterns = true;
-          console.log(
-            `🛠️ APPLICATION INDICATOR: Skills/other field "${fieldLabel}"`
-          );
         }
 
-        // 🎯 SURVEY DETECTION: Rating/scale fields
+        // SURVEY DETECTION: Rating/scale fields
         if (
           fieldType === 'rating' ||
           fieldType === 'scale' ||
@@ -646,9 +704,6 @@ const detectFormTypeClientEnhanced = (
           ratingFields++;
           hasRatingScales++;
           hasSurveyPatterns = true;
-          console.log(
-            `📊 SURVEY INDICATOR: ${fieldType} field "${fieldLabel}"`
-          );
         }
 
         // Rating patterns in labels (stronger survey detection)
@@ -660,12 +715,9 @@ const detectFormTypeClientEnhanced = (
           ratingFields++;
           hasRatingScales++;
           hasSurveyPatterns = true;
-          console.log(
-            `📊 SURVEY PATTERN: rating pattern in label "${fieldLabel}"`
-          );
         }
 
-        // 🎯 FEEDBACK DETECTION: Text fields with feedback patterns
+        // FEEDBACK DETECTION: Text fields with feedback patterns
         if (
           fieldType === 'longtext' ||
           fieldType === 'paragraph' ||
@@ -682,9 +734,6 @@ const detectFormTypeClientEnhanced = (
           ) {
             feedbackFields++;
             hasFeedbackPatterns = true;
-            console.log(
-              `💬 FEEDBACK PATTERN: feedback pattern in label "${fieldLabel}"`
-            );
           }
 
           // Experience-specific patterns
@@ -695,9 +744,6 @@ const detectFormTypeClientEnhanced = (
           ) {
             experienceFields++;
             hasFeedbackPatterns = true;
-            console.log(
-              `💬 EXPERIENCE PATTERN: experience pattern in label "${fieldLabel}"`
-            );
           }
 
           // APPLICATION-SPECIFIC TEXT PATTERNS
@@ -708,9 +754,6 @@ const detectFormTypeClientEnhanced = (
           ) {
             applicationFields++;
             hasApplicationPatterns = true;
-            console.log(
-              `📄 APPLICATION PATTERN: application text pattern in label "${fieldLabel}"`
-            );
           }
 
           // SURVEY-SPECIFIC TEXT PATTERNS (Research/data collection focused)
@@ -721,16 +764,13 @@ const detectFormTypeClientEnhanced = (
           ) {
             surveyFields++;
             hasSurveyPatterns = true;
-            console.log(
-              `📊 SURVEY PATTERN: survey research pattern in label "${fieldLabel}"`
-            );
           }
         }
       });
     }
   });
 
-  // 🎯 PRIORITY 1: QUIZ DETECTION (Highest Priority)
+  // PRIORITY 1: QUIZ DETECTION (Highest Priority)
   // Must have 5+ single choice questions AND correct answers
   if (result.singleChoiceCount >= 5 && hasCorrectAnswers) {
     result.type = 'quiz';
@@ -738,31 +778,28 @@ const detectFormTypeClientEnhanced = (
     result.canEvaluate = true;
     result.accuracyExpected = 99;
     result.reasons.push(
-      `✅ QUIZ: ${result.singleChoiceCount} single choice questions with correct answers`
+      ` QUIZ: ${result.singleChoiceCount} single choice questions with correct answers`
     );
     result.requirements.met.push(
       `${result.singleChoiceCount} single choice questions with correct answers`
     );
 
     if (titleHasQuizWords) {
-      result.reasons.push('✅ Title confirms quiz/test nature');
+      result.reasons.push(' Title confirms quiz/test nature');
       result.requirements.met.push('Quiz-related title/description');
     }
 
-    // 🚨 OVERRIDE: Even if there are rating fields, if it's a quiz, it stays a quiz
+    // Even if there are rating fields, if it's a quiz, it stays a quiz
     if (ratingFields > 0) {
       result.reasons.push(
         `Note: ${ratingFields} rating fields found but overridden by quiz classification`
       );
     }
 
-    console.log(
-      `🎯 FINAL CLASSIFICATION: QUIZ (${result.confidence}% confidence)`
-    );
     return result;
   }
 
-  // 🎯 PRIORITY 2: APPLICATION DETECTION (New High Priority)
+  // PRIORITY 2: APPLICATION DETECTION
   const applicationIndicators = {
     title:
       /application|apply|job|career|position|employment|hiring|recruitment|candidate|resume|cv|submit.*application|join.*our.*team|work.*with.*us/i.test(
@@ -850,13 +887,10 @@ const detectFormTypeClientEnhanced = (
       `📄 Application patterns: recruitment-focused, candidate evaluation (score: ${applicationScore})`
     );
 
-    console.log(
-      `📄 FINAL CLASSIFICATION: APPLICATION (${result.confidence}% confidence, score: ${applicationScore})`
-    );
     return result;
   }
 
-  // 🎯 PRIORITY 3: SURVEY DETECTION (Before feedback to prevent misclassification)
+  // PRIORITY 3: SURVEY DETECTION
   const surveyIndicators = {
     title: titleHasSurveyWords,
     hasMultipleRatingFields: ratingFields >= 3,
@@ -891,7 +925,7 @@ const detectFormTypeClientEnhanced = (
     result.canEvaluate = true;
     result.accuracyExpected = 95;
     result.reasons.push(
-      `✅ SURVEY: ${ratingFields} rating fields, ${choiceFieldsWithRatingOptions} choice fields with rating options`
+      ` SURVEY: ${ratingFields} rating fields, ${choiceFieldsWithRatingOptions} choice fields with rating options`
     );
 
     if (hasSurveyPatterns) {
@@ -924,13 +958,10 @@ const detectFormTypeClientEnhanced = (
       `📊 Survey patterns: research-focused, data collection oriented (score: ${surveyScore})`
     );
 
-    console.log(
-      `📊 FINAL CLASSIFICATION: SURVEY (${result.confidence}% confidence, score: ${surveyScore})`
-    );
     return result;
   }
 
-  // 🎯 PRIORITY 4: FEEDBACK DETECTION
+  // PRIORITY 4: FEEDBACK DETECTION
   const feedbackScore =
     (hasFeedbackPatterns ? 3 : 0) +
       (feedbackFields >= 2 ? 2 : 0) +
@@ -955,13 +986,6 @@ const detectFormTypeClientEnhanced = (
     hasExperienceFields: experienceFields >= 2,
   };
 
-  console.log('💬 Feedback Analysis:', {
-    feedbackIndicators,
-    feedbackScore,
-    feedbackFields,
-    surveyFields,
-  });
-
   if (
     feedbackScore >= 5 ||
     (feedbackIndicators.title && feedbackFields >= 1) ||
@@ -973,7 +997,7 @@ const detectFormTypeClientEnhanced = (
     result.canEvaluate = true;
     result.accuracyExpected = 92;
     result.reasons.push(
-      `✅ FEEDBACK: ${feedbackFields} feedback fields, ${hasLongTextFields} text fields`
+      ` FEEDBACK: ${feedbackFields} feedback fields, ${hasLongTextFields} text fields`
     );
 
     if (experienceFields >= 2) {
@@ -1006,13 +1030,10 @@ const detectFormTypeClientEnhanced = (
       `💬 Feedback patterns: experience-focused, improvement-oriented (score: ${feedbackScore})`
     );
 
-    console.log(
-      `💬 FINAL CLASSIFICATION: FEEDBACK (${result.confidence}% confidence, score: ${feedbackScore})`
-    );
     return result;
   }
 
-  // 🎯 DEFAULT TO GENERAL with enhanced guidance
+  // DEFAULT TO GENERAL
   result.type = 'general';
   result.confidence = 90;
   result.canEvaluate = false;
@@ -1059,7 +1080,8 @@ const detectFormTypeClientEnhanced = (
   if (
     hasPersonalInfoFields >= 1 ||
     hasWorkExperienceFields >= 1 ||
-    hasEducationFields >= 1
+    hasEducationFields >= 1 ||
+    hasFileUploads >= 1
   ) {
     const missingAppFields = [];
     if (hasPersonalInfoFields < 2)
@@ -1127,9 +1149,6 @@ const detectFormTypeClientEnhanced = (
     );
   }
 
-  console.log(
-    `📝 FINAL CLASSIFICATION: GENERAL (${result.confidence}% confidence)`
-  );
   return result;
 };
 
@@ -1413,7 +1432,6 @@ const FormSubmissionsPage: React.FC = () => {
   const [formAnalysis, setFormAnalysis] = useState<ReturnType<
     typeof detectFormTypeClientEnhanced
   > | null>(null);
-  const [showFormAnalysis, setShowFormAnalysis] = useState(false);
 
   // Delete confirmation state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -1444,7 +1462,7 @@ const FormSubmissionsPage: React.FC = () => {
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 1024);
     };
 
     checkIsMobile();
@@ -1604,12 +1622,12 @@ const FormSubmissionsPage: React.FC = () => {
               emailFound = true;
             }
 
-            // 🚨 FIXED: Enhanced full name field detection with quiz exclusion
+            // Enhanced full name field detection with quiz exclusion
             if (detectedUniqueFields.length < 1) {
               const fieldLabel = field.label?.toLowerCase() || '';
               const fieldId = field.id?.toLowerCase() || '';
 
-              // ✅ STRICT: Only match explicit full name patterns
+              //  STRICT: Only match explicit full name patterns
               const isExplicitFullNameField =
                 field.type === 'fullName' ||
                 fieldLabel === 'full name' ||
@@ -1647,7 +1665,7 @@ const FormSubmissionsPage: React.FC = () => {
                 (field.options &&
                   field.options.some((opt: any) => opt.isCorrect));
 
-              // ✅ Only set fullNameFound if it's explicit AND not a quiz question
+              //  Only set fullNameFound if it's explicit AND not a quiz question
               if (isExplicitFullNameField && !isQuizQuestion) {
                 fullNameFound = true;
               }
@@ -1659,7 +1677,7 @@ const FormSubmissionsPage: React.FC = () => {
 
     // Set display preferences with additional quiz check
     if (detectedUniqueFields.length === 0) {
-      // 🚨 ADDITIONAL CHECK: Don't show name field for quiz forms unless explicit
+      // Don't show name field for quiz forms unless explicit
       if (analysis.type === 'quiz' && !hasExplicitNameField(formData)) {
         setHasFullNameField(false);
       } else {
@@ -1733,195 +1751,73 @@ const FormSubmissionsPage: React.FC = () => {
     if (!formAnalysis) return null;
 
     const getBadgeColor = () => {
-      if (!formAnalysis.canEvaluate)
-        return 'bg-gray-100 text-gray-600 border-gray-200';
-
       switch (formAnalysis.type) {
         case 'quiz':
-          return 'bg-blue-100 text-blue-800 border-blue-200';
+          return 'bg-gradient-to-r from-blue-50 to-indigo-100 text-blue-800 border-blue-200 shadow-sm';
         case 'survey':
-          return 'bg-green-100 text-green-800 border-green-200';
+          return 'bg-gradient-to-r from-green-50 to-emerald-100 text-green-800 border-green-200 shadow-sm';
         case 'feedback':
-          return 'bg-orange-100 text-orange-800 border-orange-200';
+          return 'bg-gradient-to-r from-orange-50 to-amber-100 text-orange-800 border-orange-200 shadow-sm';
         case 'application':
-          return 'bg-purple-100 text-purple-800 border-purple-200';
+          return 'bg-gradient-to-r from-purple-50 to-violet-100 text-purple-800 border-purple-200 shadow-sm';
         default:
-          return 'bg-gray-100 text-gray-600 border-gray-200';
+          return 'bg-gradient-to-r from-gray-50 to-slate-100 text-gray-700 border-gray-200 shadow-sm';
       }
     };
 
-    const getIcon = () => {
-      if (!formAnalysis.canEvaluate) return '❌';
-
+    const getFormTypeDisplay = () => {
       switch (formAnalysis.type) {
         case 'quiz':
-          return '📝';
+          return {
+            icon: <Target className='w-4 h-4' />,
+            title: 'Quiz Assessment',
+          };
         case 'survey':
-          return '📊';
+          return {
+            icon: <BarChart3 className='w-4 h-4' />,
+            title: 'Survey Research',
+          };
         case 'feedback':
-          return '💬';
+          return {
+            icon: <MessageSquare className='w-4 h-4' />,
+            title: 'Feedback Collection',
+          };
         case 'application':
-          return '📄';
+          return {
+            icon: <UserCheck className='w-4 h-4' />,
+            title: 'Application Review',
+          };
         default:
-          return '📄';
+          return {
+            icon: <FileText className='w-4 h-4' />,
+            title: 'General Form',
+          };
       }
     };
+
+    const formTypeDisplay = getFormTypeDisplay();
 
     return (
-      <div className='flex items-center gap-2'>
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg border text-sm font-medium cursor-pointer ${getBadgeColor()}`}
-          onClick={() => setShowFormAnalysis(!showFormAnalysis)}
-          title='Click to view detailed form analysis'
+      <div className='flex items-center gap-3'>
+        {/* Main Form Type Badge - Static, same height as AI Enabled badge */}
+        <div
+          className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg border text-sm font-medium ${getBadgeColor()}`}
         >
-          <span>{getIcon()}</span>
-          <span>
-            {formAnalysis.type.charAt(0).toUpperCase() +
-              formAnalysis.type.slice(1)}{' '}
-            Form
-          </span>
-          {formAnalysis.canEvaluate && (
-            <span className='text-xs opacity-75'>
-              ({formAnalysis.accuracyExpected}% accuracy)
-            </span>
-          )}
-          {formAnalysis.type === 'quiz' && (
-            <span className='text-xs opacity-75'>
-              ({formAnalysis.singleChoiceCount} SCQ)
-            </span>
-          )}
-          {formAnalysis.type === 'application' && (
-            <span className='text-xs opacity-75'>(Candidate Eval)</span>
-          )}
-          <ChevronDown
-            className={`w-3 h-3 transition-transform ${
-              showFormAnalysis ? 'rotate-180' : ''
-            }`}
-          />
-        </motion.div>
+          {/* Professional Lucide Icon */}
+          {formTypeDisplay.icon}
 
-        {/* Enhanced evaluation info */}
+          {/* Form Type Title */}
+          <span className='font-semibold'>{formTypeDisplay.title}</span>
+        </div>
+
+        {/* AI Ready Indicator - Only show if evaluable, completely static */}
         {formAnalysis.canEvaluate && (
-          <Badge
-            variant='outline'
-            className='bg-green-50 text-green-700 border-green-200'
-          >
-            <Brain className='w-3 h-3 mr-1' />
-            AI Ready
-          </Badge>
+          <div className='bg-gradient-to-r from-emerald-50 to-green-100 text-emerald-700 border-emerald-200 shadow-sm px-3 py-1 font-medium inline-flex items-center gap-1.5 rounded-lg border text-sm'>
+            <Brain className='w-3 h-3' />
+            AI Enabled
+          </div>
         )}
       </div>
-    );
-  };
-
-  const FormAnalysisDetails = () => {
-    if (!formAnalysis || !showFormAnalysis) return null;
-
-    return (
-      <AnimatePresence>
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className='mb-6 overflow-hidden'
-        >
-          <Card className='border-blue-200 bg-blue-50'>
-            <CardContent className='p-4'>
-              <div className='space-y-4'>
-                <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-                  <h4 className='font-semibold text-blue-900'>
-                    Form Analysis Results
-                  </h4>
-                  <div className='flex items-center gap-2 text-sm'>
-                    <span className='text-blue-700'>
-                      Confidence: {formAnalysis.confidence}%
-                    </span>
-                    {formAnalysis.canEvaluate && (
-                      <span className='text-green-700'>
-                        Expected Accuracy: {formAnalysis.accuracyExpected}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {formAnalysis.reasons.length > 0 && (
-                  <div>
-                    <h5 className='font-medium text-blue-800 mb-2'>
-                      Analysis Details:
-                    </h5>
-                    <ul className='text-sm text-blue-700 space-y-1'>
-                      {formAnalysis.reasons.map((reason, index) => (
-                        <li key={index} className='flex items-start gap-2'>
-                          <span className='mt-1 text-xs'>•</span>
-                          <span>{reason}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-                  {formAnalysis.requirements.met.length > 0 && (
-                    <div>
-                      <h5 className='font-medium text-green-700 mb-2'>
-                        ✅ Requirements Met:
-                      </h5>
-                      <ul className='text-sm text-green-600 space-y-1'>
-                        {formAnalysis.requirements.met.map((req, index) => (
-                          <li key={index} className='flex items-start gap-2'>
-                            <span className='mt-1'>✓</span>
-                            <span>{req}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {formAnalysis.requirements.missing.length > 0 && (
-                    <div>
-                      <h5 className='font-medium text-orange-700 mb-2'>
-                        ⚠️ Missing Requirements:
-                      </h5>
-                      <ul className='text-sm text-orange-600 space-y-1'>
-                        {formAnalysis.requirements.missing.map((req, index) => (
-                          <li key={index} className='flex items-start gap-2'>
-                            <span className='mt-1'>⚠</span>
-                            <span>{req}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {formAnalysis.type === 'quiz' && (
-                  <div className='p-3 bg-blue-100 rounded border border-blue-300'>
-                    <p className='text-sm text-blue-800'>
-                      <strong>Quiz Classification Rule:</strong> Forms with 5+
-                      single choice questions are automatically classified as
-                      quizzes for AI evaluation with up to 99% accuracy.
-                    </p>
-                  </div>
-                )}
-
-                {!formAnalysis.canEvaluate && (
-                  <div className='p-3 bg-yellow-100 rounded border border-yellow-300'>
-                    <p className='text-sm text-yellow-800'>
-                      <strong>Note:</strong> This form doesn&apos;t meet the
-                      requirements for AI evaluation. Consider adding the
-                      missing requirements above to enable advanced AI analysis.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </AnimatePresence>
     );
   };
 
@@ -2251,26 +2147,16 @@ const FormSubmissionsPage: React.FC = () => {
         }));
 
         // Show detailed success/failure message
-        if (failedCount === 0) {
-          console.log('Batch evaluation completed successfully!', {
-            description: `All ${successCount} submissions evaluated successfully.`,
-            duration: 1000,
-          });
-        } else if (successCount === 0) {
+        if (successCount === 0) {
           toast.error('Batch evaluation failed', {
             description: `All ${failedCount} evaluations failed. Please try again or contact support.`,
             duration: 8000,
-          });
-        } else {
-          toast.warning('Batch evaluation partially completed', {
-            description: `${successCount} successful, ${failedCount} failed. Check individual submissions for details.`,
-            duration: 6000,
           });
         }
 
         // Show errors if any
         if (result.metadata?.errors && result.metadata.errors.length > 0) {
-          console.warn('⚠️ Batch evaluation errors:', result.metadata.errors);
+          console.warn(' Batch evaluation errors:', result.metadata.errors);
         }
       } else {
         // Handle batch evaluation failure
@@ -2398,7 +2284,7 @@ const FormSubmissionsPage: React.FC = () => {
             (submission: any) => {
               const id = submission.id || submission._id;
               if (!id) {
-                console.warn('⚠️ Submission missing ID:', submission);
+                console.warn(' Submission missing ID:', submission);
               }
 
               return {
@@ -2755,7 +2641,7 @@ const FormSubmissionsPage: React.FC = () => {
       if (!submission.isRead) {
         handleToggleRead(submission.id, submission.isRead).catch(error => {
           console.warn(
-            '⚠️ Failed to mark submission as read when viewing:',
+            ' Failed to mark submission as read when viewing:',
             error
           );
         });
@@ -2851,12 +2737,13 @@ const FormSubmissionsPage: React.FC = () => {
       );
     }
 
-    // Enhanced badges with accuracy information
     switch (evaluation.formType) {
       case 'quiz':
         if (evaluation.quizResults) {
           const percentage = evaluation.quizResults.percentage;
-          const accuracy = evaluation.accuracy || 98;
+          const correctAnswers = evaluation.quizResults.correctAnswers;
+          const totalQuestions = evaluation.quizResults.totalQuestions;
+
           const scoreColor =
             percentage >= 80
               ? 'green'
@@ -2866,14 +2753,23 @@ const FormSubmissionsPage: React.FC = () => {
               ? 'yellow'
               : 'red';
 
+          const performanceLabel =
+            percentage >= 80
+              ? 'Excellent'
+              : percentage >= 60
+              ? 'Good'
+              : percentage >= 40
+              ? 'Fair'
+              : 'Needs Improvement';
+
           return (
             <Badge
               variant='default'
               className={`bg-${scoreColor}-100 text-${scoreColor}-800 border-${scoreColor}-200 hover:bg-${scoreColor}-50 cursor-pointer text-xs`}
-              title={`Quiz Score: ${evaluation.quizResults.correctAnswers}/${evaluation.quizResults.totalQuestions} correct (${percentage}%) | Accuracy: ${accuracy}%`}
+              title={`Quiz Performance: ${correctAnswers}/${totalQuestions} correct answers`}
             >
               <Star className='w-3 h-3 mr-1' />
-              {percentage}% ({accuracy}% acc)
+              {correctAnswers}/{totalQuestions} • {performanceLabel}
             </Badge>
           );
         }
@@ -2883,22 +2779,72 @@ const FormSubmissionsPage: React.FC = () => {
         if (evaluation.surveyResults) {
           const positivePercent =
             evaluation.surveyResults.overallSentiment.positive;
-          const accuracy = evaluation.accuracy || 95;
-          const surveyColor =
-            positivePercent >= 70
-              ? 'green'
-              : positivePercent >= 50
-              ? 'blue'
-              : 'yellow';
+          const neutralPercent =
+            evaluation.surveyResults.overallSentiment.neutral || 0;
+          const negativePercent =
+            evaluation.surveyResults.overallSentiment.negative || 0;
+
+          // Enhanced logic for better sentiment categorization
+          const getSentimentLabel = () => {
+            // If overwhelmingly positive (70%+)
+            if (positivePercent >= 70) {
+              return 'Very Positive';
+            }
+            // If mostly positive (50-69%)
+            else if (positivePercent >= 50) {
+              return 'Positive';
+            }
+            // If balanced or mixed (30-49% positive with significant neutral)
+            else if (positivePercent >= 30 && neutralPercent >= 20) {
+              return 'Mixed Response';
+            }
+            // If mostly neutral (neutral > 50%)
+            else if (neutralPercent >= 50) {
+              return 'Neutral';
+            }
+            // If mostly negative (negative > positive and negative > 40%)
+            else if (
+              negativePercent > positivePercent &&
+              negativePercent >= 40
+            ) {
+              return 'Negative';
+            }
+            // If very negative (negative > 60%)
+            else if (negativePercent >= 60) {
+              return 'Very Negative';
+            }
+            // Default mixed case
+            else {
+              return 'Mixed Response';
+            }
+          };
+
+          const sentimentLabel = getSentimentLabel();
+
+          // Color based on sentiment label rather than just positive percentage
+          const surveyColor = sentimentLabel.includes('Very Positive')
+            ? 'green'
+            : sentimentLabel.includes('Positive') &&
+              !sentimentLabel.includes('Very')
+            ? 'blue'
+            : sentimentLabel.includes('Mixed') ||
+              sentimentLabel.includes('Neutral')
+            ? 'yellow'
+            : sentimentLabel.includes('Negative') &&
+              !sentimentLabel.includes('Very')
+            ? 'orange'
+            : sentimentLabel.includes('Very Negative')
+            ? 'red'
+            : 'gray';
 
           return (
             <Badge
               variant='default'
               className={`bg-${surveyColor}-100 text-${surveyColor}-800 border-${surveyColor}-200 hover:bg-${surveyColor}-50 cursor-pointer text-xs`}
-              title={`Survey: ${positivePercent}% positive | Accuracy: ${accuracy}%`}
+              title={`Survey Results: ${positivePercent}% positive, ${neutralPercent}% neutral, ${negativePercent}% negative`}
             >
               <Brain className='w-3 h-3 mr-1' />
-              {positivePercent}% Pos ({accuracy}% acc)
+              {sentimentLabel}
             </Badge>
           );
         }
@@ -2908,26 +2854,71 @@ const FormSubmissionsPage: React.FC = () => {
         if (evaluation.feedbackResults) {
           const positivePercent =
             evaluation.feedbackResults.sentimentBreakdown.positive;
+          const neutralPercent =
+            evaluation.feedbackResults.sentimentBreakdown.neutral || 0;
+          const negativePercent =
+            evaluation.feedbackResults.sentimentBreakdown.negative || 0;
           const urgencyLevel = evaluation.feedbackResults.urgencyLevel;
-          const accuracy = evaluation.accuracy || 92;
+
+          // Enhanced feedback labeling logic
+          const getFeedbackLabel = () => {
+            // Priority 1: Check urgency level first
+            if (urgencyLevel === 'high') {
+              return 'Urgent Action Required';
+            } else if (urgencyLevel === 'medium') {
+              return 'Review Needed';
+            }
+            // Priority 2: Base on sentiment if low urgency
+            else {
+              if (positivePercent >= 70) {
+                return 'Positive Feedback';
+              } else if (positivePercent >= 50) {
+                return 'Mostly Positive';
+              } else if (neutralPercent >= 50) {
+                return 'Neutral Feedback';
+              } else if (negativePercent >= 50) {
+                return 'Requires Attention';
+              } else {
+                return 'Mixed Feedback';
+              }
+            }
+          };
+
+          const feedbackLabel = getFeedbackLabel();
+
+          // Color based on urgency first, then sentiment
           const feedbackColor =
             urgencyLevel === 'high'
               ? 'red'
               : urgencyLevel === 'medium'
               ? 'yellow'
-              : 'green';
+              : positivePercent >= 70
+              ? 'green'
+              : positivePercent >= 50
+              ? 'blue'
+              : negativePercent >= 50
+              ? 'orange'
+              : 'gray';
+
+          const priorityIcon =
+            urgencyLevel === 'high' ? (
+              <AlertTriangle className='w-3 h-3 mr-1' />
+            ) : urgencyLevel === 'medium' ? (
+              <Clock className='w-3 h-3 mr-1' />
+            ) : positivePercent >= 70 ? (
+              <CheckCircle className='w-3 h-3 mr-1' />
+            ) : (
+              <Brain className='w-3 h-3 mr-1' />
+            );
 
           return (
             <Badge
               variant='default'
               className={`bg-${feedbackColor}-100 text-${feedbackColor}-800 border-${feedbackColor}-200 hover:bg-${feedbackColor}-50 cursor-pointer text-xs`}
-              title={`Feedback: ${positivePercent}% positive, ${urgencyLevel} priority | Accuracy: ${accuracy}%`}
+              title={`Feedback Analysis: ${positivePercent}% positive, ${neutralPercent}% neutral, ${negativePercent}% negative sentiment, ${urgencyLevel} priority level`}
             >
-              <Brain className='w-3 h-3 mr-1' />
-              {urgencyLevel === 'high'
-                ? 'High Priority'
-                : `${positivePercent}% Pos`}{' '}
-              ({accuracy}% acc)
+              {priorityIcon}
+              {feedbackLabel}
             </Badge>
           );
         }
@@ -2940,7 +2931,6 @@ const FormSubmissionsPage: React.FC = () => {
             evaluation.applicationResults.applicationStrength;
           const recommendedAction =
             evaluation.applicationResults.recommendedAction;
-          const accuracy = evaluation.accuracy || 90;
 
           const applicationColor =
             overallScore >= 80
@@ -2951,26 +2941,34 @@ const FormSubmissionsPage: React.FC = () => {
               ? 'yellow'
               : 'red';
 
-          const actionIcon =
+          const actionLabel =
             recommendedAction === 'hire'
-              ? '✅'
+              ? 'Ready to Hire'
               : recommendedAction === 'interview'
-              ? '🤝'
+              ? 'Schedule Interview'
               : recommendedAction === 'consider'
-              ? '🤔'
-              : '❌';
+              ? 'Evaluate Further'
+              : 'Not Suitable';
+
+          const actionIcon =
+            recommendedAction === 'hire' ? (
+              <UserCheck className='w-3 h-3 mr-1' />
+            ) : recommendedAction === 'interview' ? (
+              <MessageSquare className='w-3 h-3 mr-1' />
+            ) : recommendedAction === 'consider' ? (
+              <Eye className='w-3 h-3 mr-1' />
+            ) : (
+              <UserX className='w-3 h-3 mr-1' />
+            );
 
           return (
             <Badge
               variant='default'
               className={`bg-${applicationColor}-100 text-${applicationColor}-800 border-${applicationColor}-200 hover:bg-${applicationColor}-50 cursor-pointer text-xs`}
-              title={`Application: ${overallScore}% score, ${applicationStrength} candidate, recommend: ${recommendedAction} | Accuracy: ${accuracy}%`}
+              title={`Application Score: ${overallScore}/100, ${applicationStrength} candidate profile`}
             >
-              <span className='mr-1'>{actionIcon}</span>
-              {overallScore}%{' '}
-              {applicationStrength.charAt(0).toUpperCase() +
-                applicationStrength.slice(1)}{' '}
-              ({accuracy}% acc)
+              {actionIcon}
+              {actionLabel}
             </Badge>
           );
         }
@@ -2986,7 +2984,7 @@ const FormSubmissionsPage: React.FC = () => {
         title={`Analysis completed with ${accuracy}% accuracy`}
       >
         <Brain className='w-3 h-3 mr-1' />
-        Analyzed ({accuracy}% acc)
+        Analyzed
       </Badge>
     );
   };
@@ -3038,23 +3036,9 @@ const FormSubmissionsPage: React.FC = () => {
       if (isFeedbackForm) {
         const submission = submissions.find(s => s.id === submissionId);
         if (submission) {
-          toast.info('Starting AI evaluation...', {
-            description: 'This may take a few moments',
-            duration: 3000,
-          });
           evaluateSubmissionWithAI(submission);
         }
-      } else {
-        toast.info('AI evaluation not available', {
-          description: 'This form type does not support AI evaluation.',
-          duration: 3000,
-        });
       }
-    } else if (evaluatingSubmissions.has(submissionId)) {
-      toast.info('Evaluation in progress...', {
-        description: 'Please wait for the evaluation to complete',
-        duration: 3000,
-      });
     }
   };
 
@@ -3118,7 +3102,7 @@ const FormSubmissionsPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className='space-y-4'
+          className='space-y-3 md:space-y-4'
         >
           <div className='flex items-center justify-between border-b border-gray-200 pb-2'>
             <label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
@@ -3382,7 +3366,7 @@ const FormSubmissionsPage: React.FC = () => {
 
       initializeData();
     } else {
-      console.warn('⚠️ No formId available');
+      console.warn(' No formId available');
       setLoading(false);
     }
   }, [formId, fetchFormStructure, fetchSubmissions]);
@@ -3447,8 +3431,6 @@ const FormSubmissionsPage: React.FC = () => {
               {isFeedbackForm && ' with AI-powered analysis'}
             </p>
           </div>
-
-          <FormAnalysisDetails />
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
@@ -3675,11 +3657,12 @@ const FormSubmissionsPage: React.FC = () => {
               <>
                 {/* Mobile Card View */}
                 {isMobile ? (
-                  <div className='p-4 space-y-4'>
+                  <div className='p-4 space-y-3 md:space-y-4'>
                     <motion.div
                       variants={staggerContainer}
                       initial='initial'
                       animate='animate'
+                      className='space-y-3 md:space-y-4'
                     >
                       {submissions.map((submission, index) => (
                         <MobileSubmissionCard
@@ -3710,209 +3693,266 @@ const FormSubmissionsPage: React.FC = () => {
                     </motion.div>
                   </div>
                 ) : (
-                  /* Desktop Table View */
-                  <div className='overflow-x-auto'>
-                    <Table className='w-full table-fixed'>
-                      <TableHeader>
-                        <TableRow className='border-b-2 border-gray-200 bg-gray-50'>
-                          <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
-                            <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                              <Clock className='w-4 h-4' />
-                              Submission Date
-                            </div>
-                          </TableHead>
-
-                          {uniqueFields.map(field => (
-                            <TableHead
-                              key={field.fieldId}
-                              className='border-r border-gray-200 px-4 py-3 w-[16%]'
-                            >
-                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                                {field.icon}
-                                <span className='truncate'>{field.label}</span>
+                  // Desktop Table View
+                  <div className='overflow-x-auto shadow-sm rounded-lg border border-gray-200'>
+                    <div className='min-w-full'>
+                      <Table className='w-full'>
+                        <TableHeader>
+                          <TableRow className='border-b-2 border-gray-200 bg-gray-50'>
+                            <TableHead className='border-r border-gray-200 px-2 lg:px-4 py-3 min-w-[140px] max-w-[180px]'>
+                              <div className='flex items-center gap-1 lg:gap-2 font-semibold text-gray-700 text-xs lg:text-sm'>
+                                <Clock className='w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0' />
+                                <span className='truncate'>Date</span>
                               </div>
                             </TableHead>
-                          ))}
-
-                          {uniqueFields.length < 2 && hasEmailField && (
-                            <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
-                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                                <Mail className='w-4 h-4' />
-                                Email
-                              </div>
-                            </TableHead>
-                          )}
-
-                          {uniqueFields.length < 1 && hasFullNameField && (
-                            <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
-                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                                <User className='w-4 h-4' />
-                                Full Name
-                              </div>
-                            </TableHead>
-                          )}
-
-                          {isFeedbackForm && (
-                            <TableHead className='border-r border-gray-200 px-4 py-3 w-[16%]'>
-                              <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                                <Brain className='w-4 h-4' />
-                                AI Analysis
-                              </div>
-                            </TableHead>
-                          )}
-
-                          <TableHead className='border-r border-gray-200 px-4 py-3 w-[12%]'>
-                            <div className='flex items-center gap-2 font-semibold text-gray-700'>
-                              <AlertCircle className='w-4 h-4' />
-                              Status
-                            </div>
-                          </TableHead>
-
-                          <TableHead className='border-r border-gray-200 px-4 py-3 w-[8%]'>
-                            <div className='flex items-center justify-center gap-2 font-semibold text-gray-700'>
-                              Read
-                            </div>
-                          </TableHead>
-
-                          <TableHead className='px-4 py-3 w-[8%]'>
-                            <div className='font-semibold text-center text-gray-700'>
-                              Actions
-                            </div>
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {submissions.map((submission, submissionIndex) => (
-                          <motion.tr
-                            key={`submission-${submission.id}-${submissionIndex}`}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: submissionIndex * 0.05 }}
-                            className={`${
-                              !submission.isRead
-                                ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                                : 'bg-white'
-                            } hover:bg-gray-50 cursor-pointer border-b border-gray-200 transition-colors duration-150`}
-                            onClick={() => handleViewSubmission(submission)}
-                          >
-                            <TableCell className='border-r border-gray-200 px-4 py-4'>
-                              <div>
-                                <div className='font-medium text-sm text-gray-900'>
-                                  {formatDateTime(submission.submittedAt)}
-                                </div>
-                                <div className='text-xs text-gray-500 mt-1'>
-                                  {formatTimeAgo(submission.submittedAt)}
-                                </div>
-                              </div>
-                            </TableCell>
 
                             {uniqueFields.map(field => (
-                              <TableCell
+                              <TableHead
                                 key={field.fieldId}
-                                className='border-r border-gray-200 px-4 py-4'
+                                className='border-r border-gray-200 px-2 lg:px-4 py-3 min-w-[120px] max-w-[160px]'
                               >
-                                <div
-                                  className='truncate font-medium text-gray-900'
-                                  title={getFieldValueFromSubmission(
-                                    submission,
-                                    field.fieldId
+                                <div className='flex items-center gap-1 lg:gap-2 font-semibold text-gray-700 text-xs lg:text-sm'>
+                                  {React.cloneElement(
+                                    field.icon as React.ReactElement<any>,
+                                    {
+                                      className:
+                                        'w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0',
+                                    }
                                   )}
-                                >
-                                  {getFieldValueFromSubmission(
-                                    submission,
-                                    field.fieldId
-                                  )}
+                                  <span
+                                    className='truncate'
+                                    title={field.label}
+                                  >
+                                    {field.label.length > 12
+                                      ? field.label.substring(0, 12) + '...'
+                                      : field.label}
+                                  </span>
                                 </div>
-                              </TableCell>
+                              </TableHead>
                             ))}
 
                             {uniqueFields.length < 2 && hasEmailField && (
-                              <TableCell className='border-r border-gray-200 px-4 py-4'>
-                                <div
-                                  className='truncate font-medium text-gray-900'
-                                  title={getEmailFromSubmission(submission)}
-                                >
-                                  {getEmailFromSubmission(submission)}
+                              <TableHead className='border-r border-gray-200 px-2 lg:px-4 py-3 min-w-[140px] max-w-[180px]'>
+                                <div className='flex items-center gap-1 lg:gap-2 font-semibold text-gray-700 text-xs lg:text-sm'>
+                                  <Mail className='w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0' />
+                                  <span className='truncate'>Email</span>
                                 </div>
-                              </TableCell>
+                              </TableHead>
                             )}
 
                             {uniqueFields.length < 1 && hasFullNameField && (
-                              <TableCell className='border-r border-gray-200 px-4 py-4'>
-                                <div
-                                  className='truncate font-medium text-gray-900'
-                                  title={getFullNameFromSubmission(submission)}
-                                >
-                                  {getFullNameFromSubmission(submission)}
+                              <TableHead className='border-r border-gray-200 px-2 lg:px-4 py-3 min-w-[120px] max-w-[160px]'>
+                                <div className='flex items-center gap-1 lg:gap-2 font-semibold text-gray-700 text-xs lg:text-sm'>
+                                  <User className='w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0' />
+                                  <span className='truncate'>Name</span>
                                 </div>
-                              </TableCell>
+                              </TableHead>
                             )}
 
                             {isFeedbackForm && (
-                              <TableCell className='border-r border-gray-200 px-4 py-4'>
-                                <div
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handleViewAIEvaluation(submission.id);
-                                  }}
-                                  className='cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors'
-                                  title='Click to view detailed AI evaluation'
-                                >
-                                  {getAIEvaluationBadge(submission.id)}
+                              <TableHead className='border-r border-gray-200 px-2 lg:px-4 py-3 min-w-[140px] max-w-[180px]'>
+                                <div className='flex items-center gap-1 lg:gap-2 font-semibold text-gray-700 text-xs lg:text-sm'>
+                                  <Brain className='w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0' />
+                                  <span className='truncate'>AI Analysis</span>
                                 </div>
-                              </TableCell>
+                              </TableHead>
                             )}
 
-                            <TableCell className='border-r border-gray-200 px-4 py-4'>
-                              {getStatusBadge(submission.status)}
-                            </TableCell>
+                            <TableHead className='border-r border-gray-200 px-2 lg:px-4 py-3 min-w-[100px] max-w-[120px]'>
+                              <div className='flex items-center gap-1 lg:gap-2 font-semibold text-gray-700 text-xs lg:text-sm'>
+                                <AlertCircle className='w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0' />
+                                <span className='truncate'>Status</span>
+                              </div>
+                            </TableHead>
 
-                            <TableCell className='border-r border-gray-200 px-4 py-4 text-center'>
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  handleToggleRead(
-                                    submission.id,
-                                    submission.isRead
-                                  );
-                                }}
-                                className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer'
-                                title={
-                                  submission.isRead
-                                    ? 'Mark as unread'
-                                    : 'Mark as read'
-                                }
-                              >
-                                {submission.isRead ? (
-                                  <Eye className='w-4 h-4 text-green-600' />
-                                ) : (
-                                  <EyeOff className='w-4 h-4 text-gray-400' />
-                                )}
-                              </Button>
-                            </TableCell>
+                            <TableHead className='border-r border-gray-200 px-2 lg:px-4 py-3 w-[60px] lg:w-[80px]'>
+                              <div className='flex items-center justify-center font-semibold text-gray-700 text-xs lg:text-sm'>
+                                <span className='hidden lg:inline'>Read</span>
+                                <Eye className='w-3 h-3 lg:hidden' />
+                              </div>
+                            </TableHead>
 
-                            <TableCell className='px-4 py-4'>
-                              <div className='flex items-center justify-center gap-1'>
+                            <TableHead className='px-2 lg:px-4 py-3 w-[60px] lg:w-[80px]'>
+                              <div className='font-semibold text-center text-gray-700 text-xs lg:text-sm'>
+                                <span className='hidden lg:inline'>
+                                  Actions
+                                </span>
+                                <span className='lg:hidden'>•••</span>
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {submissions.map((submission, submissionIndex) => (
+                            <motion.tr
+                              key={`submission-${submission.id}-${submissionIndex}`}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: submissionIndex * 0.05 }}
+                              className={`${
+                                !submission.isRead
+                                  ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                                  : 'bg-white'
+                              } hover:bg-gray-50 cursor-pointer border-b border-gray-200 transition-colors duration-150`}
+                              onClick={() => handleViewSubmission(submission)}
+                            >
+                              {/* Date Column - Enhanced Responsive */}
+                              <TableCell className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4'>
+                                <div className='min-w-0'>
+                                  <div className='font-medium text-xs lg:text-sm text-gray-900 truncate'>
+                                    {formatDateTime(submission.submittedAt)}
+                                  </div>
+                                  <div className='text-xs text-gray-500 mt-1 truncate'>
+                                    {formatTimeAgo(submission.submittedAt)}
+                                  </div>
+                                </div>
+                              </TableCell>
+
+                              {/* Unique Fields - Enhanced Responsive */}
+                              {uniqueFields.map(field => (
+                                <TableCell
+                                  key={field.fieldId}
+                                  className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4'
+                                >
+                                  <div className='min-w-0'>
+                                    <div
+                                      className='font-medium text-xs lg:text-sm text-gray-900 truncate cursor-pointer hover:text-blue-600'
+                                      title={getFieldValueFromSubmission(
+                                        submission,
+                                        field.fieldId
+                                      )}
+                                    >
+                                      {(() => {
+                                        const value =
+                                          getFieldValueFromSubmission(
+                                            submission,
+                                            field.fieldId
+                                          );
+                                        return value.length > 20
+                                          ? value.substring(0, 20) + '...'
+                                          : value;
+                                      })()}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              ))}
+
+                              {/* Email Field - Enhanced Responsive */}
+                              {uniqueFields.length < 2 && hasEmailField && (
+                                <TableCell className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4'>
+                                  <div className='min-w-0'>
+                                    <div
+                                      className='font-medium text-xs lg:text-sm text-gray-900 truncate cursor-pointer hover:text-blue-600'
+                                      title={getEmailFromSubmission(submission)}
+                                    >
+                                      {(() => {
+                                        const email =
+                                          getEmailFromSubmission(submission);
+                                        return email.length > 25
+                                          ? email.substring(0, 25) + '...'
+                                          : email;
+                                      })()}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              )}
+
+                              {/* Name Field - Enhanced Responsive */}
+                              {uniqueFields.length < 1 && hasFullNameField && (
+                                <TableCell className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4'>
+                                  <div className='min-w-0'>
+                                    <div
+                                      className='font-medium text-xs lg:text-sm text-gray-900 truncate cursor-pointer hover:text-blue-600'
+                                      title={getFullNameFromSubmission(
+                                        submission
+                                      )}
+                                    >
+                                      {(() => {
+                                        const name =
+                                          getFullNameFromSubmission(submission);
+                                        return name.length > 20
+                                          ? name.substring(0, 20) + '...'
+                                          : name;
+                                      })()}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              )}
+
+                              {/* AI Analysis - Enhanced Responsive */}
+                              {isFeedbackForm && (
+                                <TableCell className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4'>
+                                  <div className='min-w-0'>
+                                    <div
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleViewAIEvaluation(submission.id);
+                                      }}
+                                      className='cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors'
+                                      title='Click to view detailed AI evaluation'
+                                    >
+                                      {getAIEvaluationBadge(submission.id)}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              )}
+
+                              {/* Status - Enhanced Responsive */}
+                              <TableCell className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4'>
+                                <div className='min-w-0'>
+                                  {getStatusBadge(submission.status)}
+                                </div>
+                              </TableCell>
+
+                              {/* Read Status - Enhanced Responsive */}
+                              <TableCell className='border-r border-gray-200 px-2 lg:px-4 py-3 lg:py-4 text-center'>
                                 <Button
                                   variant='ghost'
                                   size='sm'
                                   onClick={e => {
                                     e.stopPropagation();
-                                    confirmDelete(submission.id);
+                                    handleToggleRead(
+                                      submission.id,
+                                      submission.isRead
+                                    );
                                   }}
-                                  className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors'
-                                  title='Delete submission'
+                                  className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer h-6 w-6 lg:h-8 lg:w-8'
+                                  title={
+                                    submission.isRead
+                                      ? 'Mark as unread'
+                                      : 'Mark as read'
+                                  }
                                 >
-                                  <Trash2 className='w-4 h-4' />
+                                  {submission.isRead ? (
+                                    <Eye className='w-3 h-3 lg:w-4 lg:h-4 text-green-600' />
+                                  ) : (
+                                    <EyeOff className='w-3 h-3 lg:w-4 lg:h-4 text-gray-400' />
+                                  )}
                                 </Button>
-                              </div>
-                            </TableCell>
-                          </motion.tr>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+
+                              {/* Actions - Enhanced Responsive */}
+                              <TableCell className='px-2 lg:px-4 py-3 lg:py-4'>
+                                <div className='flex items-center justify-center'>
+                                  <Button
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      confirmDelete(submission.id);
+                                    }}
+                                    className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors h-6 w-6 lg:h-8 lg:w-8'
+                                    title='Delete submission'
+                                  >
+                                    <Trash2 className='w-3 h-3 lg:w-4 lg:h-4' />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </motion.tr>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 )}
               </>
@@ -3969,566 +4009,771 @@ const FormSubmissionsPage: React.FC = () => {
       {/* Enhanced Submission Details Modal */}
       <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
         <DialogContent
-          className='w-[95vw] h-[90vh] max-h-[90vh] overflow-y-auto bg-white p-0'
+          className='w-[95vw] h-[90vh] max-w-4xl max-h-[90vh] overflow-y-auto bg-white p-0'
           style={{
             width: '55vw',
             maxWidth: '95vw',
           }}
         >
+          {/* Clean White Header */}
           <div className='sticky top-0 z-10 bg-white'>
             <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white'>
-              <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-2'>
-                <span className='text-lg md:text-xl font-bold text-gray-900'>
-                  Submission Details
-                </span>
+              <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-3 pr-8'>
+                <div className='flex items-center gap-3'>
+                  <div className='w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md'>
+                    <FileText className='w-5 h-5 text-white' />
+                  </div>
+                  <span className='text-xl font-bold text-gray-900'>
+                    Submission Details
+                  </span>
+                </div>
                 {selectedSubmission && isFeedbackForm && (
                   <Badge
                     variant='outline'
                     className={`
-                    w-fit ${
-                      detectedFormType === 'quiz'
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : ''
-                    }
-                    ${
-                      detectedFormType === 'survey'
-                        ? 'bg-green-50 text-green-700 border-green-200'
-                        : ''
-                    }
-                    ${
-                      detectedFormType === 'feedback'
-                        ? 'bg-orange-50 text-orange-700 border-orange-200'
-                        : ''
-                    }
-                  `}
+                w-fit text-sm font-medium ${
+                  detectedFormType === 'quiz'
+                    ? 'bg-blue-50 text-blue-700 border-blue-300'
+                    : ''
+                }
+                ${
+                  detectedFormType === 'survey'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : ''
+                }
+                ${
+                  detectedFormType === 'feedback'
+                    ? 'bg-orange-50 text-orange-700 border-orange-300'
+                    : ''
+                }
+                ${
+                  detectedFormType === 'application'
+                    ? 'bg-purple-50 text-purple-700 border-purple-300'
+                    : ''
+                }
+              `}
                   >
+                    <Brain className='w-4 h-4 mr-1' />
                     {detectedFormType.charAt(0).toUpperCase() +
                       detectedFormType.slice(1)}{' '}
                     Analysis
                   </Badge>
                 )}
               </DialogTitle>
-              <DialogDescription className='text-gray-600'>
-                View and manage detailed submission information including
-                submitted data, files, and AI analysis results.
+              <DialogDescription className='text-gray-600 text-base leading-relaxed'>
+                Comprehensive view of submission data, files, and AI-powered
+                insights
               </DialogDescription>
             </DialogHeader>
 
-            {/* Custom positioned close button */}
-            <DialogClose className='absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground'>
-              <X className='h-4 w-4' />
+            {/* Close Button */}
+            <DialogClose className='absolute right-4 top-4 rounded-lg p-2 opacity-70 hover:opacity-100 hover:bg-gray-100 transition-all'>
+              <X className='h-5 w-5 text-gray-500' />
               <span className='sr-only'>Close</span>
             </DialogClose>
           </div>
 
-          {selectedSubmission && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className='space-y-6 p-4 md:p-6'
-            >
-              {/* Enhanced Submission Meta Info */}
-              <motion.div
-                variants={fadeInUp}
-                className='bg-gradient-to-r from-blue-50 to-indigo-50 p-4 md:p-6 rounded-lg border border-blue-200'
-              >
-                <h4 className='font-semibold text-blue-900 mb-4 flex items-center gap-2'>
-                  <Calendar className='w-5 h-5' />
-                  Submission Information
-                </h4>
-                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm'>
-                  <div>
-                    <span className='text-blue-700 font-medium block mb-1'>
-                      Submitted:
-                    </span>
-                    <p className='text-gray-900 font-medium break-words'>
-                      {formatDateTime(selectedSubmission.submittedAt)}
-                    </p>
+          {/* Scrollable Content */}
+          <div className='overflow-y-auto flex-1'>
+            {selectedSubmission && (
+              <div className='space-y-8 p-6'>
+                {/* Submission Meta Information */}
+                <div className='bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 rounded-2xl border border-slate-200 overflow-hidden'>
+                  <div className='bg-white/60 backdrop-blur-sm border-b border-slate-200 p-6'>
+                    <h4 className='font-bold text-slate-800 text-lg flex items-center gap-3'>
+                      <div className='w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center'>
+                        <Calendar className='w-4 h-4 text-white' />
+                      </div>
+                      Submission Overview
+                    </h4>
                   </div>
-                  <div>
-                    <span className='text-blue-700 font-medium block mb-1'>
-                      Status:
-                    </span>
-                    <div>{getStatusBadge(selectedSubmission.status)}</div>
-                  </div>
-                  <div>
-                    <span className='text-blue-700 font-medium block mb-1'>
-                      Read Status:
-                    </span>
-                    <div>
-                      <Badge
-                        variant={
-                          selectedSubmission.isRead ? 'default' : 'secondary'
-                        }
-                        className='text-xs'
-                      >
-                        {selectedSubmission.isRead ? 'Read' : 'Unread'}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <span className='text-blue-700 font-medium block mb-1'>
-                      Form Type:
-                    </span>
-                    <div>
-                      <Badge variant='outline' className='bg-white text-xs'>
-                        {detectedFormType.charAt(0).toUpperCase() +
-                          detectedFormType.slice(1)}
-                      </Badge>
+                  <div className='p-6'>
+                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+                      <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
+                        <div className='flex items-center gap-3 mb-3'>
+                          <div className='w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center'>
+                            <Clock className='w-4 h-4 text-blue-600' />
+                          </div>
+                          <span className='text-slate-700 font-medium'>
+                            Submission Time
+                          </span>
+                        </div>
+                        <p className='text-slate-900 font-semibold text-lg'>
+                          {formatDateTime(selectedSubmission.submittedAt)}
+                        </p>
+                        <p className='text-blue-600 text-sm mt-1'>
+                          {formatTimeAgo(selectedSubmission.submittedAt)}
+                        </p>
+                      </div>
+
+                      <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
+                        <div className='flex items-center gap-3 mb-3'>
+                          <div className='w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center'>
+                            <AlertCircle className='w-4 h-4 text-green-600' />
+                          </div>
+                          <span className='text-slate-700 font-medium'>
+                            Processing Status
+                          </span>
+                        </div>
+                        {getStatusBadge(selectedSubmission.status)}
+                      </div>
+
+                      <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
+                        <div className='flex items-center gap-3 mb-3'>
+                          <div className='w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center'>
+                            {selectedSubmission.isRead ? (
+                              <Eye className='w-4 h-4 text-purple-600' />
+                            ) : (
+                              <EyeOff className='w-4 h-4 text-purple-600' />
+                            )}
+                          </div>
+                          <span className='text-slate-700 font-medium'>
+                            Read Status
+                          </span>
+                        </div>
+                        <Badge
+                          className={`text-sm ${
+                            selectedSubmission.isRead
+                              ? 'bg-green-100 text-green-800 border-green-300'
+                              : 'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}
+                        >
+                          {selectedSubmission.isRead ? (
+                            <>
+                              <CheckCircle className='w-4 h-4 mr-2' />
+                              Read
+                            </>
+                          ) : (
+                            <>
+                              <Clock className='w-4 h-4 mr-2' />
+                              Unread
+                            </>
+                          )}
+                        </Badge>
+                      </div>
+
+                      <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
+                        <div className='flex items-center gap-3 mb-3'>
+                          <div className='w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center'>
+                            <FileText className='w-4 h-4 text-indigo-600' />
+                          </div>
+                          <span className='text-slate-700 font-medium'>
+                            Form Category
+                          </span>
+                        </div>
+                        <Badge
+                          variant='outline'
+                          className='bg-indigo-50 text-indigo-700 border-indigo-300 text-sm font-medium'
+                        >
+                          <Target className='w-4 h-4 mr-2' />
+                          {detectedFormType.charAt(0).toUpperCase() +
+                            detectedFormType.slice(1)}{' '}
+                          Form
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </motion.div>
 
-              {/* Enhanced Unique Fields Summary */}
-              {uniqueFields.length > 0 && (
-                <motion.div
-                  variants={fadeInUp}
-                  className='bg-gradient-to-r from-purple-50 to-pink-50 p-4 md:p-6 rounded-lg border border-purple-200'
-                >
-                  <h4 className='font-semibold text-purple-900 mb-4 flex items-center gap-2'>
-                    <IdCard className='w-5 h-5' />
-                    Key Identifiers
-                  </h4>
-                  <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm'>
-                    {uniqueFields.map(field => (
-                      <div key={field.fieldId}>
-                        <span className='text-purple-700 font-medium flex items-center gap-2 mb-2'>
-                          {field.icon}
-                          {field.label}:
-                        </span>
-                        <div className='font-semibold text-gray-900 bg-white px-4 py-3 rounded-lg border shadow-sm break-words'>
-                          {getFieldValueFromSubmission(
-                            selectedSubmission,
-                            field.fieldId
-                          )}
+                {/* Key Identifiers */}
+                {uniqueFields.length > 0 && (
+                  <div className='bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 rounded-2xl border border-purple-200 overflow-hidden'>
+                    <div className='bg-white/70 backdrop-blur-sm border-b border-purple-200 p-6'>
+                      <h4 className='font-bold text-purple-800 text-lg flex items-center gap-3'>
+                        <div className='w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center'>
+                          <IdCard className='w-4 h-4 text-white' />
+                        </div>
+                        Key Identifiers
+                      </h4>
+                    </div>
+                    <div className='p-6 space-y-4'>
+                      {uniqueFields.map(field => (
+                        <div
+                          key={field.fieldId}
+                          className='bg-white rounded-xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow'
+                        >
+                          <div className='flex items-center gap-3 mb-4'>
+                            <div className='w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center'>
+                              {React.cloneElement(
+                                field.icon as React.ReactElement<{
+                                  className?: string;
+                                }>,
+                                {
+                                  className: 'w-4 h-4 text-purple-600',
+                                }
+                              )}
+                            </div>
+                            <span className='text-purple-700 font-semibold text-lg'>
+                              {field.label}
+                            </span>
+                          </div>
+                          <div className='bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-3 rounded-lg border border-purple-200'>
+                            <p className='text-slate-900 font-medium text-base break-words'>
+                              {getFieldValueFromSubmission(
+                                selectedSubmission,
+                                field.fieldId
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Evaluation Results */}
+                {isFeedbackForm && aiEvaluations[selectedSubmission.id] && (
+                  <div className='bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl border border-emerald-200 overflow-hidden'>
+                    <div className='bg-white/70 backdrop-blur-sm border-b border-emerald-200 p-6'>
+                      <div className='flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4'>
+                        <h4 className='font-bold text-emerald-800 text-lg flex items-center gap-3'>
+                          <div className='w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center'>
+                            <Brain className='w-4 h-4 text-white' />
+                          </div>
+                          AI Analysis Results
+                        </h4>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() =>
+                            handleViewAIEvaluation(selectedSubmission.id)
+                          }
+                          className='bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-sm font-medium'
+                        >
+                          <Eye className='w-4 h-4 mr-2' />
+                          View Detailed Analysis
+                        </Button>
+                      </div>
+                    </div>
+                    <div className='p-6'>
+                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6'>
+                        <div className='bg-white rounded-xl p-5 border border-emerald-200 shadow-sm'>
+                          <div className='flex items-center gap-3 mb-3'>
+                            <div className='w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center'>
+                              <Target className='w-4 h-4 text-emerald-600' />
+                            </div>
+                            <span className='text-emerald-700 font-medium'>
+                              Analysis Type
+                            </span>
+                          </div>
+                          <Badge className='bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold text-sm'>
+                            <FileText className='w-4 h-4 mr-2' />
+                            {aiEvaluations[selectedSubmission.id].formType
+                              .charAt(0)
+                              .toUpperCase() +
+                              aiEvaluations[
+                                selectedSubmission.id
+                              ].formType.slice(1)}{' '}
+                            Analysis
+                          </Badge>
+                        </div>
+
+                        <div className='bg-white rounded-xl p-5 border border-emerald-200 shadow-sm'>
+                          <div className='flex items-center gap-3 mb-3'>
+                            <div className='w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center'>
+                              <MessageSquare className='w-4 h-4 text-emerald-600' />
+                            </div>
+                            <span className='text-emerald-700 font-medium'>
+                              Sentiment
+                            </span>
+                          </div>
+                          <Badge
+                            className={`font-semibold text-sm ${
+                              aiEvaluations[selectedSubmission.id].sentiment ===
+                              'positive'
+                                ? 'bg-green-100 text-green-800 border-green-300'
+                                : aiEvaluations[selectedSubmission.id]
+                                    .sentiment === 'negative'
+                                ? 'bg-red-100 text-red-800 border-red-300'
+                                : 'bg-amber-100 text-amber-800 border-amber-300'
+                            }`}
+                          >
+                            {aiEvaluations[selectedSubmission.id].sentiment ===
+                            'positive' ? (
+                              <CheckCircle className='w-4 h-4 mr-2' />
+                            ) : aiEvaluations[selectedSubmission.id]
+                                .sentiment === 'negative' ? (
+                              <XCircle className='w-4 h-4 mr-2' />
+                            ) : (
+                              <AlertCircle className='w-4 h-4 mr-2' />
+                            )}
+                            {aiEvaluations[selectedSubmission.id].sentiment
+                              .charAt(0)
+                              .toUpperCase() +
+                              aiEvaluations[
+                                selectedSubmission.id
+                              ].sentiment.slice(1)}
+                          </Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
 
-              {/* Enhanced AI Evaluation Details */}
-              {isFeedbackForm && aiEvaluations[selectedSubmission.id] && (
-                <motion.div
-                  variants={fadeInUp}
-                  className='bg-gradient-to-r from-green-50 to-emerald-50 p-4 md:p-6 rounded-lg border border-green-200'
-                >
-                  <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4'>
-                    <h4 className='font-semibold text-green-900 flex items-center gap-2'>
-                      <Brain className='w-5 h-5' />
-                      AI Evaluation Results
-                    </h4>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() =>
-                        handleViewAIEvaluation(selectedSubmission.id)
-                      }
-                      className='text-green-700 border-green-300 hover:bg-green-100 cursor-pointer w-fit text-sm'
-                    >
-                      View Full Analysis
-                    </Button>
+                      <div className='bg-white rounded-xl p-6 border border-emerald-200 shadow-sm'>
+                        <h5 className='text-emerald-700 font-semibold text-lg mb-4 flex items-center gap-2'>
+                          <FileText className='w-5 h-5' />
+                          Analysis Summary
+                        </h5>
+                        <div className='bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-lg border border-emerald-200'>
+                          <p className='text-slate-900 leading-relaxed text-base'>
+                            {aiEvaluations[selectedSubmission.id].feedback}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm'>
-                    <div>
-                      <span className='text-green-700 font-medium block mb-1'>
-                        Form Type:
-                      </span>
-                      <div>
-                        <Badge className='bg-green-100 text-green-800 font-bold capitalize text-xs'>
-                          {aiEvaluations[selectedSubmission.id].formType}
-                        </Badge>
-                      </div>
+                )}
+
+                {/* Submission Data */}
+                <div className='bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm'>
+                  <div className='bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200 p-6'>
+                    <div className='flex items-center justify-between'>
+                      <h3 className='font-bold text-slate-800 text-xl flex items-center gap-3'>
+                        <div className='w-8 h-8 bg-gradient-to-br from-slate-500 to-gray-600 rounded-lg flex items-center justify-center'>
+                          <FileText className='w-4 h-4 text-white' />
+                        </div>
+                        Submitted Data
+                      </h3>
+                      <Badge
+                        variant='outline'
+                        className='bg-slate-100 text-slate-700 border-slate-300 font-medium'
+                      >
+                        {Object.entries(selectedSubmission.data).length} fields
+                      </Badge>
                     </div>
-                    <div>
-                      <span className='text-green-700 font-medium block mb-1'>
-                        Sentiment:
-                      </span>
-                      <div>
-                        <Badge
-                          className={`font-bold capitalize text-xs ${
-                            aiEvaluations[selectedSubmission.id].sentiment ===
-                            'positive'
-                              ? 'bg-green-100 text-green-800'
-                              : aiEvaluations[selectedSubmission.id]
-                                  .sentiment === 'negative'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {aiEvaluations[selectedSubmission.id].sentiment}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className='sm:col-span-2 lg:col-span-1'>
-                      <span className='text-green-700 font-medium block mb-1'>
-                        Score:
-                      </span>
-                      <div>
-                        {(() => {
-                          const evaluation =
-                            aiEvaluations[selectedSubmission.id];
-                          if (evaluation.quizResults) {
-                            return (
-                              <Badge className='bg-blue-100 text-blue-800 font-bold text-xs'>
-                                {evaluation.quizResults.percentage}% (
-                                {evaluation.quizResults.correctAnswers}/
-                                {evaluation.quizResults.totalQuestions})
-                              </Badge>
-                            );
-                          } else if (evaluation.surveyResults) {
-                            return (
-                              <Badge className='bg-green-100 text-green-800 font-bold text-xs'>
-                                {
-                                  evaluation.surveyResults.overallSentiment
-                                    .positive
-                                }
-                                % Positive
-                              </Badge>
-                            );
-                          } else if (evaluation.feedbackResults) {
-                            return (
-                              <Badge
-                                className={`font-bold text-xs ${
-                                  evaluation.feedbackResults.urgencyLevel ===
-                                  'high'
-                                    ? 'bg-red-100 text-red-800'
-                                    : evaluation.feedbackResults
-                                        .urgencyLevel === 'medium'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-green-100 text-green-800'
-                                }`}
-                              >
-                                {
-                                  evaluation.feedbackResults.sentimentBreakdown
-                                    .positive
-                                }
-                                % Positive
-                              </Badge>
-                            );
-                          }
-                          return (
-                            <Badge className='bg-gray-100 text-gray-800 text-xs'>
-                              Analyzed
-                            </Badge>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className='col-span-1 sm:col-span-2 lg:col-span-3'>
-                      <span className='text-green-700 font-medium block mb-2'>
-                        Summary:
-                      </span>
-                      <div className='bg-white p-4 rounded-lg border'>
-                        <p className='text-gray-900 leading-relaxed text-sm break-words'>
-                          {aiEvaluations[selectedSubmission.id].feedback}
+                  </div>
+
+                  <div className='p-6'>
+                    {Object.entries(selectedSubmission.data).length === 0 ? (
+                      <div className='text-center py-12'>
+                        <div className='w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                          <FileText className='w-8 h-8 text-slate-400' />
+                        </div>
+                        <p className='text-slate-500 text-lg font-medium'>
+                          No data submitted
+                        </p>
+                        <p className='text-slate-400 text-sm mt-1'>
+                          This submission contains no form data
                         </p>
                       </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
+                    ) : (
+                      <div className='space-y-6'>
+                        {/* Render Form Fields */}
+                        {Object.entries(selectedSubmission.data).map(
+                          ([fieldId, value], index) => {
+                            // Check if this is a signature field
+                            const label = fieldLabelsMap[fieldId] || fieldId;
+                            const isSignatureField = (
+                              value: any,
+                              label: string
+                            ): boolean => {
+                              if (
+                                typeof value === 'string' &&
+                                value.startsWith('data:image/')
+                              )
+                                return true;
+                              if (
+                                typeof value === 'string' &&
+                                value.includes('cloudinary.com') &&
+                                label.toLowerCase().includes('signature')
+                              )
+                                return true;
+                              return label.toLowerCase().includes('signature');
+                            };
 
-              {/* Enhanced Submission Data */}
-              <motion.div variants={fadeInUp} className='bg-white'>
-                <h3 className='text-lg font-bold text-gray-900 mb-6 flex items-center gap-2'>
-                  <FileText className='w-5 h-5' />
-                  Submitted Data
-                </h3>
+                            return (
+                              <div
+                                key={`field-${fieldId}-${index}`}
+                                className='bg-gradient-to-br from-white to-slate-50 rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow'
+                              >
+                                {isSignatureField(value, label) ? (
+                                  // Signature Field Rendering
+                                  <div className='space-y-4'>
+                                    <div className='flex items-center justify-between border-b border-slate-200 pb-4'>
+                                      <div className='flex items-center gap-3'>
+                                        <div className='w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center'>
+                                          <svg
+                                            className='w-4 h-4 text-purple-600'
+                                            fill='currentColor'
+                                            viewBox='0 0 20 20'
+                                          >
+                                            <path
+                                              fillRule='evenodd'
+                                              d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z'
+                                              clipRule='evenodd'
+                                            />
+                                          </svg>
+                                        </div>
+                                        <div>
+                                          <h4 className='font-semibold text-slate-800 text-lg'>
+                                            {label}
+                                          </h4>
+                                          <Badge
+                                            variant='secondary'
+                                            className='mt-1 bg-purple-100 text-purple-700 border-purple-300 text-xs'
+                                          >
+                                            Digital Signature
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                      <div className='text-sm text-slate-500'>
+                                        {typeof value === 'string' &&
+                                        value.startsWith('data:image/')
+                                          ? 'Base64 PNG'
+                                          : 'Cloudinary Image'}
+                                      </div>
+                                    </div>
 
-                <div className='space-y-4 bg-gradient-to-r from-gray-50 to-slate-50 p-4 md:p-6 rounded-lg border border-gray-200'>
-                  {Object.entries(selectedSubmission.data).length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className='text-center py-8'
-                    >
-                      <div className='text-gray-400 mb-4'>
-                        <FileText className='w-16 h-16 mx-auto' />
-                      </div>
-                      <p className='text-gray-500 italic text-lg'>
-                        No data submitted
-                      </p>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      variants={staggerContainer}
-                      initial='initial'
-                      animate='animate'
-                    >
-                      {/* Render regular form fields */}
-                      {Object.entries(selectedSubmission.data).map(
-                        ([fieldId, value], index) => (
-                          <motion.div
-                            key={`field-${fieldId}-${index}`}
-                            variants={fadeInUp}
-                          >
-                            {renderFieldValue(fieldId, value)}
-                          </motion.div>
-                        )
-                      )}
+                                    <div className='bg-white border border-slate-300 rounded-lg p-6 shadow-sm'>
+                                      <div className='flex flex-col items-center space-y-4'>
+                                        <div className='w-full max-w-md bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-4'>
+                                          <img
+                                            src={value}
+                                            alt={`Digital signature for ${label}`}
+                                            className='w-full h-auto max-h-32 object-contain'
+                                            style={{
+                                              imageRendering: 'crisp-edges',
+                                            }}
+                                            onError={e => {
+                                              console.error(
+                                                '❌ Failed to load signature image'
+                                              );
+                                              e.currentTarget.style.display =
+                                                'none';
+                                            }}
+                                          />
+                                        </div>
 
-                      {/* Enhanced file fields rendering */}
-                      {selectedSubmission.files &&
-                        Array.isArray(selectedSubmission.files) &&
-                        selectedSubmission.files.length > 0 && (
-                          <motion.div variants={fadeInUp}>
-                            <div className='border-t border-gray-300 pt-6 mt-6'>
-                              <h4 className='text-md font-semibold text-gray-800 mb-4 flex items-center gap-2'>
-                                <FileText className='w-5 h-5' />
-                                Uploaded Files (
-                                {selectedSubmission.files.length})
-                              </h4>
-                            </div>
+                                        <div className='text-center space-y-3'>
+                                          <p className='text-slate-600 text-sm'>
+                                            Digital signature captured on{' '}
+                                            {formatDateTime(
+                                              selectedSubmission?.submittedAt ||
+                                                ''
+                                            )}
+                                          </p>
 
-                            {/* Group files by fieldId and render each as a separate field */}
-                            {(() => {
-                              const filesByField =
-                                selectedSubmission.files.reduce(
-                                  (acc: any, file: any) => {
-                                    if (!acc[file.fieldId]) {
-                                      acc[file.fieldId] = [];
-                                    }
-                                    acc[file.fieldId].push(file);
-                                    return acc;
-                                  },
-                                  {}
-                                );
+                                          <div className='flex flex-col sm:flex-row gap-3 justify-center'>
+                                            <Button
+                                              size='sm'
+                                              variant='outline'
+                                              onClick={() => {
+                                                try {
+                                                  const link =
+                                                    document.createElement('a');
+                                                  link.href = value;
+                                                  link.download = `signature-${
+                                                    selectedSubmission?.id ||
+                                                    'unknown'
+                                                  }-${Date.now()}.png`;
+                                                  if (
+                                                    typeof value === 'string' &&
+                                                    value.includes(
+                                                      'cloudinary.com'
+                                                    )
+                                                  ) {
+                                                    link.target = '_blank';
+                                                    link.rel =
+                                                      'noopener noreferrer';
+                                                  }
+                                                  document.body.appendChild(
+                                                    link
+                                                  );
+                                                  link.click();
+                                                  document.body.removeChild(
+                                                    link
+                                                  );
+                                                } catch (error) {
+                                                  console.error(
+                                                    '❌ Error downloading signature:',
+                                                    error
+                                                  );
+                                                  toast.error(
+                                                    'Failed to download signature'
+                                                  );
+                                                }
+                                              }}
+                                              className='bg-white hover:bg-purple-50 border-purple-300 text-purple-700'
+                                            >
+                                              <Download className='w-4 h-4 mr-2' />
+                                              Download Signature
+                                            </Button>
 
-                              return Object.entries(filesByField).map(
-                                ([fieldId, files]: [string, any]) => {
-                                  const label =
-                                    fieldLabelsMap[fieldId] ||
-                                    `File Field (${fieldId})`;
-                                  const fileArray = files as any[];
+                                            <Button
+                                              size='sm'
+                                              variant='outline'
+                                              onClick={() => {
+                                                const newWindow = window.open(
+                                                  '',
+                                                  '_blank'
+                                                );
+                                                if (newWindow) {
+                                                  newWindow.document.write(`
+                                                  <html>
+                                                    <head>
+                                                      <title>Digital Signature - ${label}</title>
+                                                      <style>
+                                                        body { margin: 0; padding: 20px; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: Arial, sans-serif; }
+                                                        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+                                                        img { max-width: 100%; height: auto; border: 2px solid #e5e5e5; border-radius: 4px; background: white; image-rendering: crisp-edges; -webkit-image-rendering: crisp-edges; -moz-image-rendering: crisp-edges; -ms-image-rendering: crisp-edges; }
+                                                        h2 { color: #333; margin-bottom: 20px; }
+                                                        .info { margin-top: 20px; color: #666; font-size: 14px; }
+                                                      </style>
+                                                    </head>
+                                                    <body>
+                                                      <div class="container">
+                                                        <h2>${label}</h2>
+                                                        <img src="${value}" alt="Digital Signature" />
+                                                        <div class="info">
+                                                          <p>Submitted: ${formatDateTime(
+                                                            selectedSubmission?.submittedAt ||
+                                                              ''
+                                                          )}</p>
+                                                          <p>Submission ID: ${
+                                                            selectedSubmission?.id ||
+                                                            'Unknown'
+                                                          }</p>
+                                                        </div>
+                                                      </div>
+                                                    </body>
+                                                  </html>
+                                                `);
+                                                  newWindow.document.close();
+                                                }
+                                              }}
+                                              className='bg-white hover:bg-blue-50 border-blue-300 text-blue-700'
+                                            >
+                                              <Eye className='w-4 h-4 mr-2' />
+                                              View Full Size
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  // Regular Field Rendering
+                                  renderFieldValue(fieldId, value)
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
 
-                                  // Normalize file data for FileManager
-                                  const normalizedFiles = fileArray.map(
-                                    (file: any) => ({
-                                      originalName:
-                                        file.originalName ||
-                                        file.fileName ||
-                                        'Unknown File',
-                                      fileName:
-                                        file.fileName ||
-                                        file.originalName ||
-                                        'unknown',
-                                      url: file.url || '',
-                                      publicId:
-                                        file.publicId || `temp_${Date.now()}`,
-                                      size: file.size || 0,
-                                      mimeType:
-                                        file.mimeType ||
-                                        'application/octet-stream',
-                                      uploadedAt:
-                                        file.uploadedAt ||
-                                        new Date().toISOString(),
-                                      ...file,
-                                    })
-                                  );
-
-                                  return (
-                                    <motion.div
-                                      key={`file-field-${fieldId}`}
-                                      variants={fadeInUp}
-                                      className='space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm'
+                        {/* File Attachments */}
+                        {selectedSubmission.files &&
+                          Array.isArray(selectedSubmission.files) &&
+                          selectedSubmission.files.length > 0 && (
+                            <div className='bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 rounded-2xl border border-indigo-200 overflow-hidden'>
+                              <div className='bg-white/70 backdrop-blur-sm border-b border-indigo-200 p-6'>
+                                <div className='flex items-center justify-between'>
+                                  <h4 className='font-bold text-indigo-800 text-lg flex items-center gap-3'>
+                                    <div className='w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center'>
+                                      <FileText className='w-4 h-4 text-white' />
+                                    </div>
+                                    File Attachments
+                                  </h4>
+                                  <div className='flex items-center gap-3'>
+                                    <Badge
+                                      variant='outline'
+                                      className='bg-indigo-100 text-indigo-700 border-indigo-300 font-medium'
                                     >
-                                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 gap-2'>
-                                        <label className='text-sm font-semibold text-gray-700 flex items-center gap-2'>
-                                          {normalizedFiles.length > 0 &&
-                                            getFileTypeInfo(
-                                              normalizedFiles[0]?.mimeType || ''
-                                            ).icon &&
-                                            React.createElement(
-                                              getFileTypeInfo(
-                                                normalizedFiles[0]?.mimeType ||
-                                                  ''
-                                              ).icon,
-                                              {
-                                                className: `w-4 h-4 text-${
+                                      {selectedSubmission.files.length} file
+                                      {selectedSubmission.files.length > 1
+                                        ? 's'
+                                        : ''}
+                                    </Badge>
+                                    <Badge
+                                      variant='outline'
+                                      className='bg-blue-100 text-blue-700 border-blue-300 font-medium'
+                                    >
+                                      {formatFileSize(
+                                        selectedSubmission.files.reduce(
+                                          (sum: number, file: any) =>
+                                            sum + (file.size || 0),
+                                          0
+                                        )
+                                      )}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className='p-6 space-y-6'>
+                                {(() => {
+                                  const filesByField =
+                                    selectedSubmission.files.reduce(
+                                      (acc: any, file: any) => {
+                                        if (!acc[file.fieldId]) {
+                                          acc[file.fieldId] = [];
+                                        }
+                                        acc[file.fieldId].push(file);
+                                        return acc;
+                                      },
+                                      {}
+                                    );
+
+                                  return Object.entries(filesByField).map(
+                                    ([fieldId, files]: [string, any]) => {
+                                      const label =
+                                        fieldLabelsMap[fieldId] ||
+                                        `File Field (${fieldId})`;
+                                      const fileArray = files as any[];
+                                      const normalizedFiles = fileArray.map(
+                                        (file: any) => ({
+                                          originalName:
+                                            file.originalName ||
+                                            file.fileName ||
+                                            'Unknown File',
+                                          fileName:
+                                            file.fileName ||
+                                            file.originalName ||
+                                            'unknown',
+                                          url: file.url || '',
+                                          publicId:
+                                            file.publicId ||
+                                            `temp_${Date.now()}`,
+                                          size: file.size || 0,
+                                          mimeType:
+                                            file.mimeType ||
+                                            'application/octet-stream',
+                                          uploadedAt:
+                                            file.uploadedAt ||
+                                            new Date().toISOString(),
+                                          ...file,
+                                        })
+                                      );
+
+                                      return (
+                                        <div
+                                          key={`file-field-${fieldId}`}
+                                          className='bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden'
+                                        >
+                                          <div className='border-b border-indigo-200 p-5'>
+                                            <div className='flex items-center gap-3'>
+                                              <div className='w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center'>
+                                                {normalizedFiles.length > 0 &&
                                                   getFileTypeInfo(
                                                     normalizedFiles[0]
                                                       ?.mimeType || ''
-                                                  ).color
-                                                }-500`,
-                                              }
-                                            )}
-                                          {label}
-                                          <Badge
-                                            variant='secondary'
-                                            className='ml-2 text-xs bg-blue-100 text-blue-700'
-                                          >
-                                            {normalizedFiles.length} file
-                                            {normalizedFiles.length > 1
-                                              ? 's'
-                                              : ''}
-                                          </Badge>
-                                        </label>
-                                        <div className='text-xs text-gray-500'>
-                                          {formatFileSize(
-                                            normalizedFiles.reduce(
-                                              (sum: number, file: any) =>
-                                                sum + (file.size || 0),
-                                              0
-                                            )
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {/* Enhanced File List */}
-                                      <div className='space-y-3'>
-                                        {normalizedFiles.map((file, index) => (
-                                          <motion.div
-                                            key={`file-${fieldId}-${index}`}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: index * 0.1 }}
-                                            className='flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 p-4 rounded-lg border'
-                                          >
-                                            {/* File Icon */}
-                                            <div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
-                                              {getFileTypeInfo(file.mimeType)
-                                                .icon &&
-                                                React.createElement(
-                                                  getFileTypeInfo(file.mimeType)
-                                                    .icon,
-                                                  {
-                                                    className: `w-5 h-5 text-${
-                                                      getFileTypeInfo(
-                                                        file.mimeType
-                                                      ).color
-                                                    }-600`,
-                                                  }
-                                                )}
-                                            </div>
-
-                                            {/* File Info */}
-                                            <div className='flex-1 min-w-0'>
-                                              <p
-                                                className='text-sm font-medium text-gray-900 truncate'
-                                                title={file.originalName}
-                                              >
-                                                {file.originalName}
-                                              </p>
-                                              <div className='flex flex-wrap items-center gap-4 mt-1'>
-                                                <p className='text-xs text-gray-500'>
-                                                  {formatFileSize(file.size)}
-                                                </p>
-                                                <p className='text-xs text-gray-500 break-all'>
-                                                  {file.mimeType}
-                                                </p>
-                                                <p className='text-xs text-gray-500'>
-                                                  {formatDateTime(
-                                                    file.uploadedAt
+                                                  ).icon &&
+                                                  React.createElement(
+                                                    getFileTypeInfo(
+                                                      normalizedFiles[0]
+                                                        ?.mimeType || ''
+                                                    ).icon,
+                                                    {
+                                                      className: `w-4 h-4 text-${
+                                                        getFileTypeInfo(
+                                                          normalizedFiles[0]
+                                                            ?.mimeType || ''
+                                                        ).color
+                                                      }-600`,
+                                                    }
+                                                  )}
+                                              </div>
+                                              <div className='flex-1'>
+                                                <h5 className='font-semibold text-indigo-900 text-lg'>
+                                                  {label}
+                                                </h5>
+                                                <p className='text-indigo-600 text-sm mt-1'>
+                                                  {normalizedFiles.length} file
+                                                  {normalizedFiles.length > 1
+                                                    ? 's'
+                                                    : ''}{' '}
+                                                  •{' '}
+                                                  {formatFileSize(
+                                                    normalizedFiles.reduce(
+                                                      (
+                                                        sum: number,
+                                                        file: any
+                                                      ) =>
+                                                        sum + (file.size || 0),
+                                                      0
+                                                    )
                                                   )}
                                                 </p>
                                               </div>
                                             </div>
+                                          </div>
 
-                                            {/* Action Buttons */}
-                                            <div className='flex flex-col sm:flex-row gap-2 flex-shrink-0'>
-                                              {/* Download Button */}
-                                              <motion.div
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                              >
-                                                <Button
-                                                  size='sm'
-                                                  variant='outline'
-                                                  onClick={() =>
-                                                    handleDownloadFile(file)
-                                                  }
-                                                  disabled={
-                                                    downloadingFileId ===
-                                                    file.publicId
-                                                  }
-                                                  className='w-full sm:w-auto px-3 py-2 hover:bg-green-50 hover:border-green-300 cursor-pointer text-xs'
-                                                  title={`Download ${file.originalName}`}
-                                                >
-                                                  {downloadingFileId ===
-                                                  file.publicId ? (
-                                                    <Loader2 className='w-4 h-4 animate-spin' />
-                                                  ) : (
-                                                    <Download className='w-4 h-4' />
-                                                  )}
-                                                  <span className='ml-1'>
-                                                    Download
-                                                  </span>
-                                                </Button>
-                                              </motion.div>
-
-                                              {/* Delete Button */}
-                                              <motion.div
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                              >
-                                                <Button
-                                                  size='sm'
-                                                  variant='outline'
-                                                  onClick={() =>
-                                                    handleDeleteFile(
-                                                      file,
-                                                      selectedSubmission.id,
-                                                      fieldId
-                                                    )
-                                                  }
-                                                  className='w-full sm:w-auto px-3 py-2 text-red-600 hover:bg-red-50 hover:border-red-300 cursor-pointer text-xs'
-                                                  title={`Delete ${file.originalName}`}
-                                                >
-                                                  <Trash2 className='w-4 h-4' />
-                                                  <span className='ml-1'>
-                                                    Delete
-                                                  </span>
-                                                </Button>
-                                              </motion.div>
-                                            </div>
-                                          </motion.div>
-                                        ))}
-                                      </div>
-                                    </motion.div>
+                                          <div className='p-5'>
+                                            <FileManager
+                                              files={
+                                                normalizedFiles.length === 1
+                                                  ? normalizedFiles[0]
+                                                  : normalizedFiles
+                                              }
+                                              fieldId={fieldId}
+                                              submissionId={
+                                                selectedSubmission!.id
+                                              }
+                                              onFileDelete={async file => {
+                                                await handleDeleteFile(
+                                                  file,
+                                                  selectedSubmission!.id,
+                                                  fieldId
+                                                );
+                                              }}
+                                              onFileDownload={async file => {
+                                                await handleDownloadFile(file);
+                                              }}
+                                              showActions={true}
+                                              compact={true}
+                                              readOnly={false}
+                                              downloadingFileId={
+                                                downloadingFileId
+                                              }
+                                              maxPreviewSize={10}
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                   );
-                                }
-                              );
-                            })()}
-                          </motion.div>
-                        )}
-                    </motion.div>
-                  )}
+                                })()}
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </motion.div>
 
-              {/* Enhanced Action Buttons in Modal */}
-              <motion.div
-                variants={fadeInUp}
-                className='flex justify-center items-center border-t border-gray-200 pt-6'
-              >
-                <div className='flex gap-3'>
-                  {/* AI Evaluation Button */}
-                  {isFeedbackForm &&
-                    !evaluatingSubmissions.has(selectedSubmission.id) &&
-                    !aiEvaluations[selectedSubmission.id] && (
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
+                {/* AI Evaluation Call-to-Action */}
+                {isFeedbackForm &&
+                  !evaluatingSubmissions.has(selectedSubmission.id) &&
+                  !aiEvaluations[selectedSubmission.id] && (
+                    <div className='bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 rounded-2xl border border-violet-200 overflow-hidden'>
+                      <div className='bg-white/70 backdrop-blur-sm border-b border-violet-200 p-6'>
+                        <div className='text-center'>
+                          <div className='w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4'>
+                            <Brain className='w-8 h-8 text-white' />
+                          </div>
+                          <h4 className='font-bold text-violet-800 text-xl mb-2'>
+                            AI Analysis Available
+                          </h4>
+                          <p className='text-violet-600 text-base leading-relaxed max-w-md mx-auto'>
+                            This {detectedFormType} form is ready for
+                            comprehensive AI-powered analysis and insights
+                          </p>
+                        </div>
+                      </div>
+                      <div className='p-6 text-center'>
                         <Button
                           variant='outline'
                           onClick={() =>
                             evaluateSubmissionWithAI(selectedSubmission)
                           }
-                          className='bg-purple-500 hover:bg-purple-600 text-white border-purple-500 cursor-pointer'
+                          className='bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all font-semibold px-8 py-3 text-lg'
                         >
-                          <Brain className='w-4 h-4 mr-2' />
+                          <Brain className='w-5 h-5 mr-3' />
                           Start AI Evaluation
                         </Button>
-                      </motion.div>
-                    )}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -4562,7 +4807,7 @@ const FormSubmissionsPage: React.FC = () => {
                 return (
                   <div className='mt-4 space-y-3'>
                     {/* Submission Details */}
-                    <div className='p-3 bg-gray-50 rounded-md border border-gray-200'>
+                    <div className='border border-gray-200 p-4 md:p-6 sticky top-0 bg-white'>
                       <div className='text-sm'>
                         <p className='font-medium text-gray-900 break-words'>
                           Submission:{' '}
@@ -5722,7 +5967,7 @@ const FormSubmissionsPage: React.FC = () => {
                             }`}
                           >
                             {selectedEvaluation.applicationResults
-                              .recommendedAction === 'hire' && '✅ '}
+                              .recommendedAction === 'hire' && ' '}
                             {selectedEvaluation.applicationResults
                               .recommendedAction === 'interview' && '🤝 '}
                             {selectedEvaluation.applicationResults
@@ -5963,7 +6208,7 @@ const FormSubmissionsPage: React.FC = () => {
                     {/* Keyword Analysis */}
                     <motion.div
                       variants={fadeInUp}
-                      className='bg-white border border-gray-200 rounded-lg p-4 md:p-6'
+                      className='bg-white border border-gray-200 rounded-+lg p-4 md:p-6'
                     >
                       <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
                         <Hash className='w-5 h-5' />
@@ -6062,7 +6307,7 @@ const FormSubmissionsPage: React.FC = () => {
                           ) : (
                             <div className='p-4 bg-green-50 rounded border border-green-200 text-center'>
                               <span className='text-sm text-green-700'>
-                                ✅ All recommended keywords found in application
+                                All recommended keywords found in application
                               </span>
                             </div>
                           )}
@@ -6228,7 +6473,7 @@ const FormSubmissionsPage: React.FC = () => {
                           ) : (
                             <div className='p-4 bg-green-50 rounded border border-green-200 text-center'>
                               <span className='text-sm text-green-700'>
-                                ✅ All critical fields completed
+                                All critical fields completed
                               </span>
                             </div>
                           )}

@@ -647,7 +647,7 @@ const formatValueCloudinaryOnly = (value: any): string => {
     //  UPDATED: Still handle base64 signatures as fallback but show URL indicator
     if (value.startsWith('data:image/')) {
       console.warn(
-        '⚠️ Found base64 signature in export - should be Cloudinary URL'
+        ' Found base64 signature in export - should be Cloudinary URL'
       );
       return '[Digital Signature - Base64 Data]';
     }
@@ -2276,7 +2276,7 @@ router.delete(
         fileCleanupResult = await deleteSubmissionFiles(filesToDelete);
       } catch (fileError: any) {
         console.error(
-          `⚠️ File cleanup failed (continuing with database cleanup):`,
+          ` File cleanup failed (continuing with database cleanup):`,
           fileError
         );
         // Continue with database cleanup even if file cleanup fails
@@ -2297,7 +2297,7 @@ router.delete(
         $set: { updatedAt: new Date() },
       });
     } catch (countError: any) {
-      console.warn(`⚠️ Failed to update form submission count:`, countError);
+      console.warn(` Failed to update form submission count:`, countError);
     }
 
     // Step 7: Prepare response
@@ -2401,7 +2401,7 @@ router.delete(
       cloudinarySuccess = deleteResult.success;
 
       if (!cloudinarySuccess) {
-        console.warn(`⚠️ Cloudinary deletion failed: ${deleteResult.error}`);
+        console.warn(` Cloudinary deletion failed: ${deleteResult.error}`);
         // Continue with database cleanup even if Cloudinary fails
       }
     } catch (cloudinaryError: any) {

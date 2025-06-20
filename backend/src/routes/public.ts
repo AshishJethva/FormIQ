@@ -64,7 +64,7 @@ router.get(
     try {
       await Form.findByIdAndUpdate(id, { $inc: { views: 1 } });
     } catch (viewError) {
-      console.error('⚠️ Error incrementing view count:', viewError);
+      console.error(' Error incrementing view count:', viewError);
     }
 
     // Return only necessary data for public form

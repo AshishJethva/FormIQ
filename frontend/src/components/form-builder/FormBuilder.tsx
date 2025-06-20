@@ -65,11 +65,6 @@ export default function FormBuilder() {
       enableToast: false,
       retryAttempts: 3,
       forceUpdatePublished: isPublishedForm,
-      onSaveSuccess: () => {
-        if (isPublishedForm) {
-          console.log('Published form updated - changes are live!');
-        }
-      },
       onSaveError: error => {
         console.error('❌ Auto-save error:', error);
       },
@@ -135,9 +130,7 @@ export default function FormBuilder() {
 
           const result = await dispatch(loadFormAsync(formId));
 
-          if (loadFormAsync.fulfilled.match(result)) {
-            console.log('Form loaded successfully');
-          } else if (loadFormAsync.rejected.match(result)) {
+          if (loadFormAsync.rejected.match(result)) {
             console.error('❌ Form loading failed:', result.payload);
             dispatch(initializeForm());
           }
@@ -211,7 +204,7 @@ export default function FormBuilder() {
     return (
       <div className='flex items-center justify-center h-screen bg-gray-100'>
         <div className='text-center max-w-md'>
-          <div className='text-red-500 text-6xl mb-4'>⚠️</div>
+          <div className='text-red-500 text-6xl mb-4'></div>
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>
             Error Loading Form
           </h1>

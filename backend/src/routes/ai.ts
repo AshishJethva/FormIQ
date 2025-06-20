@@ -41,19 +41,9 @@ router.post(
 
       const sanitizedPrompt = AIPromptValidator.sanitize(prompt);
 
-      AILogger.logUsage(userId, 'FORM_GENERATION_REQUESTED', {
-        promptLength: sanitizedPrompt.length,
-        originalPromptLength: prompt.length,
-      });
-
       const result = await aiService.generateForm(sanitizedPrompt, userId);
 
       if (!result.success) {
-        AILogger.logUsage(userId, 'FORM_GENERATION_FAILED', {
-          error: result.error,
-          generationTime: result.generationTime,
-        });
-
         return res.status(400).json({
           success: false,
           message: result.error || 'Failed to generate form',
@@ -100,20 +90,6 @@ router.post(
 
       const savedForm = await newForm.save();
 
-      AILogger.logUsage(userId, 'FORM_GENERATION_SUCCESS', {
-        formId: savedForm._id,
-        fieldCount: savedForm.pages.reduce(
-          (total, page) => total + (page.fields?.length || 0),
-          0
-        ),
-        generationTime: result.generationTime,
-        hasLogo: !!savedForm.logo,
-        logoSize: savedForm.logo?.size,
-        allowMultipleSubmissions: savedForm.settings?.allowMultipleSubmissions,
-        allowMultipleEmailSubmissions:
-          savedForm.settings?.allowMultipleEmailSubmissions,
-      });
-
       res.status(201).json({
         success: true,
         message: 'Form generated successfully with logo',
@@ -153,11 +129,6 @@ router.post(
         },
       });
     } catch (error: any) {
-      AILogger.logUsage(req.user?.id, 'FORM_GENERATION_ERROR', {
-        error: error.message,
-        stack: error.stack,
-      });
-
       res.status(500).json({
         success: false,
         message: 'Internal server error during form generation',
@@ -396,11 +367,6 @@ router.post(
         },
         { new: true }
       );
-
-      AILogger.logUsage(userId, 'LOGO_REGENERATED', {
-        formId,
-        logoUrl: logoResult.logoUrl,
-      });
 
       res.json({
         success: true,

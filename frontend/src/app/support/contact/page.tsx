@@ -44,13 +44,13 @@ const ContactSupportPage = () => {
     resolver: zodResolver(contactSchema),
   });
 
-  const onSubmit = async (data: ContactFormData) => {
+  const onSubmit = async () => {
     setIsSubmitting(true);
 
     // Simulate API call
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Form submitted:', data);
+
       setSubmitStatus('success');
       reset();
     } catch {

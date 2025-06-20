@@ -456,7 +456,7 @@ router.delete(
 
 router.use(
   (error: any, req: Request, res: Response, next: NextFunction): void => {
-    console.error('🚨 Upload route error:', {
+    console.error('Upload route error:', {
       message: error.message,
       code: error.code,
       field: error.field,

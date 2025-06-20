@@ -89,7 +89,7 @@ router.get(
     try {
       await Form.findByIdAndUpdate(formId, { $inc: { views: 1 } });
     } catch (error) {
-      console.warn('⚠️ Failed to increment view count:', error);
+      console.warn(' Failed to increment view count:', error);
     }
 
     // Return latest form structure
@@ -886,7 +886,7 @@ router.delete(
       fileCleanupResult = await deleteFormFiles(form, submissions);
     } catch (fileError: any) {
       console.error(
-        `⚠️ File cleanup failed (continuing with database cleanup):`,
+        ` File cleanup failed (continuing with database cleanup):`,
         fileError
       );
     }

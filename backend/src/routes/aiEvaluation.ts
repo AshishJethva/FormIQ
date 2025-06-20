@@ -43,6 +43,7 @@ const validateFormForEvaluation = (
     let hasFileUploads = 0;
     let hasApplicationPatterns = false;
     let applicationFields = 0;
+    let fileUploadFields = [];
 
     // Check title and description for type hints
     const formTitle = form.title?.toLowerCase() || '';
@@ -57,7 +58,25 @@ const validateFormForEvaluation = (
             const fieldLabel = field.label?.toLowerCase() || '';
             const fieldType = field.type.toLowerCase();
 
-            // APPLICATION FIELD DETECTION (HIGH PRIORITY)
+            if (
+              fieldType === 'fileupload' ||
+              fieldType === 'image' ||
+              /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv|file.*upload|attach.*file|document.*upload/i.test(
+                fieldLabel
+              )
+            ) {
+              hasFileUploads++;
+              fileUploadFields.push({
+                id: field.id,
+                label: field.label,
+                type: fieldType,
+              });
+
+              if (/resume|cv|curriculum.*vitae|portfolio/i.test(fieldLabel)) {
+                applicationFields++;
+                hasApplicationPatterns = true;
+              }
+            }
 
             // Personal information detection
             if (
@@ -110,22 +129,6 @@ const validateFormForEvaluation = (
               applicationFields++;
               hasApplicationPatterns = true;
               evaluableFields++;
-            }
-
-            // File upload detection (resume, CV, portfolio)
-            if (
-              fieldType === 'fileupload' ||
-              fieldType === 'image' ||
-              /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv/i.test(
-                fieldLabel
-              )
-            ) {
-              hasFileUploads++;
-              if (/resume|cv|portfolio/i.test(fieldLabel)) {
-                applicationFields++;
-                hasApplicationPatterns = true;
-                evaluableFields++;
-              }
             }
 
             // QUIZ DETECTION: Single choice with correct answers
@@ -206,7 +209,7 @@ const validateFormForEvaluation = (
               }
             }
 
-            // Rating patterns in labels (SURVEY)
+            // Rating patterns in labels
             if (
               /rate|rating|satisfaction|quality|likely.*recommend|how.*satisfied|scale.*1.*to|strongly.*agree|very.*satisfied|how.*would.*you.*rate|please.*rate|rate.*the|evaluate.*the|assess.*the|satisfaction.*level|quality.*of/i.test(
                 fieldLabel
@@ -285,7 +288,7 @@ const validateFormForEvaluation = (
       }
     }
 
-    // 🎯 PRIORITY 2: APPLICATION CLASSIFICATION (NEW HIGH PRIORITY)
+    // PRIORITY 2: APPLICATION CLASSIFICATION
     else {
       const applicationIndicators = {
         title:
@@ -336,12 +339,18 @@ const validateFormForEvaluation = (
           `APPLICATION: ${applicationFields} application-specific fields, structured candidate data collection`
         );
 
+        if (hasFileUploads > 0) {
+          reasons.push(
+            `FILE UPLOADS: ${hasFileUploads} file upload fields detected for document submission`
+          );
+        }
+
         if (hasApplicationPatterns) {
           reasons.push('Application-specific field patterns detected');
         }
       }
 
-      // 🎯 PRIORITY 3: SURVEY CLASSIFICATION
+      // PRIORITY 3: SURVEY CLASSIFICATION
       // Must have rating/scale elements WITHOUT correct answers
       else if (
         ratingFields >= 3 ||
@@ -360,7 +369,8 @@ const validateFormForEvaluation = (
           `SURVEY: ${ratingFields} rating fields, ${choiceFieldsWithRatingOptions} choice fields with rating options`
         );
       }
-      // 🎯 PRIORITY 4: FEEDBACK CLASSIFICATION
+
+      // PRIORITY 4: FEEDBACK CLASSIFICATION
       // Focus on experience and improvement feedback
       else if (
         feedbackFields >= 2 ||
@@ -376,7 +386,7 @@ const validateFormForEvaluation = (
           `FEEDBACK: ${feedbackFields} feedback fields, ${textFields} text fields`
         );
       }
-      // 🎯 FALLBACK: General form
+      // FALLBACK: General form
       else {
         reasons.push(
           `GENERAL: ${singleChoiceCount} SCQ${hasCorrectAnswers ? ' (with answers)' : ''}, ${ratingFields} rating, ${feedbackFields} feedback, ${textFields} text fields`
@@ -407,6 +417,7 @@ const validateFormForEvaluation = (
       hasFileUploads,
       applicationFields,
       hasApplicationPatterns,
+      fileUploadFields,
       titleHints: {
         hasQuizWords: /quiz|test|exam|assessment/i.test(titleDescText),
         hasFeedbackWords: /feedback|review|comment|experience/i.test(
@@ -444,36 +455,47 @@ const validateSubmissionForEvaluation = (
     }
 
     const fieldCount = Object.keys(submission.data).length;
+    const filesCount = submission.files?.length || 0;
+
     const validContent = Object.values(submission.data).filter(value => {
       if (typeof value === 'string') return value.trim().length > 0;
       if (typeof value === 'object' && value !== null) return true;
       return value !== null && value !== undefined;
     });
 
-    if (fieldCount === 0) {
-      return { isValid: false, error: 'Submission data is empty' };
+    if (fieldCount === 0 && filesCount === 0) {
+      return { isValid: false, error: 'Submission data is completely empty' };
     }
 
-    if (validContent.length === 0) {
+    if (validContent.length === 0 && filesCount === 0) {
       return {
         isValid: false,
-        error: 'Submission has no valid content to evaluate',
+        error: 'Submission has no valid content or files to evaluate',
       };
     }
 
-    // Calculate data quality score
-    const completionRate = validContent.length / fieldCount;
-    let quality = Math.round(completionRate * 100);
+    const dataCompletionRate =
+      fieldCount > 0 ? validContent.length / fieldCount : 0;
+    let quality = Math.round(dataCompletionRate * 100);
+
+    // Bonus for file uploads (important for applications)
+    if (filesCount > 0) {
+      const fileBonus = Math.min(15, filesCount * 5);
+      quality = Math.min(100, quality + fileBonus);
+    }
 
     // Adjust quality based on content richness
     const textResponses = validContent.filter(
       value => typeof value === 'string' && value.trim().length > 10
     ).length;
 
-    const richContentBonus = Math.min(20, (textResponses / fieldCount) * 20);
+    const richContentBonus = Math.min(
+      20,
+      (textResponses / Math.max(1, fieldCount)) * 20
+    );
     quality = Math.min(100, quality + richContentBonus);
 
-    if (quality < 50) {
+    if (quality < 30) {
       return {
         isValid: false,
         error: 'Submission quality too low for reliable evaluation',
@@ -508,7 +530,7 @@ router.post(
       }
 
       // Step 2: Get submission with error handling
-      const submission = await Submission.findById(submissionId);
+      const submission = await Submission.findById(submissionId).lean().exec();
       if (!submission) {
         throw new ApiError('Submission not found', 404);
       }
@@ -525,7 +547,7 @@ router.post(
         throw new ApiError('Form not found for this submission', 404);
       }
 
-      // Step 5: Enhanced form validation with FIXED type detection
+      // Step 5: Enhanced form validation
       const formValidation = validateFormForEvaluation(form);
       if (!formValidation.isValid) {
         throw new ApiError(formValidation.error!, 400);
@@ -536,63 +558,35 @@ router.post(
         throw new ApiError('Not authorized to evaluate this submission', 403);
       }
 
-      // Step 7: Check if form is evaluable with DETAILED feedback
+      // Step 7: Check if form is evaluable
       if (!formValidation.analysis?.canEvaluate) {
         const analysis = formValidation.analysis;
-        let reason = `Form type "${analysis?.formType}" not suitable for AI evaluation. `;
-
-        if (analysis?.formType === 'general') {
-          if (
-            analysis?.singleChoiceCount >= 3 &&
-            analysis?.singleChoiceCount < 5
-          ) {
-            reason += `Almost a quiz: has ${analysis.singleChoiceCount} single choice questions but needs 5+ with correct answers. `;
-          } else if (
-            analysis?.ratingFields >= 1 &&
-            analysis?.ratingFields < 3
-          ) {
-            reason += `Almost a survey: has ${analysis.ratingFields} rating fields but needs 3+ for evaluation. `;
-          } else if (
-            analysis?.feedbackFields >= 1 &&
-            analysis?.feedbackFields < 2
-          ) {
-            reason += `Almost feedback: has ${analysis.feedbackFields} feedback field but needs 2+ for evaluation. `;
-          } else if (
-            analysis?.hasPersonalInfoFields >= 1 ||
-            analysis?.hasWorkExperienceFields >= 1 ||
-            analysis?.hasEducationFields >= 1
-          ) {
-            reason += `Almost application: has some application fields but needs: `;
-            const missingAppFields = [];
-            if (analysis.hasPersonalInfoFields < 2)
-              missingAppFields.push('2+ personal information fields');
-            if (analysis.hasWorkExperienceFields < 1)
-              missingAppFields.push('work experience fields');
-            if (analysis.hasEducationFields < 1)
-              missingAppFields.push('education background fields');
-            if (analysis.hasFileUploads < 1)
-              missingAppFields.push('file upload for resume/CV');
-            reason += missingAppFields.join(', ') + '. ';
-          } else {
-            reason += `Requirements: 5+ single choice questions with correct answers (quiz), `;
-            reason += `2+ personal info + work experience/education + file upload (application), `;
-            reason += `3+ rating fields (survey), or 2+ feedback fields (feedback). `;
-            reason += `Current: ${analysis?.singleChoiceCount || 0} SCQ, ${analysis?.ratingFields || 0} rating, ${analysis?.feedbackFields || 0} feedback fields.`;
-          }
-        }
-
+        let reason = `Form type "${analysis?.formType}" not suitable for AI evaluation.`;
         throw new ApiError(reason, 400);
       }
 
       let evaluation;
       try {
+        // Ensure files are included in the submission data
+        const submissionDataForEvaluation = {
+          ...submission.data,
+          files: submission.files || [],
+        };
+
+        // Verify specific resume field data
+        const resumeFieldId = '60816a3f-eacb-439c-bfd2-51e9d56ac56b';
+        const resumeFieldValue = submissionDataForEvaluation[resumeFieldId];
+        const resumeFiles = submissionDataForEvaluation.files.filter(
+          (f: any) => f.fieldId === resumeFieldId
+        );
+
         evaluation = await aiEvaluationService.evaluateSubmissionWithValidation(
           form.toObject(),
-          submission.data,
+          submissionDataForEvaluation,
           submissionId
         );
 
-        // Validate evaluation results for accuracy
+        // Validate evaluation results
         if (evaluation.status === 'completed') {
           const expectedAccuracy = formValidation.analysis.expectedAccuracy;
           if (
@@ -600,14 +594,12 @@ router.post(
             evaluation.accuracy < expectedAccuracy - 5
           ) {
             console.warn(
-              `⚠️ Evaluation accuracy (${evaluation.accuracy}%) below expected (${expectedAccuracy}%)`
+              ` Evaluation accuracy (${evaluation.accuracy}%) below expected (${expectedAccuracy}%)`
             );
           }
         }
       } catch (evaluationError: any) {
         console.error('❌ AI evaluation service error:', evaluationError);
-
-        // Create enhanced failed evaluation result
         evaluation = {
           id: `eval_${submissionId}_${Date.now()}`,
           submissionId,
@@ -616,7 +608,7 @@ router.post(
           categories: ['evaluation-failed'],
           evaluatedAt: new Date().toISOString(),
           status: 'failed' as const,
-          feedback: `AI evaluation failed: ${evaluationError.message}. Expected ${formValidation.analysis.expectedAccuracy}% accuracy for ${formValidation.analysis.formType} forms.`,
+          feedback: `AI evaluation failed: ${evaluationError.message}`,
           confidence: 0,
           accuracy: 0,
         };
@@ -624,7 +616,7 @@ router.post(
 
       const evaluationTime = Date.now() - startTime;
 
-      // Step 9: Return enhanced evaluation results with detailed metadata
+      // Return results
       res.json({
         success: true,
         data: evaluation,
@@ -634,7 +626,7 @@ router.post(
           formTitle: form.title,
           formType: evaluation.formType,
           evaluatedAt: evaluation.evaluatedAt,
-          version: '3.0.0-accuracy-enhanced',
+          version: '3.1.0-file-upload-fixed',
           accuracy: evaluation.accuracy || 0,
           confidence: evaluation.confidence || 0,
           formAnalysis: {
@@ -651,7 +643,6 @@ router.post(
         evaluationTime: `${evaluationTime}ms`,
       });
 
-      // Return appropriate error response
       if (error instanceof ApiError) {
         res.status(error.statusCode).json({
           success: false,
@@ -661,24 +652,20 @@ router.post(
             evaluationTime,
             submissionId,
             timestamp: new Date().toISOString(),
-            version: '3.0.0-accuracy-enhanced',
+            version: '3.1.0-file-upload-fixed',
           },
         });
       } else {
         res.status(500).json({
           success: false,
-          message:
-            'AI evaluation service temporarily unavailable. Please try again later.',
+          message: 'AI evaluation service temporarily unavailable',
           error: 'SERVICE_ERROR',
           metadata: {
             evaluationTime,
             submissionId,
             timestamp: new Date().toISOString(),
-            version: '3.0.0-accuracy-enhanced',
+            version: '3.1.0-file-upload-fixed',
           },
-          ...(process.env.NODE_ENV === 'development' && {
-            details: error.message,
-          }),
         });
       }
     }
@@ -724,6 +711,7 @@ router.post(
       const invalidIds = submissionIds.filter(
         id => !mongoose.Types.ObjectId.isValid(id)
       );
+
       if (invalidIds.length > 0) {
         throw new ApiError(
           `Invalid submission IDs: ${invalidIds.join(', ')}`,
@@ -767,7 +755,9 @@ router.post(
       const submissions = await Submission.find({
         _id: { $in: submissionIds },
         formId: formId,
-      });
+      })
+        .lean()
+        .exec();
 
       if (submissions.length !== submissionIds.length) {
         const foundIds = submissions.map(s => s._id.toString());
@@ -786,6 +776,8 @@ router.post(
           isValid: validation.isValid,
           quality: validation.quality || 0,
           error: validation.error,
+          hasFiles: (submission.files || []).length > 0,
+          fileCount: (submission.files || []).length,
         };
       });
 
@@ -829,13 +821,18 @@ router.post(
             continue;
           }
 
+          const submissionDataForEvaluation = {
+            ...submission.data,
+            files: submission.files || [],
+          };
+
           // Perform evaluation
           let evaluation;
           try {
             evaluation =
               await aiEvaluationService.evaluateSubmissionWithValidation(
                 form.toObject(),
-                submission.data,
+                submissionDataForEvaluation,
                 submission._id.toString()
               );
 
@@ -933,7 +930,7 @@ router.post(
           formTitle: form.title,
           formType: formValidation.analysis.formType,
           processedAt: new Date().toISOString(),
-          version: '3.0.0-accuracy-enhanced',
+          version: '3.1.0-file-upload-fixed',
           formAnalysis: formValidation.analysis,
           qualityMetrics: {
             averageDataQuality: Math.round(
@@ -943,6 +940,8 @@ router.post(
             lowQualityCount: qualityResults.filter(q => !q.isValid).length,
             highQualityCount: qualityResults.filter(q => q.quality >= 80)
               .length,
+            submissionsWithFiles: qualityResults.filter(q => q.hasFiles).length,
+            totalFiles: qualityResults.reduce((sum, q) => sum + q.fileCount, 0),
           },
           errors: errors.length > 0 ? errors : undefined,
         },
@@ -966,7 +965,7 @@ router.post(
             formId,
             submissionCount: submissionIds?.length || 0,
             timestamp: new Date().toISOString(),
-            version: '3.0.0-accuracy-enhanced',
+            version: '3.1.0-file-upload-fixed',
           },
         });
       } else {
@@ -979,7 +978,7 @@ router.post(
             formId,
             submissionCount: submissionIds?.length || 0,
             timestamp: new Date().toISOString(),
-            version: '3.0.0-accuracy-enhanced',
+            version: '3.1.0-file-upload-fixed',
           },
           ...(process.env.NODE_ENV === 'development' && {
             details: error.message,

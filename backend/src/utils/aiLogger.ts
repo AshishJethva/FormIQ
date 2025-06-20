@@ -19,19 +19,8 @@ export class AILogger {
       error: data.error,
     };
 
-    if (data.success) {
-      console.log('AI Generation Success:', logEntry);
-    } else {
+    if (!data.success) {
       console.error('AI Generation Failed:', logEntry);
     }
-  }
-
-  static logUsage(userId: string, action: string, metadata?: any) {
-    console.log('AI Usage:', {
-      timestamp: new Date().toISOString(),
-      userId,
-      action,
-      metadata,
-    });
   }
 }

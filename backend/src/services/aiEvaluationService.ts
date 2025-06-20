@@ -1,4 +1,4 @@
-// src/services/aiEvaluationService.ts - Enhanced for 100% Accuracy
+// src/services/aiEvaluationService.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface QuizEvaluation {
@@ -12,7 +12,7 @@ export interface QuizEvaluation {
     correctAnswer: string;
     explanation: string;
     isCorrect: boolean;
-    confidence: number; // 0-100 confidence in evaluation
+    confidence: number;
   }>;
   averageConfidence: number;
 }
@@ -22,7 +22,7 @@ export interface SurveyEvaluation {
     positive: number;
     neutral: number;
     negative: number;
-    confidence: number; // Confidence in sentiment analysis
+    confidence: number;
   };
   keyMetrics: Array<{
     metric: string;
@@ -32,7 +32,7 @@ export interface SurveyEvaluation {
   }>;
   insights: string[];
   responseQuality: number;
-  dataIntegrity: number; // How complete/consistent the responses are
+  dataIntegrity: number;
 }
 
 export interface FeedbackEvaluation {
@@ -51,11 +51,11 @@ export interface FeedbackEvaluation {
   };
   actionableInsights: string[];
   urgencyLevel: 'high' | 'medium' | 'low';
-  qualityScore: number; // Overall feedback quality 0-100
+  qualityScore: number;
 }
 
 export interface ApplicationEvaluation {
-  overallScore: number; // 0-100 total score
+  overallScore: number;
   fieldCompletion: {
     totalFields: number;
     completedFields: number;
@@ -64,20 +64,20 @@ export interface ApplicationEvaluation {
     criticalMissing: string[];
   };
   qualificationMatching: {
-    experienceScore: number; // 0-100
-    educationScore: number; // 0-100
-    skillsScore: number; // 0-100
-    certificationsScore: number; // 0-100
-    overallMatch: number; // 0-100
+    experienceScore: number;
+    educationScore: number;
+    skillsScore: number;
+    certificationsScore: number;
+    overallMatch: number;
     strengths: string[];
     gaps: string[];
   };
   scoreBreakdown: {
-    personalInfo: number; // 0-20
-    experience: number; // 0-30
-    education: number; // 0-20
-    skills: number; // 0-20
-    additional: number; // 0-10 (certifications, cover letter, etc.)
+    personalInfo: number;
+    experience: number;
+    education: number;
+    skills: number;
+    additional: number;
   };
   keywordAnalysis: {
     relevantKeywords: Array<{
@@ -104,8 +104,8 @@ export interface AIEvaluationResult {
   evaluatedAt: string;
   status: 'completed' | 'failed';
   feedback: string;
-  confidence: number; // Overall confidence in evaluation
-  accuracy: number; // Expected accuracy percentage
+  confidence: number;
+  accuracy: number;
 
   quizResults?: QuizEvaluation;
   surveyResults?: SurveyEvaluation;
@@ -113,7 +113,6 @@ export interface AIEvaluationResult {
   applicationResults?: ApplicationEvaluation;
 }
 
-// Enhanced form type detection with strict criteria
 interface FormAnalysis {
   type: 'quiz' | 'survey' | 'feedback' | 'application' | 'general';
   confidence: number;
@@ -278,11 +277,11 @@ export class AIEvaluationService {
             }
           }
 
-          // 🎯 QUIZ DETECTION: Single choice analysis (HIGHEST PRIORITY)
+          // QUIZ DETECTION: Single choice analysis (HIGHEST PRIORITY)
           if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
             analysis.fieldAnalysis.singleChoiceCount++;
 
-            // 🚨 CRITICAL: Check for correctAnswer property (PRIMARY quiz indicator)
+            // Check for correctAnswer property
             if (
               field.correctAnswer ||
               (field.options && field.options.some((opt: any) => opt.isCorrect))
@@ -340,7 +339,7 @@ export class AIEvaluationService {
             }
           }
 
-          // 🎯 SURVEY DETECTION: Rating/scale fields
+          // SURVEY DETECTION: Rating/scale fields
           if (
             fieldType === 'rating' ||
             fieldType === 'scale' ||
@@ -360,7 +359,7 @@ export class AIEvaluationService {
             hasRatingScales = true;
           }
 
-          // 🎯 FEEDBACK DETECTION: Text fields with feedback patterns
+          // FEEDBACK DETECTION: Text fields with feedback patterns
           if (
             fieldType === 'longtext' ||
             fieldType === 'paragraph' ||
@@ -766,7 +765,7 @@ export class AIEvaluationService {
           confidence = 100; // 100% confidence when correct answer is predefined
 
           explanation = isCorrect
-            ? '✅ Correct! This matches the predefined correct answer.'
+            ? ' Correct! This matches the predefined correct answer.'
             : `❌ Incorrect. The correct answer is "${correctAnswer}".`;
         } else {
           // AI-powered evaluation with enhanced accuracy
@@ -1258,7 +1257,7 @@ Ensure mathematical precision and provide the most accurate assessment possible.
           normalizedSentiment.negative;
         if (sentimentTotal !== 100) {
           console.warn(
-            `⚠️ Feedback sentiment total is ${sentimentTotal}, should be 100. Using fallback.`
+            ` Feedback sentiment total is ${sentimentTotal}, should be 100. Using fallback.`
           );
           return this.getDefaultFeedbackAnalysis(fullFeedbackText);
         }
@@ -1297,27 +1296,87 @@ Ensure mathematical precision and provide the most accurate assessment possible.
         return this.getDefaultApplicationAnalysis();
       }
 
+      // Better missing fields detection
+      const missingFields: string[] = [];
+      const criticalMissing: string[] = [];
+
+      // Check each category for missing fields
+      const personalInfoMissing = applicationFields.personalInfo.filter(
+        f => !f.hasValue
+      );
+      const workExperienceMissing = applicationFields.workExperience.filter(
+        f => !f.hasValue
+      );
+      const educationMissing = applicationFields.education.filter(
+        f => !f.hasValue
+      );
+      const skillsMissing = applicationFields.skills.filter(f => !f.hasValue);
+      const fileUploadsMissing = applicationFields.fileUploads.filter(
+        f => !f.hasValue
+      );
+
+      // Add to missing fields
+      personalInfoMissing.forEach(f => missingFields.push(f.label));
+      workExperienceMissing.forEach(f => missingFields.push(f.label));
+      educationMissing.forEach(f => missingFields.push(f.label));
+      skillsMissing.forEach(f => missingFields.push(f.label));
+      fileUploadsMissing.forEach(f => missingFields.push(f.label));
+
+      // Only mark resume as critical missing if it's actually missing
+      const resumeFields = applicationFields.fileUploads.filter(
+        f => f.isResumeField
+      );
+      const missingResumeFields = resumeFields.filter(f => !f.hasValue);
+
+      // Only add personal info to critical missing if essential fields are missing
+      const essentialPersonalFields = applicationFields.personalInfo.filter(f =>
+        /full.*name|email|phone/i.test(f.label.toLowerCase())
+      );
+      const missingEssentialPersonal = essentialPersonalFields.filter(
+        f => !f.hasValue
+      );
+
+      if (missingEssentialPersonal.length > 0) {
+        criticalMissing.push(...missingEssentialPersonal.map(f => f.label));
+      }
+
+      // Only mark resume as critical missing if there are resume fields that are actually missing
+      if (missingResumeFields.length > 0) {
+        criticalMissing.push(...missingResumeFields.map(f => f.label));
+      }
+
       const prompt = `
 You are an expert HR professional and application evaluator with 100% accuracy requirements. Analyze this job application with mathematical precision for scoring and qualification matching.
 
 APPLICATION CONTEXT:
 Form Title: ${formStructure?.title || 'Job Application'}
 Total Fields: ${applicationFields.totalFields}
+Completed Fields: ${applicationFields.completedFields}
+File Uploads Present: ${applicationFields.fileUploads.filter(f => f.hasValue).length}
+Resume/CV Files: ${applicationFields.fileUploads.filter(f => f.isResumeField && f.hasValue).length}
+
+IMPORTANT FILE UPLOAD NOTES:
+- Files are uploaded separately and may not appear in field data
+- Resume/CV fields show as completed when files are uploaded
+- ${applicationFields.fileUploads.filter(f => f.hasValue).length} file upload fields have files attached
+- ${applicationFields.fileUploads.filter(f => f.isResumeField && f.hasValue).length} resume/CV fields have files attached
 
 APPLICATION DATA:
 ${this.formatApplicationData(applicationFields)}
 
 CRITICAL EVALUATION REQUIREMENTS:
 1. Field completion analysis with specific missing fields identification
-2. Qualification matching with weighted scoring
+2. Qualification matching with weighted scoring  
 3. Score-based evaluation: Personal Info (20%), Experience (30%), Education (20%), Skills (20%), Additional (10%)
 4. Keyword matching for skills, technologies, and experience
 5. Overall recommendation: hire/interview/consider/reject
+6.  IMPORTANT: DO NOT mark file upload fields as missing if files are attached
+7.  IMPORTANT: Resume/CV fields with files should be considered completed
 
 RESPOND IN THIS EXACT FORMAT:
-FIELD_COMPLETION: [completed_fields]/[total_fields] ([percentage]%)
-MISSING_FIELDS: [field1|field2|field3]
-CRITICAL_MISSING: [critical_field1|critical_field2]
+FIELD_COMPLETION: ${applicationFields.completedFields}/${applicationFields.totalFields} (${Math.round((applicationFields.completedFields / applicationFields.totalFields) * 100)}%)
+MISSING_FIELDS: ${missingFields.join('|') || 'None'}
+CRITICAL_MISSING: ${criticalMissing.join('|') || 'None'}
 
 SCORES:
 PERSONAL_INFO: [0-20]
@@ -1347,11 +1406,61 @@ CONFIDENCE: [0-100]
 
 RECOMMENDATIONS: [rec1|rec2|rec3|rec4|rec5]
 
-Provide precise, data-driven evaluation with clear scoring rationale.`;
+Provide precise, data-driven evaluation with clear scoring rationale. Remember that file uploads (like resumes) are handled separately and should not be marked as missing if files are present.`;
 
       try {
         const aiResponse = await this.makeAIRequest(prompt);
-        return this.parseApplicationResponse(aiResponse, applicationFields);
+        const result = this.parseApplicationResponse(
+          aiResponse,
+          applicationFields
+        );
+
+        // Fix any incorrect missing field detection
+        if (result.fieldCompletion.criticalMissing.length > 0) {
+          // Remove resume fields from critical missing if files are actually present
+          const actualCriticalMissing =
+            result.fieldCompletion.criticalMissing.filter(fieldName => {
+              const isResumeField =
+                /resume|cv|curriculum.*vitae|portfolio/i.test(
+                  fieldName.toLowerCase()
+                );
+              if (isResumeField) {
+                const hasResumeFiles = applicationFields.fileUploads.some(
+                  f => f.isResumeField && f.hasValue && f.label === fieldName
+                );
+                if (hasResumeFiles) {
+                  return false;
+                }
+              }
+              return true;
+            });
+
+          result.fieldCompletion.criticalMissing = actualCriticalMissing;
+        }
+
+        // Fix missing fields list too
+        if (result.fieldCompletion.missingFields.length > 0) {
+          const actualMissingFields =
+            result.fieldCompletion.missingFields.filter(fieldName => {
+              const isResumeField =
+                /resume|cv|curriculum.*vitae|portfolio/i.test(
+                  fieldName.toLowerCase()
+                );
+              if (isResumeField) {
+                const hasResumeFiles = applicationFields.fileUploads.some(
+                  f => f.isResumeField && f.hasValue && f.label === fieldName
+                );
+                if (hasResumeFiles) {
+                  return false; // Remove from missing
+                }
+              }
+              return true; // Keep in missing
+            });
+
+          result.fieldCompletion.missingFields = actualMissingFields;
+        }
+
+        return result;
       } catch (aiError: any) {
         console.error('❌ AI application analysis failed:', aiError);
         return this.getDefaultApplicationAnalysis();
@@ -1407,6 +1516,21 @@ Provide precise, data-driven evaluation with clear scoring rationale.`;
 
           // Categorize fields
           if (
+            fieldType === 'fileupload' ||
+            fieldType === 'image' ||
+            /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv|file.*upload|attach.*file|document.*upload/i.test(
+              fieldLabel
+            )
+          ) {
+            fields.fileUploads.push(fieldData);
+
+            // Mark as resume field for better detection
+            if (/resume|cv|curriculum.*vitae|portfolio/i.test(fieldLabel)) {
+              fieldData.isResumeField = true;
+            }
+          }
+          // Personal information detection
+          else if (
             fieldType === 'fullname' ||
             fieldType === 'email' ||
             fieldType === 'phone' ||
@@ -1416,35 +1540,30 @@ Provide precise, data-driven evaluation with clear scoring rationale.`;
             )
           ) {
             fields.personalInfo.push(fieldData);
-          } else if (
+          }
+          // Work experience detection
+          else if (
             /work.*experience|job.*experience|employment|previous.*job|current.*job|position|company|employer|responsibilities|duties|years.*experience|professional|career/i.test(
               fieldLabel
             )
           ) {
             fields.workExperience.push(fieldData);
-          } else if (
+          }
+          // Education detection
+          else if (
             /education|school|university|college|degree|diploma|certification|qualification|academic|studies|major|gpa|graduation/i.test(
               fieldLabel
             )
           ) {
             fields.education.push(fieldData);
-          } else if (
+          }
+          // Skills detection
+          else if (
             /skills|abilities|competencies|expertise|technical|programming|languages|certifications|achievements/i.test(
               fieldLabel
             )
           ) {
             fields.skills.push(fieldData);
-          } else if (
-            fieldType === 'fileupload' ||
-            fieldType === 'image' ||
-            /resume|cv|curriculum.*vitae|portfolio|cover.*letter|document|certificate|transcript|diploma|attachment|upload.*resume|upload.*cv|file.*upload|attach.*file/i.test(
-              fieldLabel
-            )
-          ) {
-            fields.fileUploads.push(fieldData);
-            if (/resume|cv|curriculum.*vitae/i.test(fieldLabel)) {
-              fieldData.isResumeField = true;
-            }
           } else {
             fields.additional.push(fieldData);
           }
@@ -1460,12 +1579,7 @@ Provide precise, data-driven evaluation with clear scoring rationale.`;
     value: any,
     submissionData: any
   ): boolean {
-    // Check direct field value
-    if (value && (typeof value === 'string' ? value.trim() : true)) {
-      return true;
-    }
-
-    // ✅ CRITICAL: Check if submission has files array with this fieldId
+    // PRIORITY 1: Check submission.files array first (MOST RELIABLE)
     if (submissionData.files && Array.isArray(submissionData.files)) {
       const fieldFiles = submissionData.files.filter(
         (file: any) => file.fieldId === fieldId
@@ -1475,21 +1589,46 @@ Provide precise, data-driven evaluation with clear scoring rationale.`;
       }
     }
 
-    // Check for file-like objects in the field value
-    if (typeof value === 'object' && value !== null) {
-      if (value.originalName || value.fileName || value.url) {
+    // PRIORITY 2: Check direct field value in data object
+    if (value !== null && value !== undefined && value !== '') {
+      if (typeof value === 'string' && value.trim()) {
         return true;
       }
-    }
 
-    // Check for array of files
-    if (Array.isArray(value) && value.length > 0) {
-      const hasFiles = value.some(
-        item => item && (item.originalName || item.fileName || item.url)
-      );
-      if (hasFiles) {
-        return true;
+      // Check for file-like objects in data
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        const hasFileProperties = !!(
+          (value.originalName && value.url) ||
+          (value.fileName && value.url) ||
+          value.publicId ||
+          value.cloudinaryUrl
+        );
+        if (hasFileProperties) {
+          return true;
+        }
       }
+
+      // Check for array of files in data object
+      if (Array.isArray(value) && value.length > 0) {
+        const hasFiles = value.some(
+          item =>
+            item &&
+            ((item.originalName && item.url) ||
+              (item.fileName && item.url) ||
+              item.publicId ||
+              item.cloudinaryUrl)
+        );
+        if (hasFiles) {
+          return true;
+        }
+
+        // Non-empty array with other content
+        if (value.length > 0) {
+          return true;
+        }
+      }
+
+      return true;
     }
 
     return false;
@@ -2044,13 +2183,13 @@ Provide precise, data-driven evaluation with clear scoring rationale.`;
       }
 
       if (totalFields === 0) {
-        console.warn('⚠️ Form has no fields to evaluate');
+        console.warn(' Form has no fields to evaluate');
         return false;
       }
 
       if (validFields / totalFields < 0.8) {
         console.warn(
-          '⚠️ Form has too many invalid fields for reliable evaluation'
+          ' Form has too many invalid fields for reliable evaluation'
         );
         return false;
       }
@@ -2077,13 +2216,13 @@ Provide precise, data-driven evaluation with clear scoring rationale.`;
       }).length;
 
       if (fieldCount === 0 || validContent === 0) {
-        console.warn('⚠️ Submission has no valid content to evaluate');
+        console.warn(' Submission has no valid content to evaluate');
         return false;
       }
 
       if (validContent / fieldCount < 0.5) {
         console.warn(
-          '⚠️ Submission has too much empty/invalid content for reliable evaluation'
+          ' Submission has too much empty/invalid content for reliable evaluation'
         );
         return false;
       }

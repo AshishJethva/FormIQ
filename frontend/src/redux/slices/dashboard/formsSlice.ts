@@ -787,9 +787,6 @@ export const formsSlice = createSlice({
         state.labelsError =
           (action.payload as string) || 'Failed to fetch labels';
       })
-      .addCase(createLabelAsync.pending, () => {
-        console.log('Redux: createLabelAsync.pending');
-      })
 
       // Create label
       .addCase(createLabelAsync.fulfilled, (state, action) => {

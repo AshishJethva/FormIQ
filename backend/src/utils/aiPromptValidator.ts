@@ -73,7 +73,7 @@ export class AIPromptValidator {
 
     if (!hasFormKeywords) {
       console.warn(
-        '⚠️ Prompt may not be form-related:',
+        ' Prompt may not be form-related:',
         trimmedPrompt.substring(0, 50)
       );
     }

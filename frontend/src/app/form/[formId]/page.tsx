@@ -89,7 +89,7 @@ const BeautifulErrorScreen = ({
       };
     } else {
       return {
-        icon: '⚠️',
+        icon: '',
         title: 'Something Went Wrong',
         description: 'An unexpected error occurred while loading the form.',
         color: 'gray',
@@ -224,35 +224,16 @@ const handleFormSubmissionWithToasts = async (
 
     return result;
   } catch (error: any) {
-    if (error.type === 'warning') {
-      // This will show the "already submitted" warning
-      toast.warning(error.title || 'Warning', {
-        description: error.message,
-        duration: error.duration || 6000,
-        style: error.style || {
-          background: '#FEF3C7',
-          borderColor: '#F59E0B',
-          color: '#92400E',
-        },
-        action: error.action
-          ? {
-              label: error.action.label,
-              onClick: error.action.onClick,
-            }
-          : undefined,
-      });
-    } else {
-      toast.error(error.title || 'Submission Failed', {
-        description: error.message,
-        duration: error.duration || 5000,
-        action: error.action
-          ? {
-              label: error.action.label,
-              onClick: error.action.onClick,
-            }
-          : undefined,
-      });
-    }
+    toast.error(error.title || 'Submission Failed', {
+      description: error.message,
+      duration: error.duration || 5000,
+      action: error.action
+        ? {
+            label: error.action.label,
+            onClick: error.action.onClick,
+          }
+        : undefined,
+    });
 
     throw error;
   }
@@ -285,23 +266,6 @@ export default function PublicFormPage() {
       setForm(response.data);
     } catch (error: any) {
       setSubmitError(error.message);
-
-      const shouldShowToast =
-        error.status === 429 &&
-        (error.message?.toLowerCase().includes('already submitted') ||
-          error.message?.toLowerCase().includes('duplicate submission'));
-
-      if (shouldShowToast && error.type === 'warning') {
-        toast.warning(error.title || 'Warning', {
-          description: error.message,
-          duration: error.duration || 6000,
-          style: error.style || {
-            background: '#FEF3C7',
-            borderColor: '#F59E0B',
-            color: '#92400E',
-          },
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -600,11 +564,7 @@ export default function PublicFormPage() {
     } catch (error: any) {
       setSubmitError(error.message);
 
-      if (error.status === 403) {
-        console.log('Form access denied - user notified via toast');
-      } else if (error.status === 429) {
-        console.log('Duplicate submission - user notified via toast');
-      } else if (error.message?.includes('Network error')) {
+      if (error.message?.includes('Network error')) {
         setRetryCount(prev => prev + 1);
       }
 
@@ -1484,7 +1444,7 @@ export default function PublicFormPage() {
         );
 
       default:
-        console.warn(`⚠️ Unknown field type: ${field.type}`);
+        console.warn(` Unknown field type: ${field.type}`);
         return fieldWrapper(
           <div>
             <label className='block text-gray-700 mb-2 font-medium'>

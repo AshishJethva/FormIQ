@@ -423,7 +423,7 @@ export const submissionsService = {
         !response.data.type.includes('csv') &&
         !response.data.type.includes('text')
       ) {
-        console.warn('⚠️ Unexpected content type:', response.data.type);
+        console.warn(' Unexpected content type:', response.data.type);
       }
 
       return response.data;

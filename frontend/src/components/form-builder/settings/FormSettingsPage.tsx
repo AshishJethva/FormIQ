@@ -777,8 +777,8 @@ export default function FormSettingsPage() {
                           {!allowMultipleSubmissions
                             ? '🔒 Strict: One per device/IP (24h)'
                             : !allowMultipleEmailSubmissions
-                            ? '🔄 Flexible: Multiple submissions, one per email (24h)'
-                            : '🚀 Maximum: Unlimited submissions allowed'}
+                            ? 'Flexible: Multiple submissions, one per email (24h)'
+                            : 'Maximum: Unlimited submissions allowed'}
                         </p>
                         <p className='text-xs opacity-75'>
                           {allowMultipleSubmissions &&

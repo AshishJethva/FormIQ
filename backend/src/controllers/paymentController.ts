@@ -199,10 +199,7 @@ export const verifyPayment = async (
         );
       }
     } catch (paymentError: any) {
-      console.error(
-        '⚠️ Could not fetch payment details:',
-        paymentError.message
-      );
+      console.error(' Could not fetch payment details:', paymentError.message);
     }
 
     // Get plan configuration

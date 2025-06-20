@@ -44,7 +44,7 @@ export class AIFormGeneratorService {
         };
       }
 
-      // 🎯 FIXED: Detect intended form type from user prompt BEFORE generation
+      // Detect intended form type from user prompt BEFORE generation
       const intendedFormType = this.detectIntendedFormType(prompt.trim());
 
       // Generate form config with explicit form type guidance
@@ -188,7 +188,7 @@ export class AIFormGeneratorService {
   ): 'quiz' | 'survey' | 'feedback' | 'general' {
     const lowerPrompt = prompt.toLowerCase();
 
-    // 🎯 FEEDBACK DETECTION - Enhanced with more patterns
+    // FEEDBACK DETECTION
     const feedbackKeywords = [
       'feedback',
       'review',
@@ -229,7 +229,7 @@ export class AIFormGeneratorService {
       }
     }
 
-    // 🎯 QUIZ DETECTION
+    // QUIZ DETECTION
     const quizKeywords = [
       'quiz',
       'test',
@@ -255,7 +255,7 @@ export class AIFormGeneratorService {
       }
     }
 
-    // 🎯 SURVEY DETECTION
+    // SURVEY DETECTION
     const surveyKeywords = [
       'survey',
       'poll',
@@ -284,7 +284,7 @@ export class AIFormGeneratorService {
     return 'general';
   }
 
-  // 🚨 NEW METHOD: Enforce form structure based on intended type
+  // Enforce form structure based on intended type
   private enforceFormTypeStructure(
     config: any,
     intendedType: string,
@@ -302,7 +302,7 @@ export class AIFormGeneratorService {
     }
   }
 
-  // 🎯 QUIZ STRUCTURE ENFORCER
+  // QUIZ STRUCTURE ENFORCER
   private enforceQuizStructure(config: any, prompt: string): any {
     if (!config.pages || !Array.isArray(config.pages)) {
       config.pages = [{ id: uuidv4(), fields: [] }];
@@ -325,7 +325,7 @@ export class AIFormGeneratorService {
       }
     });
 
-    // 🚨 CRITICAL: Ensure minimum 5 single choice questions for quiz classification
+    // Ensure minimum 5 single choice questions for quiz classification
     if (singleChoiceCount < 5) {
       const questionsToAdd = 5 - singleChoiceCount;
 
@@ -416,14 +416,8 @@ export class AIFormGeneratorService {
       }
     });
 
-    console.log(
-      `Current feedback structure: ${feedbackFieldCount} feedback fields, ${textFieldCount} text fields, ${experienceFieldCount} experience fields`
-    );
-
-    // 🚨 CRITICAL: Ensure sufficient feedback fields (at least 3 feedback-specific fields)
+    // Ensure sufficient feedback fields (at least 3 feedback-specific fields)
     if (feedbackFieldCount < 3 || textFieldCount < 4) {
-      console.log(`🔧 Adding feedback fields to meet requirements`);
-
       const feedbackFields = this.generateEnhancedFeedbackFields(prompt);
 
       if (!config.pages[0].fields) {
@@ -542,12 +536,8 @@ export class AIFormGeneratorService {
     ];
   }
 
-  // 🎯 SURVEY STRUCTURE ENFORCER
+  // SURVEY STRUCTURE ENFORCER
   private enforceSurveyStructure(config: any, prompt: string): any {
-    console.log(
-      '📊 Enforcing SURVEY structure with choice-based rating questions...'
-    );
-
     if (!config.pages || !Array.isArray(config.pages)) {
       config.pages = [{ id: uuidv4(), fields: [] }];
     }
@@ -593,12 +583,8 @@ export class AIFormGeneratorService {
       }
     });
 
-    // 🚨 CRITICAL: Ensure sufficient rating/evaluation fields for survey
+    // Ensure sufficient rating/evaluation fields for survey
     if (ratingFieldCount < 3) {
-      console.log(
-        `🔧 Adding rating-style choice fields for survey (current: ${ratingFieldCount})`
-      );
-
       const surveyFields = this.generateSurveyFields(prompt);
 
       if (!config.pages[0].fields) {
@@ -769,7 +755,7 @@ export class AIFormGeneratorService {
       : '';
 
     const formTypeHeader = intendedFormType
-      ? `🎯 CRITICAL: This MUST be a ${intendedFormType.toUpperCase()} form type. Follow the specific requirements below:\n\n${typeSpecificInstructions}\n\n`
+      ? `CRITICAL: This MUST be a ${intendedFormType.toUpperCase()} form type. Follow the specific requirements below:\n\n${typeSpecificInstructions}\n\n`
       : '';
 
     return `
@@ -805,7 +791,7 @@ AVAILABLE FIELD TYPES (use exact values):
 - "fillBlank": Fill-in-the-blank text with customizable template
 - "productList": Product catalog with pricing and quantity selection
 
-🚨 IMPORTANT: For rating/satisfaction questions, use "singleChoice" with star/number options like:
+IMPORTANT: For rating/satisfaction questions, use "singleChoice" with star/number options like:
 {
   "type": "singleChoice",
   "label": "How satisfied are you?",
@@ -941,7 +927,7 @@ FORM STRUCTURE (EXACT FORMAT REQUIRED):
   }
 }
 
-🚨 CRITICAL QUIZ/TEST FORM RULES:
+CRITICAL QUIZ/TEST FORM RULES:
 - Detect quiz context from these keywords: quiz, test, assessment, exam, evaluation, question, correct, answer, choose, select
 - For ANY form containing these keywords in title, description, or field labels, ALWAYS add correctAnswer
 - For choice fields (dropdown, singleChoice, multipleChoice) in quiz forms:
@@ -961,7 +947,7 @@ Example quiz field structure:
   "correctAnswer": "paris"
 }
 
-🎯 SMART QUIZ DETECTION:
+SMART QUIZ DETECTION:
 - If user prompt contains: "quiz", "test", "assessment", "exam", "evaluation"
 - If any field label contains: "correct", "answer", "choose", "select", "what is", "which"
 - If form is educational: ALWAYS add correctAnswer to choice fields
@@ -988,7 +974,7 @@ Generate the form configuration now:`;
     switch (formType) {
       case 'quiz':
         return `
-🎯 QUIZ FORM REQUIREMENTS:
+QUIZ FORM REQUIREMENTS:
 - MUST include at least 5 single choice questions (singleChoice or dropdown type)
 - EVERY choice field MUST have "correctAnswer" property set
 - EVERY choice field MUST have at least one option marked with "isCorrect": true
@@ -1085,15 +1071,6 @@ Example survey rating field:
     // Detect if this is a quiz form
     const isQuizForm = intendedType === 'quiz' || this.detectQuizForm(config);
 
-    // Log the cleaning process
-    if (intendedType === 'quiz') {
-      console.log('🎯 Cleaning config as QUIZ form...');
-    } else if (intendedType === 'feedback') {
-      console.log('💬 Cleaning config as FEEDBACK form...');
-    } else if (intendedType === 'survey') {
-      console.log('📊 Cleaning config as SURVEY form...');
-    }
-
     if (config.pages && Array.isArray(config.pages)) {
       config.pages = config.pages.map((page: any) => ({
         ...page,
@@ -1189,7 +1166,7 @@ Example survey rating field:
                   }))
                   .filter((option: any) => option.label && option.value);
 
-                // 🎯 CRITICAL: Handle correctAnswer properly based on intended type
+                // Handle correctAnswer properly based on intended type
                 if (field.correctAnswer) {
                   cleanField.correctAnswer = String(field.correctAnswer);
                 } else {
@@ -1208,7 +1185,7 @@ Example survey rating field:
                   }
                 }
 
-                // 🚨 CRITICAL: Remove correctAnswer for feedback/survey forms
+                // Remove correctAnswer for feedback/survey forms
                 if (intendedType === 'feedback' || intendedType === 'survey') {
                   delete cleanField.correctAnswer;
                   cleanField.options.forEach((option: any) => {
@@ -1866,81 +1843,6 @@ Example survey rating field:
 
         if (!validTypes.includes(field.type)) {
           return { isValid: false, error: `Invalid field type: ${field.type}` };
-        }
-
-        // Validate choice fields have options
-        const choiceFields = ['dropdown', 'singleChoice', 'multipleChoice'];
-        if (choiceFields.includes(field.type)) {
-          if (
-            !field.options ||
-            !Array.isArray(field.options) ||
-            field.options.length === 0
-          ) {
-            console.log(
-              `Field "${field.label}" missing options - will be generated`
-            );
-          } else {
-            // Validate option structure
-            for (const option of field.options) {
-              if (!option.label || !option.value) {
-                console.log(
-                  `Field "${field.label}" has invalid option structure - will be fixed`
-                );
-              }
-            }
-          }
-        }
-
-        // Validate new field types
-        if (field.type === 'signature') {
-          if (field.signatureConfig) {
-            if (
-              field.signatureConfig.width &&
-              isNaN(Number(field.signatureConfig.width))
-            ) {
-              console.log(
-                `⚠️ Signature field "${field.label}" has invalid width - will be fixed`
-              );
-            }
-            if (
-              field.signatureConfig.height &&
-              isNaN(Number(field.signatureConfig.height))
-            ) {
-              console.log(
-                `⚠️ Signature field "${field.label}" has invalid height - will be fixed`
-              );
-            }
-          }
-        }
-
-        if (field.type === 'fillBlank') {
-          if (field.fillBlankTemplate) {
-            if (
-              !field.fillBlankTemplate.beforeText &&
-              !field.fillBlankTemplate.afterText
-            ) {
-              console.log(
-                `⚠️ FillBlank field "${field.label}" missing template text - will use defaults`
-              );
-            }
-          }
-        }
-
-        if (field.type === 'productList') {
-          if (field.productListConfig && field.productListConfig.products) {
-            for (const product of field.productListConfig.products) {
-              if (!product.name) {
-                console.log(
-                  `⚠️ Product in "${field.label}" missing name - will be fixed`
-                );
-              }
-              if (isNaN(Number(product.price))) {
-                console.log(
-                  `⚠️ Product in "${field.label}" has invalid price - will be fixed`
-                );
-              }
-            }
-          }
         }
       }
     }

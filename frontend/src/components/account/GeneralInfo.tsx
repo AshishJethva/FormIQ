@@ -22,22 +22,6 @@ interface GeneralInfoProps {
 }
 
 const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
-  const handleUpgradeAccount = () => {
-    console.log('Upgrade account clicked');
-  };
-
-  const handleResetPassword = () => {
-    console.log('Reset password clicked');
-  };
-
-  const handleEditField = (field: string) => {
-    console.log(`Edit ${field} clicked`);
-  };
-
-  const handleAddPhone = () => {
-    console.log('Add phone number clicked');
-  };
-
   return (
     <div className='w-full'>
       <EditField
@@ -45,10 +29,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
         value={
           <div className='flex items-center'>
             <span className='mr-4'>{userData.accountType}</span>
-            <button
-              onClick={handleUpgradeAccount}
-              className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
-            >
+            <button className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'>
               Upgrade Account
             </button>
           </div>
@@ -56,30 +37,19 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
         showEdit={false}
       />
 
-      <EditField
-        label='Username'
-        value={userData.username}
-        onEdit={() => handleEditField('username')}
-      />
+      <EditField label='Username' value={userData.username} />
 
       <EditField
         label='Password'
         value={
-          <button
-            onClick={handleResetPassword}
-            className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-          >
+          <button className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'>
             Reset Password
           </button>
         }
         showEdit={false}
       />
 
-      <EditField
-        label='Name'
-        value={userData.name}
-        onEdit={() => handleEditField('name')}
-      />
+      <EditField label='Name' value={userData.name} />
 
       <EditField
         label='Avatar'
@@ -101,33 +71,20 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
             )}
           </div>
         }
-        onEdit={() => handleEditField('avatar')}
       />
 
       <EditField
         label='Phone Number'
         value={
           userData.phoneNumber || (
-            <button
-              onClick={handleAddPhone}
-              className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
-            >
+            <button className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'>
               Add Phone Number
             </button>
           )
         }
-        onEdit={
-          userData.phoneNumber
-            ? () => handleEditField('phoneNumber')
-            : undefined
-        }
       />
 
-      <EditField
-        label='Website'
-        value={userData.website || '-'}
-        onEdit={() => handleEditField('website')}
-      />
+      <EditField label='Website' value={userData.website || '-'} />
 
       <EditField
         label='Email'
@@ -144,7 +101,6 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
             />
           </div>
         }
-        onEdit={() => handleEditField('email')}
       />
     </div>
   );

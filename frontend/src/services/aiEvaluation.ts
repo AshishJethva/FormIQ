@@ -238,9 +238,6 @@ class AIEvaluationService {
           ) {
             hasPersonalInfoFields++;
             applicationFields++;
-            console.log(
-              `👤 APPLICATION INDICATOR: Personal info field "${fieldLabel}"`
-            );
           }
 
           // Work experience detection
@@ -252,9 +249,6 @@ class AIEvaluationService {
             hasWorkExperienceFields++;
             applicationFields++;
             hasApplicationPatterns = true;
-            console.log(
-              `💼 APPLICATION INDICATOR: Work experience field "${fieldLabel}"`
-            );
           }
 
           // Education background detection
@@ -266,9 +260,6 @@ class AIEvaluationService {
             hasEducationFields++;
             applicationFields++;
             hasApplicationPatterns = true;
-            console.log(
-              `🎓 APPLICATION INDICATOR: Education field "${fieldLabel}"`
-            );
           }
 
           // Skills and competencies detection
@@ -280,9 +271,6 @@ class AIEvaluationService {
             hasSkillsFields++;
             applicationFields++;
             hasApplicationPatterns = true;
-            console.log(
-              `🛠️ APPLICATION INDICATOR: Skills field "${fieldLabel}"`
-            );
           }
 
           // File upload detection (resume, CV, portfolio)
@@ -297,17 +285,14 @@ class AIEvaluationService {
             if (/resume|cv|portfolio/i.test(fieldLabel)) {
               applicationFields++;
               hasApplicationPatterns = true;
-              console.log(
-                `📄 APPLICATION INDICATOR: File upload field "${fieldLabel}"`
-              );
             }
           }
 
-          // 🎯 QUIZ DETECTION: Count single choice questions
+          // QUIZ DETECTION: Count single choice questions
           if (fieldType === 'singlechoice' || fieldType === 'dropdown') {
             analysis.singleChoiceCount++;
 
-            // 🚨 CRITICAL: Check for correctAnswer property (PRIMARY quiz indicator)
+            // Check for correctAnswer property (PRIMARY quiz indicator)
             if (
               field.correctAnswer ||
               (field.options &&
@@ -317,9 +302,6 @@ class AIEvaluationService {
               )
             ) {
               hasCorrectAnswers = true;
-              console.log(
-                `🎯 QUIZ INDICATOR: correctAnswer found in "${fieldLabel}"`
-              );
             } else {
               // 🔧 FIXED: Check if this single choice has rating options (SURVEY, NOT QUIZ)
               if (field.options && Array.isArray(field.options)) {
@@ -334,9 +316,6 @@ class AIEvaluationService {
                 if (hasRatingOptions) {
                   choiceFieldsWithRatingOptions++;
                   ratingFields++;
-                  console.log(
-                    `📊 SURVEY INDICATOR: Rating options in single choice "${fieldLabel}" (NOT QUIZ)`
-                  );
                 }
               }
             }
@@ -346,9 +325,6 @@ class AIEvaluationService {
           if (fieldType === 'multiplechoice') {
             if (field.correctAnswer || field.correctAnswers) {
               hasCorrectAnswers = true;
-              console.log(
-                `🎯 QUIZ INDICATOR: correct answers in multiple choice "${fieldLabel}"`
-              );
             } else {
               // Check for rating-like multiple choice options (SURVEY)
               if (field.options && Array.isArray(field.options)) {
@@ -363,15 +339,12 @@ class AIEvaluationService {
                 if (hasRatingOptions) {
                   choiceFieldsWithRatingOptions++;
                   ratingFields++;
-                  console.log(
-                    `📊 SURVEY INDICATOR: Rating options in multiple choice "${fieldLabel}"`
-                  );
                 }
               }
             }
           }
 
-          // 🎯 SURVEY DETECTION: Rating/scale fields and choice fields with rating options
+          // SURVEY DETECTION: Rating/scale fields and choice fields with rating options
           if (
             fieldType === 'rating' ||
             fieldType === 'scale' ||
@@ -380,12 +353,9 @@ class AIEvaluationService {
             )
           ) {
             ratingFields++;
-            console.log(
-              `📊 SURVEY INDICATOR: ${fieldType} field or rating pattern in "${fieldLabel}"`
-            );
           }
 
-          // 🎯 FEEDBACK DETECTION: Text fields with feedback patterns
+          // FEEDBACK DETECTION: Text fields with feedback patterns
           if (
             (fieldType === 'longtext' || fieldType === 'paragraph') &&
             /feedback|comment|improve|experience|suggest|issue|problem|opinion|thoughts|recommendation|tell.*us|what.*do.*you.*think|how.*was|describe|explain|any.*additional/i.test(
@@ -393,9 +363,6 @@ class AIEvaluationService {
             )
           ) {
             feedbackFields++;
-            console.log(
-              `💬 FEEDBACK INDICATOR: feedback pattern in "${fieldLabel}"`
-            );
           }
         });
       }
@@ -417,9 +384,6 @@ class AIEvaluationService {
         analysis.reasons.push('Title/description confirms quiz/test nature');
       }
 
-      console.log(
-        `🎯 FRONTEND CLASSIFIED AS QUIZ: ${analysis.singleChoiceCount} SCQ with correct answers`
-      );
       return analysis;
     }
 
@@ -501,9 +465,6 @@ class AIEvaluationService {
         );
       }
 
-      console.log(
-        `📄 FRONTEND CLASSIFIED AS APPLICATION: ${applicationScore} score, ${applicationFields} app fields`
-      );
       return analysis;
     }
 
@@ -535,9 +496,6 @@ class AIEvaluationService {
         analysis.reasons.push('Title indicates survey/research');
       }
 
-      console.log(
-        `📊 FRONTEND CLASSIFIED AS SURVEY: ${ratingFields} rating fields, ${choiceFieldsWithRatingOptions} choice w/ rating options`
-      );
       return analysis;
     }
 
@@ -569,9 +527,6 @@ class AIEvaluationService {
         analysis.reasons.push('Title indicates feedback/review');
       }
 
-      console.log(
-        `💬 FRONTEND CLASSIFIED AS FEEDBACK: ${feedbackFields} feedback fields`
-      );
       return analysis;
     }
 
@@ -582,9 +537,6 @@ class AIEvaluationService {
       'No specific form type patterns detected - classified as general form'
     );
 
-    console.log(
-      `📝 FRONTEND CLASSIFIED AS GENERAL: Not enough criteria for specific type`
-    );
     return analysis;
   }
 
@@ -599,7 +551,7 @@ class AIEvaluationService {
 
     if (!isValid) {
       console.warn(
-        `⚠️ Sentiment percentages don't total 100%: ${total}%`,
+        ` Sentiment percentages don't total 100%: ${total}%`,
         sentiment
       );
     }
@@ -1009,11 +961,6 @@ class AIEvaluationService {
             ? errorInfo.suggestedDelay
             : baseDelay * Math.pow(1.5, attempt);
 
-        console.log(
-          `⏳ Retrying operation in ${delay}ms (attempt ${
-            attempt + 1
-          }/${maxRetries})`
-        );
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -1032,8 +979,6 @@ class AIEvaluationService {
         };
       }
 
-      console.log(`🚀 Starting AI evaluation for submission: ${submissionId}`);
-
       const operation = async () => {
         const response = await axios.post(
           `${this.baseUrl}/evaluate/${submissionId}`,
@@ -1050,10 +995,6 @@ class AIEvaluationService {
 
       // Process and validate the response
       const processedResult = this.processEvaluationResponse(result);
-
-      console.log(
-        `✅ Evaluation completed with ${processedResult.data?.accuracy}% accuracy and ${processedResult.data?.confidence}% confidence`
-      );
 
       return processedResult;
     } catch (error: any) {
@@ -1091,10 +1032,6 @@ class AIEvaluationService {
           error: 'BATCH_SIZE_LIMIT',
         };
       }
-
-      console.log(
-        `🚀 Starting batch AI evaluation for ${submissionIds.length} submissions`
-      );
 
       const operation = async () => {
         const response = await axios.post(
@@ -1179,12 +1116,6 @@ class AIEvaluationService {
           result.metadata.averageConfidence =
             Math.round(averageConfidence * 10) / 10;
         }
-
-        console.log(
-          `✅ Batch evaluation completed with ${averageAccuracy.toFixed(
-            1
-          )}% average accuracy`
-        );
       }
 
       return result;
