@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Info, User } from 'lucide-react';
 import { deleteAvatar } from '@/redux/slices/userProfile/userProfileSlice';
 import {
@@ -303,529 +304,849 @@ export default function AccountPage() {
     router.push('/myaccount/upgrade');
   };
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.3,
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.3 },
+    },
+  };
+
+  const editFormVariants = {
+    hidden: { opacity: 0, height: 0 },
+    visible: {
+      opacity: 1,
+      height: 'auto',
+      transition: { duration: 0.3, ease: 'easeInOut' },
+    },
+    exit: {
+      opacity: 0,
+      height: 0,
+      transition: { duration: 0.2, ease: 'easeInOut' },
+    },
+  };
+
   if (!userProfile && isLoading) {
     return (
-      <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
-        <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
+      <motion.div
+        className='bg-gray-50 min-h-screen w-full py-4 sm:py-10 px-4'
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm'>
           <div className='animate-pulse'>
-            <div className='py-8 px-10 border-b border-gray-200'>
-              <div className='h-8 bg-gray-200 rounded w-1/2'></div>
+            <div className='py-4 sm:py-8 px-4 sm:px-10 border-b border-gray-200'>
+              <div className='h-6 sm:h-8 bg-gray-200 rounded w-3/4 sm:w-1/2'></div>
             </div>
-            <div className='p-10 space-y-6'>
+            <div className='p-4 sm:p-10 space-y-6'>
               {[...Array(6)].map((_, i) => (
-                <div
+                <motion.div
                   key={i}
-                  className='flex items-center py-6 border-b border-gray-200'
+                  className='flex flex-col sm:flex-row sm:items-center py-4 sm:py-6 border-b border-gray-200 space-y-2 sm:space-y-0'
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.1 }}
                 >
-                  <div className='w-1/3'>
+                  <div className='sm:w-1/3'>
                     <div className='h-4 bg-gray-200 rounded w-20'></div>
                   </div>
-                  <div className='w-2/3 flex justify-between items-center'>
+                  <div className='sm:w-2/3 flex justify-between items-center'>
                     <div className='h-4 bg-gray-200 rounded w-32'></div>
                     <div className='h-6 bg-gray-200 rounded w-12'></div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   if (!userProfile) {
     return (
-      <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
+      <motion.div
+        className='bg-gray-50 min-h-screen w-full py-4 sm:py-10 px-4'
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
-          <div className='py-8 px-10 text-center'>
+          <div className='py-4 sm:py-8 px-4 sm:px-10 text-center'>
             <p className='text-gray-500'>
               Failed to load user profile. Please try refreshing the page.
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
-      <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
-        <div className='py-8 px-10 border-b border-gray-200'>
-          <h1 className='text-2xl font-semibold text-navy-900 mb-1'>
+    <motion.div
+      className='bg-gray-50 min-h-screen w-full py-4 sm:py-10 px-4'
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      <motion.div
+        className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+      >
+        <motion.div
+          className='py-4 sm:py-8 px-4 sm:px-10 border-b border-gray-200'
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <h1 className='text-xl sm:text-2xl font-semibold text-navy-900 mb-1 leading-tight'>
             Update <span className='text-green-600'>Account</span> and General
             Information
           </h1>
-        </div>
+        </motion.div>
 
-        <div className='divide-y divide-gray-200'>
+        <motion.div
+          className='divide-y divide-gray-200'
+          variants={containerVariants}
+          initial='hidden'
+          animate='visible'
+        >
           {/* Account Type */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>
                 Account Type
               </h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              <div className='flex items-center'>
-                <span className='text-[15px] text-gray-800 mr-4'>
+            <div className='sm:w-2/3 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'>
+              <div className='flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4'>
+                <span className='text-[15px] text-gray-800'>
                   {userProfile.profile.plan.type}
                 </span>
-                <button
+                <motion.button
                   onClick={handleUpgradeAccount}
-                  className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                  className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer self-start sm:self-auto'
                   disabled={isLoading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   {userProfile.profile.plan.type === 'STARTER'
                     ? 'Upgrade Account'
                     : 'Manage Plan'}
-                </button>
+                </motion.button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Username */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>
                 Username
               </h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              {editMode.username ? (
-                <div className='flex-grow'>
-                  <input
-                    type='text'
-                    name='username'
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    disabled={isLoading}
-                  />
-                  <div className='mt-3 flex space-x-2'>
-                    <button
-                      onClick={() => saveField('username')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => cancelEditing('username')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className='text-[15px] text-gray-800'>
-                    {userProfile.profile.username}
-                  </div>
-                  <button
-                    onClick={() => startEditing('username')}
-                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                    disabled={isLoading}
+            <div className='sm:w-2/3 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'>
+              <AnimatePresence mode='wait'>
+                {editMode.username ? (
+                  <motion.div
+                    className='flex-grow'
+                    variants={editFormVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
                   >
-                    Edit
-                  </button>
-                </>
-              )}
+                    <motion.input
+                      type='text'
+                      name='username'
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      disabled={isLoading}
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.div
+                      className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2'
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <motion.button
+                        onClick={() => saveField('username')}
+                        className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isLoading ? 'Saving...' : 'Save'}
+                      </motion.button>
+                      <motion.button
+                        onClick={() => cancelEditing('username')}
+                        className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Cancel
+                      </motion.button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className='w-full flex justify-between items-center'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className='text-[15px] text-gray-800 flex-grow'>
+                      {userProfile.profile.username}
+                    </div>
+                    <motion.button
+                      onClick={() => startEditing('username')}
+                      className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                      disabled={isLoading}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Edit
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Email */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>Email</h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              {editMode.email ? (
-                <div className='flex-grow'>
-                  <input
-                    type='email'
-                    name='email'
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    disabled={isLoading}
-                  />
-                  <div className='mt-3 flex space-x-2'>
-                    <button
-                      onClick={() => saveField('email')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => cancelEditing('email')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className='text-[15px] text-gray-800 flex items-center'>
-                    <span>{userProfile.user.email}</span>
-                  </div>
-                  <button
-                    onClick={() => startEditing('email')}
-                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                    disabled={isLoading}
+            <div className='sm:w-2/3 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'>
+              <AnimatePresence mode='wait'>
+                {editMode.email ? (
+                  <motion.div
+                    className='flex-grow'
+                    variants={editFormVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
                   >
-                    Edit
-                  </button>
-                </>
-              )}
+                    <motion.input
+                      type='email'
+                      name='email'
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      disabled={isLoading}
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.div
+                      className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2'
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <motion.button
+                        onClick={() => saveField('email')}
+                        className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isLoading ? 'Saving...' : 'Save'}
+                      </motion.button>
+                      <motion.button
+                        onClick={() => cancelEditing('email')}
+                        className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Cancel
+                      </motion.button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className='w-full flex justify-between items-center'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className='text-[15px] text-gray-800 flex items-center flex-grow break-all'>
+                      <span>{userProfile.user.email}</span>
+                    </div>
+                    <motion.button
+                      onClick={() => startEditing('email')}
+                      className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                      disabled={isLoading}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Edit
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Password */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>
                 Password
               </h3>
             </div>
-            <div className='w-2/3'>
-              {passwordResetSent ? (
-                <div className='bg-blue-50 p-4 rounded-md'>
-                  <div className='flex items-start'>
-                    <div className='flex-shrink-0'>
-                      <Info className='h-5 w-5 text-blue-400' />
-                    </div>
-                    <div className='ml-3'>
-                      <p className='text-sm text-blue-700'>
-                        Your password reset email was sent to{' '}
-                        <span className='font-medium'>
-                          {userProfile.user.email}
-                        </span>
-                      </p>
-                      <div className='mt-2 text-sm'>
-                        <button
-                          onClick={handleResendEmail}
-                          className='text-blue-600 hover:text-blue-800 font-medium mr-3 cursor-pointer disabled:opacity-50'
-                          disabled={loadingStates.resendEmail}
+            <div className='sm:w-2/3'>
+              <AnimatePresence mode='wait'>
+                {passwordResetSent ? (
+                  <motion.div
+                    className='bg-blue-50 p-4 rounded-md'
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className='flex items-start'>
+                      <div className='flex-shrink-0'>
+                        <motion.div
+                          initial={{ rotate: -180, opacity: 0 }}
+                          animate={{ rotate: 0, opacity: 1 }}
+                          transition={{ duration: 0.4, delay: 0.1 }}
                         >
-                          {loadingStates.resendEmail
-                            ? 'Sending...'
-                            : 'Resend Email'}
-                        </button>
-                        <button
-                          onClick={handleCancelReset}
-                          className='text-red-600 hover:text-red-800 font-medium cursor-pointer'
-                          disabled={loadingStates.resendEmail}
+                          <Info className='h-5 w-5 text-blue-400 mt-0.5' />
+                        </motion.div>
+                      </div>
+                      <div className='ml-3'>
+                        <p className='text-sm text-blue-700'>
+                          Your password reset email was sent to{' '}
+                          <span className='font-medium break-all'>
+                            {userProfile.user.email}
+                          </span>
+                        </p>
+                        <motion.div
+                          className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3'
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: 0.2 }}
                         >
-                          Cancel
-                        </button>
+                          <motion.button
+                            onClick={handleResendEmail}
+                            className='text-blue-600 hover:text-blue-800 font-medium cursor-pointer disabled:opacity-50 text-sm'
+                            disabled={loadingStates.resendEmail}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {loadingStates.resendEmail
+                              ? 'Sending...'
+                              : 'Resend Email'}
+                          </motion.button>
+                          <motion.button
+                            onClick={handleCancelReset}
+                            className='text-red-600 hover:text-red-800 font-medium cursor-pointer text-sm'
+                            disabled={loadingStates.resendEmail}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            Cancel
+                          </motion.button>
+                        </motion.div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleResetPassword}
-                  className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer disabled:opacity-50'
-                  disabled={loadingStates.passwordReset}
-                >
-                  {loadingStates.passwordReset
-                    ? 'Sending...'
-                    : 'Reset Password'}
-                </button>
-              )}
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    onClick={handleResetPassword}
+                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer disabled:opacity-50'
+                    disabled={loadingStates.passwordReset}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {loadingStates.passwordReset
+                      ? 'Sending...'
+                      : 'Reset Password'}
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Name */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>Name</h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              {editMode.name ? (
-                <div className='flex-grow'>
-                  <input
-                    type='text'
-                    name='name'
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    disabled={isLoading}
-                  />
-                  <div className='mt-3 flex space-x-2'>
-                    <button
-                      onClick={() => saveField('name')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => cancelEditing('name')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className='text-[15px] text-gray-800'>
-                    {userProfile.user.name}
-                  </div>
-                  <button
-                    onClick={() => startEditing('name')}
-                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                    disabled={isLoading}
+            <div className='sm:w-2/3 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'>
+              <AnimatePresence mode='wait'>
+                {editMode.name ? (
+                  <motion.div
+                    className='flex-grow'
+                    variants={editFormVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
                   >
-                    Edit
-                  </button>
-                </>
-              )}
+                    <motion.input
+                      type='text'
+                      name='name'
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      disabled={isLoading}
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.div
+                      className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2'
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <motion.button
+                        onClick={() => saveField('name')}
+                        className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isLoading ? 'Saving...' : 'Save'}
+                      </motion.button>
+                      <motion.button
+                        onClick={() => cancelEditing('name')}
+                        className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Cancel
+                      </motion.button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className='w-full flex justify-between items-center'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className='text-[15px] text-gray-800 flex-grow'>
+                      {userProfile.user.name}
+                    </div>
+                    <motion.button
+                      onClick={() => startEditing('name')}
+                      className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                      disabled={isLoading}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Edit
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Avatar */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>Avatar</h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              <div>
-                <div className='flex items-center space-x-4'>
-                  <div
-                    onClick={handleAvatarClick}
-                    className='bg-gray-100 rounded-full p-2 inline-block cursor-pointer hover:bg-gray-200 transition-colors'
-                  >
-                    {editMode.avatar && avatarPreview ? (
-                      <Image
-                        src={avatarPreview}
-                        alt='Avatar Preview'
-                        width={64}
-                        height={64}
-                        priority
-                        className='rounded-full object-cover w-16 h-16'
-                      />
-                    ) : userProfile.profile.avatar?.src &&
-                      userProfile.profile.avatar.src.trim() !== '' ? (
-                      <Image
-                        src={userProfile.profile.avatar.src}
-                        alt='User Avatar'
-                        width={64}
-                        height={64}
-                        priority
-                        className='rounded-full object-cover w-16 h-16'
-                      />
-                    ) : (
-                      <div className='w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-500'>
-                        <User className='w-8 h-8' />
-                      </div>
-                    )}
+            <div className='sm:w-2/3 flex flex-col space-y-4'>
+              <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0'>
+                <div>
+                  <div className='flex items-center space-x-4'>
+                    <motion.div
+                      onClick={handleAvatarClick}
+                      className='bg-gray-100 rounded-full p-2 inline-block cursor-pointer hover:bg-gray-200 transition-colors'
+                      whileHover={{ scale: 1.05, rotate: 5 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <AnimatePresence mode='wait'>
+                        {editMode.avatar && avatarPreview ? (
+                          <motion.div
+                            key='preview'
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Image
+                              src={avatarPreview}
+                              alt='Avatar Preview'
+                              width={64}
+                              height={64}
+                              priority
+                              className='rounded-full object-cover w-16 h-16'
+                            />
+                          </motion.div>
+                        ) : userProfile.profile.avatar?.src &&
+                          userProfile.profile.avatar.src.trim() !== '' ? (
+                          <motion.div
+                            key='current'
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Image
+                              src={userProfile.profile.avatar.src}
+                              alt='User Avatar'
+                              width={64}
+                              height={64}
+                              priority
+                              className='rounded-full object-cover w-16 h-16'
+                            />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key='placeholder'
+                            className='w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-500'
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <User className='w-8 h-8' />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+
+                    {/* Show delete button if avatar exists and not in edit mode */}
+                    <AnimatePresence>
+                      {userProfile.profile.avatar?.src &&
+                        userProfile.profile.avatar.src.trim() !== '' &&
+                        !editMode.avatar && (
+                          <motion.button
+                            onClick={handleDeleteAvatar}
+                            className='text-red-600 hover:text-red-800 text-sm font-medium cursor-pointer disabled:opacity-50'
+                            disabled={loadingStates.avatarDelete}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {loadingStates.avatarDelete
+                              ? 'Deleting...'
+                              : 'Delete'}
+                          </motion.button>
+                        )}
+                    </AnimatePresence>
                   </div>
 
-                  {/* Show delete button if avatar exists and not in edit mode */}
-                  {userProfile.profile.avatar?.src &&
-                    userProfile.profile.avatar.src.trim() !== '' &&
-                    !editMode.avatar && (
-                      <button
-                        onClick={handleDeleteAvatar}
-                        className='text-red-600 hover:text-red-800 text-sm font-medium cursor-pointer disabled:opacity-50'
-                        disabled={loadingStates.avatarDelete}
+                  <input
+                    type='file'
+                    ref={fileInputRef}
+                    onChange={handleAvatarChange}
+                    className='hidden'
+                    accept='image/*'
+                    disabled={loadingStates.avatarUpload}
+                  />
+
+                  <AnimatePresence>
+                    {editMode.avatar && avatarPreview && (
+                      <motion.div
+                        className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2'
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
                       >
-                        {loadingStates.avatarDelete ? 'Deleting...' : 'Delete'}
-                      </button>
+                        <motion.button
+                          onClick={saveAvatar}
+                          className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                          disabled={loadingStates.avatarUpload}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {loadingStates.avatarUpload ? 'Uploading...' : 'Save'}
+                        </motion.button>
+                        <motion.button
+                          onClick={cancelAvatarUpload}
+                          className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                          disabled={loadingStates.avatarUpload}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          Cancel
+                        </motion.button>
+                      </motion.div>
                     )}
+                  </AnimatePresence>
                 </div>
 
-                <input
-                  type='file'
-                  ref={fileInputRef}
-                  onChange={handleAvatarChange}
-                  className='hidden'
-                  accept='image/*'
-                  disabled={loadingStates.avatarUpload}
-                />
-
-                {editMode.avatar && avatarPreview && (
-                  <div className='mt-3 flex space-x-2'>
-                    <button
-                      onClick={saveAvatar}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
-                      disabled={loadingStates.avatarUpload}
-                    >
-                      {loadingStates.avatarUpload ? 'Uploading...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={cancelAvatarUpload}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={loadingStates.avatarUpload}
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                {!editMode.avatar && (
+                  <motion.button
+                    onClick={handleAvatarUpload}
+                    className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                    disabled={loadingStates.avatarUpload}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {userProfile.profile.avatar?.src &&
+                    userProfile.profile.avatar.src.trim() !== ''
+                      ? 'Change'
+                      : 'Upload'}
+                  </motion.button>
                 )}
               </div>
-
-              {!editMode.avatar && (
-                <button
-                  onClick={handleAvatarUpload}
-                  className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                  disabled={loadingStates.avatarUpload}
-                >
-                  {userProfile.profile.avatar?.src &&
-                  userProfile.profile.avatar.src.trim() !== ''
-                    ? 'Change'
-                    : 'Upload'}
-                </button>
-              )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Phone Number */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>
                 Phone Number
               </h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              {editMode.phoneNumber ? (
-                <div className='flex-grow'>
-                  <input
-                    type='tel'
-                    name='phoneNumber'
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    placeholder='+1 (555) 123-4567'
-                    className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    disabled={isLoading}
-                  />
-                  <div className='mt-3 flex space-x-2'>
-                    <button
-                      onClick={() => saveField('phoneNumber')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+            <div className='sm:w-2/3 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'>
+              <AnimatePresence mode='wait'>
+                {editMode.phoneNumber ? (
+                  <motion.div
+                    className='flex-grow'
+                    variants={editFormVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
+                  >
+                    <motion.input
+                      type='tel'
+                      name='phoneNumber'
+                      value={formData.phoneNumber}
+                      onChange={handleInputChange}
+                      placeholder='+1 (555) 123-4567'
+                      className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
                       disabled={isLoading}
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.div
+                      className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2'
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
                     >
-                      {isLoading ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => cancelEditing('phoneNumber')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {userProfile.profile.phoneNumber ? (
-                    <>
-                      <div className='text-[15px] text-gray-800'>
-                        {userProfile.profile.phoneNumber}
-                      </div>
-                      <button
-                        onClick={() => startEditing('phoneNumber')}
-                        className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
+                      <motion.button
+                        onClick={() => saveField('phoneNumber')}
+                        className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
                         disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
-                        Edit
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => startEditing('phoneNumber')}
-                      className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
-                    >
-                      Add Phone Number
-                    </button>
-                  )}
-                </>
-              )}
+                        {isLoading ? 'Saving...' : 'Save'}
+                      </motion.button>
+                      <motion.button
+                        onClick={() => cancelEditing('phoneNumber')}
+                        className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Cancel
+                      </motion.button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className='w-full flex justify-between items-center'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {userProfile.profile.phoneNumber ? (
+                      <>
+                        <div className='text-[15px] text-gray-800 flex-grow'>
+                          {userProfile.profile.phoneNumber}
+                        </div>
+                        <motion.button
+                          onClick={() => startEditing('phoneNumber')}
+                          className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                          disabled={isLoading}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          Edit
+                        </motion.button>
+                      </>
+                    ) : (
+                      <motion.button
+                        onClick={() => startEditing('phoneNumber')}
+                        className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer self-start sm:self-auto'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Add Phone Number
+                      </motion.button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Website */}
-          <div className='px-10 py-6 flex items-center'>
-            <div className='w-1/3'>
+          <motion.div
+            className='px-4 sm:px-10 py-4 sm:py-6 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0'
+            variants={itemVariants}
+          >
+            <div className='sm:w-1/3'>
               <h3 className='text-[15px] font-medium text-gray-800'>Website</h3>
             </div>
-            <div className='w-2/3 flex justify-between items-center'>
-              {editMode.website ? (
-                <div className='flex-grow'>
-                  <input
-                    type='url'
-                    name='website'
-                    value={formData.website}
-                    onChange={handleInputChange}
-                    placeholder='https://example.com'
-                    className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    disabled={isLoading}
-                  />
-                  <div className='mt-3 flex space-x-2'>
-                    <button
-                      onClick={() => saveField('website')}
-                      className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+            <div className='sm:w-2/3 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'>
+              <AnimatePresence mode='wait'>
+                {editMode.website ? (
+                  <motion.div
+                    className='flex-grow'
+                    variants={editFormVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
+                  >
+                    <motion.input
+                      type='url'
+                      name='website'
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      placeholder='https://example.com'
+                      className='w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
                       disabled={isLoading}
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.div
+                      className='mt-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2'
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
                     >
-                      {isLoading ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => cancelEditing('website')}
-                      className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 rounded text-sm font-medium transition-colors cursor-pointer'
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {userProfile.profile.website ? (
-                    <>
-                      <div className='text-[15px] text-gray-800'>
-                        <a
-                          href={userProfile.profile.website}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='text-blue-600 hover:underline'
+                      <motion.button
+                        onClick={() => saveField('website')}
+                        className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isLoading ? 'Saving...' : 'Save'}
+                      </motion.button>
+                      <motion.button
+                        onClick={() => cancelEditing('website')}
+                        className='bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'
+                        disabled={isLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Cancel
+                      </motion.button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className='w-full flex justify-between items-center'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {userProfile.profile.website ? (
+                      <>
+                        <div className='text-[15px] text-gray-800 flex-grow'>
+                          <a
+                            href={userProfile.profile.website}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='text-blue-600 hover:underline break-all'
+                          >
+                            {userProfile.profile.website}
+                          </a>
+                        </div>
+                        <motion.button
+                          onClick={() => startEditing('website')}
+                          className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                          disabled={isLoading}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          {userProfile.profile.website}
-                        </a>
-                      </div>
-                      <button
-                        onClick={() => startEditing('website')}
-                        className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                        disabled={isLoading}
-                      >
-                        Edit
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className='text-[15px] text-gray-500'>-</div>
-                      <button
-                        onClick={() => startEditing('website')}
-                        className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
-                        disabled={isLoading}
-                      >
-                        Edit
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
+                          Edit
+                        </motion.button>
+                      </>
+                    ) : (
+                      <>
+                        <div className='text-[15px] text-gray-500 flex-grow'>
+                          -
+                        </div>
+                        <motion.button
+                          onClick={() => startEditing('website')}
+                          className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer self-start sm:self-auto'
+                          disabled={isLoading}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          Edit
+                        </motion.button>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }

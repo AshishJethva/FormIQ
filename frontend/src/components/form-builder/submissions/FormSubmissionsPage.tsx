@@ -3344,11 +3344,11 @@ const FormSubmissionsPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className='space-y-2 pb-4 border-b border-gray-100 last:border-b-0'
       >
-        <label className='text-sm font-semibold text-gray-700 block'>
+        <label className='text-sm font-semibold text-gray-500 block'>
           {label}
         </label>
-        <div className='bg-gray-50 p-3 rounded-lg border'>
-          <p className='text-gray-900 leading-relaxed whitespace-pre-wrap break-words'>
+        <div className='bg-gray-50 px-2 py-1 rounded-lg border border-gray-300'>
+          <p className='text-gray-800 text-md leading-relaxed whitespace-pre-wrap break-words'>
             {displayValue}
           </p>
         </div>
@@ -4006,7 +4006,7 @@ const FormSubmissionsPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      {/* Enhanced Submission Details Modal */}
+      {/* Submission Details Modal */}
       <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
         <DialogContent
           className='w-[95vw] h-[90vh] max-w-4xl max-h-[90vh] overflow-y-auto bg-white p-0'
@@ -4020,7 +4020,7 @@ const FormSubmissionsPage: React.FC = () => {
             <DialogHeader className='border-b border-gray-200 p-4 md:p-6 sticky top-0 bg-white'>
               <DialogTitle className='flex flex-col sm:flex-row sm:items-center gap-3 pr-8'>
                 <div className='flex items-center gap-3'>
-                  <div className='w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md'>
+                  <div className='w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md'>
                     <FileText className='w-5 h-5 text-white' />
                   </div>
                   <span className='text-xl font-bold text-gray-900'>
@@ -4080,38 +4080,29 @@ const FormSubmissionsPage: React.FC = () => {
                 {/* Submission Meta Information */}
                 <div className='bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 rounded-2xl border border-slate-200 overflow-hidden'>
                   <div className='bg-white/60 backdrop-blur-sm border-b border-slate-200 p-6'>
-                    <h4 className='font-bold text-slate-800 text-lg flex items-center gap-3'>
-                      <div className='w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center'>
-                        <Calendar className='w-4 h-4 text-white' />
-                      </div>
+                    <h4 className='font-bold text-slate-800 text-xl flex items-center gap-3'>
                       Submission Overview
                     </h4>
                   </div>
-                  <div className='p-6'>
-                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+                  <div className='p-4'>
+                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                       <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
-                        <div className='flex items-center gap-3 mb-3'>
-                          <div className='w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center'>
-                            <Clock className='w-4 h-4 text-blue-600' />
-                          </div>
-                          <span className='text-slate-700 font-medium'>
+                        <div className='flex items-center gap-3 mb-1'>
+                          <span className='text-slate-700 font-semibold text-lg'>
                             Submission Time
                           </span>
                         </div>
-                        <p className='text-slate-900 font-semibold text-lg'>
+                        <p className='text-slate-700 font-medium text-sm'>
                           {formatDateTime(selectedSubmission.submittedAt)}
                         </p>
-                        <p className='text-blue-600 text-sm mt-1'>
+                        <p className='text-blue-600 text-sm mt-0'>
                           {formatTimeAgo(selectedSubmission.submittedAt)}
                         </p>
                       </div>
 
                       <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
-                        <div className='flex items-center gap-3 mb-3'>
-                          <div className='w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center'>
-                            <AlertCircle className='w-4 h-4 text-green-600' />
-                          </div>
-                          <span className='text-slate-700 font-medium'>
+                        <div className='flex items-center gap-3 mb-2'>
+                          <span className='text-slate-700 font-semibold text-lg'>
                             Processing Status
                           </span>
                         </div>
@@ -4119,20 +4110,13 @@ const FormSubmissionsPage: React.FC = () => {
                       </div>
 
                       <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
-                        <div className='flex items-center gap-3 mb-3'>
-                          <div className='w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center'>
-                            {selectedSubmission.isRead ? (
-                              <Eye className='w-4 h-4 text-purple-600' />
-                            ) : (
-                              <EyeOff className='w-4 h-4 text-purple-600' />
-                            )}
-                          </div>
-                          <span className='text-slate-700 font-medium'>
+                        <div className='flex items-center gap-3 mb-2'>
+                          <span className='text-slate-700 font-semibold text-lg'>
                             Read Status
                           </span>
                         </div>
                         <Badge
-                          className={`text-sm ${
+                          className={`text-xs ${
                             selectedSubmission.isRead
                               ? 'bg-green-100 text-green-800 border-green-300'
                               : 'bg-amber-100 text-amber-800 border-amber-300'
@@ -4153,11 +4137,8 @@ const FormSubmissionsPage: React.FC = () => {
                       </div>
 
                       <div className='bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow'>
-                        <div className='flex items-center gap-3 mb-3'>
-                          <div className='w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center'>
-                            <FileText className='w-4 h-4 text-indigo-600' />
-                          </div>
-                          <span className='text-slate-700 font-medium'>
+                        <div className='flex items-center gap-3 mb-2'>
+                          <span className='text-slate-700 font-semibold text-lg'>
                             Form Category
                           </span>
                         </div>
@@ -4165,7 +4146,6 @@ const FormSubmissionsPage: React.FC = () => {
                           variant='outline'
                           className='bg-indigo-50 text-indigo-700 border-indigo-300 text-sm font-medium'
                         >
-                          <Target className='w-4 h-4 mr-2' />
                           {detectedFormType.charAt(0).toUpperCase() +
                             detectedFormType.slice(1)}{' '}
                           Form
@@ -4227,9 +4207,6 @@ const FormSubmissionsPage: React.FC = () => {
                     <div className='bg-white/70 backdrop-blur-sm border-b border-emerald-200 p-6'>
                       <div className='flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4'>
                         <h4 className='font-bold text-emerald-800 text-lg flex items-center gap-3'>
-                          <div className='w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center'>
-                            <Brain className='w-4 h-4 text-white' />
-                          </div>
                           AI Analysis Results
                         </h4>
                         <Button
@@ -4238,26 +4215,21 @@ const FormSubmissionsPage: React.FC = () => {
                           onClick={() =>
                             handleViewAIEvaluation(selectedSubmission.id)
                           }
-                          className='bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-sm font-medium'
+                          className='bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-sm font-medium cursor-pointer'
                         >
-                          <Eye className='w-4 h-4 mr-2' />
                           View Detailed Analysis
                         </Button>
                       </div>
                     </div>
-                    <div className='p-6'>
-                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6'>
-                        <div className='bg-white rounded-xl p-5 border border-emerald-200 shadow-sm'>
-                          <div className='flex items-center gap-3 mb-3'>
-                            <div className='w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center'>
-                              <Target className='w-4 h-4 text-emerald-600' />
-                            </div>
-                            <span className='text-emerald-700 font-medium'>
+                    <div className='p-5'>
+                      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6'>
+                        <div className='bg-white rounded-xl p-3 border border-emerald-200 shadow-sm'>
+                          <div className='flex items-center gap-3 mb-2'>
+                            <span className='text-emerald-800 font-medium text-lg'>
                               Analysis Type
                             </span>
                           </div>
-                          <Badge className='bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold text-sm'>
-                            <FileText className='w-4 h-4 mr-2' />
+                          <Badge className='border-emerald-200 text-emerald-700 font-normal text-sm'>
                             {aiEvaluations[selectedSubmission.id].formType
                               .charAt(0)
                               .toUpperCase() +
@@ -4268,12 +4240,9 @@ const FormSubmissionsPage: React.FC = () => {
                           </Badge>
                         </div>
 
-                        <div className='bg-white rounded-xl p-5 border border-emerald-200 shadow-sm'>
-                          <div className='flex items-center gap-3 mb-3'>
-                            <div className='w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center'>
-                              <MessageSquare className='w-4 h-4 text-emerald-600' />
-                            </div>
-                            <span className='text-emerald-700 font-medium'>
+                        <div className='bg-white rounded-xl p-3 border border-emerald-200 shadow-sm'>
+                          <div className='flex items-center gap-3 mb-2'>
+                            <span className='text-emerald-800 font-medium text-lg'>
                               Sentiment
                             </span>
                           </div>
@@ -4281,11 +4250,11 @@ const FormSubmissionsPage: React.FC = () => {
                             className={`font-semibold text-sm ${
                               aiEvaluations[selectedSubmission.id].sentiment ===
                               'positive'
-                                ? 'bg-green-100 text-green-800 border-green-300'
+                                ? 'bg-green-100 text-emerald-700 font-normal border-emerald-200 text-sm'
                                 : aiEvaluations[selectedSubmission.id]
                                     .sentiment === 'negative'
-                                ? 'bg-red-100 text-red-800 border-red-300'
-                                : 'bg-amber-100 text-amber-800 border-amber-300'
+                                ? 'bg-red-100 text-red-800 border-red-300 font-normal text-sm'
+                                : 'bg-amber-100 text-amber-800 border-amber-300 font-normal text-sm'
                             }`}
                           >
                             {aiEvaluations[selectedSubmission.id].sentiment ===
@@ -4307,13 +4276,12 @@ const FormSubmissionsPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className='bg-white rounded-xl p-6 border border-emerald-200 shadow-sm'>
-                        <h5 className='text-emerald-700 font-semibold text-lg mb-4 flex items-center gap-2'>
-                          <FileText className='w-5 h-5' />
+                      <div className=''>
+                        <h5 className='text-emerald-800 font-semibold text-lg mb-2 flex items-center gap-2'>
                           Analysis Summary
                         </h5>
-                        <div className='bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-lg border border-emerald-200'>
-                          <p className='text-slate-900 leading-relaxed text-base'>
+                        <div className='bg-white px-3 py-2 rounded-lg border border-emerald-200'>
+                          <p className=' text-emerald-700 font-normal leading-relaxed text-base'>
                             {aiEvaluations[selectedSubmission.id].feedback}
                           </p>
                         </div>
@@ -4327,9 +4295,6 @@ const FormSubmissionsPage: React.FC = () => {
                   <div className='bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200 p-6'>
                     <div className='flex items-center justify-between'>
                       <h3 className='font-bold text-slate-800 text-xl flex items-center gap-3'>
-                        <div className='w-8 h-8 bg-gradient-to-br from-slate-500 to-gray-600 rounded-lg flex items-center justify-center'>
-                          <FileText className='w-4 h-4 text-white' />
-                        </div>
                         Submitted Data
                       </h3>
                       <Badge
@@ -4380,10 +4345,7 @@ const FormSubmissionsPage: React.FC = () => {
                             };
 
                             return (
-                              <div
-                                key={`field-${fieldId}-${index}`}
-                                className='bg-gradient-to-br from-white to-slate-50 rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow'
-                              >
+                              <div key={`field-${fieldId}-${index}`}>
                                 {isSignatureField(value, label) ? (
                                   // Signature Field Rendering
                                   <div className='space-y-4'>
@@ -4910,7 +4872,7 @@ const FormSubmissionsPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Enhanced AI Evaluation Details Modal */}
+      {/* AI Evaluation Details Modal */}
       <Dialog
         open={showAIEvaluationModal}
         onOpenChange={setShowAIEvaluationModal}

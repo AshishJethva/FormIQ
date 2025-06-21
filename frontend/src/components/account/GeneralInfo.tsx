@@ -23,13 +23,15 @@ interface GeneralInfoProps {
 
 const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
   return (
-    <div className='w-full'>
+    <div className='w-full px-4 lg:px-0'>
       <EditField
         label='Account Type'
         value={
-          <div className='flex items-center'>
-            <span className='mr-4'>{userData.accountType}</span>
-            <button className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'>
+          <div className='flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0'>
+            <span className='lg:mr-4 text-sm lg:text-base'>
+              {userData.accountType}
+            </span>
+            <button className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm hover:shadow-md w-fit'>
               Upgrade Account
             </button>
           </div>
@@ -42,7 +44,7 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
       <EditField
         label='Password'
         value={
-          <button className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'>
+          <button className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer transition-colors'>
             Reset Password
           </button>
         }
@@ -62,11 +64,11 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
                 width={64}
                 height={64}
                 priority
-                className='rounded-sm mr-2'
+                className='rounded-lg shadow-sm mr-3 object-cover'
               />
             ) : (
-              <div className='h-16 w-16 bg-gray-200 rounded-sm flex items-center justify-center mr-2'>
-                <User className='h-10 w-10 text-gray-500' />
+              <div className='h-12 w-12 lg:h-16 lg:w-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex items-center justify-center mr-3 shadow-sm'>
+                <User className='h-6 w-6 lg:h-10 lg:w-10 text-gray-500' />
               </div>
             )}
           </div>
@@ -77,28 +79,47 @@ const GeneralInfo: React.FC<GeneralInfoProps> = ({ userData }) => {
         label='Phone Number'
         value={
           userData.phoneNumber || (
-            <button className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer'>
+            <button className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm hover:shadow-md w-fit'>
               Add Phone Number
             </button>
           )
         }
       />
 
-      <EditField label='Website' value={userData.website || '-'} />
+      <EditField
+        label='Website'
+        value={
+          userData.website ? (
+            <a
+              href={userData.website}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-blue-600 hover:text-blue-800 underline transition-colors break-all'
+            >
+              {userData.website}
+            </a>
+          ) : (
+            <span className='text-gray-500'>-</span>
+          )
+        }
+      />
 
       <EditField
         label='Email'
         value={
-          <div className='flex items-center'>
-            <span>{userData.email}</span>
-            <Image
-              src='https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg'
-              alt='Google'
-              width={20}
-              height={20}
-              className='ml-2'
-              priority
-            />
+          <div className='flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0'>
+            <span className='break-all'>{userData.email}</span>
+            <div className='lg:ml-3 flex items-center'>
+              <Image
+                src='https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg'
+                alt='Google'
+                width={20}
+                height={20}
+                className='w-5 h-5'
+                priority
+              />
+              <span className='ml-1 text-xs text-gray-500'>Google Account</span>
+            </div>
           </div>
         }
       />

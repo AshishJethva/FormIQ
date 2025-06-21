@@ -16,7 +16,6 @@ import {
   Eye,
   Settings,
   Share,
-  FileText,
   FileCog,
   Trash2,
   Archive,
@@ -84,6 +83,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import Image from 'next/image';
 
 interface FormsListProps {
   activeSection?: string;
@@ -1023,8 +1023,18 @@ const FormsList: React.FC<FormsListProps> = ({
                 />
               </button>
 
-              <div className='h-8 w-8 sm:h-10 sm:w-10 bg-orange-500 flex items-center justify-center rounded text-white shrink-0'>
+              {/* <div className='h-8 w-8 sm:h-10 sm:w-10 bg-orange-500 flex items-center justify-center rounded text-white shrink-0'>
                 <FileText className='h-4 w-4 sm:h-5 sm:w-5' />
+              </div> 
+              */}
+              <div className='h-10 w-9 sm:h-10 sm:w-9.5 bg-orange-500 flex items-center justify-center rounded text-white shrink-0'>
+                <Image
+                  src='./form.svg'
+                  alt='FormImg'
+                  width={30}
+                  height={30}
+                  priority
+                />
               </div>
 
               <div className='min-w-0 flex-1'>
@@ -1038,7 +1048,7 @@ const FormsList: React.FC<FormsListProps> = ({
                     onClick={e => e.stopPropagation()}
                   />
                 ) : (
-                  <div className='font-medium text-sm truncate'>
+                  <div className='font-medium text-[15px] text-[#0C1551] truncate leading-6 tracking-wide'>
                     {form.name}
                   </div>
                 )}
@@ -1055,7 +1065,7 @@ const FormsList: React.FC<FormsListProps> = ({
                     <ExternalLink className='h-3 w-3' />
                   </button>
                   <span className='hidden sm:inline'>•</span>
-                  <span className='text-xs'>
+                  <span className='text-xs text-[#6F76A7]'>
                     Created {getFormattedDate(form.createdAt)}
                   </span>
                 </div>

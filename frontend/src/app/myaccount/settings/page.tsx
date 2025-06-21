@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   ChevronDown,
@@ -42,6 +43,46 @@ interface SettingsData {
     newsletter: boolean;
   };
 }
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.4 },
+  },
+};
+
+const toggleVariants = {
+  off: { x: 2 },
+  on: { x: 24 },
+};
+
+const dropdownVariants = {
+  hidden: {
+    opacity: 0,
+    height: 0,
+    transition: { duration: 0.2 },
+  },
+  visible: {
+    opacity: 1,
+    height: 'auto',
+    transition: { duration: 0.3 },
+  },
+};
 
 export default function SettingsPage() {
   const dispatch = useDispatch<StoreDispatch>();
@@ -280,10 +321,15 @@ export default function SettingsPage() {
 
   // Render a section header
   const renderSectionHeader = (title: string, icon: React.ReactNode) => (
-    <div className='flex items-center mb-4 pb-2 border-b border-gray-200'>
+    <motion.div
+      variants={itemVariants}
+      className='flex items-center mb-4 pb-2 border-b border-gray-200'
+    >
       <div className='text-blue-600 mr-2'>{icon}</div>
-      <h2 className='text-lg font-medium text-gray-800'>{title}</h2>
-    </div>
+      <h2 className='text-base sm:text-lg font-medium text-gray-800'>
+        {title}
+      </h2>
+    </motion.div>
   );
 
   // Render a field
@@ -292,25 +338,31 @@ export default function SettingsPage() {
     value: React.ReactNode,
     onEdit?: () => void
   ) => (
-    <div className='mb-6'>
-      <div className='flex items-center'>
-        <div className='w-1/3'>
-          <h3 className='text-[15px] font-medium text-gray-800'>{label}</h3>
+    <motion.div variants={itemVariants} className='mb-6'>
+      <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0'>
+        <div className='sm:w-1/3'>
+          <h3 className='text-sm sm:text-[15px] font-medium text-gray-800'>
+            {label}
+          </h3>
         </div>
-        <div className='w-2/3 flex justify-between items-center'>
-          <div className='text-[15px] text-gray-800'>{value}</div>
+        <div className='sm:w-2/3 flex justify-between items-center'>
+          <div className='text-sm sm:text-[15px] text-gray-800 truncate pr-2'>
+            {value}
+          </div>
           {onEdit && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={onEdit}
-              className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer disabled:opacity-50'
+              className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer disabled:opacity-50 flex-shrink-0'
               disabled={isLoading}
             >
               Edit
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
   // Render a toggle switch
@@ -320,51 +372,61 @@ export default function SettingsPage() {
     isEnabled: boolean,
     onToggle: () => void
   ) => (
-    <div className='flex items-center justify-between mb-4'>
-      <div>
-        <h3 className='text-[15px] font-medium text-gray-800'>{label}</h3>
-        <p className='text-sm text-gray-500'>{description}</p>
+    <motion.div
+      variants={itemVariants}
+      className='flex items-start justify-between mb-4 gap-4'
+    >
+      <div className='flex-1 min-w-0'>
+        <h3 className='text-sm sm:text-[15px] font-medium text-gray-800'>
+          {label}
+        </h3>
+        <p className='text-xs sm:text-sm text-gray-500 mt-1 break-words'>
+          {description}
+        </p>
       </div>
-      <button
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={onToggle}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none disabled:opacity-50 ${
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none disabled:opacity-50 flex-shrink-0 ${
           isEnabled ? 'bg-blue-600' : 'bg-gray-300'
         }`}
         disabled={isLoading}
       >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            isEnabled ? 'translate-x-6' : 'translate-x-1'
-          }`}
+        <motion.span
+          variants={toggleVariants}
+          animate={isEnabled ? 'on' : 'off'}
+          transition={{ duration: 0.2, ease: 'easeInOut' }}
+          className='inline-block h-4 w-4 transform rounded-full bg-white'
         />
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   );
 
   // Show loading state
   if (!userSettings && isLoading) {
     return (
-      <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
+      <div className='bg-gray-50 min-h-screen w-full py-4 sm:py-10 px-4'>
         <div className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden'>
           <div className='animate-pulse'>
-            <div className='py-8 px-10 border-b border-gray-200'>
-              <div className='h-8 bg-gray-200 rounded w-1/2'></div>
+            <div className='py-4 sm:py-8 px-4 sm:px-10 border-b border-gray-200'>
+              <div className='h-6 sm:h-8 bg-gray-200 rounded w-1/2'></div>
             </div>
-            <div className='p-10 space-y-8'>
+            <div className='p-4 sm:p-10 space-y-6 sm:space-y-8'>
               {[...Array(4)].map((_, i) => (
                 <div key={i} className='space-y-4'>
-                  <div className='h-6 bg-gray-200 rounded w-1/4'></div>
+                  <div className='h-5 sm:h-6 bg-gray-200 rounded w-1/4'></div>
                   <div className='space-y-3'>
                     {[...Array(3)].map((_, j) => (
                       <div
                         key={j}
                         className='flex items-center justify-between'
                       >
-                        <div className='space-y-1'>
+                        <div className='space-y-1 flex-1'>
                           <div className='h-4 bg-gray-200 rounded w-32'></div>
-                          <div className='h-3 bg-gray-200 rounded w-48'></div>
+                          <div className='h-3 bg-gray-200 rounded w-48 max-w-full'></div>
                         </div>
-                        <div className='h-6 w-11 bg-gray-200 rounded-full'></div>
+                        <div className='h-6 w-11 bg-gray-200 rounded-full flex-shrink-0'></div>
                       </div>
                     ))}
                   </div>
@@ -378,141 +440,190 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
+    <div className='bg-gray-50 min-h-screen w-full py-4 sm:py-10 px-4'>
       {/* Error Display */}
-      {error && (
-        <div className='max-w-4xl mx-auto mb-4'>
-          <div className='bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded'>
-            <div className='flex items-center'>
-              <X className='h-5 w-5 mr-2' />
-              <p className='text-sm'>{error}</p>
-              <button
-                onClick={() => dispatch(clearSettingsError())}
-                className='ml-auto text-red-500 hover:text-red-700'
-              >
-                <X className='h-4 w-4' />
-              </button>
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className='max-w-4xl mx-auto mb-4'
+          >
+            <div className='bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded'>
+              <div className='flex items-start'>
+                <X className='h-5 w-5 mr-2 flex-shrink-0 mt-0.5' />
+                <p className='text-sm flex-1'>{error}</p>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => dispatch(clearSettingsError())}
+                  className='ml-2 text-red-500 hover:text-red-700 flex-shrink-0'
+                >
+                  <X className='h-4 w-4' />
+                </motion.button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden'>
-        <div className='py-8 px-10 border-b border-gray-200 flex justify-between items-center'>
-          <h1 className='text-2xl font-semibold text-navy-900'>
+      <motion.div
+        variants={containerVariants}
+        initial='hidden'
+        animate='visible'
+        className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden'
+      >
+        <motion.div
+          variants={itemVariants}
+          className='py-4 sm:py-8 px-4 sm:px-10 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4'
+        >
+          <h1 className='text-xl sm:text-2xl font-semibold text-navy-900'>
             Update Your <span className='text-green-600'>Settings</span>
           </h1>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={handleSaveAll}
-            className='flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+            className='flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 w-full sm:w-auto'
             disabled={isLoading}
           >
             <Save className='h-4 w-4 mr-2' />
             {isLoading ? 'Saving...' : 'Save All Settings'}
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
 
-        <div className='p-10'>
+        <div className='p-4 sm:p-10'>
           {/* General Section */}
-          <div className='mb-8'>
+          <motion.div variants={itemVariants} className='mb-6 sm:mb-8'>
             {renderSectionHeader(
               'General Settings',
               <Globe className='h-5 w-5' />
             )}
 
             {/* Timezone */}
-            {editMode.timezone ? (
-              <div className='mb-6'>
-                <div className='flex items-center'>
-                  <div className='w-1/3'>
-                    <h3 className='text-[15px] font-medium text-gray-800'>
-                      Timezone
-                    </h3>
-                  </div>
-                  <div className='w-2/3'>
-                    <div className='relative'>
-                      <select
-                        value={settings.timezone}
-                        onChange={e => handleTimezoneSelect(e.target.value)}
-                        className='block w-full p-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none disabled:opacity-50'
-                        disabled={isLoading}
-                      >
-                        {timezones.map(timezone => (
-                          <option key={timezone.value} value={timezone.value}>
-                            {timezone.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className='absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none'>
-                        <ChevronDown className='h-5 w-5 text-gray-400' />
+            <AnimatePresence mode='wait'>
+              {editMode.timezone ? (
+                <motion.div
+                  key='timezone-edit'
+                  variants={dropdownVariants}
+                  initial='hidden'
+                  animate='visible'
+                  exit='hidden'
+                  className='mb-6'
+                >
+                  <div className='flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-0'>
+                    <div className='sm:w-1/3'>
+                      <h3 className='text-sm sm:text-[15px] font-medium text-gray-800'>
+                        Timezone
+                      </h3>
+                    </div>
+                    <div className='sm:w-2/3'>
+                      <div className='relative'>
+                        <select
+                          value={settings.timezone}
+                          onChange={e => handleTimezoneSelect(e.target.value)}
+                          className='block w-full p-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none disabled:opacity-50 text-sm'
+                          disabled={isLoading}
+                        >
+                          {timezones.map(timezone => (
+                            <option key={timezone.value} value={timezone.value}>
+                              {timezone.label}
+                            </option>
+                          ))}
+                        </select>
+                        <div className='absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none'>
+                          <ChevronDown className='h-5 w-5 text-gray-400' />
+                        </div>
+                      </div>
+                      <div className='mt-2 flex space-x-2'>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() =>
+                            setEditMode({ ...editMode, timezone: false })
+                          }
+                          className='text-sm text-gray-500 hover:text-gray-700 cursor-pointer disabled:opacity-50'
+                          disabled={isLoading}
+                        >
+                          Cancel
+                        </motion.button>
                       </div>
                     </div>
-                    <div className='mt-2 flex space-x-2'>
-                      <button
-                        onClick={() =>
-                          setEditMode({ ...editMode, timezone: false })
-                        }
-                        className='text-sm text-gray-500 hover:text-gray-700 cursor-pointer disabled:opacity-50'
-                        disabled={isLoading}
-                      >
-                        Cancel
-                      </button>
-                    </div>
                   </div>
-                </div>
-              </div>
-            ) : (
-              renderField(
-                'Timezone',
-                getTimezoneDisplay(settings.timezone),
-                handleTimezoneEdit
-              )
-            )}
+                </motion.div>
+              ) : (
+                <motion.div key='timezone-display'>
+                  {renderField(
+                    'Timezone',
+                    getTimezoneDisplay(settings.timezone),
+                    handleTimezoneEdit
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Language */}
-            {editMode.language ? (
-              <div className='mb-6'>
-                <div className='flex items-center'>
-                  <div className='w-1/3'>
-                    <h3 className='text-[15px] font-medium text-gray-800'>
-                      Language
-                    </h3>
-                  </div>
-                  <div className='w-2/3'>
-                    <div className='relative'>
-                      <select
-                        value={settings.language}
-                        onChange={e => handleLanguageSelect(e.target.value)}
-                        className='block w-full p-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none disabled:opacity-50'
-                        disabled={isLoading}
-                      >
-                        {languages.map(language => (
-                          <option key={language.value} value={language.value}>
-                            {language.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className='absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none'>
-                        <ChevronDown className='h-5 w-5 text-gray-400' />
+            <AnimatePresence mode='wait'>
+              {editMode.language ? (
+                <motion.div
+                  key='language-edit'
+                  variants={dropdownVariants}
+                  initial='hidden'
+                  animate='visible'
+                  exit='hidden'
+                  className='mb-6'
+                >
+                  <div className='flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-0'>
+                    <div className='sm:w-1/3'>
+                      <h3 className='text-sm sm:text-[15px] font-medium text-gray-800'>
+                        Language
+                      </h3>
+                    </div>
+                    <div className='sm:w-2/3'>
+                      <div className='relative'>
+                        <select
+                          value={settings.language}
+                          onChange={e => handleLanguageSelect(e.target.value)}
+                          className='block w-full p-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none disabled:opacity-50 text-sm'
+                          disabled={isLoading}
+                        >
+                          {languages.map(language => (
+                            <option key={language.value} value={language.value}>
+                              {language.label}
+                            </option>
+                          ))}
+                        </select>
+                        <div className='absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none'>
+                          <ChevronDown className='h-5 w-5 text-gray-400' />
+                        </div>
+                      </div>
+                      <div className='mt-2 flex space-x-2'>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() =>
+                            setEditMode({ ...editMode, language: false })
+                          }
+                          className='text-sm text-gray-500 hover:text-gray-700 cursor-pointer disabled:opacity-50'
+                          disabled={isLoading}
+                        >
+                          Cancel
+                        </motion.button>
                       </div>
                     </div>
-                    <div className='mt-2 flex space-x-2'>
-                      <button
-                        onClick={() =>
-                          setEditMode({ ...editMode, language: false })
-                        }
-                        className='text-sm text-gray-500 hover:text-gray-700 cursor-pointer disabled:opacity-50'
-                        disabled={isLoading}
-                      >
-                        Cancel
-                      </button>
-                    </div>
                   </div>
-                </div>
-              </div>
-            ) : (
-              renderField('Language', settings.language, handleLanguageEdit)
-            )}
+                </motion.div>
+              ) : (
+                <motion.div key='language-display'>
+                  {renderField(
+                    'Language',
+                    settings.language,
+                    handleLanguageEdit
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Dark Mode */}
             {renderToggle(
@@ -521,10 +632,10 @@ export default function SettingsPage() {
               settings.darkMode,
               handleToggleDarkMode
             )}
-          </div>
+          </motion.div>
 
           {/* Notifications Section */}
-          <div className='mb-8'>
+          <motion.div variants={itemVariants} className='mb-6 sm:mb-8'>
             {renderSectionHeader(
               'Notification Settings',
               <Bell className='h-5 w-5' />
@@ -550,10 +661,10 @@ export default function SettingsPage() {
               settings.notifications.mobile,
               () => handleToggleNotification('mobile')
             )}
-          </div>
+          </motion.div>
 
           {/* Email Preferences Section */}
-          <div className='mb-8'>
+          <motion.div variants={itemVariants} className='mb-6 sm:mb-8'>
             {renderSectionHeader(
               'Email Preferences',
               <Mail className='h-5 w-5' />
@@ -579,38 +690,43 @@ export default function SettingsPage() {
               settings.emailPreferences.newsletter,
               () => handleToggleEmailPreference('newsletter')
             )}
-          </div>
+          </motion.div>
 
           {/* Cache Management */}
-          <div>
+          <motion.div variants={itemVariants}>
             {renderSectionHeader(
               'Cache Management',
               <RefreshCw className='h-5 w-5' />
             )}
 
-            <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <h3 className='text-[15px] font-medium text-gray-800'>
+            <motion.div
+              variants={itemVariants}
+              className='bg-gray-50 p-4 rounded-lg border border-gray-200'
+            >
+              <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+                <div className='flex-1 min-w-0'>
+                  <h3 className='text-sm sm:text-[15px] font-medium text-gray-800'>
                     Clear Application Cache
                   </h3>
-                  <p className='text-sm text-gray-500'>
+                  <p className='text-xs sm:text-sm text-gray-500 mt-1'>
                     Clear the application cache to free up space and resolve
                     potential issues
                   </p>
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleClearCache}
-                  className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50'
+                  className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex-shrink-0 w-full sm:w-auto'
                   disabled={isLoading}
                 >
                   Clear Cache
-                </button>
+                </motion.button>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import React, {
   useCallback,
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
   ChevronLeft,
@@ -31,6 +32,7 @@ import {
 import userProfileService from '@/services/userProfile';
 import type { StoreDispatch } from '@/redux/store';
 import type { ActivityFilters } from '@/services/userProfile';
+import { formatTimeToAMPM } from '@/lib/utils';
 
 const HistoryPage = () => {
   const dispatch = useDispatch<StoreDispatch>();
@@ -150,6 +152,36 @@ const HistoryPage = () => {
       lastIpAddress: accountStats.lastIpAddress || 'Not available',
     };
   }, [userProfile, accountStats]);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5 },
+    },
+  };
+
+  const slideVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.4 },
+    },
+  };
 
   // Fetch account stats on component mount
   useEffect(() => {
@@ -459,142 +491,183 @@ const HistoryPage = () => {
   };
 
   return (
-    <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
+    <motion.div
+      className='bg-gray-50 min-h-screen w-full py-4 sm:py-6 lg:py-10 px-2 sm:px-4'
+      variants={containerVariants}
+      initial='hidden'
+      animate='visible'
+    >
       <div className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden'>
         {/* Header */}
-        <div className='py-8 px-10 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50'>
-          <h1 className='text-2xl font-bold flex items-center gap-2'>
-            <Activity className='h-7 w-7 text-green-600' />
+        <motion.div
+          className='py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-10 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50'
+          variants={itemVariants}
+        >
+          <h1 className='text-lg sm:text-xl lg:text-2xl font-bold flex flex-wrap items-center gap-2'>
+            <Activity className='h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-green-600 flex-shrink-0' />
             <span className='text-navy-900'>Browse </span>
             <span className='text-green-600'>Activity Logs </span>
-            <span className='text-navy-900'>for Your Account</span>
+            <span className='text-navy-900 hidden sm:inline'>
+              for Your Account
+            </span>
           </h1>
-        </div>
+        </motion.div>
 
-        <div className='p-10'>
+        <div className='p-4 sm:p-6 lg:p-10'>
           {/* Error Display */}
-          {error && (
-            <div className='mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded'>
-              <p className='text-sm'>{error}</p>
-            </div>
-          )}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                className='mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded'
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <p className='text-sm'>{error}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Date Filter */}
-          <div className='flex justify-end mb-6 relative'>
-            <button
-              className='flex items-center justify-between w-[200px] px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors cursor-pointer'
+          <motion.div
+            className='flex justify-center sm:justify-end mb-6 relative'
+            variants={itemVariants}
+          >
+            <motion.button
+              className='flex items-center justify-between w-full sm:w-[200px] px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors cursor-pointer'
               onClick={toggleDatePicker}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <span>{dateFilter}</span>
-              <Calendar className='ml-2 h-5 w-5 text-green-600' />
-            </button>
+              <span className='truncate'>{dateFilter}</span>
+              <Calendar className='ml-2 h-5 w-5 text-green-600 flex-shrink-0' />
+            </motion.button>
 
             {/* Date Picker Dropdown */}
-            {showDatePicker && (
-              <div
-                ref={datePickerRef}
-                className='absolute mt-2 z-10 rounded-md shadow-lg bg-[#2B3245] text-white right-0 top-full'
-              >
-                <div className='flex'>
-                  {/* Calendar */}
-                  <div className='p-4 border-r border-navy-700'>
-                    <div className='flex justify-between items-center mb-4'>
-                      <button
-                        className='p-1 text-gray-300 hover:text-white cursor-pointer'
-                        onClick={navigateToPreviousMonth}
-                      >
-                        <ChevronLeft className='h-4 w-4' />
-                      </button>
-                      <span className='font-medium text-white'>
-                        {formatMonthYear(currentMonth)}
-                      </span>
-                      <button
-                        className='p-1 text-gray-300 hover:text-white cursor-pointer'
-                        onClick={navigateToNextMonth}
-                      >
-                        <ChevronRight className='h-4 w-4' />
-                      </button>
-                    </div>
-
-                    <div className='grid grid-cols-7 text-center text-xs mb-2'>
-                      {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(
-                        day => (
-                          <div key={day} className='text-gray-400'>
-                            {day}
-                          </div>
-                        )
-                      )}
-                    </div>
-
-                    <div className='grid grid-cols-7 gap-1 text-center'>
-                      {calendarDays.map((day, index) => (
-                        <div
-                          key={`day-${index}`}
-                          className={`
-                            w-8 h-8 rounded-full flex items-center justify-center text-sm cursor-pointer
-                            ${
-                              !day.isCurrentMonth
-                                ? 'text-gray-500'
-                                : 'text-white'
-                            }
-                            ${day.isSelected ? 'bg-blue-500 text-white' : ''}
-                            ${
-                              day.isSelectionStart || day.isSelectionEnd
-                                ? 'bg-blue-600 text-white'
-                                : ''
-                            }
-                            ${
-                              !day.isSelected &&
-                              !day.isSelectionStart &&
-                              !day.isSelectionEnd
-                                ? 'hover:bg-navy-700'
-                                : ''
-                            }
-                          `}
-                          onClick={() => handleDateSelection(day.date)}
-                          title={day.date.toLocaleDateString()}
+            <AnimatePresence>
+              {showDatePicker && (
+                <motion.div
+                  ref={datePickerRef}
+                  className='absolute mt-2 z-10 rounded-md shadow-lg bg-[#2B3245] text-white left-0 sm:right-0 sm:left-auto top-full w-full sm:w-auto'
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className='flex flex-col sm:flex-row'>
+                    {/* Calendar */}
+                    <div className='p-4 border-b sm:border-b-0 sm:border-r border-navy-700'>
+                      <div className='flex justify-between items-center mb-4'>
+                        <motion.button
+                          className='p-1 text-gray-300 hover:text-white cursor-pointer'
+                          onClick={navigateToPreviousMonth}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                         >
-                          {day.date.getDate()}
-                        </div>
+                          <ChevronLeft className='h-4 w-4' />
+                        </motion.button>
+                        <span className='font-medium text-white text-sm sm:text-base'>
+                          {formatMonthYear(currentMonth)}
+                        </span>
+                        <motion.button
+                          className='p-1 text-gray-300 hover:text-white cursor-pointer'
+                          onClick={navigateToNextMonth}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <ChevronRight className='h-4 w-4' />
+                        </motion.button>
+                      </div>
+
+                      <div className='grid grid-cols-7 text-center text-xs mb-2'>
+                        {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(
+                          day => (
+                            <div key={day} className='text-gray-400 py-1'>
+                              <span className='hidden sm:inline'>{day}</span>
+                              <span className='sm:hidden'>{day[0]}</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+
+                      <div className='grid grid-cols-7 gap-1 text-center'>
+                        {calendarDays.map((day, index) => (
+                          <motion.div
+                            key={`day-${index}`}
+                            className={`
+                              w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm cursor-pointer
+                              ${
+                                !day.isCurrentMonth
+                                  ? 'text-gray-500'
+                                  : 'text-white'
+                              }
+                              ${day.isSelected ? 'bg-blue-500 text-white' : ''}
+                              ${
+                                day.isSelectionStart || day.isSelectionEnd
+                                  ? 'bg-blue-600 text-white'
+                                  : ''
+                              }
+                              ${
+                                !day.isSelected &&
+                                !day.isSelectionStart &&
+                                !day.isSelectionEnd
+                                  ? 'hover:bg-navy-700'
+                                  : ''
+                              }
+                            `}
+                            onClick={() => handleDateSelection(day.date)}
+                            title={day.date.toLocaleDateString()}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            {day.date.getDate()}
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Date Range Options */}
+                    <div className='p-4 min-w-[160px]'>
+                      {dateRangeOptions.map((option, index) => (
+                        <motion.div
+                          key={index}
+                          className={`py-2 px-3 cursor-pointer rounded text-sm transition-colors 
+                            ${
+                              option === dateFilter
+                                ? 'bg-blue-500 text-white'
+                                : 'text-gray-200 hover:bg-navy-700'
+                            }`}
+                          onClick={() => {
+                            setDateFilter(option);
+                            if (option === 'Custom dates') {
+                              setSelectedStartDate(null);
+                              setSelectedEndDate(null);
+                              setCustomDateRange(true);
+                            } else {
+                              setCustomDateRange(false);
+                              setShowDatePicker(false);
+                            }
+                          }}
+                          whileHover={{ x: 4 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {option}
+                        </motion.div>
                       ))}
                     </div>
                   </div>
-
-                  {/* Date Range Options */}
-                  <div className='p-4 min-w-[160px]'>
-                    {dateRangeOptions.map((option, index) => (
-                      <div
-                        key={index}
-                        className={`py-2 px-3 cursor-pointer rounded text-sm transition-colors 
-                          ${
-                            option === dateFilter
-                              ? 'bg-blue-500 text-white'
-                              : 'text-gray-200 hover:bg-navy-700'
-                          }`}
-                        onClick={() => {
-                          setDateFilter(option);
-                          if (option === 'Custom dates') {
-                            setSelectedStartDate(null);
-                            setSelectedEndDate(null);
-                            setCustomDateRange(true);
-                          } else {
-                            setCustomDateRange(false);
-                            setShowDatePicker(false);
-                          }
-                        }}
-                      >
-                        {option}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           {/* Activity Log Table */}
-          <div className='bg-gray-50 rounded-lg overflow-hidden shadow mb-8'>
-            <div className='grid grid-cols-2 bg-gray-100 py-3 px-6'>
+          <motion.div
+            className='bg-gray-50 rounded-lg overflow-hidden shadow mb-8'
+            variants={itemVariants}
+          >
+            <div className='hidden sm:grid sm:grid-cols-2 bg-gray-100 py-3 px-6'>
               <div className='font-medium text-gray-700 flex items-center'>
                 <Clock className='h-4 w-4 mr-2 text-gray-500' />
                 Date
@@ -604,26 +677,49 @@ const HistoryPage = () => {
 
             {isLoading ? (
               // Loading state
-              <div className='py-12 flex justify-center items-center'>
-                <div className='animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500'></div>
-              </div>
+              <motion.div
+                className='py-12 flex justify-center items-center'
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <motion.div
+                  className='animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500'
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
+              </motion.div>
             ) : activityLogs.length === 0 ? (
               // No results state
-              <div className='py-12 text-center text-gray-500'>
+              <motion.div
+                className='py-12 text-center text-gray-500'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
                 No activity logs found for the selected date range.
-              </div>
+              </motion.div>
             ) : (
               // Results
               <div className='divide-y divide-gray-200'>
                 {activityLogs.map((log: any) => (
                   <div
                     key={log.id}
-                    className='grid grid-cols-2 py-4 px-6 hover:bg-gray-100 transition-colors'
+                    className='grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-0 py-4 px-4 sm:px-6 hover:bg-gray-100 transition-colors'
                   >
-                    <div className='text-gray-700 text-sm'>
-                      {log.date} - {log.time}
+                    <div className='text-gray-700 text-xs sm:text-sm'>
+                      <div className='sm:hidden font-medium text-gray-500 mb-1 flex items-center'>
+                        <Clock className='h-3 w-3 mr-1' />
+                        Date & Time
+                      </div>
+                      <span className='font-medium text-xs'>{log.date}</span>
+                      <span className='ml-2 text-xs'>
+                        - {formatTimeToAMPM(log.time)}
+                      </span>
                     </div>
-                    <div className='text-gray-800 text-sm'>
+                    <div className='text-gray-800 text-xs sm:text-sm'>
+                      <div className='sm:hidden font-medium text-gray-500 mb-1'>
+                        Description
+                      </div>
                       You{' '}
                       <span
                         className={`${getActionColor(log.action)} font-medium`}
@@ -631,26 +727,36 @@ const HistoryPage = () => {
                         {log.action}
                       </span>
                       {log.target && <span> {log.target}</span>}
-                      {log.ipAddress && <span> from {log.ipAddress}</span>}
+                      {log.ipAddress && (
+                        <span className='block sm:inline'>
+                          {' '}
+                          from {log.ipAddress}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Pagination */}
           {!isLoading && pagination && pagination.pages > 1 && (
-            <div className='flex justify-center items-center space-x-2 mb-8'>
-              <button
+            <motion.div
+              className='flex flex-wrap justify-center items-center gap-2 mb-8'
+              variants={itemVariants}
+            >
+              <motion.button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage <= 1}
                 className='px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
+                whileHover={{ scale: currentPage > 1 ? 1.05 : 1 }}
+                whileTap={{ scale: currentPage > 1 ? 0.95 : 1 }}
               >
                 Previous
-              </button>
+              </motion.button>
 
-              <div className='flex space-x-1'>
+              <div className='flex flex-wrap gap-1'>
                 {Array.from(
                   { length: Math.min(pagination.pages, 5) },
                   (_, i) => {
@@ -666,7 +772,7 @@ const HistoryPage = () => {
                     }
 
                     return (
-                      <button
+                      <motion.button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
                         className={`px-3 py-2 text-sm border border-gray-300 rounded-md ${
@@ -674,171 +780,272 @@ const HistoryPage = () => {
                             ? 'bg-blue-600 text-white border-blue-600'
                             : 'hover:bg-gray-50'
                         }`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
                         {pageNum}
-                      </button>
+                      </motion.button>
                     );
                   }
                 )}
               </div>
 
-              <button
+              <motion.button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= pagination.pages}
                 className='px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
+                whileHover={{
+                  scale: currentPage < pagination.pages ? 1.05 : 1,
+                }}
+                whileTap={{ scale: currentPage < pagination.pages ? 0.95 : 1 }}
               >
                 Next
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
 
           {/* Show More Button (Alternative to pagination) */}
           {!isLoading && pagination && currentPage < pagination.pages && (
-            <div className='text-center mb-8'>
-              <button
+            <motion.div className='text-center mb-8' variants={itemVariants}>
+              <motion.button
                 className='text-green-600 text-sm hover:text-green-700 focus:outline-none transition-colors px-4 py-2 rounded-md border border-gray-200 hover:border-green-200 cursor-pointer'
                 onClick={handleShowMore}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 Load More Logs
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
 
           {/* Enhanced Account Details Section */}
-          <div>
-            <h2 className='text-2xl font-semibold text-green-600 mb-6 border-b border-gray-200 pb-2 flex items-center'>
-              <Globe className='h-5 w-5 mr-2' />
+          <motion.div variants={itemVariants}>
+            <h2 className='text-xl sm:text-2xl font-semibold text-green-600 mb-6 border-b border-gray-200 pb-2 flex items-center'>
+              <Globe className='h-4 w-4 sm:h-5 sm:w-5 mr-2' />
               Account Details
             </h2>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
               {/* Time Details Card */}
-              <div className='bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow'>
-                <div className='px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50'>
-                  <h3 className='font-semibold text-navy-900 flex items-center'>
-                    <Clock className='h-4 w-4 mr-2 text-green-600' />
+              <motion.div
+                className='bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow'
+                whileHover={{ y: -2 }}
+                variants={slideVariants}
+              >
+                <div className='px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50'>
+                  <h3 className='font-semibold text-navy-900 flex items-center text-sm sm:text-base'>
+                    <Clock className='h-3 w-3 sm:h-4 sm:w-4 mr-2 text-green-600' />
                     Time Details
                   </h3>
                 </div>
-                <div className='p-5'>
+                <div className='p-4 sm:p-5'>
                   {statsLoading ? (
                     <div className='animate-pulse space-y-3'>
-                      <div className='h-4 bg-gray-200 rounded w-3/4'></div>
-                      <div className='h-4 bg-gray-200 rounded w-2/3'></div>
-                      <div className='h-4 bg-gray-200 rounded w-3/4'></div>
+                      <div className='h-3 sm:h-4 bg-gray-200 rounded w-3/4'></div>
+                      <div className='h-3 sm:h-4 bg-gray-200 rounded w-2/3'></div>
+                      <div className='h-3 sm:h-4 bg-gray-200 rounded w-3/4'></div>
                     </div>
                   ) : (
-                    <div className='space-y-3'>
-                      <div className='flex items-center justify-start'>
-                        <span className='text-gray-600 text-sm mr-2'>
+                    <motion.div
+                      className='space-y-3'
+                      initial='hidden'
+                      animate='visible'
+                      variants={{
+                        visible: {
+                          transition: {
+                            staggerChildren: 0.1,
+                          },
+                        },
+                      }}
+                    >
+                      <motion.div
+                        className='flex flex-col sm:flex-row sm:items-center sm:justify-start'
+                        variants={slideVariants}
+                      >
+                        <span className='text-gray-600 text-xs sm:text-sm mb-1 sm:mb-0 sm:mr-2 font-medium sm:font-normal'>
                           Creation Date:
                         </span>
-                        <span className='text-green-600 text-sm'>
+                        <span className='text-green-600 text-xs sm:text-sm font-medium'>
                           {accountDetails.creationDate}
                         </span>
-                      </div>
-                      <div className='flex justify-start items-center'>
-                        <span className='text-gray-600 text-sm mr-2'>
+                      </motion.div>
+                      <motion.div
+                        className='flex flex-col sm:flex-row sm:justify-start sm:items-center'
+                        variants={slideVariants}
+                      >
+                        <span className='text-gray-600 text-xs sm:text-sm mb-1 sm:mb-0 sm:mr-2 font-medium sm:font-normal'>
                           Update Date:
                         </span>
-                        <span className='text-green-600 text-sm'>
+                        <span className='text-green-600 text-xs sm:text-sm font-medium'>
                           {accountDetails.updateDate}
                         </span>
-                      </div>
-                      <div className='flex justify-start items-center'>
-                        <span className='text-gray-600 text-sm mr-2'>
+                      </motion.div>
+                      <motion.div
+                        className='flex flex-col sm:flex-row sm:justify-start sm:items-center'
+                        variants={slideVariants}
+                      >
+                        <span className='text-gray-600 text-xs sm:text-sm mb-1 sm:mb-0 sm:mr-2 font-medium sm:font-normal'>
                           Last Seen:
                         </span>
-                        <span className='text-green-600 text-sm'>
+                        <span className='text-green-600 text-xs sm:text-sm font-medium'>
                           {accountDetails.lastSeenDate}
                         </span>
-                      </div>
-                    </div>
+                      </motion.div>
+                    </motion.div>
                   )}
                 </div>
-              </div>
+              </motion.div>
 
               {/* IP Address Card with Real Data */}
-              <div className='bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow'>
-                <div className='px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50'>
-                  <h3 className='font-semibold text-navy-900 flex items-center'>
-                    <Globe className='h-4 w-4 mr-2 text-green-600' />
+              <motion.div
+                className='bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow'
+                whileHover={{ y: -2 }}
+                variants={slideVariants}
+              >
+                <div className='px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50'>
+                  <h3 className='font-semibold text-navy-900 flex items-center text-sm sm:text-base'>
+                    <Globe className='h-3 w-3 sm:h-4 sm:w-4 mr-2 text-green-600' />
                     Last IP Address
                   </h3>
                 </div>
-                <div className='p-5'>
-                  <div className='flex items-center justify-center h-16'>
+                <div className='p-4 sm:p-5'>
+                  <div className='flex items-center justify-center h-12 sm:h-16'>
                     {statsLoading ? (
                       <div className='animate-pulse'>
-                        <div className='h-8 bg-gray-200 rounded w-32'></div>
+                        <div className='h-6 sm:h-8 bg-gray-200 rounded w-24 sm:w-32'></div>
                       </div>
                     ) : (
-                      <span
-                        className={`font-mono text-sm py-2 px-4 rounded-lg border ${
+                      <motion.span
+                        className={`font-mono text-xs sm:text-sm py-2 px-3 sm:px-4 rounded-lg border ${
                           accountDetails.lastIpAddress === 'Not available'
                             ? 'text-gray-500 bg-gray-50 border-gray-100'
                             : 'text-gray-800 bg-gray-50 border-gray-100'
                         }`}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 }}
                       >
                         {accountDetails.lastIpAddress}
-                      </span>
+                      </motion.span>
                     )}
                   </div>
                   {!statsLoading &&
                     accountDetails.lastIpAddress !== 'Not available' && (
-                      <div className='text-xs text-gray-500 text-center mt-2'>
+                      <motion.div
+                        className='text-xs text-gray-500 text-center mt-2'
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                      >
                         From your most recent activity
-                      </div>
+                      </motion.div>
                     )}
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Activity Summary Card */}
             {pagination && (
-              <div className='mt-6 bg-white rounded-lg border border-gray-100 shadow-sm'>
-                <div className='px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50'>
-                  <h3 className='font-semibold text-navy-900 flex items-center'>
-                    <Activity className='h-4 w-4 mr-2 text-green-600' />
+              <motion.div
+                className='mt-6 bg-white rounded-lg border border-gray-100 shadow-sm'
+                whileHover={{ y: -2 }}
+                variants={slideVariants}
+              >
+                <div className='px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50'>
+                  <h3 className='font-semibold text-navy-900 flex items-center text-sm sm:text-base'>
+                    <Activity className='h-3 w-3 sm:h-4 sm:w-4 mr-2 text-green-600' />
                     Activity Summary
                   </h3>
                 </div>
-                <div className='p-5'>
-                  <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-center'>
-                    <div>
-                      <div className='text-2xl font-bold text-green-600'>
+                <div className='p-4 sm:p-5'>
+                  <motion.div
+                    className='grid grid-cols-2 lg:grid-cols-4 gap-4 text-center'
+                    initial='hidden'
+                    animate='visible'
+                    variants={{
+                      visible: {
+                        transition: {
+                          staggerChildren: 0.1,
+                        },
+                      },
+                    }}
+                  >
+                    <motion.div variants={slideVariants}>
+                      <motion.div
+                        className='text-xl sm:text-2xl font-bold text-green-600'
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          delay: 0.2,
+                        }}
+                      >
                         {pagination.total}
-                      </div>
-                      <div className='text-sm text-gray-600'>
+                      </motion.div>
+                      <div className='text-xs sm:text-sm text-gray-600'>
                         Total Activities
                       </div>
-                    </div>
-                    <div>
-                      <div className='text-2xl font-bold text-blue-600'>
+                    </motion.div>
+                    <motion.div variants={slideVariants}>
+                      <motion.div
+                        className='text-xl sm:text-2xl font-bold text-blue-600'
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          delay: 0.3,
+                        }}
+                      >
                         {currentPage}
+                      </motion.div>
+                      <div className='text-xs sm:text-sm text-gray-600'>
+                        Current Page
                       </div>
-                      <div className='text-sm text-gray-600'>Current Page</div>
-                    </div>
-                    <div>
-                      <div className='text-2xl font-bold text-purple-600'>
+                    </motion.div>
+                    <motion.div variants={slideVariants}>
+                      <motion.div
+                        className='text-xl sm:text-2xl font-bold text-purple-600'
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          delay: 0.4,
+                        }}
+                      >
                         {pagination.pages}
+                      </motion.div>
+                      <div className='text-xs sm:text-sm text-gray-600'>
+                        Total Pages
                       </div>
-                      <div className='text-sm text-gray-600'>Total Pages</div>
-                    </div>
-                    <div>
-                      <div className='text-2xl font-bold text-orange-600'>
+                    </motion.div>
+                    <motion.div variants={slideVariants}>
+                      <motion.div
+                        className='text-xl sm:text-2xl font-bold text-orange-600'
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          delay: 0.5,
+                        }}
+                      >
                         {activityLogs.length}
+                      </motion.div>
+                      <div className='text-xs sm:text-sm text-gray-600'>
+                        Showing
                       </div>
-                      <div className='text-sm text-gray-600'>Showing</div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                 </div>
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

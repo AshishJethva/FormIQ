@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import paymentService from '@/services/payment';
 
 const USD_TO_INR_RATE = 85;
+type Plan = 'STARTER' | 'BRONZE' | 'SILVER' | 'GOLD';
 
 const UpgradePage = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>(
@@ -117,8 +118,9 @@ const UpgradePage = () => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
-  // Get current plan type
-  const currentPlan = userProfile?.profile.plan.type || 'STARTER';
+  // Get current plan type - FIXED: Apply the Plan type
+  const currentPlan: Plan =
+    (userProfile?.profile?.plan?.type as Plan) || 'STARTER';
 
   // Price data for each plan
   const bronzePriceData = getPriceData(3);
@@ -126,34 +128,36 @@ const UpgradePage = () => {
   const goldPriceData = getPriceData(11);
 
   return (
-    <div className='bg-gray-50 min-h-screen w-full py-10 px-4'>
-      <div className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden'>
-        <div className='py-8 px-10 border-b border-gray-200 flex justify-between items-center'>
-          <h1 className='text-2xl font-semibold text-navy-900'>
-            Choose Your <span className='text-green-600'>Plan</span>
-          </h1>
-          <div className='flex items-center gap-3'>
-            <Shield className='h-5 w-5 text-green-600' />
-            <span className='text-sm text-gray-600'>
-              Secure payments powered by Razorpay
-            </span>
+    <div className='bg-gray-50 min-h-screen w-full py-4 sm:py-6 lg:py-10 px-2 sm:px-4'>
+      <div className='max-w-4xl mx-auto bg-white rounded-lg shadow-sm '>
+        <div className='py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-10 border-b border-gray-200'>
+          <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
+            <h1 className='text-xl sm:text-2xl font-semibold text-navy-900'>
+              Choose Your <span className='text-green-600'>Plan</span>
+            </h1>
+            <div className='flex items-center gap-2 sm:gap-3'>
+              <Shield className='h-4 w-4 sm:h-5 sm:w-5 text-green-600' />
+              <span className='text-xs sm:text-sm text-gray-600'>
+                Secure payments powered by Razorpay
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className='p-10'>
+        <div className=' p-4 sm:p-6 lg:p-10'>
           {/* Current Plan Info and Downgrade Option */}
           {currentPlan !== 'STARTER' && (
-            <div className='mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
-              <div className='flex items-center justify-between'>
+            <div className='mb-6 sm:mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+              <div className='flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4'>
                 <div>
-                  <h3 className='text-lg font-semibold text-blue-900'>
+                  <h3 className='text-base sm:text-lg font-semibold text-blue-900'>
                     Current Plan: {currentPlan}
                   </h3>
-                  <p className='text-sm text-blue-700'>
+                  <p className='text-xs sm:text-sm text-blue-700 mt-1'>
                     You can downgrade to the FREE Starter plan anytime
                   </p>
                 </div>
-                <div className='flex items-center gap-3'>
+                <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto'>
                   <button
                     onClick={() => {
                       const latestPayment = paymentHistory[0];
@@ -161,26 +165,31 @@ const UpgradePage = () => {
                         latestPayment?.id || 'sample_payment_id';
                       downloadReceipt(paymentId);
                     }}
-                    className='px-4 py-2 text-blue-600 border border-blue-300 rounded hover:bg-blue-50 transition-colors flex items-center gap-2 cursor-pointer'
+                    className='px-3 sm:px-4 py-2 text-blue-600 border border-blue-300 rounded hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm'
                   >
-                    <Download className='w-4 h-4' />
-                    Download Receipt
+                    <Download className='w-3 h-3 sm:w-4 sm:h-4' />
+                    <span className='hidden sm:inline'>Download Receipt</span>
+                    <span className='sm:hidden'>Receipt</span>
                   </button>
 
                   <button
                     onClick={() => setShowDowngradeConfirm(true)}
                     disabled={isDowngrading}
-                    className='px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer'
+                    className='px-3 sm:px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm'
                   >
                     {isDowngrading ? (
                       <>
-                        <Loader2 className='w-4 h-4 animate-spin' />
-                        Downgrading...
+                        <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 animate-spin' />
+                        <span className='hidden sm:inline'>Downgrading...</span>
+                        <span className='sm:hidden'>...</span>
                       </>
                     ) : (
                       <>
-                        <ArrowDown className='w-4 h-4' />
-                        Downgrade to FREE
+                        <ArrowDown className='w-3 h-3 sm:w-4 sm:h-4' />
+                        <span className='hidden sm:inline'>
+                          Downgrade to FREE
+                        </span>
+                        <span className='sm:hidden'>Downgrade</span>
                       </>
                     )}
                   </button>
@@ -190,10 +199,10 @@ const UpgradePage = () => {
           )}
 
           {/* Billing Toggle */}
-          <div className='mb-8 flex justify-center'>
+          <div className='mb-6 sm:mb-8 flex flex-col sm:flex-row justify-center items-center gap-4'>
             <div className='bg-gray-100 rounded-full p-1 flex items-center'>
               <button
-                className={`px-6 py-2 cursor-pointer rounded-full transition-all ${
+                className={`px-4 sm:px-6 py-2 cursor-pointer rounded-full transition-all text-sm sm:text-base ${
                   billingCycle === 'monthly'
                     ? 'bg-white shadow-sm'
                     : 'text-gray-600'
@@ -204,7 +213,7 @@ const UpgradePage = () => {
                 Monthly
               </button>
               <button
-                className={`px-6 py-2 cursor-pointer rounded-full transition-all ${
+                className={`px-4 sm:px-6 py-2 cursor-pointer rounded-full transition-all text-sm sm:text-base ${
                   billingCycle === 'yearly'
                     ? 'bg-white shadow-sm'
                     : 'text-gray-600'
@@ -217,51 +226,67 @@ const UpgradePage = () => {
             </div>
 
             {billingCycle === 'yearly' && (
-              <div className='ml-4 flex items-center text-blue-600'>
-                <Zap className='h-4 w-4 mr-1' />
-                <span className='text-sm font-medium'>Save 50%</span>
+              <div className='flex items-center text-blue-600'>
+                <Zap className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
+                <span className='text-xs sm:text-sm font-medium'>Save 50%</span>
               </div>
             )}
           </div>
 
           {/* Pricing Cards */}
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5'>
             {/* Starter Plan */}
-            <div className='bg-white border rounded-lg overflow-hidden shadow-sm flex flex-col'>
-              <div className='p-6 bg-emerald-500 text-white text-center relative'>
+            <div
+              className={`bg-white border rounded-lg overflow-hidden shadow-sm flex flex-col transition-all duration-300 ${
+                currentPlan === 'STARTER'
+                  ? 'ring-2 ring-emerald-500 ring-offset-2 transform scale-105 z-10'
+                  : 'opacity-40 hover:opacity-70'
+              }`}
+            >
+              <div className='p-4 sm:p-6 bg-emerald-500 text-white text-center relative'>
                 {currentPlan === 'STARTER' && (
                   <div className='absolute top-2 right-2'>
-                    <CheckCircle className='h-5 w-5 text-white' />
+                    <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5 text-white' />
                   </div>
                 )}
-                <h3 className='text-xl font-semibold mb-4'>Starter</h3>
-                <div className='text-3xl font-bold'>FREE</div>
-                <div className='text-sm mt-2'>Perfect for start</div>
+                <h3 className='text-lg sm:text-xl font-semibold mb-2 sm:mb-4'>
+                  Starter
+                </h3>
+                <div className='text-2xl sm:text-3xl font-bold'>FREE</div>
+                <div className='text-xs sm:text-sm mt-2'>Perfect for start</div>
               </div>
-              <div className='p-4 bg-gray-800 text-white flex-grow flex flex-col'>
-                <div className='flex-grow'>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>5 Forms</div>
+              <div className='p-3 sm:p-4 bg-gray-800 text-white flex-grow flex flex-col'>
+                <div className='flex-grow space-y-4 sm:space-y-6'>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      5 Forms
+                    </div>
                     <div className='text-xs text-gray-400'>Form Limit</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>100</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      100
+                    </div>
                     <div className='text-xs text-gray-400'>
                       Monthly Submissions
                     </div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>1 User</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      1 User
+                    </div>
                     <div className='text-xs text-gray-400'>per Team</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>100 MB</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      100 MB
+                    </div>
                     <div className='text-xs text-gray-400'>Storage</div>
                   </div>
                 </div>
-                <div className='mt-6'>
+                <div className='mt-4 sm:mt-6'>
                   <button
-                    className='w-full py-2 px-4 bg-gray-600 text-white rounded font-medium cursor-pointer'
+                    className='w-full py-2 px-4 bg-gray-600 text-white rounded font-medium cursor-pointer text-sm'
                     disabled
                   >
                     {currentPlan === 'STARTER'
@@ -273,33 +298,29 @@ const UpgradePage = () => {
             </div>
 
             {/* Bronze Plan */}
-            <div className='bg-white border rounded-lg overflow-hidden shadow-sm flex flex-col'>
-              <div className='p-6 bg-orange-500 text-white text-center relative'>
+            <div
+              className={`bg-white border rounded-lg overflow-hidden shadow-sm flex flex-col transition-all duration-300 ${
+                currentPlan === 'BRONZE'
+                  ? 'ring-2 ring-orange-500 ring-offset-2 transform scale-105 z-10'
+                  : 'opacity-40 hover:opacity-70'
+              }`}
+            >
+              <div className='p-4 sm:p-6 bg-orange-500 text-white text-center relative'>
                 {currentPlan === 'BRONZE' && (
                   <div className='absolute top-2 right-2'>
-                    <CheckCircle className='h-5 w-5 text-white' />
+                    <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5 text-white' />
                   </div>
                 )}
-                <h3 className='text-xl font-semibold mb-4'>Bronze</h3>
+                <h3 className='text-lg sm:text-xl font-semibold mb-2 sm:mb-4'>
+                  Bronze
+                </h3>
                 <div className='flex items-center justify-center'>
-                  {billingCycle === 'yearly' && (
-                    <>
-                      <span className='text-4xl font-bold'>
-                        ₹{formatWithCommas(bronzePriceData.displayPrice)}
-                      </span>
-                      <span className='text-xs ml-1'>/month</span>
-                    </>
-                  )}
-                  {billingCycle === 'monthly' && (
-                    <>
-                      <span className='text-4xl font-bold'>
-                        ₹{formatWithCommas(bronzePriceData.displayPrice)}
-                      </span>
-                      <span className='text-xs ml-1'>/month</span>
-                    </>
-                  )}
+                  <span className='text-2xl sm:text-4xl font-bold'>
+                    ₹{formatWithCommas(bronzePriceData.displayPrice)}
+                  </span>
+                  <span className='text-xs ml-1'>/month</span>
                 </div>
-                <div className='text-sm mt-2 h-5'>
+                <div className='text-xs sm:text-sm mt-2 h-5'>
                   {billingCycle === 'yearly'
                     ? `Billed ₹${formatWithCommas(
                         bronzePriceData.annualBilling
@@ -307,30 +328,38 @@ const UpgradePage = () => {
                     : 'Billed monthly'}
                 </div>
               </div>
-              <div className='p-4 bg-gray-800 text-white flex-grow flex flex-col'>
-                <div className='flex-grow'>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>25 Forms</div>
+              <div className='p-3 sm:p-4 bg-gray-800 text-white flex-grow flex flex-col'>
+                <div className='flex-grow space-y-4 sm:space-y-6'>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      25 Forms
+                    </div>
                     <div className='text-xs text-gray-400'>Form Limit</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>1,000</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      1,000
+                    </div>
                     <div className='text-xs text-gray-400'>
                       Monthly Submissions
                     </div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>1 User</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      1 User
+                    </div>
                     <div className='text-xs text-gray-400'>per Team</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>1 GB</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      1 GB
+                    </div>
                     <div className='text-xs text-gray-400'>Storage</div>
                   </div>
                 </div>
-                <div className='mt-6'>
+                <div className='mt-4 sm:mt-6'>
                   <button
-                    className={`w-full py-2 px-4 text-white rounded font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`w-full py-2 px-4 text-white rounded font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm ${
                       processingPlan === 'BRONZE' || currentPlan === 'BRONZE'
                         ? 'bg-gray-500 cursor-not-allowed'
                         : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
@@ -342,7 +371,7 @@ const UpgradePage = () => {
                   >
                     {processingPlan === 'BRONZE' ? (
                       <>
-                        <Loader2 className='w-4 h-4 animate-spin' />
+                        <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 animate-spin' />
                         Processing...
                       </>
                     ) : currentPlan === 'BRONZE' ? (
@@ -356,29 +385,38 @@ const UpgradePage = () => {
             </div>
 
             {/* Silver Plan */}
-            <div className='bg-white border rounded-lg overflow-hidden shadow-sm relative flex flex-col'>
-              <div className='absolute top-0 right-0 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-3 py-1 rounded-bl-lg font-bold'>
-                MOST POPULAR
+            <div
+              className={`bg-white border rounded-lg overflow-hidden shadow-sm relative flex flex-col transition-all duration-300 ${
+                currentPlan === 'SILVER'
+                  ? 'ring-2 ring-blue-500 ring-offset-2 transform scale-105 z-10'
+                  : 'opacity-40 hover:opacity-70'
+              }`}
+            >
+              <div className='absolute top-0 right-0 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-2 sm:px-3 py-1 rounded-bl-lg font-bold'>
+                <span className='hidden sm:inline'>MOST POPULAR</span>
+                <span className='sm:hidden'>POPULAR</span>
               </div>
-              <div className='p-6 bg-blue-500 text-white text-center relative'>
+              <div className='p-4 sm:p-6 bg-blue-500 text-white text-center relative'>
                 {currentPlan === 'SILVER' && (
                   <div className='absolute top-2 left-2'>
-                    <CheckCircle className='h-5 w-5 text-white' />
+                    <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5 text-white' />
                   </div>
                 )}
-                <h3 className='text-xl font-semibold mb-4'>Silver</h3>
+                <h3 className='text-lg sm:text-xl font-semibold mb-2 sm:mb-4'>
+                  Silver
+                </h3>
                 <div className='flex items-center justify-center'>
                   {billingCycle === 'yearly' && (
-                    <span className='text-sm line-through mr-2 opacity-75'>
+                    <span className='text-xs sm:text-sm line-through mr-2 opacity-75'>
                       ₹{formatWithCommas(silverPriceData.originalPrice)}
                     </span>
                   )}
-                  <span className='text-4xl font-bold'>
+                  <span className='text-2xl sm:text-4xl font-bold'>
                     ₹{formatWithCommas(silverPriceData.displayPrice)}
                   </span>
                   <span className='text-xs ml-1'>/month</span>
                 </div>
-                <div className='text-sm mt-2 h-5'>
+                <div className='text-xs sm:text-sm mt-2 h-5'>
                   {billingCycle === 'yearly'
                     ? `Billed ₹${formatWithCommas(
                         silverPriceData.annualBilling
@@ -386,30 +424,38 @@ const UpgradePage = () => {
                     : 'Billed monthly'}
                 </div>
               </div>
-              <div className='p-4 bg-gray-800 text-white flex-grow flex flex-col'>
-                <div className='flex-grow'>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>50 Forms</div>
+              <div className='p-3 sm:p-4 bg-gray-800 text-white flex-grow flex flex-col'>
+                <div className='flex-grow space-y-4 sm:space-y-6'>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      50 Forms
+                    </div>
                     <div className='text-xs text-gray-400'>Form Limit</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>2,500</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      2,500
+                    </div>
                     <div className='text-xs text-gray-400'>
                       Monthly Submissions
                     </div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>1 User</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      1 User
+                    </div>
                     <div className='text-xs text-gray-400'>per Team</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>10 GB</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      10 GB
+                    </div>
                     <div className='text-xs text-gray-400'>Storage</div>
                   </div>
                 </div>
-                <div className='mt-6'>
+                <div className='mt-4 sm:mt-6'>
                   <button
-                    className={`w-full py-2 px-4 text-white rounded font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`w-full py-2 px-4 text-white rounded font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm ${
                       processingPlan === 'SILVER' || currentPlan === 'SILVER'
                         ? 'bg-gray-500 cursor-not-allowed'
                         : 'bg-blue-500 hover:bg-blue-600 cursor-pointer'
@@ -421,7 +467,7 @@ const UpgradePage = () => {
                   >
                     {processingPlan === 'SILVER' ? (
                       <>
-                        <Loader2 className='w-4 h-4 animate-spin' />
+                        <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 animate-spin' />
                         Processing...
                       </>
                     ) : currentPlan === 'SILVER' ? (
@@ -435,26 +481,34 @@ const UpgradePage = () => {
             </div>
 
             {/* Gold Plan */}
-            <div className='bg-white border rounded-lg overflow-hidden shadow-sm flex flex-col'>
-              <div className='p-6 bg-yellow-500 text-white text-center relative'>
+            <div
+              className={`bg-white border rounded-lg overflow-hidden shadow-sm flex flex-col transition-all duration-300 ${
+                currentPlan === 'GOLD'
+                  ? 'ring-2 ring-yellow-500 ring-offset-2 transform scale-105 z-10'
+                  : 'opacity-40 hover:opacity-70'
+              }`}
+            >
+              <div className='p-4 sm:p-6 bg-yellow-500 text-white text-center relative'>
                 {currentPlan === 'GOLD' && (
                   <div className='absolute top-2 right-2'>
-                    <CheckCircle className='h-5 w-5 text-white' />
+                    <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5 text-white' />
                   </div>
                 )}
-                <h3 className='text-xl font-semibold mb-4'>Gold</h3>
+                <h3 className='text-lg sm:text-xl font-semibold mb-2 sm:mb-4'>
+                  Gold
+                </h3>
                 <div className='flex items-center justify-center'>
                   {billingCycle === 'yearly' && (
-                    <span className='text-sm line-through mr-2 opacity-75'>
+                    <span className='text-xs sm:text-sm line-through mr-2 opacity-75'>
                       ₹{formatWithCommas(goldPriceData.originalPrice)}
                     </span>
                   )}
-                  <span className='text-4xl font-bold'>
+                  <span className='text-2xl sm:text-4xl font-bold'>
                     ₹{formatWithCommas(goldPriceData.displayPrice)}
                   </span>
                   <span className='text-xs ml-1'>/month</span>
                 </div>
-                <div className='text-sm mt-2 h-5'>
+                <div className='text-xs sm:text-sm mt-2 h-5'>
                   {billingCycle === 'yearly'
                     ? `Billed ₹${formatWithCommas(
                         goldPriceData.annualBilling
@@ -462,30 +516,38 @@ const UpgradePage = () => {
                     : 'Billed monthly'}
                 </div>
               </div>
-              <div className='p-4 bg-gray-800 text-white flex-grow flex flex-col'>
-                <div className='flex-grow'>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>100 Forms</div>
+              <div className='p-3 sm:p-4 bg-gray-800 text-white flex-grow flex flex-col'>
+                <div className='flex-grow space-y-4 sm:space-y-6'>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      100 Forms
+                    </div>
                     <div className='text-xs text-gray-400'>Form Limit</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>10,000</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      10,000
+                    </div>
                     <div className='text-xs text-gray-400'>
                       Monthly Submissions
                     </div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>1 User</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      1 User
+                    </div>
                     <div className='text-xs text-gray-400'>per Team</div>
                   </div>
-                  <div className='mt-6 text-center'>
-                    <div className='text-lg font-semibold'>100 GB</div>
+                  <div className='text-center'>
+                    <div className='text-base sm:text-lg font-semibold'>
+                      100 GB
+                    </div>
                     <div className='text-xs text-gray-400'>Storage</div>
                   </div>
                 </div>
-                <div className='mt-6'>
+                <div className='mt-4 sm:mt-6'>
                   <button
-                    className={`w-full py-2 px-4 text-white rounded font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`w-full py-2 px-4 text-white rounded font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm ${
                       processingPlan === 'GOLD' || currentPlan === 'GOLD'
                         ? 'bg-gray-500 cursor-not-allowed'
                         : 'bg-yellow-500 hover:bg-yellow-600 cursor-pointer'
@@ -497,7 +559,7 @@ const UpgradePage = () => {
                   >
                     {processingPlan === 'GOLD' ? (
                       <>
-                        <Loader2 className='w-4 h-4 animate-spin' />
+                        <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 animate-spin' />
                         Processing...
                       </>
                     ) : currentPlan === 'GOLD' ? (
@@ -512,58 +574,58 @@ const UpgradePage = () => {
           </div>
 
           {/* Features Comparison */}
-          <div className='mt-12 bg-gray-50 rounded-lg p-6'>
-            <h3 className='text-lg font-semibold mb-4 text-center'>
+          <div className='mt-8 sm:mt-12 bg-gray-50 rounded-lg p-4 sm:p-6'>
+            <h3 className='text-base sm:text-lg font-semibold mb-4 text-center'>
               All Plans Include
             </h3>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm'>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 text-green-500 mr-2' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-2 flex-shrink-0' />
                 <span>Unlimited form fields</span>
               </div>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 text-green-500 mr-2' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-2 flex-shrink-0' />
                 <span>Real-time notifications</span>
               </div>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 text-green-500 mr-2' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-2 flex-shrink-0' />
                 <span>Data export (CSV, Excel)</span>
               </div>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 text-green-500 mr-2' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-2 flex-shrink-0' />
                 <span>Mobile responsive forms</span>
               </div>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 text-green-500 mr-2' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-2 flex-shrink-0' />
                 <span>Basic analytics</span>
               </div>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 text-green-500 mr-2' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-2 flex-shrink-0' />
                 <span>SSL encryption</span>
               </div>
             </div>
           </div>
 
           {/* Payment Security */}
-          <div className='mt-8 text-center'>
-            <div className='flex items-center justify-center gap-4 text-sm text-gray-600'>
+          <div className='mt-6 sm:mt-8 text-center'>
+            <div className='flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600'>
               <div className='flex items-center'>
-                <Shield className='h-4 w-4 mr-1' />
+                <Shield className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
                 <span>256-bit SSL</span>
               </div>
               <div className='flex items-center'>
-                <CheckCircle className='h-4 w-4 mr-1' />
+                <CheckCircle className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
                 <span>PCI Compliant</span>
               </div>
               <div className='flex items-center'>
-                <Zap className='h-4 w-4 mr-1' />
+                <Zap className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
                 <span>Instant Activation</span>
               </div>
             </div>
           </div>
 
           {/* Disclaimer */}
-          <div className='mt-8 text-xs text-gray-500 text-center'>
+          <div className='mt-6 sm:mt-8 text-xs text-gray-500 text-center px-2'>
             <p>
               *Prices shown are in Indian Rupees (INR). The 50% yearly discount
               is applied automatically. Plans auto-renew unless cancelled.
@@ -576,18 +638,20 @@ const UpgradePage = () => {
 
       {/* Downgrade Confirmation Modal */}
       {showDowngradeConfirm && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 max-w-md w-full mx-4'>
-            <h3 className='text-lg font-semibold mb-4'>Confirm Downgrade</h3>
-            <p className='text-gray-600 mb-6'>
+        <div className='fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4'>
+          <div className='bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4'>
+            <h3 className='text-base sm:text-lg font-semibold mb-4'>
+              Confirm Downgrade
+            </h3>
+            <p className='text-gray-600 mb-6 text-sm sm:text-base'>
               Are you sure you want to downgrade to the FREE Starter plan? You
               will lose access to premium features and your form limit will be
               reduced to 5 forms.
             </p>
-            <div className='flex justify-end gap-3'>
+            <div className='flex flex-col sm:flex-row justify-end gap-3'>
               <button
                 onClick={() => setShowDowngradeConfirm(false)}
-                className='px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 cursor-pointer'
+                className='px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 cursor-pointer text-sm order-2 sm:order-1'
                 disabled={isDowngrading}
               >
                 Cancel
@@ -595,11 +659,11 @@ const UpgradePage = () => {
               <button
                 onClick={handleDowngrade}
                 disabled={isDowngrading}
-                className='px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-2 cursor-pointer'
+                className='px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer text-sm order-1 sm:order-2'
               >
                 {isDowngrading ? (
                   <>
-                    <Loader2 className='w-4 h-4 animate-spin' />
+                    <Loader2 className='w-3 h-3 sm:w-4 sm:h-4 animate-spin' />
                     Downgrading...
                   </>
                 ) : (

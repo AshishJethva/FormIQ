@@ -49,6 +49,48 @@ export function formatDateTime(date: Date | number): string {
   });
 }
 
+export const formatDateTimeToAMPM = (dateTimeString: string): string => {
+  try {
+    const date = new Date(dateTimeString);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch (error) {
+    console.warn('Error formatting datetime:', error);
+    return dateTimeString;
+  }
+};
+
+export const formatTimeToAMPM = (timeString: string): string => {
+  try {
+    // Handle different time formats that might come from your backend
+    let time = timeString;
+
+    // If the time includes seconds, remove them for cleaner display
+    if (time.split(':').length === 3) {
+      time = time.split(':').slice(0, 2).join(':');
+    }
+
+    // Parse the time string (assuming format is "HH:MM" or "HH:MM:SS")
+    const [hours, minutes] = time.split(':').map(Number);
+
+    // Convert to 12-hour format
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+
+    // Format with leading zeros for minutes
+    const formattedMinutes = minutes.toString().padStart(2, '0');
+
+    return `${displayHours}:${formattedMinutes} ${period}`;
+  } catch (error) {
+    // Fallback to original time if parsing fails
+    console.warn('Error formatting time:', error);
+    return timeString;
+  }
+};
+
 export function formatTime(timeString: string): string {
   try {
     // Check if timeString is just a time (HH:MM)
@@ -177,4 +219,3 @@ export function formatFileSize(bytes: number): string {
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
-
