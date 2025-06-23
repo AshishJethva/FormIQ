@@ -21,6 +21,7 @@ import {
 } from '@/redux/slices/userProfile/userProfileSlice';
 import { toast } from 'sonner';
 import type { StoreDispatch } from '@/redux/store';
+import AccountPageSkeleton from '@/components/skeletons/AccountPageSkeleton';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -90,6 +91,11 @@ export default function AccountPage() {
       dispatch(clearError());
     };
   }, [dispatch]);
+
+  // Show skeleton while loading or when no user profile data
+  if (!userProfile && isLoading) {
+    return <AccountPageSkeleton />;
+  }
 
   // Start edit mode for a field
   const startEditing = (field: keyof typeof editMode) => {
@@ -338,6 +344,26 @@ export default function AccountPage() {
       transition: { duration: 0.2, ease: 'easeInOut' },
     },
   };
+
+  // Show error state if no user profile after loading
+  if (!userProfile && !isLoading) {
+    return (
+      <motion.div
+        className='bg-gray-50 min-h-screen w-full py-4 sm:py-10 px-4'
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className='max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden'>
+          <div className='py-4 sm:py-8 px-4 sm:px-10 text-center'>
+            <p className='text-gray-500'>
+              Failed to load user profile. Please try refreshing the page.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   if (!userProfile && isLoading) {
     return (

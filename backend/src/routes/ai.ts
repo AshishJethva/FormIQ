@@ -1,4 +1,5 @@
 // Backend: src/routes/ai.ts
+
 import express from 'express';
 import Form from '../models/Form';
 import { protect } from '../middleware/protect';
@@ -6,13 +7,27 @@ import { asyncHandler } from '../utils/asyncHandler';
 import mongoose from 'mongoose';
 import { aiGenerationLimiter } from '../middleware/aiRateLimit';
 import AIFormGeneratorService from '../services/aiFormGeneratorService';
-import { AILogger } from '../utils/aiLogger';
 import { AIPromptValidator } from '../utils/aiPromptValidator';
+import AISuggestionService from '../services/aiSuggestionService';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
 // Initialize AI service
 const aiService = new AIFormGeneratorService();
+const suggestionService = new AISuggestionService();
+
+// Add rate limiting for suggestions
+const suggestionLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute
+  message: {
+    success: false,
+    message: 'Too many suggestion requests, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 router.post(
   '/generate-form',
@@ -134,6 +149,123 @@ router.post(
         message: 'Internal server error during form generation',
         error:
           process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  })
+);
+
+router.post(
+  '/suggestions',
+  protect,
+  suggestionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const { text, cursorPosition, context, maxLength, suggestionType } =
+        req.body;
+
+      // Validate request
+      const validation = suggestionService.validateRequest({
+        text,
+        cursorPosition,
+        context,
+        maxLength,
+        suggestionType, // NEW: Support suggestion type
+      });
+
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.error,
+        });
+      }
+
+      // UPDATED: Generate progressive suggestions
+      const result = await suggestionService.generateSuggestions({
+        text,
+        cursorPosition,
+        context,
+        maxLength: maxLength || (suggestionType === 'progressive' ? 80 : 200),
+        suggestionType: suggestionType || 'standard',
+      });
+
+      // UPDATED: Log progressive suggestion info
+      if (suggestionType === 'progressive') {
+        console.log('🔄 Progressive suggestion generated:');
+        console.log('Suggestion:', result.suggestions[0]);
+        console.log(
+          'Word count:',
+          result.suggestions[0]?.split(' ').length || 0
+        );
+        console.log('Character count:', result.suggestions[0]?.length || 0);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          suggestions: result.suggestions,
+          isWordCompletion: result.isWordCompletion,
+          confidence: result.confidence,
+          type: suggestionType || 'standard', // NEW: Return suggestion type
+          wordCount: result.suggestions[0]?.split(' ').length || 0, // NEW: Return word count
+        },
+      });
+    } catch (error: any) {
+      console.error('Suggestion generation error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate suggestions',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  })
+);
+
+router.get(
+  '/suggestions/defaults/:category',
+  protect,
+  asyncHandler(async (req, res) => {
+    try {
+      const { category } = req.params;
+
+      const validCategories = [
+        'quiz',
+        'survey',
+        'feedback',
+        'application',
+        'contact',
+        'general',
+      ];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid category. Must be one of: ' + validCategories.join(', '),
+        });
+      }
+
+      const suggestions = suggestionService.getDefaultSuggestions(
+        category as
+          | 'quiz'
+          | 'survey'
+          | 'feedback'
+          | 'application'
+          | 'contact'
+          | 'general'
+      );
+
+      res.json({
+        success: true,
+        data: {
+          suggestions,
+          category,
+        },
+      });
+    } catch (error: any) {
+      console.error('Default suggestions error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get default suggestions',
       });
     }
   })

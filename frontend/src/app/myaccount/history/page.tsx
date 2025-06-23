@@ -33,6 +33,7 @@ import userProfileService from '@/services/userProfile';
 import type { StoreDispatch } from '@/redux/store';
 import type { ActivityFilters } from '@/services/userProfile';
 import { formatTimeToAMPM } from '@/lib/utils';
+import HistoryPageSkeleton from '@/components/skeletons/HistoryPageSkeleton';
 
 const HistoryPage = () => {
   const dispatch = useDispatch<StoreDispatch>();
@@ -47,6 +48,8 @@ const HistoryPage = () => {
   // State hooks
   const [dateFilter, setDateFilter] = useState('All time');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const [isPaginating, setIsPaginating] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date(2025, 4));
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
@@ -55,6 +58,25 @@ const HistoryPage = () => {
 
   const [accountStats, setAccountStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+
+  const getSkeletonVariant = () => {
+    if (!userProfile && isLoading) return 'initial-loading';
+    if (statsLoading) return 'initial-loading';
+    if (isFilterLoading) return 'filtering';
+    if (isPaginating) return 'paginating';
+    if (showDatePicker) return 'date-picker-open';
+    return 'initial-loading';
+  };
+
+  const shouldShowSkeleton = () => {
+    return (
+      (!userProfile && isLoading) ||
+      statsLoading ||
+      isFilterLoading ||
+      isPaginating ||
+      (isLoading && activityLogs.length === 0)
+    );
+  };
 
   // Refs and memoized values
   const datePickerRef = useRef<HTMLDivElement>(null);
@@ -262,7 +284,11 @@ const HistoryPage = () => {
 
   // Load activity logs with current filters
   const loadActivityLogs = useCallback(
-    (page: number = 1) => {
+    async (page: number = 1, showFilterLoading = false) => {
+      if (showFilterLoading) {
+        setIsFilterLoading(true);
+      }
+
       const filters: ActivityFilters = {
         page,
         limit: 20,
@@ -280,8 +306,17 @@ const HistoryPage = () => {
         }
       }
 
-      dispatch(fetchActivityLogs(filters));
-      setCurrentPage(page);
+      try {
+        await dispatch(fetchActivityLogs(filters));
+        setCurrentPage(page);
+      } catch (error) {
+        console.error('Failed to load activity logs:', error);
+      } finally {
+        if (showFilterLoading) {
+          // Add a slight delay for better UX
+          setTimeout(() => setIsFilterLoading(false), 500);
+        }
+      }
     },
     [
       dispatch,
@@ -480,8 +515,20 @@ const HistoryPage = () => {
   const calendarDays = generateCalendarDays();
 
   // Handle pagination
-  const handlePageChange = (page: number) => {
-    loadActivityLogs(page);
+  const handlePageChange = async (page: number) => {
+    setIsPaginating(true);
+    try {
+      await loadActivityLogs(page);
+    } finally {
+      // Add delay for smooth transition
+      setTimeout(() => setIsPaginating(false), 300);
+    }
+  };
+
+  const handleDateFilterChange = async (newFilter: string) => {
+    setDateFilter(newFilter);
+    setShowDatePicker(false);
+    await loadActivityLogs(1, true); // Show filtering animation
   };
 
   const handleShowMore = () => {
@@ -489,6 +536,19 @@ const HistoryPage = () => {
       handlePageChange(currentPage + 1);
     }
   };
+
+  // Render skeleton based on current state
+  if (shouldShowSkeleton()) {
+    return (
+      <HistoryPageSkeleton
+        variant={getSkeletonVariant()}
+        showActivityLogs={activityLogs.length > 0}
+        logsCount={activityLogs.length || 8}
+        showDatePicker={showDatePicker}
+        hasExistingData={activityLogs.length > 0}
+      />
+    );
+  }
 
   return (
     <motion.div
@@ -644,9 +704,11 @@ const HistoryPage = () => {
                               setSelectedStartDate(null);
                               setSelectedEndDate(null);
                               setCustomDateRange(true);
+                              setDateFilter(option);
                             } else {
                               setCustomDateRange(false);
                               setShowDatePicker(false);
+                              handleDateFilterChange(option);
                             }
                           }}
                           whileHover={{ x: 4 }}

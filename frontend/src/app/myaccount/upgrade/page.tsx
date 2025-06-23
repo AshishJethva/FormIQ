@@ -17,11 +17,13 @@ import { useSelector } from 'react-redux';
 import { selectUserProfile } from '@/redux/slices/userProfile/userProfileSlice';
 import { toast } from 'sonner';
 import paymentService from '@/services/payment';
+import UpgradePageSkeleton from '@/components/skeletons/UpgradePageSkeleton';
 
 const USD_TO_INR_RATE = 85;
 type Plan = 'STARTER' | 'BRONZE' | 'SILVER' | 'GOLD';
 
 const UpgradePage = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>(
     'yearly'
   );
@@ -37,6 +39,14 @@ const UpgradePage = () => {
   } = usePayment();
   const userProfile = useSelector(selectUserProfile);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000); // Adjust this based on your actual data loading time
+
+    return () => clearTimeout(timer);
+  }, []);
+
   // Show success message if redirected after upgrade
   useEffect(() => {
     if (searchParams.get('upgraded') === 'true') {
@@ -51,15 +61,26 @@ const UpgradePage = () => {
   useEffect(() => {
     const fetchPaymentHistory = async () => {
       try {
+        setIsLoading(true);
         const response = await paymentService.getPaymentHistory();
         setPaymentHistory(response.data.paymentHistory || []);
       } catch (error) {
         console.error('Failed to fetch payment history:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchPaymentHistory();
-  }, []);
+    // Only fetch if we have user profile
+    if (userProfile) {
+      fetchPaymentHistory();
+    }
+  }, [userProfile]);
+
+  // Show skeleton while loading user profile or payment data
+  if (isLoading || !userProfile) {
+    return <UpgradePageSkeleton />;
+  }
 
   // Handle upgrade button click
   const handleUpgrade = async (planName: string) => {

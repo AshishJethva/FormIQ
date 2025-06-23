@@ -1,4 +1,4 @@
-// src/app/ai/form-builder/page.tsx
+// src/app/ai/form-builder/page.tsx (FIXED OVERFLOW)
 'use client';
 
 import React, { useState } from 'react';
@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import { generateFormWithAI, clearError } from '@/redux/slices/ai/aiFormSlice';
 import { RootState, StoreDispatch } from '@/redux/store';
+import { CombinedAITextarea } from '@/components/ai/CombinedAITextarea';
 
 export default function AIFormBuilderPage() {
   const router = useRouter();
@@ -20,6 +21,34 @@ export default function AIFormBuilderPage() {
   const error = aiFormState?.error || null;
 
   const maxCharacters = 500;
+
+  // Custom animated messages for form generation
+  const animatedMessages = [
+    {
+      text: 'I want to build a job application form for my company',
+      delay: 50,
+    },
+    {
+      text: 'I want to build a registration form for student events',
+      delay: 55,
+    },
+    {
+      text: 'I want to build a feedback form for my customers',
+      delay: 60,
+    },
+    {
+      text: 'I want to build a quiz form with automatic scoring',
+      delay: 45,
+    },
+    {
+      text: 'I want to build a survey form for market research',
+      delay: 65,
+    },
+    {
+      text: 'I want to build a contact form for website visitors',
+      delay: 50,
+    },
+  ];
 
   const handleBack = () => {
     router.push('/dashboard');
@@ -33,11 +62,10 @@ export default function AIFormBuilderPage() {
 
   // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent new line
+    if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
+      e.preventDefault();
       handleCreateForm();
     }
-    // Allow Shift+Enter for new lines
   };
 
   const handleCreateForm = async () => {
@@ -75,22 +103,25 @@ export default function AIFormBuilderPage() {
   };
 
   const quickTemplates = [
-    'Registration Form',
-    'Job Application Form',
-    'Feedback Form',
-    'Appointment Form',
+    'Quiz Assessment',
+    'Job Application',
+    'Customer Survey',
+    'Customer Feedback',
   ];
 
   const handleTemplateClick = (template: string) => {
     const templatePrompts: { [key: string]: string } = {
-      'Registration Form':
-        'I want to build a registration form for my event with fields for name, email, phone number, and special requirements.',
-      'Job Application Form':
-        'I need a job application form with personal details, work experience, education background, and file upload for resume.',
-      'Feedback Form':
-        'I want to build a feedback form for my customer with rating scales, comment sections, and satisfaction questions.',
-      'Appointment Form':
-        'I need an appointment booking form with date picker, time slots, service selection, and contact information.',
+      'Quiz Assessment':
+        'I want to build a knowledge quiz form with 8 single choice questions, each with predefined correct answers, multiple choice scenarios, fill-in-the-blank questions, and automatic scoring for student assessment and learning evaluation.',
+
+      'Job Application':
+        'I need a comprehensive job application form with personal information (full name, email, phone, address), work experience details, education background, technical skills assessment, resume file upload, cover letter upload, and digital signature for application consent.',
+
+      'Customer Survey':
+        'I want to build a customer research survey form with 5 rating scale fields, satisfaction level dropdowns with options like "Excellent/Very Good/Good/Fair/Poor", service quality ratings, recommendation likelihood scales, and detailed feedback sections for market analysis.',
+
+      'Customer Feedback':
+        'I want to build a customer experience feedback form with detailed comment sections asking "How was your experience?", "What could we improve?", "Share your thoughts about our service", experience description fields, and improvement suggestion areas for business enhancement.',
     };
 
     setPrompt(templatePrompts[template] || '');
@@ -169,22 +200,23 @@ export default function AIFormBuilderPage() {
           </p>
         </div>
 
-        {/* Form Input Section */}
         <div className='bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8'>
           <div className='flex flex-col lg:flex-row gap-4'>
             <div className='flex-1'>
-              <textarea
-                value={prompt}
-                onChange={handlePromptChange}
-                onKeyDown={handleKeyDown}
-                placeholder='I want to build a feedback form for my customer'
-                className='w-full h-32 lg:h-20 px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 placeholder-gray-500'
-                disabled={isGenerating}
-              />
-              <div className='flex justify-between items-center mt-2'>
-                <span className='text-sm text-gray-500'>
-                  Describe what kind of form you want to create
-                </span>
+              {/* UPDATED: Using CombinedAITextarea with both animations and AI suggestions */}
+              <div className='relative'>
+                <CombinedAITextarea
+                  value={prompt}
+                  onChange={handlePromptChange}
+                  onKeyDown={handleKeyDown}
+                  messages={animatedMessages}
+                  className='w-full min-h-[120px] max-h-[200px] px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 transition-all duration-200 overflow-y-auto'
+                  disabled={isGenerating}
+                  maxLength={maxCharacters}
+                />
+              </div>
+
+              <div className='flex justify-end items-center mt-3'>
                 <span className='text-sm text-gray-500'>
                   {prompt.length}/{maxCharacters}
                 </span>
