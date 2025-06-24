@@ -424,17 +424,39 @@ router.post(
       );
     }
 
-    const pageId = uuidv4();
-
     // Generate unique title if duplicate exists
-    let uniqueTitle = name || 'Form';
+    let uniqueTitle = name || 'Untitled Form';
     let counter = 1;
+    const maxAttempts = 50;
 
     // Check if title already exists for this user
     while (await Form.findOne({ title: uniqueTitle, userId })) {
-      uniqueTitle = `${name || 'Form'} (${counter})`;
+      if (counter <= 20) {
+        uniqueTitle = `${name || 'Untitled Form'} ${counter}`;
+      } else if (counter <= 30) {
+        const timestamp = new Date()
+          .toISOString()
+          .slice(11, 19)
+          .replace(/:/g, '');
+        uniqueTitle = `${name || 'Untitled Form'} ${timestamp}`;
+      } else if (counter <= 40) {
+        uniqueTitle = `${name || 'Untitled Form'} Copy ${counter - 30}`;
+      } else {
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        uniqueTitle = `${name || 'Untitled Form'} ${randomSuffix}`;
+      }
+
       counter++;
+
+      if (counter > maxAttempts) {
+        // Final fallback with timestamp
+        const timestamp = Date.now();
+        uniqueTitle = `${name || 'Untitled Form'} ${timestamp}`;
+        break;
+      }
     }
+
+    const pageId = uuidv4();
 
     const form = await Form.create({
       title: uniqueTitle,
@@ -471,6 +493,18 @@ router.post(
 
     // Update forms used count
     await updateFormsUsed(req.user.id, true);
+
+    // Log activity with original and final name if different
+    const activityMetadata: any = {
+      formId: form._id.toString(),
+      template: !!template,
+    };
+
+    if (uniqueTitle !== (name || 'Untitled Form')) {
+      activityMetadata.originalName = name || 'Untitled Form';
+      activityMetadata.finalName = uniqueTitle;
+      activityMetadata.autoRenamed = true;
+    }
 
     // Log activity
     await logActivity(req.user.id, 'created form', 'form', form.title, req, {
@@ -543,7 +577,13 @@ router.post(
     res.status(201).json({
       success: true,
       data: formData,
-      message: 'Form created successfully',
+      message:
+        uniqueTitle !== (name || 'Untitled Form')
+          ? `Form created successfully with name "${uniqueTitle}" (original name was already taken)`
+          : 'Form created successfully',
+      nameChanged: uniqueTitle !== (name || 'Untitled Form'),
+      originalName: name || 'Untitled Form',
+      finalName: uniqueTitle,
     });
   })
 );

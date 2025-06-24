@@ -49,6 +49,58 @@ export function formatDateTime(date: Date | number): string {
   });
 }
 
+export const generateUniqueFormName = async (
+  baseName: string,
+  checkFunction: (name: string) => Promise<boolean>
+): Promise<string> => {
+  // First check if the base name is available
+  const baseExists = await checkFunction(baseName);
+  if (!baseExists) {
+    return baseName;
+  }
+
+  // Generate variations with different strategies
+  let uniqueName = baseName;
+  let counter = 1;
+  const maxAttempts = 50;
+
+  while (counter <= maxAttempts) {
+    // Strategy 1: Add incremental number (Forms 1, 2, 3...)
+    if (counter <= 20) {
+      uniqueName = `${baseName} ${counter}`;
+    }
+    // Strategy 2: Add timestamp-based suffix
+    else if (counter <= 30) {
+      const timestamp = new Date()
+        .toISOString()
+        .slice(11, 19)
+        .replace(/:/g, '');
+      uniqueName = `${baseName} ${timestamp}`;
+    }
+    // Strategy 3: Add Copy suffix
+    else if (counter <= 40) {
+      uniqueName = `${baseName} Copy ${counter - 30}`;
+    }
+    // Strategy 4: Add random suffix
+    else {
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      uniqueName = `${baseName} ${randomSuffix}`;
+    }
+
+    // Check if this variation is available
+    const exists = await checkFunction(uniqueName);
+    if (!exists) {
+      return uniqueName;
+    }
+
+    counter++;
+  }
+
+  // Final fallback with UUID
+  const uuid = crypto.randomUUID().substring(0, 8);
+  return `${baseName} ${uuid}`;
+};
+
 export const formatDateTimeToAMPM = (dateTimeString: string): string => {
   try {
     const date = new Date(dateTimeString);

@@ -21,26 +21,39 @@ interface CombinedAITextareaProps {
   messages?: AnimatedMessage[];
 }
 
+// Enhanced form-focused animated messages
 const defaultMessages: AnimatedMessage[] = [
   {
-    text: 'I want to build a job application form for my company',
-    delay: 60,
+    text: 'I want to build a comprehensive job application form for my company with sections for personal information, work experience, education background, skills assessment, and professional references with document upload capabilities',
+    delay: 42,
   },
   {
-    text: 'I want to build a registration form for student events',
-    delay: 50,
-  },
-  {
-    text: 'I want to build a feedback form for my customers',
-    delay: 55,
-  },
-  {
-    text: 'I want to build a quiz form with automatic scoring',
+    text: 'I want to create a detailed student event registration form with participant information, emergency contacts, dietary preferences, accommodation requirements, payment processing, and event-specific questionnaires',
     delay: 45,
   },
   {
-    text: 'I want to build a survey form for market research',
-    delay: 65,
+    text: 'I want to build an advanced customer feedback form for my business with multi-level satisfaction ratings, service quality evaluation, improvement suggestions, detailed comment sections, and recommendation scoring',
+    delay: 48,
+  },
+  {
+    text: 'I want to create an interactive quiz assessment form with automatic scoring featuring multiple choice questions, true false statements, fill-in-the-blank sections, image-based questions, and instant results calculation',
+    delay: 44,
+  },
+  {
+    text: 'I want to build a comprehensive market research survey form with demographic questions, preference ratings, behavioral analysis, brand awareness assessment, competitor comparison, and statistical data collection',
+    delay: 46,
+  },
+  {
+    text: 'I want to create a professional contact form for website visitors with inquiry categorization, urgency levels, file attachment options, automated response system, and department routing capabilities',
+    delay: 43,
+  },
+  {
+    text: 'I want to build a medical patient intake form with comprehensive health history, current medications, allergy information, insurance details, emergency contacts, symptom descriptions, and appointment scheduling',
+    delay: 47,
+  },
+  {
+    text: 'I want to create a booking reservation form with date and time selection, service categories, customer details, special requests, payment processing, cancellation policies, and confirmation notifications',
+    delay: 45,
   },
 ];
 
@@ -57,78 +70,177 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // AI Suggestions state
   const [cursorPosition, setCursorPosition] = useState(0);
   const [currentSuggestion, setCurrentSuggestion] = useState('');
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [lastAcceptedPosition, setLastAcceptedPosition] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [lastSuggestionTextLength, setLastSuggestionTextLength] = useState(0);
+  const [isFormContent, setIsFormContent] = useState(true);
 
   // Animated Placeholder state
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // FIXED: AI Suggestions functionality - never returns "..."
+  // Form content detection
+  const detectFormContent = useCallback((text: string): boolean => {
+    const lowerText = text.toLowerCase();
+
+    // Strong form indicators
+    const formKeywords = [
+      'form',
+      'field',
+      'input',
+      'question',
+      'survey',
+      'quiz',
+      'feedback',
+      'application',
+      'registration',
+      'contact',
+      'booking',
+      'order',
+      'upload',
+      'validation',
+      'required',
+      'optional',
+      'multiple',
+      'choice',
+      'rating',
+      'scale',
+      'dropdown',
+      'checkbox',
+      'radio',
+      'button',
+      'personal',
+      'information',
+      'details',
+      'address',
+      'name',
+      'email',
+      'phone',
+      'date',
+      'time',
+      'number',
+      'text',
+      'message',
+      'comment',
+    ];
+
+    const strongFormIndicators = [
+      'i want to build a',
+      'i want to create a',
+      'i need to build a',
+      'i need to create a',
+      'i want to make a',
+      'create a form',
+      'build a form',
+      'make a form',
+      'design a form',
+      'form with',
+      'application form',
+      'registration form',
+      'contact form',
+      'feedback form',
+      'survey form',
+      'quiz form',
+      'booking form',
+    ];
+
+    // Check for strong indicators first
+    const hasStrongIndicator = strongFormIndicators.some(indicator =>
+      lowerText.includes(indicator)
+    );
+
+    if (hasStrongIndicator) return true;
+
+    // Check for form keywords
+    const keywordCount = formKeywords.filter(keyword =>
+      lowerText.includes(keyword)
+    ).length;
+
+    // Non-form patterns to avoid
+    const nonFormPatterns = [
+      /\b(website|webpage|blog|article|video|music|game|social media|marketing|business strategy|company|startup|app|software|platform|system|database)\b/,
+      /\b(create (a company|a business|a startup|an organization|a team|a brand|a logo|a presentation))\b/,
+      /\b(build (an app|a website|a platform|software|a system|a business))\b/,
+      /\b(write (a book|an article|content|copy|text|a story|a blog))\b/,
+    ];
+
+    const hasNonFormPattern = nonFormPatterns.some(pattern =>
+      pattern.test(lowerText)
+    );
+
+    return keywordCount >= 1 && !hasNonFormPattern;
+  }, []);
+
+  // Enhanced quote removal function
+  const removeAllQuotes = useCallback((text: string): string => {
+    if (!text) return '';
+
+    return text
+      .replace(/'/g, '')
+      .replace(/'/g, '')
+      .replace(/'/g, '')
+      .replace(/"/g, '')
+      .replace(/"/g, '')
+      .replace(/"/g, '')
+      .replace(/`/g, '')
+      .replace(/["""''`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }, []);
+
+  // Extract suggestion text function with quote removal
   const extractSuggestionText = useCallback(
     (suggestion: string, userText: string): string => {
       if (!suggestion || !userText) return '';
 
-      // FIXED: Clean suggestion and remove any ellipsis
-      const cleanSuggestion = suggestion
-        .replace(/^['"`\s]+|['"`\s]+$/g, '')
-        .replace(/^["']|["']$/g, '')
-        .replace(/\.{3,}/g, '') // FIXED: Remove any ellipsis
+      const cleanSuggestion = removeAllQuotes(suggestion)
+        .replace(/^[\s]+|[\s]+$/g, '')
+        .replace(/\.{3,}/g, '')
         .trim();
 
       const userTextTrimmed = userText.trim();
       const suggestionLower = cleanSuggestion.toLowerCase();
       const userTextLower = userTextTrimmed.toLowerCase();
 
-      console.log('🔧 Extraction Input:');
-      console.log('User text:', `"${userTextTrimmed}"`);
-      console.log('Original suggestion:', `"${suggestion}"`);
-      console.log('Cleaned suggestion:', `"${cleanSuggestion}"`);
-
-      // CASE 1: Direct continuation (AI suggests something completely new)
+      // Direct continuation
       if (!suggestionLower.includes(userTextLower)) {
-        console.log('✅ Direct continuation - using as is');
         return cleanSuggestion;
       }
 
-      // CASE 2: AI repeats user text + continuation
+      // AI repeats user text + continuation
       if (suggestionLower.includes(userTextLower)) {
         const userTextIndex = suggestionLower.indexOf(userTextLower);
         if (userTextIndex !== -1) {
           const extractedPart = cleanSuggestion
             .substring(userTextIndex + userTextTrimmed.length)
             .trim();
-
-          console.log('✅ Extracted after user text:', `"${extractedPart}"`);
-
-          // FIXED: Only return if we have substantial content
           if (extractedPart.length > 3) {
             return extractedPart;
           }
         }
       }
 
-      // CASE 3: Word-by-word overlap detection (more sophisticated)
+      // Word overlap detection
       const userWords = userTextTrimmed.split(' ').filter(w => w.length > 0);
       const suggestionWords = cleanSuggestion
         .split(' ')
         .filter(w => w.length > 0);
 
-      // FIXED: Try to find the best overlap point
       let bestExtraction = '';
       let maxOverlapLength = 0;
 
-      // Check for word overlap from the end of user text
       for (
         let i = 1;
         i <= Math.min(userWords.length, suggestionWords.length);
@@ -150,11 +262,10 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
       }
 
       if (bestExtraction.length > 3) {
-        console.log('✅ Word overlap extraction:', `"${bestExtraction}"`);
         return bestExtraction.trim();
       }
 
-      // CASE 4: Fallback - check if suggestion starts with a logical continuation word
+      // Fallback for continuation words
       const continuationWords = [
         'with',
         'and',
@@ -164,7 +275,10 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         'containing',
         'that',
         'which',
+        'having',
+        'providing',
       ];
+
       const startsWithContinuation = continuationWords.some(word =>
         suggestionLower.startsWith(word + ' ')
       );
@@ -173,16 +287,12 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         startsWithContinuation &&
         cleanSuggestion.length > userTextTrimmed.length
       ) {
-        console.log('✅ Logical continuation detected');
         return cleanSuggestion;
       }
 
-      // FINAL FALLBACK: If all else fails, return clean suggestion
-      // This ensures we never return empty or "..." content
-      console.log('⚠️ Fallback: using cleaned suggestion');
       return cleanSuggestion.length > 3 ? cleanSuggestion : '';
     },
-    []
+    [removeAllQuotes]
   );
 
   const handleSuggestionAccepted = useCallback(
@@ -195,7 +305,12 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
 
       const beforeCursor = value.substring(0, start);
       const afterCursor = value.substring(end);
-      const suggestionToAdd = extractSuggestionText(suggestion, beforeCursor);
+
+      const cleanedSuggestion = removeAllQuotes(suggestion);
+      const suggestionToAdd = extractSuggestionText(
+        cleanedSuggestion,
+        beforeCursor
+      );
 
       if (!suggestionToAdd || suggestionToAdd.length < 2) {
         setCurrentSuggestion('');
@@ -203,13 +318,18 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         return;
       }
 
-      const needsSpace = beforeCursor.length > 0 && !beforeCursor.endsWith(' ');
+      const needsSpace =
+        beforeCursor.length > 0 &&
+        !beforeCursor.endsWith(' ') &&
+        !suggestionToAdd.startsWith(' ');
+
       const separator = needsSpace ? ' ' : '';
       const newText = beforeCursor + separator + suggestionToAdd + afterCursor;
       const newCursorPosition =
         beforeCursor.length + separator.length + suggestionToAdd.length;
 
       setLastAcceptedPosition(newCursorPosition);
+      setLastSuggestionTextLength(newText.length);
 
       const syntheticEvent = {
         target: { value: newText },
@@ -226,7 +346,7 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         }
       }, 0);
     },
-    [value, onChange, extractSuggestionText]
+    [value, onChange, extractSuggestionText, removeAllQuotes]
   );
 
   const { suggestions, isLoading, generateSuggestions, clearSuggestions } =
@@ -235,10 +355,7 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
   useEffect(() => {
     if (suggestions.length > 0) {
       const suggestion = suggestions[0];
-      const cleanedSuggestion = suggestion
-        .replace(/^['"`\s]+|['"`\s]+$/g, '')
-        .replace(/^["']|["']$/g, '')
-        .trim();
+      const cleanedSuggestion = removeAllQuotes(suggestion).trim();
 
       if (cleanedSuggestion.length > 2) {
         setCurrentSuggestion(cleanedSuggestion);
@@ -251,167 +368,92 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
       setCurrentSuggestion('');
       setShowSuggestion(false);
     }
-  }, [suggestions]);
+  }, [suggestions, removeAllQuotes]);
 
-  // AI Suggestion display logic
+  // Enhanced suggestion display with 4-line boundary control
   const getSuggestionDisplay = useCallback(() => {
-    if (
-      !showSuggestion ||
-      !currentSuggestion ||
-      !textareaRef.current ||
-      !measureRef.current
-    ) {
+    if (!showSuggestion || !currentSuggestion || !textareaRef.current) {
       return { beforeSuggestion: '', suggestionText: '', afterSuggestion: '' };
     }
 
     const textarea = textareaRef.current;
-    const measurer = measureRef.current;
     const start = textarea.selectionStart;
     const beforeCursor = value.substring(0, start);
     const afterCursor = value.substring(start);
 
-    let suggestionToShow = extractSuggestionText(
-      currentSuggestion,
-      beforeCursor
+    let suggestionToShow = removeAllQuotes(
+      extractSuggestionText(currentSuggestion, beforeCursor)
     );
 
-    try {
-      // Copy exact textarea styles to measurer for precise calculation
-      const textareaStyles = getComputedStyle(textarea);
-      const copyProps = [
-        'fontFamily',
-        'fontSize',
-        'fontWeight',
-        'lineHeight',
-        'letterSpacing',
-        'wordSpacing',
-        'padding',
-        'border',
-        'boxSizing',
-        'width',
-      ];
-
-      copyProps.forEach(prop => {
-        measurer.style[prop as any] = textareaStyles[prop as any];
-      });
-
-      measurer.style.position = 'absolute';
-      measurer.style.visibility = 'hidden';
-      measurer.style.height = 'auto';
-      measurer.style.maxHeight = 'none';
-      measurer.style.whiteSpace = 'pre-wrap';
-      measurer.style.wordWrap = 'break-word';
-      measurer.style.overflow = 'hidden';
-
-      // Get textarea's exact dimensions and scroll state
-      const paddingTop = parseInt(textareaStyles.paddingTop) || 12;
-      const paddingBottom = parseInt(textareaStyles.paddingBottom) || 12;
-      const borderTop = parseInt(textareaStyles.borderTopWidth) || 1;
-      const borderBottom = parseInt(textareaStyles.borderBottomWidth) || 1;
-
-      // Calculate exact available space considering scroll and max-height
-      const textareaMaxHeight = parseInt(textareaStyles.maxHeight) || 200;
-      const textareaCurrentHeight = textarea.offsetHeight;
-      const scrollTop = textarea.scrollTop;
-
-      // Available content area
-      const contentAreaHeight =
-        Math.min(textareaMaxHeight, textareaCurrentHeight) -
-        paddingTop -
-        paddingBottom -
-        borderTop -
-        borderBottom;
-
-      // Calculate visible bottom boundary
-      const visibleContentBottom = scrollTop + contentAreaHeight;
-
-      // Measure current text height up to cursor
-      measurer.textContent = beforeCursor;
-      const beforeCursorHeight =
-        measurer.offsetHeight - paddingTop - paddingBottom;
-
-      // Calculate available space for suggestion
-      const availableSpace = Math.max(
-        0,
-        visibleContentBottom - beforeCursorHeight
-      );
-
-      // If less than 1 line of space available, don't show suggestion
-      const lineHeight = parseInt(textareaStyles.lineHeight) || 20;
-      if (availableSpace < lineHeight * 0.8) {
-        return {
-          beforeSuggestion: '',
-          suggestionText: '',
-          afterSuggestion: '',
-        };
-      }
-
-      // Test if full suggestion fits
-      const needsSpace = beforeCursor.length > 0 && !beforeCursor.endsWith(' ');
-      const separator = needsSpace ? ' ' : '';
-      const testText = beforeCursor + separator + suggestionToShow;
-
-      measurer.textContent = testText;
-      const testHeight = measurer.offsetHeight - paddingTop - paddingBottom;
-
-      // If suggestion fits within visible area, use it as is
-      if (testHeight <= visibleContentBottom) {
-        const words = suggestionToShow.split(' ').filter(w => w.length > 0);
-        if (words.length <= 10) {
-          suggestionToShow = suggestionToShow;
-        } else {
-          // Limit to 10 words even if it fits
-          suggestionToShow = words.slice(0, 10).join(' ');
-        }
-      } else {
-        // Binary search to find maximum suggestion that fits
-        const words = suggestionToShow.split(' ').filter(w => w.length > 0);
-        let maxWords = Math.min(words.length, 10);
-        let minWords = 3;
-        let bestWordCount = minWords;
-
-        while (minWords <= maxWords) {
-          const testWordCount = Math.floor((minWords + maxWords) / 2);
-          const testSuggestion = words.slice(0, testWordCount).join(' ');
-          const testTextWithSuggestion =
-            beforeCursor + separator + testSuggestion;
-
-          measurer.textContent = testTextWithSuggestion;
-          const testTextHeight =
-            measurer.offsetHeight - paddingTop - paddingBottom;
-
-          if (testTextHeight <= visibleContentBottom) {
-            bestWordCount = testWordCount;
-            minWords = testWordCount + 1;
-          } else {
-            maxWords = testWordCount - 1;
-          }
-        }
-
-        if (bestWordCount >= 3) {
-          suggestionToShow = words.slice(0, bestWordCount).join(' ');
-        } else {
-          // If even 3 words don't fit, don't show suggestion
-          return {
-            beforeSuggestion: '',
-            suggestionText: '',
-            afterSuggestion: '',
-          };
-        }
-      }
-    } catch (error) {
-      console.error('Error in overflow calculation:', error);
-      // Fallback: simple word limiting
-      const words = suggestionToShow.split(' ').filter(w => w.length > 0);
-      if (words.length > 8) {
-        suggestionToShow = words.slice(0, 8).join(' ');
-      }
+    if (!suggestionToShow || suggestionToShow.length < 3) {
+      return { beforeSuggestion: '', suggestionText: '', afterSuggestion: '' };
     }
+
+    // Word count limiting for 500 words max
+    const totalWords = value
+      .split(/\s+/)
+      .filter(word => word.length > 0).length;
+    const maxAllowedWords = 500;
+
+    if (totalWords >= maxAllowedWords) {
+      return { beforeSuggestion: '', suggestionText: '', afterSuggestion: '' };
+    }
+
+    const remainingWords = maxAllowedWords - totalWords;
+    const suggestionWords = suggestionToShow
+      .split(' ')
+      .filter(w => w.length > 0);
+
+    const scrollTop = textarea.scrollTop;
+    const lineHeight = 24;
+    const fourLinesHeight = lineHeight * 4;
+
+    // Calculate cursor position
+    const textLines = beforeCursor.split('\n');
+    const lineNumber = textLines.length;
+    const estimatedCursorTop = (lineNumber - 1) * lineHeight;
+    const cursorViewportPosition = estimatedCursorTop - scrollTop;
+
+    // Hide suggestions if cursor is beyond 4 lines
+    if (
+      estimatedCursorTop >= fourLinesHeight &&
+      cursorViewportPosition >= fourLinesHeight
+    ) {
+      return { beforeSuggestion: '', suggestionText: '', afterSuggestion: '' };
+    }
+
+    // Calculate remaining space within 4-line boundary
+    const remainingSpace = fourLinesHeight - cursorViewportPosition;
+    const maxVisibleLines = Math.max(
+      0,
+      Math.floor(remainingSpace / lineHeight)
+    );
+
+    // Limit suggestion words based on available space
+    let maxDisplayWords = Math.min(suggestionWords.length, remainingWords, 15);
+
+    if (maxVisibleLines <= 1) {
+      maxDisplayWords = Math.min(maxDisplayWords, 6);
+    } else if (maxVisibleLines <= 2) {
+      maxDisplayWords = Math.min(maxDisplayWords, 10);
+    }
+
+    if (maxDisplayWords >= 3) {
+      suggestionToShow = suggestionWords.slice(0, maxDisplayWords).join(' ');
+    } else {
+      return { beforeSuggestion: '', suggestionText: '', afterSuggestion: '' };
+    }
+
+    // Check if we need space
+    const lastChar = beforeCursor.slice(-1);
+    const firstSuggestionChar = suggestionToShow.charAt(0);
 
     const needsSpace =
       beforeCursor.length > 0 &&
-      !beforeCursor.endsWith(' ') &&
-      suggestionToShow.length > 0;
+      lastChar !== ' ' &&
+      firstSuggestionChar !== ' ' &&
+      /[a-zA-Z0-9]/.test(lastChar);
+
     const separator = needsSpace ? ' ' : '';
 
     return {
@@ -419,15 +461,21 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
       suggestionText: suggestionToShow,
       afterSuggestion: afterCursor,
     };
-  }, [showSuggestion, currentSuggestion, value, extractSuggestionText]);
+  }, [
+    showSuggestion,
+    currentSuggestion,
+    value,
+    extractSuggestionText,
+    removeAllQuotes,
+  ]);
 
   // Animated Placeholder functionality
   useEffect(() => {
-    if (!showPlaceholder || hasUserInteracted) return;
+    if (!showPlaceholder || hasUserTyped) return;
 
     const currentMessage = messages[currentMessageIndex];
     const targetText = currentMessage.text;
-    const typingSpeed = currentMessage.delay || 60;
+    const typingSpeed = currentMessage.delay || 50;
 
     setIsTyping(true);
     setDisplayedText('');
@@ -441,98 +489,138 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         typingTimeoutRef.current = setTimeout(typeChar, typingSpeed);
       } else {
         setIsTyping(false);
-        // Wait 1.5 seconds before moving to next message
         messageTimeoutRef.current = setTimeout(() => {
           setCurrentMessageIndex(prev => (prev + 1) % messages.length);
-        }, 1500);
+        }, 100);
       }
     };
 
-    // Start typing after a brief delay
-    typingTimeoutRef.current = setTimeout(typeChar, 300);
+    typingTimeoutRef.current = setTimeout(typeChar, 100);
 
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      if (messageTimeoutRef.current) {
-        clearTimeout(messageTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
     };
-  }, [currentMessageIndex, showPlaceholder, hasUserInteracted, messages]);
+  }, [currentMessageIndex, showPlaceholder, hasUserTyped, messages]);
 
-  // Show placeholder again if user clears the textarea
   useEffect(() => {
-    if (value.length === 0 && hasUserInteracted) {
-      // Reset after 3 seconds of empty textarea
-      const resetTimeout = setTimeout(() => {
-        setHasUserInteracted(false);
-        setShowPlaceholder(true);
-        setCurrentMessageIndex(0);
-      }, 3000);
-
-      return () => clearTimeout(resetTimeout);
+    if (value.length === 0 && hasUserTyped) {
+      setHasUserTyped(false);
+      setShowPlaceholder(true);
+      setCurrentMessageIndex(0);
     }
-  }, [value.length, hasUserInteracted]);
+  }, [value.length, hasUserTyped]);
 
-  // Combined event handlers
+  // Enhanced scroll handler
+  const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
+    const newScrollTop = e.currentTarget.scrollTop;
+    setScrollTop(newScrollTop);
+
+    if (overlayRef.current) {
+      requestAnimationFrame(() => {
+        const overlayInner = overlayRef.current?.querySelector(
+          '.suggestion-inner'
+        ) as HTMLDivElement;
+        if (overlayInner) {
+          overlayInner.style.transform = `translateY(-${newScrollTop}px)`;
+        }
+      });
+    }
+  }, []);
+
+  // Enhanced suggestion triggering logic
+  const shouldTriggerSuggestion = useCallback(
+    (newValue: string, newCursorPosition: number): boolean => {
+      // First check if content is form-related
+      if (!detectFormContent(newValue)) {
+        return false;
+      }
+
+      const isAtEnd = newCursorPosition === newValue.length;
+      const textLength = newValue.length;
+
+      // Always trigger if at the end and typing
+      if (isAtEnd && textLength > value.length) {
+        return true;
+      }
+
+      // Trigger if user has modified accepted suggestion and is at the end
+      if (isAtEnd && textLength !== lastSuggestionTextLength) {
+        const changesSinceLastAccepted = Math.abs(
+          newCursorPosition - lastAcceptedPosition
+        );
+        const changesSinceLastSuggestion = Math.abs(
+          textLength - lastSuggestionTextLength
+        );
+
+        if (changesSinceLastAccepted >= 3 || changesSinceLastSuggestion >= 2) {
+          return true;
+        }
+      }
+
+      // Trigger for new users
+      if (isAtEnd && lastAcceptedPosition === 0 && textLength > 5) {
+        return true;
+      }
+
+      return false;
+    },
+    [
+      value.length,
+      lastAcceptedPosition,
+      lastSuggestionTextLength,
+      detectFormContent,
+    ]
+  );
+
+  // Event handlers
   const handleTextareaChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = e.target.value;
       const newCursorPosition = e.target.selectionStart;
 
-      // Handle animated placeholder
-      if (!hasUserInteracted) {
-        setHasUserInteracted(true);
+      if (!hasUserTyped && newValue.length > 0) {
+        setHasUserTyped(true);
         setShowPlaceholder(false);
       }
+
+      // Update form content detection
+      const isFormRelated = detectFormContent(newValue);
+      setIsFormContent(isFormRelated);
 
       onChange(e);
       setCursorPosition(newCursorPosition);
 
-      const isAtEnd = newCursorPosition === newValue.length;
-
-      // AI Suggestions logic
-      if (isAtEnd && newValue.length > value.length) {
-        const distanceFromLastAccepted =
-          newCursorPosition - lastAcceptedPosition;
-
-        const shouldTriggerNewSuggestion =
-          distanceFromLastAccepted >= 1 ||
-          lastAcceptedPosition === 0 ||
-          newValue.length < 10;
-
-        if (shouldTriggerNewSuggestion) {
-          generateSuggestions(newValue, newCursorPosition);
-        }
+      if (shouldTriggerSuggestion(newValue, newCursorPosition)) {
+        generateSuggestions(newValue, newCursorPosition);
+        setLastSuggestionTextLength(newValue.length);
       } else if (newValue.length === 0) {
         setLastAcceptedPosition(0);
+        setLastSuggestionTextLength(0);
         clearSuggestions();
         setShowSuggestion(false);
-      } else if (!isAtEnd) {
+      } else if (newCursorPosition !== newValue.length || !isFormRelated) {
         clearSuggestions();
         setShowSuggestion(false);
       }
     },
     [
       onChange,
-      value.length,
-      lastAcceptedPosition,
+      hasUserTyped,
+      shouldTriggerSuggestion,
       generateSuggestions,
       clearSuggestions,
-      hasUserInteracted,
+      detectFormContent,
     ]
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Handle animated placeholder
-      if (!hasUserInteracted) {
-        setHasUserInteracted(true);
+      if (!hasUserTyped && e.key.length === 1) {
+        setHasUserTyped(true);
         setShowPlaceholder(false);
       }
 
-      // Handle AI suggestions
       if (showSuggestion && currentSuggestion) {
         switch (e.key) {
           case 'Tab':
@@ -561,42 +649,31 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
       handleSuggestionAccepted,
       clearSuggestions,
       onKeyDown,
-      hasUserInteracted,
+      hasUserTyped,
     ]
   );
 
   const handleFocus = () => {
-    // Handle animated placeholder
-    setHasUserInteracted(true);
-    setShowPlaceholder(false);
-
-    // Handle AI suggestions
     const isAtEnd = cursorPosition === value.length;
-    if (value.trim().length > 0 && isAtEnd) {
-      const distanceFromLastAccepted = cursorPosition - lastAcceptedPosition;
-      if (distanceFromLastAccepted >= 1 || lastAcceptedPosition === 0) {
+    if (value.trim().length > 0 && isAtEnd && detectFormContent(value)) {
+      if (shouldTriggerSuggestion(value, cursorPosition)) {
         generateSuggestions(value, cursorPosition);
+        setLastSuggestionTextLength(value.length);
       }
     }
   };
 
   const handleClick = () => {
-    // Handle animated placeholder
-    setHasUserInteracted(true);
-    setShowPlaceholder(false);
-
-    // Handle AI suggestions
     const textarea = textareaRef.current;
     if (textarea) {
       const newCursorPosition = textarea.selectionStart;
       setCursorPosition(newCursorPosition);
 
       const isAtEnd = newCursorPosition === value.length;
-      if (value.trim().length > 0 && isAtEnd) {
-        const distanceFromLastAccepted =
-          newCursorPosition - lastAcceptedPosition;
-        if (distanceFromLastAccepted >= 1 || lastAcceptedPosition === 0) {
+      if (value.trim().length > 0 && isAtEnd && detectFormContent(value)) {
+        if (shouldTriggerSuggestion(value, newCursorPosition)) {
           generateSuggestions(value, newCursorPosition);
+          setLastSuggestionTextLength(value.length);
         }
       } else {
         clearSuggestions();
@@ -616,31 +693,61 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
   const { beforeSuggestion, suggestionText } = getSuggestionDisplay();
 
   return (
-    <div className='relative'>
-      {/* Hidden measurer for AI suggestions */}
+    <div ref={containerRef} className='relative'>
+      {/* Hidden measurer */}
       <div
         ref={measureRef}
-        className='absolute invisible pointer-events-none top-0 left-0 z-[-1]'
+        className='absolute invisible pointer-events-none'
         style={{
+          top: 0,
+          left: 0,
+          zIndex: -1,
           whiteSpace: 'pre-wrap',
           wordWrap: 'break-word',
           overflow: 'hidden',
+          resize: 'none',
         }}
         aria-hidden='true'
       />
 
+      {/* Form Content Indicator */}
+      {/* {hasUserTyped && value.length > 10 && (
+        <div className='absolute -top-6 left-0 text-xs flex items-center gap-2'>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              isFormContent ? 'bg-green-500' : 'bg-orange-500'
+            }`}
+          ></div>
+          <span
+            className={`${
+              isFormContent ? 'text-green-600' : 'text-orange-600'
+            }`}
+          >
+            {isFormContent
+              ? '✓ Form content detected'
+              : '⚠ Focus on form creation'}
+            {formType && formType !== 'general_form' && (
+              <span className='ml-1 text-gray-500'>
+                ({formType.replace('_', ' ')})
+              </span>
+            )}
+          </span>
+        </div>
+      )} */}
+
       {/* Animated Placeholder Overlay */}
-      {showPlaceholder && !hasUserInteracted && value.length === 0 && (
+      {showPlaceholder && !hasUserTyped && value.length === 0 && (
         <div
-          className='absolute inset-0 pointer-events-none flex items-start z-10'
+          className='absolute inset-0 pointer-events-none flex items-start'
           style={{
-            padding: '12px 16px',
+            padding: '12px 12px',
             fontSize: 'inherit',
             lineHeight: 'inherit',
             fontFamily: 'inherit',
+            zIndex: 10,
           }}
         >
-          <span className='text-[#6C73A8] select-none'>
+          <span className='text-[#6C73A8] select-none leading-relaxed'>
             {displayedText}
             {isTyping && (
               <span className='animate-pulse text-[#6C73A8] ml-1'>|</span>
@@ -649,48 +756,78 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         </div>
       )}
 
-      {/* AI Suggestions Overlay */}
-      <div
-        ref={overlayRef}
-        className='absolute inset-0 pointer-events-none'
-        style={{
-          font: 'inherit',
-          fontSize: 'inherit',
-          lineHeight: 'inherit',
-          padding: '12px 16px',
-          border: '1px solid transparent',
-          borderRadius: '12px',
-          whiteSpace: 'pre-wrap',
-          wordWrap: 'break-word',
-          overflow: 'hidden',
-          maxHeight: '200px',
-          boxSizing: 'border-box',
-          clipPath: 'inset(0)',
-          zIndex: 5,
-        }}
-      >
-        <span
-          className='text-transparent select-none'
+      {/* AI Suggestions Overlay with 4-line boundary control */}
+      {showSuggestion && suggestionText && isFormContent && (
+        <div
+          ref={overlayRef}
+          className='absolute pointer-events-none'
           style={{
+            top: '12px',
+            left: '12px',
+            right: '12px',
+            height: '96px',
+            fontSize: 'inherit',
+            lineHeight: 'inherit',
+            fontFamily: 'inherit',
             whiteSpace: 'pre-wrap',
             wordWrap: 'break-word',
+            overflow: 'hidden',
+            zIndex: 5,
+            clipPath: 'inset(0px)',
           }}
         >
-          {beforeSuggestion}
-        </span>
-        {suggestionText && (
-          <span
-            className='text-gray-400 select-none'
+          <div
+            className='suggestion-inner'
             style={{
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word',
-              display: 'inline',
+              transform: `translateY(-${scrollTop}px)`,
+              width: '100%',
+              minHeight: `${Math.max(
+                (textareaRef.current?.scrollHeight || 200) - 24,
+                200
+              )}px`,
+              transition: 'transform 0.1s ease-out',
             }}
           >
-            {suggestionText}
-          </span>
-        )}
-      </div>
+            {/* Invisible text up to cursor */}
+            <span
+              style={{
+                opacity: 0,
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                fontSize: 'inherit',
+                lineHeight: 'inherit',
+                fontFamily: 'inherit',
+                letterSpacing: 'inherit',
+                wordSpacing: 'inherit',
+              }}
+            >
+              {beforeSuggestion}
+            </span>
+            {/* Visible suggestion text */}
+            <span
+              style={{
+                color: '#9CA3AF',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                fontSize: 'inherit',
+                lineHeight: 'inherit',
+                fontFamily: 'inherit',
+                letterSpacing: 'inherit',
+                wordSpacing: 'inherit',
+                display: 'inline',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                boxShadow: 'none',
+                maxWidth: '100%',
+                overflowWrap: 'break-word',
+              }}
+            >
+              {removeAllQuotes(suggestionText)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Main textarea */}
       <textarea
@@ -701,8 +838,9 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onClick={handleClick}
+        onScroll={handleScroll}
         placeholder={placeholder}
-        className={`${className} relative z-10 bg-transparent resize-none`}
+        className={className}
         disabled={disabled}
         maxLength={maxLength}
         style={{
@@ -710,16 +848,22 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
           whiteSpace: 'pre-wrap',
           wordWrap: 'break-word',
           overflow: 'auto',
+          background: 'transparent',
+          resize: 'none',
+          position: 'relative',
+          zIndex: 10,
+          scrollBehavior: 'smooth',
         }}
       />
 
+      {/* Loading indicator */}
       {isLoading && (
-        <div className='absolute top-2 right-2 z-20'>
+        <div className='absolute top-2 right-2' style={{ zIndex: 20 }}>
           <div className='w-4 h-4 border-2 border-purple-200 border-t-purple-500 rounded-full animate-spin'></div>
         </div>
       )}
 
-      {/* UPDATED: Always show instruction text, conditionally show word count */}
+      {/* Enhanced instruction text */}
       <div className='absolute -bottom-6 left-0 text-xs text-gray-500 flex items-center gap-2'>
         <span>💡 Tab to accept</span>
         <span>•</span>
@@ -727,7 +871,9 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         {showSuggestion && suggestionText && (
           <>
             <span>•</span>
-            <span>{suggestionText.split(' ').length} words</span>
+            <span>
+              {removeAllQuotes(suggestionText).split(' ').length} words
+            </span>
           </>
         )}
       </div>

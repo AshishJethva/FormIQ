@@ -113,31 +113,31 @@ export class AIFormGeneratorService {
       // If title exists, generate variations
       let uniqueTitle = baseTitle;
       let counter = 1;
-      let maxAttempts = 10;
+      let maxAttempts = 50;
 
       while (counter <= maxAttempts) {
-        // Strategy 1: Add timestamp-based suffix
-        if (counter <= 3) {
+        // Strategy 1: Add incremental number (1, 2, 3...)
+        if (counter <= 20) {
+          uniqueTitle = `${baseTitle} ${counter}`;
+        }
+        // Strategy 2: Add timestamp-based suffix
+        else if (counter <= 30) {
           const timestamp = new Date()
             .toISOString()
             .slice(5, 16)
             .replace(/[-:]/g, '');
           uniqueTitle = `${baseTitle} ${timestamp}`;
         }
-        // Strategy 2: Add incremental number
-        else if (counter <= 6) {
-          uniqueTitle = `${baseTitle} (${counter - 3})`;
-        }
         // Strategy 3: Add descriptive suffix
-        else if (counter === 7) {
-          uniqueTitle = `${baseTitle} - Copy`;
-        } else if (counter === 8) {
-          uniqueTitle = `${baseTitle} - Version ${counter - 6}`;
+        else if (counter <= 40) {
+          const suffixes = ['Copy', 'Version', 'Draft', 'New'];
+          const suffix = suffixes[(counter - 31) % suffixes.length];
+          uniqueTitle = `${baseTitle} ${suffix} ${counter - 30}`;
         }
-        // Strategy 4: Add user-specific suffix
+        // Strategy 4: Add random suffix
         else {
-          const userSuffix = userId.slice(-4);
-          uniqueTitle = `${baseTitle} - ${userSuffix}${counter}`;
+          const randomSuffix = Math.random().toString(36).substring(2, 6);
+          uniqueTitle = `${baseTitle} ${randomSuffix}`;
         }
 
         // Check if this variation is available
@@ -150,8 +150,8 @@ export class AIFormGeneratorService {
       }
 
       // Fallback: Add UUID if all attempts failed
-      const { v4: uuidv4 } = require('uuid');
-      uniqueTitle = `${baseTitle} - ${uuidv4().slice(0, 8)}`;
+      const uuid = require('crypto').randomUUID().substring(0, 8);
+      uniqueTitle = `${baseTitle} ${uuid}`;
 
       return uniqueTitle;
     } catch (error) {

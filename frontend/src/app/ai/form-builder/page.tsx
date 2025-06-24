@@ -1,4 +1,4 @@
-// src/app/ai/form-builder/page.tsx (FIXED OVERFLOW)
+// src/app/ai/form-builder/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -22,31 +22,39 @@ export default function AIFormBuilderPage() {
 
   const maxCharacters = 500;
 
-  // Custom animated messages for form generation
+  // UPDATED: Enhanced animated messages with longer, more comprehensive content
   const animatedMessages = [
     {
-      text: 'I want to build a job application form for my company',
-      delay: 50,
+      text: 'I want to build a comprehensive job application form for my company with sections for personal information, work experience history, education background, resume file upload and cover letter submission.',
+      delay: 42,
     },
     {
-      text: 'I want to build a registration form for student events',
-      delay: 55,
-    },
-    {
-      text: 'I want to build a feedback form for my customers',
-      delay: 60,
-    },
-    {
-      text: 'I want to build a quiz form with automatic scoring',
+      text: 'I want to build a detailed student event registration form with participant information, emergency contact details, dietary restrictions and allergies, accommodation preferences and payment processing options.',
       delay: 45,
     },
     {
-      text: 'I want to build a survey form for market research',
-      delay: 65,
+      text: 'I want to build an advanced customer feedback form for my business with multi-level satisfaction ratings, service quality evaluation metrics and product improvement suggestions.',
+      delay: 48,
     },
     {
-      text: 'I want to build a contact form for website visitors',
-      delay: 50,
+      text: 'I want to build an interactive quiz form with automatic scoring capabilities featuring multiple choice questions, true/false statements, fill-in-the-blank sections, image-based questions and time limits.',
+      delay: 40,
+    },
+    {
+      text: 'I want to build a comprehensive market research survey form with demographic profiling questions, consumer preference ratings, behavioral analysis sections and statistical data collection.',
+      delay: 46,
+    },
+    {
+      text: 'I want to build a professional contact form for website visitors with intelligent inquiry categorization, priority level selection, file attachment capabilities and automated response system.',
+      delay: 44,
+    },
+    {
+      text: 'I want to build a medical patient intake form with comprehensive health history, current medications list, allergy information, insurance details, emergency contacts and appointment scheduling preferences.',
+      delay: 43,
+    },
+    {
+      text: 'I want to build an event planning questionnaire with venue requirements, catering preferences, guest count estimation, budget constraints, timeline planning and special accommodations.',
+      delay: 47,
     },
   ];
 
@@ -112,16 +120,16 @@ export default function AIFormBuilderPage() {
   const handleTemplateClick = (template: string) => {
     const templatePrompts: { [key: string]: string } = {
       'Quiz Assessment':
-        'I want to build a knowledge quiz form with 8 single choice questions, each with predefined correct answers, multiple choice scenarios, fill-in-the-blank questions, and automatic scoring for student assessment and learning evaluation.',
+        'I want to build a comprehensive knowledge assessment quiz form with 10-12 single choice questions, each with predefined correct answers, multiple choice scenarios with detailed explanations and fill-in-the-blank questions for key concepts.',
 
       'Job Application':
-        'I need a comprehensive job application form with personal information (full name, email, phone, address), work experience details, education background, technical skills assessment, resume file upload, cover letter upload, and digital signature for application consent.',
+        'I need a detailed job application form with complete personal information section with resume file upload and cover letter submission.',
 
       'Customer Survey':
-        'I want to build a customer research survey form with 5 rating scale fields, satisfaction level dropdowns with options like "Excellent/Very Good/Good/Fair/Poor", service quality ratings, recommendation likelihood scales, and detailed feedback sections for market analysis.',
+        'I want to build a comprehensive customer survey form with 8-10 rating scale fields, satisfaction level dropdowns with options like Excellent/Very Good/Good/Fair/Poor.',
 
       'Customer Feedback':
-        'I want to build a customer experience feedback form with detailed comment sections asking "How was your experience?", "What could we improve?", "Share your thoughts about our service", experience description fields, and improvement suggestion areas for business enhancement.',
+        'I want to build a detailed customer feedback form with comprehensive comment sections asking How was your overall experience, What specific aspects could we improve and customer relationship management.',
     };
 
     setPrompt(templatePrompts[template] || '');
@@ -203,14 +211,14 @@ export default function AIFormBuilderPage() {
         <div className='bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8'>
           <div className='flex flex-col lg:flex-row gap-4'>
             <div className='flex-1'>
-              {/* UPDATED: Using CombinedAITextarea with both animations and AI suggestions */}
+              {/* UPDATED: Using CombinedAITextarea with enhanced animations and AI suggestions */}
               <div className='relative'>
                 <CombinedAITextarea
                   value={prompt}
                   onChange={handlePromptChange}
                   onKeyDown={handleKeyDown}
                   messages={animatedMessages}
-                  className='w-full min-h-[120px] max-h-[200px] px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 transition-all duration-200 overflow-y-auto'
+                  className='w-full min-h-[112px] max-h-[200px] px-3 py-3 pb-6 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 transition-all duration-200 overflow-y-auto'
                   disabled={isGenerating}
                   maxLength={maxCharacters}
                 />

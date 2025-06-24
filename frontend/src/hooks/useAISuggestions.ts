@@ -8,12 +8,14 @@ interface SuggestionState {
   suggestions: string[];
   isLoading: boolean;
   error: string | null;
+  formType?: string;
 }
 
 interface UseAISuggestionsReturn {
   suggestions: string[];
   isLoading: boolean;
   error: string | null;
+  formType?: string;
   generateSuggestions: (text: string, cursorPosition: number) => void;
   clearSuggestions: () => void;
 }
@@ -23,156 +25,298 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
     suggestions: [],
     isLoading: false,
     error: null,
+    formType: undefined,
   });
 
   const abortController = useRef<AbortController | null>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const extractContext = useCallback((text: string, cursorPosition: number) => {
-    const beforeCursor = text.substring(0, cursorPosition);
-    const afterCursor = text.substring(cursorPosition);
+  // Form-specific keywords for trigger detection
+  const formTriggerKeywords = new Set([
+    'form',
+    'field',
+    'input',
+    'question',
+    'survey',
+    'quiz',
+    'feedback',
+    'application',
+    'registration',
+    'contact',
+    'booking',
+    'order',
+    'upload',
+    'validation',
+    'required',
+    'optional',
+    'multiple',
+    'choice',
+    'rating',
+    'scale',
+    'dropdown',
+    'checkbox',
+    'radio',
+    'button',
+    'personal',
+    'information',
+    'details',
+    'address',
+    'name',
+    'email',
+    'phone',
+    'date',
+    'time',
+    'number',
+    'text',
+    'message',
+    'comment',
+  ]);
 
-    const lastWordMatch = beforeCursor.match(/\b(\w*)$/);
-    const lastWord = lastWordMatch ? lastWordMatch[1] : '';
+  const detectFormIntent = useCallback((text: string): boolean => {
+    const lowerText = text.toLowerCase();
 
-    // Get last 80 characters for context
-    const contextStart = Math.max(0, cursorPosition - 80);
-    const context = beforeCursor.substring(contextStart);
+    // Strong form indicators
+    const formIndicators = [
+      'i want to build a',
+      'i want to create a',
+      'i need to build a',
+      'i need to create a',
+      'i want to make a',
+      'create a form',
+      'build a form',
+      'make a form',
+      'design a form',
+      'form with',
+      'form for',
+      'application form',
+      'registration form',
+      'contact form',
+      'feedback form',
+      'survey form',
+      'quiz form',
+      'booking form',
+    ];
 
-    return {
-      context,
-      lastWord,
-      beforeCursor,
-      afterCursor,
-      isAtWordEnd: /\s$/.test(beforeCursor) || beforeCursor.length === 0,
-    };
+    const hasFormIndicator = formIndicators.some(indicator =>
+      lowerText.includes(indicator)
+    );
+
+    // Check for form-related keywords
+    const words = lowerText.split(/\s+/);
+    const hasFormKeywords = words.some(word => formTriggerKeywords.has(word));
+
+    return hasFormIndicator || hasFormKeywords;
   }, []);
 
-  // FIXED: Clean fallback suggestions without ellipsis
-  const getFastFallbackSuggestions = useCallback(
+  const getFormFocusedFallbacks = useCallback(
     (text: string, cursorPosition: number): string[] => {
       const beforeCursor = text
         .substring(0, cursorPosition)
         .toLowerCase()
         .trim();
 
-      // FIXED: Clean, complete suggestions without truncation
-      const suggestionMap = new Map([
+      // Enhanced form-only fallback mappings
+      const formOnlyFallbacks = new Map([
+        // Job Application Forms
         [
-          'build a customer',
-          'feedback form with rating scales and comment sections',
+          'build a job application',
+          'form with resume upload and experience fields',
         ],
         [
-          'create a customer',
-          'onboarding form with contact details and preferences',
+          'create a job application',
+          'form with personal details and work history',
         ],
         [
-          'make a customer',
-          'service survey with experience ratings and comments',
+          'job application form with',
+          'personal information and professional experience sections',
         ],
-        ['build a form', 'with multiple choice questions and rating scales'],
-        ['create a form', 'for customer feedback and satisfaction evaluation'],
-        ['make a form', 'to collect user information and contact details'],
-        ['design a form', 'for event registration and participant management'],
-        ['create a', 'customer feedback form with rating scales'],
-        ['build a', 'survey form with multiple choice questions'],
-        ['make a', 'contact form with name email fields'],
-        ['design a', 'booking form with date selection options'],
-        ['generate a', 'quiz form with multiple choice questions'],
-        ['i want to create', 'a registration form with user details'],
-        ['i need to build', 'a job application form with file uploads'],
-        ['i want to make', 'a feedback form with rating system'],
-        ['i want to', 'build a professional form with validation'],
-        ['i need a', 'registration form with user verification features'],
+        [
+          'application form with',
+          'resume upload and cover letter submission fields',
+        ],
 
-        // ADDED: More specific continuations
+        // Customer Feedback Forms
+        [
+          'build a customer feedback',
+          'form with satisfaction ratings and comment sections',
+        ],
+        [
+          'create a customer feedback',
+          'form with service quality evaluation fields',
+        ],
         ['feedback form with', 'rating scales and detailed comment sections'],
-        ['registration form with', 'user verification and contact information'],
-        ['application form with', 'file uploads and personal details'],
-        ['survey form with', 'multiple choice and rating questions'],
-        ['contact form with', 'name email phone and message fields'],
-        ['quiz form with', 'multiple choice questions and automatic scoring'],
-        ['booking form with', 'date selection and customer details'],
+        [
+          'customer feedback with',
+          'satisfaction metrics and improvement suggestions',
+        ],
 
-        // ADDED: Common continuation patterns
-        ['with rating scales', 'and detailed comment sections for feedback'],
-        ['with multiple choice', 'questions and automatic scoring system'],
-        ['with file uploads', 'and personal information collection fields'],
-        ['with user verification', 'and secure login authentication system'],
-        ['with contact details', 'and communication preference settings'],
-        ['with date selection', 'and time slot booking options'],
+        // Quiz and Assessment Forms
+        [
+          'build a quiz',
+          'form with multiple choice questions and automatic scoring',
+        ],
+        [
+          'create a quiz',
+          'form with true false questions and instant feedback',
+        ],
+        [
+          'quiz form with',
+          'multiple choice questions and automatic scoring system',
+        ],
+        ['assessment form with', 'graded questions and performance tracking'],
+
+        // Survey Forms
+        ['build a survey', 'form with demographic questions and rating scales'],
+        [
+          'create a survey',
+          'form with opinion ratings and preference selections',
+        ],
+        ['survey form with', 'demographic questions and statistical analysis'],
+        ['research survey with', 'behavioral analysis and preference ratings'],
+
+        // Registration Forms
+        [
+          'build a registration',
+          'form with user account creation and verification',
+        ],
+        [
+          'create a registration',
+          'form with personal details and contact information',
+        ],
+        [
+          'registration form with',
+          'user verification and contact information fields',
+        ],
+        ['signup form with', 'account creation and password setup fields'],
+
+        // Contact Forms
+        ['build a contact', 'form with inquiry categories and message areas'],
+        ['create a contact', 'form with name email phone and message fields'],
+        [
+          'contact form with',
+          'inquiry categories and automated response system',
+        ],
+
+        // Booking Forms
+        ['build a booking', 'form with date selection and customer details'],
+        ['create a booking', 'form with time slots and service options'],
+        ['booking form with', 'date time selection and customer information'],
+
+        // General Form Continuations
+        ['form with', 'custom fields and validation rules for user input'],
+        ['with fields', 'for organized data collection and user experience'],
+        ['with validation', 'rules and error handling for required fields'],
+        [
+          'with sections',
+          'for structured information gathering and organization',
+        ],
+        ['with upload', 'functionality for documents and file attachments'],
+        ['with rating', 'scales for feedback and satisfaction measurement'],
+        ['with multiple choice', 'questions and radio button selections'],
+        ['with dropdown', 'menus and predefined option categories'],
+        ['with checkbox', 'options for multiple selections and preferences'],
+        ['with required', 'fields and proper validation messages'],
+        ['with optional', 'fields and clear user guidance labels'],
+        ['with personal', 'information fields and contact details'],
+        ['with contact', 'details and communication preferences'],
+        ['with user', 'verification and secure authentication system'],
+        ['with automatic', 'validation and real-time error checking'],
+        ['with responsive', 'design for mobile and desktop compatibility'],
+        ['with custom', 'styling and branded form appearance'],
       ]);
 
       // Check exact matches first
-      for (const [key, value] of suggestionMap) {
+      for (const [key, value] of formOnlyFallbacks) {
         if (beforeCursor.endsWith(key) || beforeCursor.endsWith(key + ' ')) {
           return [value];
         }
       }
 
-      // FIXED: Clean keyword fallbacks
-      const keywordMap = new Map([
-        ['feedback', 'with detailed comment sections and rating scales'],
-        ['quiz', 'with multiple choice questions and automatic scoring'],
-        ['survey', 'with rating scales and demographic questions'],
-        ['application', 'with file uploads and personal information fields'],
-        ['contact', 'with inquiry categories and message areas'],
-        ['registration', 'with user verification and contact information'],
-        ['booking', 'with date selection and customer details'],
-        ['customer', 'feedback form with satisfaction ratings and comments'],
-        ['rating', 'scales and detailed comment sections'],
-        ['multiple', 'choice questions with automatic scoring'],
-        ['choice', 'questions with clear answer options'],
-        ['upload', 'functionality for documents and files'],
-        ['verification', 'system with secure authentication'],
-        ['selection', 'options with clear categories'],
+      // Form-specific keyword fallbacks
+      const formKeywordFallbacks = new Map([
+        [
+          'application',
+          'form with personal details and document upload fields',
+        ],
+        ['feedback', 'form with rating scales and comment sections'],
+        ['quiz', 'form with multiple choice questions and scoring'],
+        ['survey', 'form with demographic questions and rating scales'],
+        ['registration', 'form with user verification and contact information'],
+        ['contact', 'form with inquiry categories and message areas'],
+        ['booking', 'form with date selection and customer details'],
+        ['order', 'form with product selection and payment processing'],
+        ['customer', 'information form with contact details and preferences'],
+        ['personal', 'information form with name email and address fields'],
+        ['upload', 'functionality for files and document attachments'],
+        ['validation', 'rules for required fields and data formats'],
+        ['required', 'fields with proper validation and error messages'],
+        ['optional', 'fields with clear labeling and user guidance'],
+        ['multiple', 'choice questions with radio button selections'],
+        ['checkbox', 'options for multiple selections and preferences'],
+        ['dropdown', 'menus with predefined options and categories'],
+        ['rating', 'scales for feedback and satisfaction measurement'],
       ]);
 
-      for (const [keyword, suggestion] of keywordMap) {
+      for (const [keyword, suggestion] of formKeywordFallbacks) {
         if (beforeCursor.includes(keyword)) {
           return [suggestion];
         }
       }
 
-      return ['with custom fields and validation rules'];
+      // Default form-focused fallback
+      return [
+        'with custom fields and validation for structured data collection',
+      ];
     },
     []
   );
 
   const generateSuggestions = useCallback(
     async (text: string, cursorPosition: number) => {
+      // Check if this is form-related content
+      if (!detectFormIntent(text)) {
+        setState(prev => ({ ...prev, suggestions: [] }));
+        return;
+      }
+
       const beforeCursor = text.substring(0, cursorPosition);
       const lastChar = beforeCursor.slice(-1);
 
-      // Check if we should trigger
+      // Enhanced form-specific trigger detection
       if (
         lastChar &&
         lastChar !== ' ' &&
         !beforeCursor.endsWith('. ') &&
         beforeCursor.length > 0
       ) {
-        const triggers = new Set([
-          'i want to',
+        const formTriggers = new Set([
+          'i want to build a',
+          'i want to create a',
+          'i need to build a',
+          'i need to create a',
+          'i want to make a',
           'create a',
-          'i need a',
           'build a',
           'make a',
           'design a',
           'generate a',
-          'i want to create',
-          'i need to build',
-          'i want to make',
-          'build a customer',
-          'create a customer',
-          'make a customer',
+          'form with',
           'with',
           'and',
           'including',
           'featuring',
+          'containing',
+          'application form',
+          'feedback form',
+          'quiz form',
+          'survey form',
+          'registration form',
+          'contact form',
+          'booking form',
         ]);
 
         const lowerText = beforeCursor.toLowerCase().trim();
-        const shouldTrigger = Array.from(triggers).some(
+        const shouldTrigger = Array.from(formTriggers).some(
           phrase =>
             lowerText.endsWith(phrase) || lowerText.endsWith(phrase + ' ')
         );
@@ -202,18 +346,14 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
         clearTimeout(debounceTimer.current);
       }
 
-      // FIXED: Immediate response for better UX
       debounceTimer.current = setTimeout(async () => {
         try {
           setState(prev => ({ ...prev, isLoading: true, error: null }));
-
           abortController.current = new AbortController();
-
-          const { context } = extractContext(text, cursorPosition);
 
           const token = localStorage.getItem('token');
           if (!token) {
-            const fallbackSuggestions = getFastFallbackSuggestions(
+            const fallbackSuggestions = getFormFocusedFallbacks(
               text,
               cursorPosition
             );
@@ -221,6 +361,7 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
               ...prev,
               suggestions: fallbackSuggestions,
               isLoading: false,
+              formType: 'general_form',
             }));
             return;
           }
@@ -230,8 +371,8 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
             {
               text,
               cursorPosition,
-              context,
-              maxLength: 80, // Keep short for 8-10 words
+              context: beforeCursor.substring(Math.max(0, cursorPosition - 80)),
+              maxLength: 80,
               suggestionType: 'progressive',
             },
             {
@@ -248,35 +389,48 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
             return;
           }
 
-          const { suggestions = [] } = response.data.data || {};
+          const { suggestions = [], formType = 'general_form' } =
+            response.data.data || {};
 
-          // FIXED: Clean suggestions and remove any ellipsis completely
+          // Enhanced cleaning and form validation
           const cleanedSuggestions = suggestions
             .map((s: string) => s.replace(/^['"`\s]+|['"`\s]+$/g, '').trim())
-            .map((s: string) => {
-              // FIXED: Remove any ellipsis patterns completely
-              return s
+            .map((s: string) =>
+              s
                 .replace(/\.{3,}/g, '')
                 .replace(/…/g, '')
-                .trim();
-            })
+                .trim()
+            )
             .filter((s: string) => {
               const words = s.split(' ').filter(w => w.length > 0);
-              return words.length >= 3 && words.length <= 12 && s.length > 10;
+              const isValidLength =
+                words.length >= 3 && words.length <= 12 && s.length > 10;
+
+              // Form relevance check
+              const hasFormKeywords = Array.from(formTriggerKeywords).some(
+                keyword => s.toLowerCase().includes(keyword)
+              );
+
+              const hasFormPatterns =
+                /\b(with|including|featuring|containing)\s+(field|form|section|question|input|validation|upload|selection|option|choice|rating|scale|dropdown|checkbox|radio|button)\b/i.test(
+                  s
+                );
+
+              return isValidLength && (hasFormKeywords || hasFormPatterns);
             })
             .map((s: string) => {
-              // FIXED: Ensure max 10 words without any truncation symbols
               const words = s.split(' ').filter(w => w.length > 0);
               const limitedWords = words.slice(0, 10);
               return limitedWords.join(' ');
             });
 
-          console.log('🔧 Cleaned suggestions:', cleanedSuggestions);
+          console.log('🎯 Form-focused suggestions:', cleanedSuggestions);
 
           setState(prev => ({
             ...prev,
             suggestions: cleanedSuggestions.slice(0, 1),
             isLoading: false,
+            formType,
           }));
         } catch (error: any) {
           if (error.name === 'AbortError' || axios.isCancel(error)) {
@@ -285,7 +439,7 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
 
           console.error('AI suggestion generation failed:', error);
 
-          const fallbackSuggestions = getFastFallbackSuggestions(
+          const fallbackSuggestions = getFormFocusedFallbacks(
             text,
             cursorPosition
           );
@@ -295,11 +449,12 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
             suggestions: fallbackSuggestions.slice(0, 1),
             isLoading: false,
             error: null,
+            formType: 'general_form',
           }));
         }
-      }, 20); // FIXED: Very fast response
+      }, 20);
     },
-    [extractContext, getFastFallbackSuggestions]
+    [detectFormIntent, getFormFocusedFallbacks]
   );
 
   const clearSuggestions = useCallback(() => {
@@ -313,6 +468,7 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
       ...prev,
       suggestions: [],
       isLoading: false,
+      formType: undefined,
     }));
   }, []);
 
@@ -331,6 +487,7 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
     suggestions: state.suggestions,
     isLoading: state.isLoading,
     error: state.error,
+    formType: state.formType,
     generateSuggestions,
     clearSuggestions,
   };

@@ -150,6 +150,68 @@ export const formsService = {
     }
   },
 
+  async checkFormNameExists(name: string): Promise<boolean> {
+    try {
+      const response = await api.get('/forms', {
+        params: {
+          search: name,
+          limit: 100, // Check more forms to be thorough
+        },
+      });
+
+      // Check if any form has the exact same name (case-insensitive)
+      const exactMatch = response.data.data?.some(
+        (form: any) =>
+          form.name?.toLowerCase().trim() === name.toLowerCase().trim()
+      );
+
+      return !!exactMatch;
+    } catch (error) {
+      console.warn('Error checking form name:', error);
+      return false; // Assume it doesn't exist if check fails
+    }
+  },
+
+  async createFormWithUniqueTitle(data: CreateFormData) {
+    try {
+      // First attempt with original name
+      const response = await this.createForm(data);
+      return response;
+    } catch (error: any) {
+      // If it's a duplicate name error, let backend handle the retry
+      if (
+        error.response?.data?.message?.includes('title already exists') ||
+        error.response?.data?.message?.includes('duplicate') ||
+        error.response?.status === 400
+      ) {
+        console.log('🔄 Form name conflict detected, trying with suffix...');
+
+        // Simple retry with timestamp
+        const timestamp = Date.now().toString().slice(-6); // Last 6 digits
+        const retryData = {
+          ...data,
+          name: `${data.name} ${timestamp}`,
+        };
+
+        const response = await this.createForm(retryData);
+
+        // Return with name change indication
+        return {
+          ...response,
+          data: {
+            ...response.data,
+            nameChanged: true,
+            originalName: data.name,
+            finalName: retryData.name,
+          },
+        };
+      }
+
+      // Re-throw if it's a different error
+      throw error;
+    }
+  },
+
   async createForm(data: CreateFormData) {
     const response = await api.post('/forms', data);
     return response.data;
