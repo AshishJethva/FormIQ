@@ -652,7 +652,7 @@ const FormsList: React.FC<FormsListProps> = ({
           <Button
             variant='outline'
             size='sm'
-            className='text-green-600 border-gray-300 hover:bg-green-50 cursor-pointer text-xs sm:text-sm px-2 sm:px-3'
+            className='text-green-600 border-gray-300 hover:bg-green-50 cursor-pointer text-xs sm:text-sm px-2 sm:px-3 '
             onClick={() => handleBulkAction('Restore')}
           >
             <RotateCcw className='mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4' />
@@ -770,7 +770,7 @@ const FormsList: React.FC<FormsListProps> = ({
         <div className='grid gap-2 py-4'>
           <Button
             variant='ghost'
-            className='justify-start h-12'
+            className='justify-start h-12 cursor-pointer'
             onClick={() => handleFormAction('Edit', form.id)}
           >
             <Edit className='mr-3 h-5 w-5' />
@@ -778,7 +778,7 @@ const FormsList: React.FC<FormsListProps> = ({
           </Button>
           <Button
             variant='ghost'
-            className='justify-start h-12'
+            className='justify-start h-12 cursor-pointer'
             onClick={() => handleFormAction('View', form.id)}
           >
             <Eye className='mr-3 h-5 w-5' />
@@ -789,7 +789,7 @@ const FormsList: React.FC<FormsListProps> = ({
             <>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Restore', form.id)}
               >
                 <RotateCcw className='mr-3 h-5 w-5' />
@@ -797,7 +797,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12 text-red-600'
+                className='justify-start h-12 text-red-600 cursor-pointer'
                 onClick={() => handleFormAction('Delete Permanently', form.id)}
                 disabled={isDeleting || deletingFormIds.includes(form.id)}
               >
@@ -818,7 +818,7 @@ const FormsList: React.FC<FormsListProps> = ({
             <>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Restore', form.id)}
               >
                 <RotateCcw className='mr-3 h-5 w-5' />
@@ -826,7 +826,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12 text-red-600'
+                className='justify-start h-12 text-red-600 cursor-pointer'
                 onClick={() => handleFormAction('Move to Trash', form.id)}
               >
                 <Trash2 className='mr-3 h-5 w-5' />
@@ -837,7 +837,7 @@ const FormsList: React.FC<FormsListProps> = ({
             <>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Settings', form.id)}
               >
                 <Settings className='mr-3 h-5 w-5' />
@@ -845,7 +845,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Rename', form.id)}
               >
                 <FileCog className='mr-3 h-5 w-5' />
@@ -853,7 +853,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Manage Labels', form.id)}
               >
                 <Tag className='mr-3 h-5 w-5' />
@@ -861,7 +861,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Publish Form', form.id)}
               >
                 <Share className='mr-3 h-5 w-5' />
@@ -869,7 +869,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12'
+                className='justify-start h-12 cursor-pointer'
                 onClick={() => handleFormAction('Archive', form.id)}
               >
                 <Archive className='mr-3 h-5 w-5' />
@@ -877,7 +877,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </Button>
               <Button
                 variant='ghost'
-                className='justify-start h-12 text-red-600'
+                className='justify-start h-12 text-red-600 cursor-pointer'
                 onClick={() => handleFormAction('Move to Trash', form.id)}
               >
                 <Trash2 className='mr-3 h-5 w-5' />
@@ -963,7 +963,7 @@ const FormsList: React.FC<FormsListProps> = ({
             <Button
               variant='ghost'
               size='sm'
-              className='text-gray-500 hover:bg-gray-100 cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap'
+              className='text-gray-500 hover:bg-gray-100 cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap '
               onClick={handleDeselectAll}
             >
               Cancel

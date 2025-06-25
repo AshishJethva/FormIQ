@@ -204,7 +204,7 @@ export default function FormLogo() {
         style={{
           // Let width be determined by size percentage with mobile considerations
           width:
-            logo.size >= 100 ? '100%' : `${Math.max(10, logo.size || 50)}%`, // Increased minimum from 5% to 10% for mobile visibility
+            logo.size >= 100 ? '100%' : `${Math.max(10, logo.size || 50)}%`,
           minHeight: '50px', // Reduced for mobile
           height: containerHeight,
           margin: 0,

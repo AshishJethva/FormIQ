@@ -234,7 +234,7 @@ export default function FormBuilderHeader({
           {/* Mobile Back Button */}
           <button
             onClick={handleBackClick}
-            className='flex sm:hidden items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+            className='flex sm:hidden items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer'
           >
             <ArrowLeft className='w-4 h-4 text-gray-700' />
           </button>
@@ -348,7 +348,7 @@ export default function FormBuilderHeader({
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className='flex sm:hidden items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+            className='flex sm:hidden items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer'
           >
             <Menu className='w-4 h-4 text-gray-700' />
           </button>

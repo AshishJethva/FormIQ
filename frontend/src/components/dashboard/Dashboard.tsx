@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const formsLoading = useSelector(selectFormsLoading);
   const userProfile = useSelector(selectUserProfile);
 
+  // Checking the mounting of the component
   // Local state for UI
   const [activeSection, setActiveSection] = useState('All');
   const [activeSectionData, setActiveSectionData] = useState<Label | null>(
@@ -525,7 +526,7 @@ export default function DashboardPage() {
               <Button
                 variant='ghost'
                 size='icon'
-                className='lg:hidden mr-2 h-8 w-8'
+                className='lg:hidden mr-2 h-8 w-8 cursor-pointer'
                 onClick={() => setIsMobileSidebarOpen(true)}
               >
                 <Menu className='h-5 w-5' />
@@ -668,7 +669,7 @@ export default function DashboardPage() {
                   <Button
                     variant='ghost'
                     size='icon'
-                    className='absolute -right-12 top-4 h-10 w-10 bg-white hover:bg-gray-100 shadow-lg rounded-full border z-60'
+                    className='absolute -right-12 top-4 h-10 w-10 bg-white hover:bg-gray-100 shadow-lg rounded-full border z-60 cursor-pointer'
                     onClick={() => setIsMobileSidebarOpen(false)}
                   >
                     <X className='h-5 w-5 text-gray-700' />

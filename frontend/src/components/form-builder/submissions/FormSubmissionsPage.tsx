@@ -3446,7 +3446,7 @@ const FormSubmissionsPage: React.FC = () => {
               }
               transition-all duration-200 ease-in-out
               hover:shadow-lg active:scale-95
-              w-full sm:w-auto min-w-[180px] justify-center
+              w-full sm:w-auto min-w-[180px] justify-center cursor-pointer
               text-sm
             `}
               title={
@@ -3914,7 +3914,7 @@ const FormSubmissionsPage: React.FC = () => {
                                       submission.isRead
                                     );
                                   }}
-                                  className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer h-6 w-6 lg:h-8 lg:w-8 cursor-pointer'
+                                  className='p-1 hover:bg-gray-200 rounded-full transition-colors h-6 w-6 lg:h-8 lg:w-8 cursor-pointer'
                                   title={
                                     submission.isRead
                                       ? 'Mark as unread'
@@ -3939,7 +3939,7 @@ const FormSubmissionsPage: React.FC = () => {
                                       e.stopPropagation();
                                       confirmDelete(submission.id);
                                     }}
-                                    className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors h-6 w-6 lg:h-8 lg:w-8 cursor-pointer'
+                                    className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors h-6 w-6 lg:h-8 lg:w-8'
                                     title='Delete submission'
                                   >
                                     <Trash2 className='w-3 h-3 lg:w-4 lg:h-4' />
@@ -3993,7 +3993,7 @@ const FormSubmissionsPage: React.FC = () => {
                       fetchSubmissions(pagination.current + 1, pagination.limit)
                     }
                     disabled={pagination.current === pagination.pages}
-                    className='border-gray-300 hover:bg-gray-50 cursor-pointer px-3 py-1 text-sm'
+                    className='border-gray-300 hover:bg-gray-50 cursor-pointer px-3 py-1 text-sm cursor-pointer'
                   >
                     Next
                   </Button>
@@ -4451,7 +4451,7 @@ const FormSubmissionsPage: React.FC = () => {
                                                   );
                                                 }
                                               }}
-                                              className='bg-white hover:bg-purple-50 border-purple-300 text-purple-700'
+                                              className='bg-white hover:bg-purple-50 border-purple-300 text-purple-700 cursor-pointer'
                                             >
                                               <Download className='w-4 h-4 mr-2' />
                                               Download Signature
@@ -4499,7 +4499,7 @@ const FormSubmissionsPage: React.FC = () => {
                                                   newWindow.document.close();
                                                 }
                                               }}
-                                              className='bg-white hover:bg-blue-50 border-blue-300 text-blue-700'
+                                              className='bg-white hover:bg-blue-50 border-blue-300 text-blue-700 cursor-pointer'
                                             >
                                               <Eye className='w-4 h-4 mr-2' />
                                               View Full Size
@@ -4723,7 +4723,7 @@ const FormSubmissionsPage: React.FC = () => {
                           onClick={() =>
                             evaluateSubmissionWithAI(selectedSubmission)
                           }
-                          className='bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all font-semibold px-8 py-3 text-lg'
+                          className='bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all font-semibold px-8 py-3 text-lg cursor-pointer'
                         >
                           <Brain className='w-5 h-5 mr-3' />
                           Start AI Evaluation

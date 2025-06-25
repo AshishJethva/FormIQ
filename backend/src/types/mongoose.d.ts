@@ -1,6 +1,5 @@
 import { Document, Model, Query } from 'mongoose';
 
-// Extend Mongoose Query interface
 declare module 'mongoose' {
   interface Query<ResultType, DocType extends Document, THelpers = {}>
     extends Promise<ResultType> {

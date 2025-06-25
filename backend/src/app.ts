@@ -9,7 +9,6 @@ import rateLimit from 'express-rate-limit';
 import { errorHandler } from './utils/errorHandler';
 
 import authRoutes from './routes/auth';
-import dashboardRoutes from './routes/dashboard';
 import formRoutes from './routes/forms';
 import labelRoutes from './routes/labels';
 import aiRoutes from './routes/ai';
@@ -61,7 +60,6 @@ app.use(limiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/forms', formRoutes);
 app.use('/api/labels', labelRoutes);
 app.use('/api/upload', uploadRoutes);

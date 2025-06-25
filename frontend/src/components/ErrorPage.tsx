@@ -342,7 +342,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                       <Button
                         onClick={handleRetry}
                         disabled={isRetrying}
-                        className='bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 py-4 text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]'
+                        className='cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 py-4 text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]'
                       >
                         {isRetrying ? (
                           <motion.div
@@ -374,7 +374,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                         <Button
                           onClick={handleGoBack}
                           variant='outline'
-                          className='border-gray-200 text-gray-700 hover:bg-gray-50 px-6 py-4 rounded-2xl transition-all font-semibold'
+                          className='border-gray-200 text-gray-700 hover:bg-gray-50 px-6 py-4 rounded-2xl transition-all font-semibold cursor-pointer'
                         >
                           <ArrowLeft className='w-5 h-5 mr-2' />
                           Go Back
@@ -388,7 +388,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                         <Button
                           onClick={handleGoHome}
                           variant='outline'
-                          className='border-gray-200 text-gray-700 hover:bg-gray-50 px-6 py-4 rounded-2xl transition-all font-semibold'
+                          className='border-gray-200 text-gray-700 hover:bg-gray-50 px-6 py-4 rounded-2xl transition-all font-semibold cursor-pointer'
                         >
                           <Home className='w-5 h-5 mr-2' />
                           Home
@@ -406,7 +406,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                       <Button
                         onClick={() => setShowDetails(!showDetails)}
                         variant='ghost'
-                        className='w-full text-sm text-gray-500 hover:text-gray-700 mb-4'
+                        className='w-full text-sm text-gray-500 hover:text-gray-700 mb-4 cursor-pointer'
                       >
                         <AlertTriangle className='w-4 h-4 mr-2' />
                         {showDetails ? 'Hide' : 'Show'} Developer Details
@@ -458,7 +458,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                       >
                         <Button
                           variant='outline'
-                          className='border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-xl font-semibold'
+                          className='border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-xl font-semibold cursor-pointer'
                         >
                           Contact Support
                         </Button>
@@ -470,7 +470,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                       >
                         <Button
                           variant='outline'
-                          className='border-purple-200 text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-xl font-semibold'
+                          className='border-purple-200 text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-xl font-semibold cursor-pointer'
                         >
                           View Documentation
                         </Button>

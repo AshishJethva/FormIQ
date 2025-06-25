@@ -175,9 +175,15 @@ export default function NewFormDialog({ isOpen, onClose }: NewFormDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant='outline' onClick={onClose} disabled={isCreating}>
+          <Button
+            variant='outline'
+            onClick={onClose}
+            disabled={isCreating}
+            className='cursor-pointer'
+          >
             Cancel
           </Button>
+
           <Button
             onClick={handleCreateForm}
             disabled={isCreating || !formData.name.trim()}

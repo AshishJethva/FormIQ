@@ -124,7 +124,7 @@ export default function CreateFormModal() {
           <button
             onClick={handleClose}
             disabled={effectiveIsCreating}
-            className='flex items-center cursor-pointer text-black font-medium hover:text-gray-900 transition-colors ml-6 mt-6 px-2.5 py-2 rounded-full bg-[#DADEF3] shadow-sm'
+            className='flex items-center cursor-pointer text-black font-medium hover:text-gray-900 transition-colors ml-6 mt-6 px-2.5 py-2 rounded-full bg-[#DADEF3] shadow-sm '
           >
             <svg
               xmlns='http://www.w3.org/2000/svg'

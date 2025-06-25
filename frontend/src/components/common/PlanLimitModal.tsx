@@ -38,7 +38,7 @@ const PlanLimitModal: React.FC<PlanLimitModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className='text-gray-400 hover:text-gray-600'
+            className='text-gray-400 hover:text-gray-600 cursor-pointer'
           >
             <X className='h-5 w-5' />
           </button>
@@ -73,13 +73,13 @@ const PlanLimitModal: React.FC<PlanLimitModalProps> = ({
         <div className='flex gap-3'>
           <button
             onClick={onClose}
-            className='flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+            className='flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer'
           >
             Cancel
           </button>
           <button
             onClick={handleUpgrade}
-            className='flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2'
+            className='flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer'
           >
             Upgrade Plan
             <ArrowRight className='h-4 w-4' />

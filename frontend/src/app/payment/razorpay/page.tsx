@@ -68,7 +68,7 @@ const PaymentPage = () => {
             </p>
             <button
               onClick={handleGoToAccount}
-              className='w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors'
+              className='w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors cursor-pointer'
             >
               Go to My Account
             </button>
@@ -87,13 +87,13 @@ const PaymentPage = () => {
             <div className='space-y-3'>
               <button
                 onClick={handleRetry}
-                className='w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors'
+                className='w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors cursor-pointer'
               >
                 Try Again
               </button>
               <button
                 onClick={() => router.push('/myaccount')}
-                className='w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-colors'
+                className='w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-colors cursor-pointer'
               >
                 Cancel
               </button>

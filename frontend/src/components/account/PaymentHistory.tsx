@@ -130,7 +130,7 @@ const PaymentHistory: React.FC = () => {
 
                 <button
                   onClick={() => downloadReceipt(payment.paymentId)}
-                  className='ml-4 px-3 py-2 text-blue-600 border border-blue-300 rounded hover:bg-blue-50 transition-colors flex items-center gap-2'
+                  className='ml-4 px-3 py-2 text-blue-600 border border-blue-300 cursor-pointer rounded hover:bg-blue-50 transition-colors flex items-center gap-2'
                   title='Download Receipt'
                 >
                   <Download className='h-4 w-4' />

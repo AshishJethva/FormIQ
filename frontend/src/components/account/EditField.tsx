@@ -38,7 +38,7 @@ const EditField: React.FC<EditFieldProps> = ({
           {showEdit && onEdit && (
             <button
               onClick={onEdit}
-              className='lg:ml-4 self-start lg:self-auto text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer transition-colors'
+              className='lg:ml-4 self-start lg:self-auto text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer transition-colors '
             >
               Edit
             </button>

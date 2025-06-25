@@ -1,215 +1,43 @@
 import express from 'express';
-import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';
-import Label from '../models/Label';
-import Form from '../models/Form';
 import { validate } from '../middleware/validation';
-import { asyncHandler } from '../utils/asyncHandler';
-import { ApiError } from '../utils/apiBasicError';
 import {
   createLabelSchema,
   updateLabelSchema,
 } from '../validation/labelValidation';
-import mongoose from 'mongoose';
+import {
+  getAllLabels,
+  getLabelById,
+  createLabel,
+  updateLabel,
+  deleteLabel,
+} from '../controllers/labelsController';
 
 const router = express.Router();
 
-// @desc    Get all labels for authenticated user
 // @route   GET /api/labels
+// @desc    Get all labels for authenticated user with optional search
 // @access  Private
-router.get(
-  '/',
-  protect,
-  asyncHandler(async (req: Request, res: Response) => {
-    const { search } = req.query;
+router.get('/', protect, getAllLabels);
 
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-    const query: any = { userId };
-
-    // Simple text search - only search by label name
-    if (search && typeof search === 'string' && search.trim()) {
-      query.name = { $regex: search.trim(), $options: 'i' }; // Case insensitive search
-    }
-
-    // Always sort by newest first
-    const labels = await Label.find(query).sort({ createdAt: -1 });
-
-    // Transform to match frontend expectations
-    const transformedLabels = labels.map(label => ({
-      id: label.id,
-      name: label.name,
-      color: label.color,
-      createdAt: label.createdAt.getTime(), // Convert Date to timestamp
-    }));
-
-    res.status(200).json({
-      success: true,
-      data: transformedLabels,
-    });
-  })
-);
-
-// @desc    Get single label
 // @route   GET /api/labels/:id
+// @desc    Get single label by ID
 // @access  Private
-router.get(
-  '/:id',
-  protect,
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
+router.get('/:id', protect, getLabelById);
 
-    // Validate ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      throw new ApiError('Invalid label ID format', 400);
-    }
-
-    const label = await Label.findOne({
-      _id: req.params.id,
-      userId,
-    });
-
-    if (!label) {
-      throw new ApiError('Label not found', 404);
-    }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        id: label.id,
-        name: label.name,
-        color: label.color,
-        createdAt: label.createdAt.getTime(),
-      },
-    });
-  })
-);
-
-// @desc    Create new label
 // @route   POST /api/labels
+// @desc    Create new label with validation
 // @access  Private
-router.post(
-  '/',
-  protect,
-  validate(createLabelSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { name, color } = req.body;
+router.post('/', protect, validate(createLabelSchema), createLabel);
 
-    // Check if label with same name exists for this user
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-    const existingLabel = await Label.findOne({ name, userId });
-    if (existingLabel) {
-      throw new ApiError('Label with this name already exists', 400);
-    }
-
-    const label = await Label.create({
-      name,
-      color,
-      userId,
-    });
-
-    res.status(201).json({
-      success: true,
-      data: {
-        id: label.id,
-        name: label.name,
-        color: label.color,
-        createdAt: label.createdAt.getTime(),
-      },
-      message: 'Label created successfully',
-    });
-  })
-);
-
-// @desc    Update label
 // @route   PUT /api/labels/:id
+// @desc    Update existing label with validation
 // @access  Private
-router.put(
-  '/:id',
-  protect,
-  validate(updateLabelSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
+router.put('/:id', protect, validate(updateLabelSchema), updateLabel);
 
-    // Validate ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      throw new ApiError('Invalid label ID format', 400);
-    }
-
-    const label = await Label.findOne({
-      _id: req.params.id,
-      userId,
-    });
-
-    if (!label) {
-      throw new ApiError('Label not found', 404);
-    }
-
-    const { name, color } = req.body;
-
-    // Check if name already exists (if name is being updated)
-    if (name && name !== label.name) {
-      const existingLabel = await Label.findOne({
-        name,
-        userId,
-        _id: { $ne: req.params.id },
-      });
-      if (existingLabel) {
-        throw new ApiError('Label with this name already exists', 400);
-      }
-    }
-
-    // Update label
-    if (name !== undefined) label.name = name;
-    if (color !== undefined) label.color = color;
-
-    await label.save();
-
-    res.status(200).json({
-      success: true,
-      data: {
-        id: label.id,
-        name: label.name,
-        color: label.color,
-        createdAt: label.createdAt.getTime(),
-      },
-      message: 'Label updated successfully',
-    });
-  })
-);
-
-// @desc    Delete label
 // @route   DELETE /api/labels/:id
+// @desc    Delete label and remove from all associated forms
 // @access  Private
-router.delete(
-  '/:id',
-  protect,
-  asyncHandler(async (req: Request, res: Response) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-
-    // Validate ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      throw new ApiError('Invalid label ID format', 400);
-    }
-
-    const label = await Label.findOne({
-      _id: req.params.id,
-      userId,
-    });
-
-    if (!label) {
-      throw new ApiError('Label not found', 404);
-    }
-
-    // Remove label from all forms
-    await Form.updateMany({ userId }, { $pull: { labels: req.params.id } });
-
-    await Label.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Label deleted successfully',
-    });
-  })
-);
+router.delete('/:id', protect, deleteLabel);
 
 export default router;
