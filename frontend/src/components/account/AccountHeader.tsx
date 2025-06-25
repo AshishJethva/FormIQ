@@ -1,4 +1,3 @@
-// src/components/account/AccountHeader.tsx
 import React from 'react';
 
 interface AccountHeaderProps {

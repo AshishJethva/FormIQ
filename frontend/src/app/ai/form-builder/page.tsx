@@ -1,4 +1,3 @@
-// src/app/ai/form-builder/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -22,7 +21,6 @@ export default function AIFormBuilderPage() {
 
   const maxCharacters = 500;
 
-  // UPDATED: Enhanced animated messages with longer, more comprehensive content
   const animatedMessages = [
     {
       text: 'I want to build a comprehensive job application form for my company with sections for personal information, work experience history, education background, resume file upload and cover letter submission.',
@@ -211,7 +209,6 @@ export default function AIFormBuilderPage() {
         <div className='bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-8'>
           <div className='flex flex-col lg:flex-row gap-4'>
             <div className='flex-1'>
-              {/* UPDATED: Using CombinedAITextarea with enhanced animations and AI suggestions */}
               <div className='relative'>
                 <CombinedAITextarea
                   value={prompt}

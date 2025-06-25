@@ -1,5 +1,3 @@
-// src/hooks/useAISuggestions.ts
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
@@ -423,8 +421,6 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
               const limitedWords = words.slice(0, 10);
               return limitedWords.join(' ');
             });
-
-          console.log('🎯 Form-focused suggestions:', cleanedSuggestions);
 
           setState(prev => ({
             ...prev,

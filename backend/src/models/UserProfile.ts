@@ -1,5 +1,3 @@
-// src/models/UserProfile.ts
-
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUserProfile extends Document {

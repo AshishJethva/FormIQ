@@ -1,4 +1,3 @@
-// src/components/modals/FormTemplatesModal.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -3136,7 +3135,7 @@ export default function FormTemplatesModal() {
             <button
               onClick={handleBack}
               disabled={isCreating}
-              className='flex items-center cursor-pointer text-white/90 hover:text-white transition-all duration-200 ml-2 px-4 py-2 rounded-xl hover:bg-white/10 backdrop-blur-sm'
+              className='flex items-center cursor-pointer text-white/90 hover:text-white transition-all duration-200 ml-2 px-4 py-2 rounded-xl hover:bg-white/10 backdrop-blur-sm '
             >
               <ArrowLeft size={20} className='mr-2' />
               <span className='font-medium'>Back</span>

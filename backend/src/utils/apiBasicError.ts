@@ -1,4 +1,3 @@
-// src/utils/ApiError.ts - Custom API Error Class
 export class ApiError extends Error {
   statusCode: number;
 

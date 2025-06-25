@@ -1,5 +1,3 @@
-// src/app/auth/login/page.tsx
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -165,7 +163,7 @@ export default function LoginPage() {
                   <div className='absolute inset-y-0 right-0 pr-3.5 flex items-center'>
                     <button
                       type='button'
-                      className='text-indigo-500 hover:text-indigo-600 focus:outline-none transition-colors p-1.5 rounded-full hover:bg-indigo-50 cursor-pointer'
+                      className='text-indigo-500 hover:text-indigo-600  focus:outline-none transition-colors p-1.5 rounded-full hover:bg-indigo-50 cursor-pointer'
                       onClick={togglePasswordVisibility}
                       aria-label={
                         showPassword ? 'Hide password' : 'Show password'
@@ -235,7 +233,7 @@ export default function LoginPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className={`w-full py-2 px-5 flex justify-center items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer focus:ring-indigo-500 text-base mt-6 ${
+                className={`w-full  py-2 px-5 flex justify-center items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer focus:ring-indigo-500 text-base mt-6 ${
                   isLoading
                     ? 'opacity-90 cursor-not-allowed'
                     : 'hover:from-indigo-700 hover:to-purple-700'

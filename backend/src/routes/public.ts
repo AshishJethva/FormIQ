@@ -1,4 +1,3 @@
-// src/routes/public.ts - Updated with Form Status Integration
 import express from 'express';
 import { Request, Response } from 'express';
 import Form from '../models/Form';

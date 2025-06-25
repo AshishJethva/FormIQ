@@ -1,4 +1,3 @@
-// src/redux/store.ts
 import userReducer from './slices/auth/userSlice';
 import appReducer from '@/redux/slices/appSlice';
 import formReducer from '@/redux/slices/dashboard/formsSlice';

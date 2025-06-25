@@ -1,4 +1,3 @@
-// src/app/myaccount/layout.tsx
 import React from 'react';
 import { Metadata } from 'next';
 import { Navbar } from '@/components/dashboard';

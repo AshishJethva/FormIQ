@@ -1,4 +1,3 @@
-// src/components/form-builder/properties-panel/LogoPropertiesPanel.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -25,7 +24,7 @@ interface TabProps {
   label: string;
 }
 
-// Tab component for the panel - Enhanced for mobile
+// Tab component for the panel
 const Tab: React.FC<TabProps> = ({ isSelected, onClick, label }) => (
   <button
     className={`py-3 px-2 sm:px-4 lg:py-2 lg:px-2 text-xs sm:text-sm lg:text-sm 
@@ -40,7 +39,7 @@ const Tab: React.FC<TabProps> = ({ isSelected, onClick, label }) => (
   </button>
 );
 
-// Saved Image component - Enhanced for mobile
+// Saved Image component
 interface SavedImageProps {
   src: string;
   onSelect: () => void;
@@ -517,7 +516,7 @@ export default function LogoPropertiesPanel({
     }
   };
 
-  // Panel animation variants - Enhanced for mobile
+  // Panel animation variants
   const panelVariants = {
     hidden: { x: '100%', opacity: 0 },
     visible: {
@@ -578,7 +577,6 @@ export default function LogoPropertiesPanel({
             exit='exit'
             variants={panelVariants}
           >
-            {/* Header - Enhanced for mobile */}
             <div
               className='flex justify-between items-center p-4 sm:p-6 lg:p-4 
               border-b border-gray-700 bg-[#272A40] sticky top-0 z-10'
@@ -800,7 +798,6 @@ export default function LogoPropertiesPanel({
               )}
             </div>
 
-            {/* Logo Size slider - Enhanced for mobile */}
             {logo?.src && (
               <>
                 <div className='p-4 sm:p-6 lg:p-4 border-b border-gray-700'>
@@ -847,7 +844,6 @@ export default function LogoPropertiesPanel({
                     />
                   </div>
 
-                  {/* Size presets - Enhanced for mobile */}
                   <div className='grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-2 mt-4 sm:mt-6 lg:mt-4'>
                     <button
                       className='px-3 py-2 sm:px-4 sm:py-3 lg:px-3 lg:py-1 
@@ -908,7 +904,6 @@ export default function LogoPropertiesPanel({
                   </div>
                 </div>
 
-                {/* Alignment options - Enhanced for mobile */}
                 <div className='p-4 sm:p-6 lg:p-4 pb-6 sm:pb-8 lg:pb-6'>
                   <h4 className='text-lg sm:text-xl lg:text-lg font-medium mb-3 sm:mb-4 lg:mb-3'>
                     Alignment

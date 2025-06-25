@@ -1,4 +1,3 @@
-// src/components/form-builder/preview/PreviewPage.tsx
 'use client';
 
 import { useState } from 'react';
@@ -447,7 +446,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'productList':
-            //  ENHANCED: Realistic product selection with quantities
+            // Realistic product selection with quantities
             if (
               field.productListConfig?.products &&
               field.productListConfig.products.length > 0
@@ -1423,7 +1422,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
   );
 }
 
-//  WRAPPER COMPONENT for file support - Enhanced with mobile responsiveness
 function PreviewFormWithFileSupport({
   form,
   formData,

@@ -1,5 +1,3 @@
-// src/models/UserSettings.ts
-
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUserSettings extends Document {

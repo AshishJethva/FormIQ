@@ -1,4 +1,3 @@
-// components/dashboard/NewFormDialog.tsx
 'use client';
 
 import { useState } from 'react';
@@ -62,7 +61,6 @@ export default function NewFormDialog({ isOpen, onClose }: NewFormDialogProps) {
     try {
       setIsCreating(true);
 
-      // Use enhanced form creation with auto-retry for duplicate names
       const response = await formsService.createFormWithUniqueTitle({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,

@@ -1,4 +1,3 @@
-// Backend: src/utils/aiPromptValidator.ts
 export class AIPromptValidator {
   private static readonly MAX_PROMPT_LENGTH = 1000;
   private static readonly MIN_PROMPT_LENGTH = 10;
@@ -84,8 +83,8 @@ export class AIPromptValidator {
   static sanitize(prompt: string): string {
     return prompt
       .trim()
-      .replace(/[<>]/g, '') // Remove potential HTML
-      .replace(/javascript:/gi, '') // Remove potential JS injection
+      .replace(/[<>]/g, '')
+      .replace(/javascript:/gi, '')
       .substring(0, this.MAX_PROMPT_LENGTH);
   }
 }

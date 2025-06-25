@@ -1,4 +1,3 @@
-// src/components/form-builder/settings/FormSettingsPage.tsx
 'use client';
 
 import { useState, useEffect } from 'react';

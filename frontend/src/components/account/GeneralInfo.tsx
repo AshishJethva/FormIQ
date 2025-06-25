@@ -1,5 +1,3 @@
-// src/components/account/GeneralInfo.tsx
-
 'use client';
 
 import React from 'react';

@@ -1,4 +1,3 @@
-// src/providers/DragProvider.tsx
 'use client';
 
 import { DndProvider } from 'react-dnd';

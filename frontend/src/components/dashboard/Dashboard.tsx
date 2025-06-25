@@ -1,4 +1,3 @@
-// src/components/dashboard/Dashboard.tsx
 'use client';
 
 import { StoreDispatch } from '@/redux/store';

@@ -1,5 +1,3 @@
-// src/controllers/paymentController.ts
-
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import PDFDocument from 'pdfkit';
@@ -35,7 +33,6 @@ const generateReceipt = (userId: string, plan: string): string => {
   const shortTimestamp = timestamp.slice(-6); // Last 6 digits of timestamp
   const planCode = plan.charAt(0); // First letter of plan (B/S/G)
 
-  // Format: [PlanCode][6-digit-userId][6-digit-timestamp] = 13 characters total
   const receipt = `${planCode}${shortUserId}${shortTimestamp}`;
 
   // Double check it's under 40 characters
@@ -117,7 +114,7 @@ export const createPaymentOrder = async (
       const result = await PaymentService.createOrder(orderData);
 
       if (!result || !result.order) {
-        console.error('❌ Invalid response from PaymentService:', result);
+        console.error('Invalid response from PaymentService:', result);
         return next(new ApiError('Failed to create payment order', 500));
       }
 
@@ -131,13 +128,13 @@ export const createPaymentOrder = async (
           )
         );
     } catch (paymentError: any) {
-      console.error('❌ PaymentService error:', paymentError);
+      console.error('PaymentService error:', paymentError);
       return next(
         new ApiError(`Payment service error: ${paymentError.message}`, 500)
       );
     }
   } catch (error: any) {
-    console.error('❌ Create payment order error:', error);
+    console.error('Create payment order error:', error);
     next(new ApiError(error.message || 'Failed to create payment order', 500));
   }
 };
@@ -248,7 +245,7 @@ export const verifyPayment = async (
     const newPlanDetails = {
       type: plan,
       formsLimit: planConfig.formsLimit,
-      formsUsed: userProfile.plan.formsUsed || 0, // Keep current usage
+      formsUsed: userProfile.plan.formsUsed || 0,
       upgradeDate: now,
       expiresAt,
       billingCycle: billing,
@@ -308,7 +305,7 @@ export const verifyPayment = async (
         )
       );
   } catch (error: any) {
-    console.error('❌ Payment verification error:', error);
+    console.error('Payment verification error:', error);
     next(new ApiError(error.message || 'Payment verification failed', 500));
   }
 };
@@ -343,7 +340,7 @@ export const getPaymentHistory = async (
     // Get actual payment history from database
     const payments = await PaymentHistory.find({ userId: userObjectId })
       .sort({ createdAt: -1 }) // Latest first
-      .limit(50); // Limit to last 50 payments
+      .limit(50);
 
     // Format payment history
     const formattedPayments = payments.map(payment => ({
@@ -389,7 +386,7 @@ export const getPaymentHistory = async (
         )
       );
   } catch (error: any) {
-    console.error('❌ Get payment history error:', error);
+    console.error('Get payment history error:', error);
     next(new ApiError(error.message || 'Failed to get payment history', 500));
   }
 };
@@ -460,7 +457,7 @@ export const downgradeToStarter = async (
         )
       );
   } catch (error: any) {
-    console.error('❌ Downgrade error:', error);
+    console.error('Downgrade error:', error);
     next(new ApiError(error.message || 'Failed to downgrade plan', 500));
   }
 };
@@ -489,13 +486,11 @@ export const generatePDFReceipt = async (
     const userObjectId = new mongoose.Types.ObjectId(userId);
     let paymentRecord: any;
 
-    //  Handle sample payment ID for testing
     if (paymentId === 'sample_payment_id') {
-      // Get user profile to create sample receipt with current plan
       const userProfile = await UserProfile.findOne({ userId: userObjectId });
       const planConfig = userProfile?.plan?.type
         ? getPlanConfig(userProfile.plan.type as PlanType)
-        : getPlanConfig('SILVER'); // Default to SILVER for sample
+        : getPlanConfig('SILVER');
 
       paymentRecord = {
         _id: 'sample_payment_id',
@@ -645,7 +640,7 @@ export const generatePDFReceipt = async (
     // Finalize PDF
     doc.end();
   } catch (error: any) {
-    console.error('❌ Receipt generation error:', error);
+    console.error('Receipt generation error:', error);
     next(new ApiError(error.message || 'Failed to generate receipt', 500));
   }
 };

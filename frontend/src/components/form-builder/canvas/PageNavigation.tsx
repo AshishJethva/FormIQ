@@ -1,4 +1,3 @@
-// src/components/form-builder/canvas/PageNavigation.tsx
 'use client';
 
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';

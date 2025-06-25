@@ -1,5 +1,3 @@
-// Backend: src/routes/ai.ts
-
 import express from 'express';
 import Form from '../models/Form';
 import { protect } from '../middleware/protect';
@@ -17,7 +15,6 @@ const router = express.Router();
 const aiService = new AIFormGeneratorService();
 const suggestionService = new AISuggestionService();
 
-// Enhanced quote removal function for API level
 const removeAllQuotes = (text: string): string => {
   if (!text) return '';
   return text
@@ -265,14 +262,12 @@ router.post(
           });
 
           savedForm = await newForm.save();
-          break; // Success, exit retry loop
+          break;
         } catch (saveError: any) {
           attempts++;
 
           if (saveError.code === 11000 || saveError.message.includes('title')) {
-            // Duplicate title error, try again with modified name
             if (attempts >= maxAttempts) {
-              // Final attempt with timestamp
               const timestamp = Date.now();
               currentTitle = `${originalTitle} ${timestamp}`;
 
@@ -318,9 +313,8 @@ router.post(
               savedForm = await finalForm.save();
               break;
             }
-            continue; // Try again with incremented name
+            continue;
           } else {
-            // Different error, don't retry
             throw saveError;
           }
         }
@@ -369,7 +363,6 @@ router.post(
           logoSize: savedForm.logo?.size,
           logoAlignment: savedForm.logo?.alignment,
 
-          // Name change tracking
           nameChanged: savedForm.aiGenerationMetadata?.nameChanged || false,
           originalName: savedForm.aiGenerationMetadata?.originalName,
           finalName: savedForm.title,
@@ -438,7 +431,6 @@ router.post(
         suggestionType: suggestionType || 'standard',
       });
 
-      // Enhanced quote removal and form validation
       const cleanedSuggestions = result.suggestions
         .map(suggestion => removeAllQuotes(suggestion))
         .filter(suggestion => {
@@ -446,27 +438,9 @@ router.post(
 
           // Additional form relevance check
           const suggestionValidation = validateFormContent(suggestion);
-          return suggestionValidation.confidence >= 20; // Lower threshold for suggestions
+          return suggestionValidation.confidence >= 20;
         })
         .filter(suggestion => suggestion.length > 0);
-
-      // Log progressive suggestion info
-      if (suggestionType === 'progressive') {
-        console.log('🎯 Form-focused progressive suggestion generated:');
-        console.log('Original text:', text.substring(0, 50) + '...');
-        console.log('Suggestion:', cleanedSuggestions[0]);
-        console.log(
-          'Word count:',
-          cleanedSuggestions[0]?.split(' ').length || 0
-        );
-        console.log('Character count:', cleanedSuggestions[0]?.length || 0);
-        console.log(
-          'Contains quotes:',
-          /["'`]/.test(cleanedSuggestions[0] || '')
-        );
-        console.log('Content confidence:', contentValidation.confidence);
-        console.log('Form type detected:', result.formType || 'general');
-      }
 
       res.json({
         success: true,
@@ -553,7 +527,6 @@ router.get(
   })
 );
 
-// New endpoint for form type detection and validation
 router.post(
   '/validate-form-content',
   protect,

@@ -1,4 +1,3 @@
-// src/validation/formValidation.ts
 import { z } from 'zod';
 
 export const createFormSchema = z.object({
@@ -806,7 +805,6 @@ export function createHeadingField(id: string, label: string) {
   };
 }
 
-// Helper functions for enhanced field creation:
 export function createSignatureField(
   id: string,
   label: string,

@@ -1,11 +1,9 @@
-// Backend: src/middleware/aiRateLimit.ts
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
 
-// Enhanced rate limiting for AI generation
 export const aiGenerationLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 5, // limit each user to 5 requests per windowMs
+  max: 5,
   message: {
     success: false,
     message: 'Too many AI generation requests. Please try again in a minute.',
@@ -18,11 +16,10 @@ export const aiGenerationLimiter = rateLimit({
     return (req as any).user?.id || req.ip;
   },
   skip: (req: Request) => {
-    // Skip rate limiting for development environment
     return process.env.NODE_ENV === 'development';
   },
   handler: (req: Request, res: Response) => {
-    console.warn('🚫 AI Generation Rate Limit Reached:', {
+    console.warn('AI Generation Rate Limit Reached:', {
       userId: (req as any).user?.id,
       ip: req.ip,
       timestamp: new Date().toISOString(),
@@ -34,4 +31,3 @@ export const aiGenerationLimiter = rateLimit({
     });
   },
 });
-

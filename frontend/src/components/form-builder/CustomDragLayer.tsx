@@ -1,4 +1,3 @@
-// src/components/form-builder/CustomDragLayer.tsx
 'use client';
 
 import { useDragLayer } from 'react-dnd';

@@ -1,8 +1,6 @@
-// src/services/userProfile.ts
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
-// Create axios instance with base URL and default headers
 const api = axios.create({
   baseURL: apiConfig.url,
   headers: {

@@ -1,4 +1,3 @@
-// src/services/api.ts
 import axios from 'axios';
 
 import { apiConfig } from '@/config/api';

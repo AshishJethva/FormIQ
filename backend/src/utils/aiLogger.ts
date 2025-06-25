@@ -1,4 +1,3 @@
-// Backend: src/utils/aiLogger.ts
 export class AILogger {
   static logGeneration(data: {
     userId: string;

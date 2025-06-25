@@ -1,4 +1,3 @@
-// src/app/build/[formId]/settings/page.tsx
 'use client';
 
 import { useEffect } from 'react';

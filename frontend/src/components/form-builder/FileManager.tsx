@@ -1,4 +1,3 @@
-// src/components/form-builder/FileManager.tsx
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -158,7 +157,6 @@ const downloadFile = async (file: FileData): Promise<void> => {
   }
 };
 
-// Enhanced PDF URL preparation
 const preparePdfUrl = (url: string): string => {
   try {
     const urlObj = new URL(url);

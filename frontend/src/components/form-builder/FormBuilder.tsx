@@ -1,4 +1,3 @@
-// src/components/form-builder/FormBuilder.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -55,7 +54,6 @@ export default function FormBuilder() {
 
   const currentPage = getCurrentPage();
 
-  // Auto-save hook with enhanced features
   const { isSaving, lastSaved, saveError } = useAutoSave(
     formState.form,
     formId,

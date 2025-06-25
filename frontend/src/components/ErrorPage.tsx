@@ -1,5 +1,3 @@
-// src/components/ErrorPage.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -73,7 +71,6 @@ const getErrorType = (error: Error) => {
   return 'generic';
 };
 
-// Enhanced floating particles with brand colors
 const FloatingParticles = () => {
   return (
     <div className='absolute inset-0 overflow-hidden pointer-events-none'>

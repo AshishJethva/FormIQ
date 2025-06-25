@@ -1,5 +1,3 @@
-// src/app/payment/razorpay/page.tsx
-
 'use client';
 
 import React, { useEffect, useState } from 'react';

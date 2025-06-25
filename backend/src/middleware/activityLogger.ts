@@ -1,5 +1,3 @@
-// src/middleware/activityLogger.ts
-
 import { Request, Response, NextFunction } from 'express';
 import ActivityLog from '../models/ActivityLog';
 import mongoose from 'mongoose';

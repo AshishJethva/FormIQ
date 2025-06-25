@@ -1,5 +1,3 @@
-// src/app/auth/reset-password/page.tsx
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -190,13 +188,13 @@ export default function ResetPasswordPage() {
           <div className='space-y-4'>
             <button
               onClick={() => router.push('/auth/forgot-password')}
-              className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors'
+              className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors cursor-pointer'
             >
               Request New Reset Link
             </button>
             <button
               onClick={() => router.push('/auth/login')}
-              className='w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors'
+              className='w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors cursor-pointer'
             >
               Back to Login
             </button>
@@ -240,7 +238,7 @@ export default function ResetPasswordPage() {
               <button
                 type='button'
                 onClick={() => setShowPassword(!showPassword)}
-                className='absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600'
+                className='absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer'
                 disabled={isSubmitting}
               >
                 {showPassword ? (
@@ -301,7 +299,7 @@ export default function ResetPasswordPage() {
               <button
                 type='button'
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className='absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600'
+                className='absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer'
                 disabled={isSubmitting}
               >
                 {showConfirmPassword ? (
@@ -322,7 +320,7 @@ export default function ResetPasswordPage() {
           <button
             type='submit'
             disabled={isSubmitting}
-            className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center'
+            className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer'
           >
             {isSubmitting ? (
               <>
@@ -342,7 +340,7 @@ export default function ResetPasswordPage() {
         <div className='mt-6 text-center'>
           <button
             onClick={() => router.push('/auth/login')}
-            className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+            className='text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer'
             disabled={isSubmitting}
           >
             Back to Login

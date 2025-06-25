@@ -1,4 +1,3 @@
-// src/routes/submissions.ts
 import express from 'express';
 import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';
@@ -8,7 +7,6 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/apiBasicError';
 import mongoose from 'mongoose';
 import {
-  debugFormSubmission,
   handleFormSubmissionError,
   monitorFormSubmissionPerformance,
 } from '../middleware/debugMiddleware';
@@ -1414,10 +1412,6 @@ function validateSubmissionData(
             break;
         }
       } catch (validationError: any) {
-        // console.error(
-        //   `❌ Validation error for field ${field.id}:`,
-        //   validationError
-        // );
         errors.push(
           `${field.label || field.id} validation failed: ${validationError.message}`
         );
@@ -1645,14 +1639,13 @@ router.get(
 router.post(
   '/:formId/submit',
   monitorFormSubmissionPerformance,
-  debugFormSubmission,
   asyncHandler(async (req: Request, res: Response) => {
     const { formId } = req.params;
     const requestBody = req.body;
 
     // STEP 1: Validate Form ID
     if (!mongoose.Types.ObjectId.isValid(formId)) {
-      // console.error('❌ Invalid form ID format:', formId);
+      // console.error('Invalid form ID format:', formId);
       return res.status(400).json({
         success: false,
         error: 'INVALID_FORM_ID',

@@ -1,4 +1,3 @@
-// src/services/aiEvaluation.ts
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 

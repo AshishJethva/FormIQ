@@ -1,5 +1,3 @@
-// src/components/dashboard/ProfileDropdown.tsx
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';

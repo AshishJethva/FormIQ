@@ -1,4 +1,3 @@
-// src/models/PasswordResetToken.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPasswordResetToken extends Document {

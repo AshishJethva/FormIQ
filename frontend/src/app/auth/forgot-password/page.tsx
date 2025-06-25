@@ -1,4 +1,3 @@
-// src/app/auth/forgot-password/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -122,7 +121,7 @@ export default function ForgotPasswordPage() {
             <button
               onClick={handleResendEmail}
               disabled={isSubmitting}
-              className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center'
+              className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer'
             >
               {isSubmitting ? (
                 <>
@@ -139,7 +138,7 @@ export default function ForgotPasswordPage() {
 
             <button
               onClick={handleBackToForm}
-              className='w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center'
+              className='cursor-pointer w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center'
               disabled={isSubmitting}
             >
               <ArrowLeft className='h-5 w-5 mr-2' />
@@ -148,7 +147,7 @@ export default function ForgotPasswordPage() {
 
             <button
               onClick={() => router.push('/auth/login')}
-              className='w-full text-blue-600 hover:text-blue-800 font-medium py-2 transition-colors'
+              className='w-full text-blue-600 hover:text-blue-800 font-medium py-2 transition-colors cursor-pointer'
               disabled={isSubmitting}
             >
               Back to Login
@@ -201,7 +200,7 @@ export default function ForgotPasswordPage() {
           <button
             type='submit'
             disabled={isSubmitting}
-            className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center'
+            className='w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer'
           >
             {isSubmitting ? (
               <>
@@ -220,7 +219,7 @@ export default function ForgotPasswordPage() {
         <div className='mt-6 text-center'>
           <button
             onClick={() => router.push('/auth/login')}
-            className='text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center justify-center mx-auto'
+            className='text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center justify-center mx-auto cursor-pointer'
             disabled={isSubmitting}
           >
             <ArrowLeft className='h-4 w-4 mr-1' />

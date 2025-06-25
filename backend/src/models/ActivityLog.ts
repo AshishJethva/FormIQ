@@ -1,5 +1,3 @@
-// src/models/ActivityLog.ts
-
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IActivityLog extends Document {
@@ -55,7 +53,6 @@ const ActivityLogSchema = new Schema<IActivityLog>(
   }
 );
 
-// Index for efficient querying
 ActivityLogSchema.index({ userId: 1, createdAt: -1 });
 ActivityLogSchema.index({ userId: 1, targetType: 1, createdAt: -1 });
 

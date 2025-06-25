@@ -1,4 +1,3 @@
-// src/models/Label.ts - Label Model
 import mongoose, { Schema, Document } from 'mongoose';
 
 interface ILabel extends Document {

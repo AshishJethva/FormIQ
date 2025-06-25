@@ -1,4 +1,3 @@
-// src/components/dashboard/FormsList.tsx
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
@@ -1295,7 +1294,6 @@ const FormsList: React.FC<FormsListProps> = ({
         ))
       )}
 
-      {/* Enhanced Label Selection Dialog */}
       <Dialog
         open={showLabelDialog}
         onOpenChange={open => {

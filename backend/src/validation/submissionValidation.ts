@@ -1,8 +1,5 @@
-// src/validation/submissionValidation.ts
-
 import { z } from 'zod';
 
-// Enhanced file data schema
 const FileDataSchema = z.object({
   originalName: z.string(),
   fileName: z.string(),
@@ -13,7 +10,7 @@ const FileDataSchema = z.object({
   uploadedAt: z.string().optional(),
 });
 
-// Schema for form data (flexible for all field types)
+// Schema for form data
 const FormDataSchema = z
   .record(
     z.union([
@@ -44,7 +41,7 @@ const FilesDataSchema = z
   .record(z.union([FileDataSchema, z.array(FileDataSchema)]))
   .optional();
 
-// Main submission schema with enhanced validation
+// Main submission schema
 export const submitFormSchema = z
   .object({
     data: FormDataSchema,

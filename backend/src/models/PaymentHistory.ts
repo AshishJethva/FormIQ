@@ -1,5 +1,3 @@
-// src/models/PaymentHistory.ts
-
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPaymentHistory extends Document {

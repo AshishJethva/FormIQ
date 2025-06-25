@@ -1,4 +1,3 @@
-// src/components/form-builder/submissions/FormSubmissionsPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useDeletion } from '@/hooks/useDeletion';
@@ -460,7 +459,6 @@ const getAllFilesForField = (
   return [];
 };
 
-// Enhanced file type detection
 const getFileTypeInfo = (mimeType: string) => {
   if (mimeType.startsWith('image/')) {
     return { type: 'image', icon: ImageIcon, color: 'blue' };
@@ -1242,7 +1240,7 @@ const MobileSubmissionCard: React.FC<{
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className='p-1 h-6 w-6'
+            className='p-1 h-6 w-6 cursor-pointer'
           >
             <motion.div
               animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -1346,7 +1344,7 @@ const MobileSubmissionCard: React.FC<{
               e.stopPropagation();
               onToggleRead(submission.id, submission.isRead);
             }}
-            className='p-2 h-8 w-8'
+            className='p-2 h-8 w-8 cursor-pointer'
           >
             {submission.isRead ? (
               <Eye className='w-4 h-4 text-green-600' />
@@ -1361,7 +1359,7 @@ const MobileSubmissionCard: React.FC<{
               e.stopPropagation();
               onDelete(submission.id);
             }}
-            className='p-2 h-8 w-8 text-red-600 hover:bg-red-50'
+            className='p-2 h-8 w-8 text-red-600 hover:bg-red-50 cursor-pointer'
           >
             <Trash2 className='w-4 h-4' />
           </Button>
@@ -1373,7 +1371,7 @@ const MobileSubmissionCard: React.FC<{
             e.stopPropagation();
             onView(submission);
           }}
-          className='text-xs px-3 py-1 h-7'
+          className='text-xs px-3 py-1 h-7 cursor-pointer'
         >
           View Details
         </Button>
@@ -3540,7 +3538,7 @@ const FormSubmissionsPage: React.FC = () => {
               <Button
                 variant='outline'
                 onClick={() => setShowMobileFilters(!showMobileFilters)}
-                className='w-full flex items-center justify-between'
+                className='w-full flex items-center justify-between cursor-pointer'
               >
                 <div className='flex items-center gap-2'>
                   <Filter className='w-4 h-4' />
@@ -3916,7 +3914,7 @@ const FormSubmissionsPage: React.FC = () => {
                                       submission.isRead
                                     );
                                   }}
-                                  className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer h-6 w-6 lg:h-8 lg:w-8'
+                                  className='p-1 hover:bg-gray-200 rounded-full transition-colors cursor-pointer h-6 w-6 lg:h-8 lg:w-8 cursor-pointer'
                                   title={
                                     submission.isRead
                                       ? 'Mark as unread'
@@ -3941,7 +3939,7 @@ const FormSubmissionsPage: React.FC = () => {
                                       e.stopPropagation();
                                       confirmDelete(submission.id);
                                     }}
-                                    className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors h-6 w-6 lg:h-8 lg:w-8'
+                                    className='p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full cursor-pointer transition-colors h-6 w-6 lg:h-8 lg:w-8 cursor-pointer'
                                     title='Delete submission'
                                   >
                                     <Trash2 className='w-3 h-3 lg:w-4 lg:h-4' />
@@ -3981,7 +3979,7 @@ const FormSubmissionsPage: React.FC = () => {
                       fetchSubmissions(pagination.current - 1, pagination.limit)
                     }
                     disabled={pagination.current === 1}
-                    className='border-gray-300 hover:bg-gray-50 cursor-pointer px-3 py-1 text-sm'
+                    className='border-gray-300 hover:bg-gray-50 cursor-pointer px-3 py-1 text-sm '
                   >
                     Previous
                   </Button>

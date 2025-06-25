@@ -1,4 +1,3 @@
-// src/components/skeletons/TemplatesLoadingSkeleton.tsx
 'use client';
 
 import React from 'react';

@@ -1,4 +1,3 @@
-// app/error.tsx (Root Error Boundary)
 'use client';
 
 import { useEffect } from 'react';

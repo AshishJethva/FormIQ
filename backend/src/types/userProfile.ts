@@ -1,5 +1,3 @@
-// server/types/userProfile.ts - CREATE THIS NEW FILE
-
 import { Document } from 'mongoose';
 
 // ==================== USER PROFILE MODEL TYPES ====================

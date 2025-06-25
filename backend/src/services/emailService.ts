@@ -1,4 +1,3 @@
-// src/services/emailService.ts
 import nodemailer from 'nodemailer';
 
 // Email configuration

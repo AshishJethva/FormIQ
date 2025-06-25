@@ -1,5 +1,3 @@
-// src/middleware/planLimits.ts
-
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/apiBasicError';
 import UserProfile from '../models/UserProfile';

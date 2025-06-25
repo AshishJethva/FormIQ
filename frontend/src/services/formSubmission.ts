@@ -1,4 +1,3 @@
-// src/services/formSubmission.ts
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 

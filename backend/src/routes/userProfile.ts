@@ -1,4 +1,3 @@
-// src/routes/userProfile.ts
 import express from 'express';
 import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';

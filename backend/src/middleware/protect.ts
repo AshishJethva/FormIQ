@@ -1,5 +1,3 @@
-// src/middleware/protect.ts
-
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';
@@ -13,7 +11,7 @@ interface AuthRequest extends Request {
 
 // Protect routes middleware
 export const protect = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     // Get token from authorization header or cookies
     let token: string | undefined;
 

@@ -1,4 +1,3 @@
-// src/hooks/useDeletion.ts
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import {

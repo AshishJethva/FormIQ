@@ -1,5 +1,3 @@
-// Label validation schemas
-
 import { z } from 'zod';
 
 export const createLabelSchema = z.object({

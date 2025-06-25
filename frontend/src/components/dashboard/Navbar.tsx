@@ -1,5 +1,3 @@
-// src/components/dashboard/Navbar.tsx
-
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
@@ -210,7 +208,7 @@ export default function Navbar() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
-                  className='grid grid-cols-2 gap-4 p-4'
+                  className='grid grid-cols-2 gap-4 p-3'
                 >
                   <div>
                     <h3 className='text-xs font-semibold text-gray-500 mb-3'>

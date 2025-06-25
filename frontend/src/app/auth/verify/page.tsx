@@ -1,4 +1,3 @@
-// src/app/auth/verify/page.tsx
 'use client';
 
 import type { StoreDispatch } from '@/redux/store';

@@ -1,5 +1,3 @@
-// src/components/skeletons/UpgradePageSkeleton.tsx (Enhanced Version)
-
 'use client';
 
 import React from 'react';

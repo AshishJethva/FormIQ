@@ -1,5 +1,3 @@
-// src/redux/slices/ai/aiFormSlice.ts - Frontend
-
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';

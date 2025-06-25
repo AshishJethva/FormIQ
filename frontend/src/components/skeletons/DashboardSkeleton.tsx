@@ -1,4 +1,3 @@
-// src/components/dashboard/DashboardSkeleton.tsx
 'use client';
 
 import React from 'react';
@@ -16,7 +15,6 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 
-// Shimmer animation component
 const Shimmer = ({ className = '' }: { className?: string }) => (
   <div
     className={`animate-pulse bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 bg-[length:200%_100%] ${className}`}
@@ -222,8 +220,6 @@ const FormItemSkeleton = ({ index }: { index: number }) => (
 
 // Main Dashboard Skeleton
 const DashboardSkeleton = () => {
-  console.log('Dashboard loading skeleton triggered - 2');
-
   return (
     <div className='flex flex-col h-screen bg-gray-50'>
       <NavbarSkeleton />

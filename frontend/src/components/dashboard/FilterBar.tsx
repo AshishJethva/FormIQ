@@ -1,5 +1,3 @@
-// src/components/dashboard/FilterBar.tsx
-
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';

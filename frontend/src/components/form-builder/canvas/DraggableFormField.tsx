@@ -1,4 +1,3 @@
-// src/components/form-builder/canvas/DraggableFormField.tsx;
 'use client';
 
 import React, { useRef, useState } from 'react';

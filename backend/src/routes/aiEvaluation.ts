@@ -1,4 +1,3 @@
-// src/routes/aiEvaluation.ts - Complete Enhanced Routes with 100% Accuracy
 import express from 'express';
 import { AIEvaluationService } from '../services/aiEvaluationService';
 import Form from '../models/Form';
@@ -23,7 +22,6 @@ const validateFormForEvaluation = (
       return { isValid: false, error: 'Form has no pages to evaluate' };
     }
 
-    // Enhanced field analysis for accurate type detection
     let totalFields = 0;
     let singleChoiceCount = 0;
     let multipleChoiceCount = 0;
@@ -35,7 +33,6 @@ const validateFormForEvaluation = (
     let hasRatingScales = 0;
     let choiceFieldsWithRatingOptions = 0;
 
-    // APPLICATION DETECTION VARIABLES
     let hasPersonalInfoFields = 0;
     let hasWorkExperienceFields = 0;
     let hasEducationFields = 0;
@@ -228,7 +225,6 @@ const validateFormForEvaluation = (
             ) {
               textFields++;
 
-              // ENHANCED FEEDBACK PATTERNS - More comprehensive detection
               if (
                 /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience|thoughts.*on|opinion.*about|better.*experience|how.*did.*we.*do|rate.*our.*service|your.*experience.*was|overall.*experience|service.*experience|thoughts.*about|comments.*about/i.test(
                   fieldLabel
@@ -433,7 +429,7 @@ const validateFormForEvaluation = (
 
     return { isValid: true, analysis };
   } catch (error: any) {
-    console.error('❌ Enhanced form validation error:', error);
+    console.error('form validation error:', error);
     return {
       isValid: false,
       error: `Form validation failed: ${error.message}`,
@@ -505,7 +501,7 @@ const validateSubmissionForEvaluation = (
 
     return { isValid: true, quality };
   } catch (error: any) {
-    console.error('❌ Enhanced submission validation error:', error);
+    console.error('submission validation error:', error);
     return {
       isValid: false,
       error: `Submission validation failed: ${error.message}`,
@@ -513,9 +509,6 @@ const validateSubmissionForEvaluation = (
   }
 };
 
-// @desc    Enhanced single submission evaluation with 100% accuracy focus
-// @route   POST /api/ai-evaluation/evaluate/:submissionId
-// @access  Private
 router.post(
   '/evaluate/:submissionId',
   protect,
@@ -535,19 +528,19 @@ router.post(
         throw new ApiError('Submission not found', 404);
       }
 
-      // Step 3: Enhanced submission validation
+      // Step 3: submission validation
       const submissionValidation = validateSubmissionForEvaluation(submission);
       if (!submissionValidation.isValid) {
         throw new ApiError(submissionValidation.error!, 400);
       }
 
-      // Step 4: Get form structure with enhanced validation
+      // Step 4: Get form structure
       const form = await Form.findById(submission.formId);
       if (!form) {
         throw new ApiError('Form not found for this submission', 404);
       }
 
-      // Step 5: Enhanced form validation
+      // Step 5: form validation
       const formValidation = validateFormForEvaluation(form);
       if (!formValidation.isValid) {
         throw new ApiError(formValidation.error!, 400);
@@ -637,7 +630,7 @@ router.post(
       });
     } catch (error: any) {
       const evaluationTime = Date.now() - startTime;
-      console.error('❌ Enhanced AI evaluation error:', {
+      console.error('AI evaluation error:', {
         submissionId,
         error: error.message,
         evaluationTime: `${evaluationTime}ms`,
@@ -672,9 +665,6 @@ router.post(
   })
 );
 
-// @desc    Enhanced batch evaluation with accuracy monitoring
-// @route   POST /api/ai-evaluation/evaluate-batch
-// @access  Private
 router.post(
   '/evaluate-batch',
   protect,
@@ -683,7 +673,7 @@ router.post(
     const startTime = Date.now();
 
     try {
-      // Enhanced request validation
+      // request validation
       if (!formId || !submissionIds || !Array.isArray(submissionIds)) {
         throw new ApiError(
           'Invalid request parameters. formId and submissionIds array required.',
@@ -719,7 +709,6 @@ router.post(
         );
       }
 
-      // Get and validate form with enhanced analysis
       const form = await Form.findById(formId);
       if (!form) {
         throw new ApiError('Form not found', 404);
@@ -781,7 +770,6 @@ router.post(
         };
       });
 
-      // Process evaluations with enhanced accuracy tracking
       const evaluations = [];
       const errors = [];
       let successCount = 0;
@@ -913,7 +901,6 @@ router.post(
       const averageConfidence =
         successCount > 0 ? totalConfidence / successCount : 0;
 
-      // Return enhanced results with comprehensive metadata
       res.json({
         success: true,
         data: evaluations,
@@ -948,7 +935,7 @@ router.post(
       });
     } catch (error: any) {
       const totalTime = Date.now() - startTime;
-      console.error('❌ Enhanced batch evaluation error:', {
+      console.error('batch evaluation error:', {
         formId,
         submissionIds: submissionIds?.length || 0,
         error: error.message,
@@ -989,9 +976,6 @@ router.post(
   })
 );
 
-// @desc    Get enhanced evaluation capabilities with accuracy information
-// @route   GET /api/ai-evaluation/capabilities
-// @access  Private
 router.get(
   '/capabilities',
   protect,
@@ -1018,7 +1002,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('❌ Error getting AI evaluation capabilities:', error);
+      console.error('Error getting AI evaluation capabilities:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to get evaluation capabilities',
@@ -1028,7 +1012,7 @@ router.get(
   })
 );
 
-// @desc    Get enhanced evaluation statistics for a form with accuracy tracking
+// @desc    Get evaluation statistics for a form with accuracy tracking
 // @route   GET /api/ai-evaluation/stats/:formId
 // @access  Private
 router.get(
@@ -1048,7 +1032,7 @@ router.get(
         throw new ApiError('Form not found or access denied', 404);
       }
 
-      // Enhanced form analysis
+      // form analysis
       const formValidation = validateFormForEvaluation(form);
 
       // Get submission statistics
@@ -1132,7 +1116,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('❌ Error getting evaluation stats:', error);
+      console.error('Error getting evaluation stats:', error);
 
       if (error instanceof ApiError) {
         res.status(error.statusCode).json({
@@ -1150,79 +1134,6 @@ router.get(
           }),
         });
       }
-    }
-  })
-);
-
-// @desc    Test AI evaluation with enhanced validation (development only)
-// @route   POST /api/ai-evaluation/test
-// @access  Private (for development/testing)
-router.post(
-  '/test',
-  protect,
-  asyncHandler(async (req, res) => {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ApiError('Test endpoint not available in production', 404);
-    }
-
-    const { formStructure, submissionData } = req.body;
-
-    try {
-      if (!formStructure || !submissionData) {
-        throw new ApiError(
-          'Both formStructure and submissionData are required for testing',
-          400
-        );
-      }
-
-      // Validate test form structure
-      const formValidation = validateFormForEvaluation(formStructure);
-      if (!formValidation.isValid) {
-        throw new ApiError(
-          `Test form validation failed: ${formValidation.error}`,
-          400
-        );
-      }
-
-      // Validate test submission data
-      const submissionValidation = validateSubmissionForEvaluation({
-        data: submissionData,
-      });
-      if (!submissionValidation.isValid) {
-        throw new ApiError(
-          `Test submission validation failed: ${submissionValidation.error}`,
-          400
-        );
-      }
-
-      const testSubmissionId = 'test_' + Date.now();
-
-      const evaluation =
-        await aiEvaluationService.evaluateSubmissionWithValidation(
-          formStructure,
-          submissionData,
-          testSubmissionId
-        );
-
-      res.json({
-        success: true,
-        data: evaluation,
-        metadata: {
-          testMode: true,
-          submissionId: testSubmissionId,
-          evaluatedAt: new Date().toISOString(),
-          version: '2.2.0',
-        },
-      });
-    } catch (error: any) {
-      console.error('❌ Test evaluation failed:', error);
-
-      res.status(500).json({
-        success: false,
-        message: 'Test evaluation failed',
-        error: 'TEST_EVALUATION_ERROR',
-        details: error.message,
-      });
     }
   })
 );

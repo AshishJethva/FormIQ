@@ -1,4 +1,3 @@
-// src/components/form-builder/navigation/FormBuilderHeader.tsx
 'use client';
 
 import { useEffect, useState } from 'react';

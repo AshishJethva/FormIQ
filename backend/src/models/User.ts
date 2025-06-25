@@ -1,5 +1,3 @@
-// src/models/User.ts
-
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';

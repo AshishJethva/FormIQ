@@ -1,5 +1,3 @@
-// src/middleware/errorHandler.ts
-
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/ApiError';
 import { ApiResponse } from '../utils/ApiResponse';
@@ -10,7 +8,7 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error('❌ Error Handler:', {
+  console.error('Error Handler:', {
     name: error.name,
     message: error.message,
     stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,

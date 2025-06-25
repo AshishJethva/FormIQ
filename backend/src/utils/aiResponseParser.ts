@@ -1,4 +1,3 @@
-// Backend: src/utils/aiResponseParser.ts
 export class AIResponseParser {
   static parseFormConfig(rawResponse: string): {
     success: boolean;
@@ -37,7 +36,8 @@ export class AIResponseParser {
       return { success: true, data: formConfig };
     } catch (error) {
       console.error('JSON Parse Error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         error: `Failed to parse AI response: ${errorMessage}`,

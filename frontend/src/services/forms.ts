@@ -1,4 +1,3 @@
-// src/services/forms.ts
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 import type { SortOption } from '@/components/dashboard/FilterBar';
@@ -155,7 +154,7 @@ export const formsService = {
       const response = await api.get('/forms', {
         params: {
           search: name,
-          limit: 100, // Check more forms to be thorough
+          limit: 100,
         },
       });
 
@@ -184,8 +183,6 @@ export const formsService = {
         error.response?.data?.message?.includes('duplicate') ||
         error.response?.status === 400
       ) {
-        console.log('🔄 Form name conflict detected, trying with suffix...');
-
         // Simple retry with timestamp
         const timestamp = Date.now().toString().slice(-6); // Last 6 digits
         const retryData = {
@@ -207,7 +204,6 @@ export const formsService = {
         };
       }
 
-      // Re-throw if it's a different error
       throw error;
     }
   },

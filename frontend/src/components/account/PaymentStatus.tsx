@@ -1,5 +1,3 @@
-// src/components/account/PaymentStatus.tsx
-
 'use client';
 
 import React from 'react';

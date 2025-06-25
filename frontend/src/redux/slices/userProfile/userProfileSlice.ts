@@ -1,5 +1,3 @@
-// src/redux/slices/userProfile/userProfileSlice.ts
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import userProfileService, {
   UserProfile,

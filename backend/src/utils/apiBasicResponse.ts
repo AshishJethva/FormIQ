@@ -1,4 +1,3 @@
-// src/utils/apiResponse.ts
 export interface ApiResponse {
   success: boolean;
   data?: any;

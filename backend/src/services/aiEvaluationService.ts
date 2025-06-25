@@ -1,4 +1,3 @@
-// src/services/aiEvaluationService.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface QuizEvaluation {
@@ -532,7 +531,7 @@ export class AIEvaluationService {
       return analysis;
     }
 
-    // DEFAULT TO GENERAL with enhanced guidance
+    // DEFAULT TO GENERAL
     analysis.type = 'general';
     analysis.confidence = 90;
     analysis.reasons.push('No specific evaluable form type patterns detected');
@@ -639,7 +638,7 @@ export class AIEvaluationService {
     };
   }
 
-  // Enhanced AI request with better error handling
+  // AI request with better error handling
   private async makeAIRequest(prompt: string, retryCount = 0): Promise<string> {
     try {
       if (!prompt || prompt.trim().length === 0) {
@@ -695,7 +694,7 @@ export class AIEvaluationService {
     }
   }
 
-  // Enhanced quiz evaluation with 100% accuracy
+  // quiz evaluation with 100% accuracy
   async evaluateQuizSubmission(
     formStructure: any,
     submissionData: any
@@ -768,7 +767,6 @@ export class AIEvaluationService {
             ? ' Correct! This matches the predefined correct answer.'
             : `❌ Incorrect. The correct answer is "${correctAnswer}".`;
         } else {
-          // AI-powered evaluation with enhanced accuracy
           try {
             const prompt = `
 You are an expert educational evaluator with 100% accuracy requirement. Analyze this question with extreme precision.
@@ -885,7 +883,7 @@ Analyze thoroughly and provide the most accurate assessment possible.`;
     }
   }
 
-  // Enhanced survey evaluation with 100% accuracy
+  // survey evaluation with 100% accuracy
   async evaluateSurveySubmission(
     formStructure: any,
     submissionData: any
@@ -1003,7 +1001,7 @@ Ensure mathematical precision and provide the most accurate analysis possible.`;
         const dataIntegrity =
           this.extractNumber(aiResponse, /DATA_INTEGRITY:\s*(\d+)/) || 85;
 
-        // Parse metrics with enhanced validation
+        // Parse metrics with validation
         const keyMetrics = [];
         for (let i = 1; i <= 3; i++) {
           const metricMatch = aiResponse.match(
@@ -1062,7 +1060,7 @@ Ensure mathematical precision and provide the most accurate analysis possible.`;
     }
   }
 
-  // Enhanced feedback evaluation with 100% accuracy
+  // feedback evaluation with 100% accuracy
   async evaluateFeedbackSubmission(
     formStructure: any,
     submissionData: any
@@ -1159,7 +1157,6 @@ Ensure mathematical precision and provide the most accurate assessment possible.
       try {
         const aiResponse = await this.makeAIRequest(prompt);
 
-        // Parse themes with enhanced validation
         const criticalThemes = [];
         const themesMatch = aiResponse.match(/THEMES:\s*(.+)/i);
         if (themesMatch) {
@@ -1226,7 +1223,7 @@ Ensure mathematical precision and provide the most accurate assessment possible.
           (urgencyMatch?.[1]?.toLowerCase() as 'high' | 'medium' | 'low') ||
           'medium';
 
-        // Auto-adjust urgency based on sentiment with enhanced logic
+        // Auto-adjust urgency based on sentiment
         if (normalizedSentiment.negative > 70 && urgencyLevel !== 'high') {
           urgencyLevel = 'high';
         } else if (
@@ -1941,7 +1938,7 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
     };
   }
 
-  // Enhanced main evaluation method with 100% accuracy guarantee
+  // main evaluation method with 100% accuracy guarantee
   async evaluateSubmissionWithValidation(
     formStructure: any,
     submissionData: any,
@@ -1950,7 +1947,7 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
     const startTime = Date.now();
 
     try {
-      // Enhanced validation with detailed checks
+      // validation with detailed checks
       if (!this.validateFormStructure(formStructure)) {
         return this.createFailedEvaluation(
           submissionId,
@@ -1965,7 +1962,7 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
         );
       }
 
-      // Enhanced form type detection
+      // form type detection
       const formAnalysis = this.analyzeFormStructure(
         formStructure,
         submissionData
@@ -2153,7 +2150,7 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
     }
   }
 
-  // Enhanced validation methods
+  // validation methods
   private validateFormStructure(formStructure: any): boolean {
     try {
       if (!formStructure || typeof formStructure !== 'object') {
@@ -2385,7 +2382,7 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
     };
   }
 
-  // Enhanced batch evaluation with accuracy tracking
+  // batch evaluation with accuracy tracking
   async evaluateBatchSubmissions(
     formStructure: any,
     submissions: Array<{ id: string; data: any }>

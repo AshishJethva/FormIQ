@@ -1,4 +1,3 @@
-// src/types/form.ts - Frontend Types
 import { Submission } from '@/services/submissions';
 
 export interface Form {

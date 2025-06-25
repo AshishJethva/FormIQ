@@ -1,5 +1,3 @@
-// src/app/myaccount/history/page.tsx
-
 'use client';
 
 import React, {
@@ -880,7 +878,6 @@ const HistoryPage = () => {
             </motion.div>
           )}
 
-          {/* Enhanced Account Details Section */}
           <motion.div variants={itemVariants}>
             <h2 className='text-xl sm:text-2xl font-semibold text-green-600 mb-6 border-b border-gray-200 pb-2 flex items-center'>
               <Globe className='h-4 w-4 sm:h-5 sm:w-5 mr-2' />

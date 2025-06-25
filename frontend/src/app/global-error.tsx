@@ -1,4 +1,3 @@
-// app/global-error.tsx (Global Error Boundary)
 'use client';
 
 import { useEffect } from 'react';

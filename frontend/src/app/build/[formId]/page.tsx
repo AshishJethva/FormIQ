@@ -1,4 +1,3 @@
-// src/app/buid/[formId]/page.tsx
 'use client';
 
 import { Provider } from 'react-redux';

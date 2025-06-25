@@ -1,4 +1,3 @@
-// src/components/form-builder/canvas/ThankYouPage.tsx
 'use client';
 
 import { motion } from 'framer-motion';

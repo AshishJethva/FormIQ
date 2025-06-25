@@ -1,4 +1,3 @@
-// src/components/form-builder/properties-panel/PropertiesPanel.tsx
 'use client';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -245,7 +244,7 @@ export default function PropertiesPanel() {
     }
   };
 
-  //  ENHANCED: Better field title formatting
+  // Better field title formatting
   const getFieldTitle = (fieldType: string): string => {
     const fieldTitles: Record<string, string> = {
       shortText: 'Short Text',
@@ -278,7 +277,7 @@ export default function PropertiesPanel() {
 
   const fieldTitle = getFieldTitle(field.type);
 
-  // Panel animation variants - Enhanced for mobile
+  // Panel animation variants
   const panelVariants = {
     hidden: { x: '100%', opacity: 0 },
     visible: {

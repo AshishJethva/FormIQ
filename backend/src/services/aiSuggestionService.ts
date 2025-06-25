@@ -1,5 +1,3 @@
-// src/services/aiSuggestionService.ts
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface SuggestionRequest {
@@ -32,7 +30,7 @@ export class AISuggestionService {
     this.model = this.genAI.getGenerativeModel({
       model: 'gemini-2.0-flash-lite',
       generationConfig: {
-        temperature: 0.4, // Lower temperature for more focused responses
+        temperature: 0.4,
         topK: 10,
         topP: 0.7,
         maxOutputTokens: 80,

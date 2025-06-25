@@ -1,76 +1,9 @@
-// src/middleware/debugMiddleware.ts - Debug middleware for form submissions
-
 import { Request, Response, NextFunction } from 'express';
 
 interface DebugRequest extends Request {
   startTime?: number;
   debugInfo?: any;
 }
-
-/**
- * Enhanced debugging middleware for form submissions
- */
-export const debugFormSubmission = (
-  req: DebugRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  req.startTime = Date.now();
-
-  // Log request body details
-  if (req.body) {
-   
-
-    // Log sample of form data (first 3 fields)
-    if (req.body.data) {
-      const sampleData = Object.fromEntries(
-        Object.entries(req.body.data)
-          .slice(0, 3)
-          .map(([key, value]) => [
-            key,
-            typeof value === 'string' && value.length > 100
-              ? `${value.substring(0, 100)}...`
-              : value,
-          ])
-      );
-      
-    }
-
-    // Log file data summary
-    if (req.body.files) {
-      const fileSummary = Object.fromEntries(
-        Object.entries(req.body.files).map(([fieldId, files]) => [
-          fieldId,
-          Array.isArray(files)
-            ? `${files.length} files`
-            : files
-              ? '1 file'
-              : 'no file',
-        ])
-      );
-      
-    }
-  }
-
-  // Intercept response to log completion
-  const originalSend = res.send;
-  res.send = function (data: any) {
-    const duration = req.startTime ? Date.now() - req.startTime : 0;
-
-   
-
-    if (res.statusCode >= 400) {
-      console.error('❌ FORM SUBMISSION ERROR RESPONSE:', {
-        statusCode: res.statusCode,
-        error: typeof data === 'string' ? data : JSON.stringify(data),
-      });
-    }
-
-    return originalSend.call(this, data);
-  };
-
-  next();
-};
 
 /**
  * Request validation middleware
@@ -80,8 +13,6 @@ export const validateFormSubmissionRequest = (
   res: Response,
   next: NextFunction
 ) => {
-  
-
   // Check content type
   const contentType = req.get('Content-Type');
   if (!contentType || !contentType.includes('application/json')) {
@@ -115,7 +46,6 @@ export const validateFormSubmissionRequest = (
     });
   }
 
-  
   next();
 };
 
@@ -179,8 +109,6 @@ export const monitorFormSubmissionPerformance = (
     const end = process.hrtime.bigint();
     const duration = Number(end - start) / 1000000; // Convert to milliseconds
 
-  
-
     // Log slow requests
     if (duration > 5000) {
       console.warn('SLOW REQUEST DETECTED:', {
@@ -195,7 +123,6 @@ export const monitorFormSubmissionPerformance = (
 };
 
 export default {
-  debugFormSubmission,
   validateFormSubmissionRequest,
   handleFormSubmissionError,
   monitorFormSubmissionPerformance,

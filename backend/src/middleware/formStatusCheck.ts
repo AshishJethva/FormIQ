@@ -1,4 +1,3 @@
-// src/middleware/formStatusCheck.ts - Middleware to check if form is enabled
 import { Request, Response, NextFunction } from 'express';
 import Form from '../models/Form';
 import { ApiError } from '../utils/apiBasicError';
@@ -100,7 +99,6 @@ export const checkFormOwnership = async (
       throw new ApiError('Form not found or access denied', 404);
     }
 
-    // Attach form to request for use in next middleware/controller
     req.form = form;
     next();
   } catch (error) {

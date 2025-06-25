@@ -1,4 +1,3 @@
-// src/utils/deletionHelpers.ts - Utility Functions for Deletion Operations
 import { toast } from 'sonner';
 
 export interface DeletionProgress {

@@ -1,4 +1,3 @@
-// src/components/form-builder/logo/FormLogo.tsx
 'use client';
 
 import { useSelector } from 'react-redux';
@@ -147,7 +146,7 @@ export default function FormLogo() {
     };
   };
 
-  // Enhanced onLoad handler with mobile considerations
+  // onLoad handler with mobile considerations
   const handleImageLoad = () => {
     if (imgRef.current && logo.size && logo.size > 70) {
       const aspectRatio =

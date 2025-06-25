@@ -1,4 +1,3 @@
-// src/routes/forms.ts - Forms Routes
 import express from 'express';
 import { Request, Response } from 'express';
 import { protect } from '../middleware/protect';

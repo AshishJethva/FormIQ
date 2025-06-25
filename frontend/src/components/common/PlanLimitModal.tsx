@@ -1,5 +1,3 @@
-// frontend/src/components/common/PlanLimitModal.tsx
-
 'use client';
 
 import React from 'react';

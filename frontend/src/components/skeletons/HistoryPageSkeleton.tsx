@@ -1,5 +1,3 @@
-// src/components/skeletons/HistoryPageSkeleton.tsx
-
 'use client';
 
 import React from 'react';

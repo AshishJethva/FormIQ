@@ -122,7 +122,7 @@ export default function NotFound() {
               <Button
                 asChild
                 size='lg'
-                className='bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 group'
+                className='cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 group'
               >
                 <Link href='/' className='flex items-center gap-2'>
                   <Home className='h-4 w-4 group-hover:scale-110 transition-transform' />
@@ -134,7 +134,7 @@ export default function NotFound() {
                 variant='outline'
                 size='lg'
                 onClick={() => router.back()}
-                className='border-slate-300 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-700 transition-all duration-300 group'
+                className='cursor-pointer border-slate-300 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-700 transition-all duration-300 group'
               >
                 <ArrowLeft className='h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform' />
                 Go Back
@@ -144,7 +144,7 @@ export default function NotFound() {
                 variant='ghost'
                 size='lg'
                 onClick={() => window.location.reload()}
-                className='hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-300 group'
+                className='hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-300 group cursor-pointer'
               >
                 <RefreshCw className='h-4 w-4 mr-2 group-hover:rotate-180 transition-transform duration-500' />
                 Refresh

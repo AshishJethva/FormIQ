@@ -1,4 +1,3 @@
-// src/components/form-builder/navigation/MainNavigation.tsx
 'use client';
 
 import { useRouter, usePathname, useParams } from 'next/navigation';
@@ -376,7 +375,7 @@ export default function MainNavigation({
             </span>
           </div>
 
-          {/* Enhanced Toggle with 3D Effect */}
+          {/* Toggle with 3D Effect */}
           <motion.div
             className={`relative w-14 h-7 rounded-full transition-all duration-300 cursor-pointer shadow-lg ${
               isPreviewLoading

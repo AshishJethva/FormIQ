@@ -1,5 +1,3 @@
-// src/validation/authValidation.ts
-
 import { z } from 'zod';
 
 // Signup validation schema

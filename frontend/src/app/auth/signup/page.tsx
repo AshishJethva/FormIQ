@@ -1,5 +1,3 @@
-// src/app/auth/signup/page.tsx
-
 'use client';
 
 import React, { useState } from 'react';
@@ -198,7 +196,7 @@ export default function SignupPage() {
                   <div className='absolute inset-y-0 right-0 pr-3.5 flex items-center'>
                     <button
                       type='button'
-                      className='text-indigo-500 hover:text-indigo-600 focus:outline-none transition-colors p-1.5 rounded-full hover:bg-indigo-50 cursor-pointer'
+                      className='text-indigo-500 hover:text-indigo-600  focus:outline-none transition-colors p-1.5 rounded-full hover:bg-indigo-50 cursor-pointer'
                       onClick={togglePasswordVisibility}
                       aria-label={
                         showPassword ? 'Hide password' : 'Show password'

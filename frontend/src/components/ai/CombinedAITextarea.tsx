@@ -1,5 +1,3 @@
-// src/components/ai/CombinedAITextarea.tsx
-
 'use client';
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
@@ -21,7 +19,6 @@ interface CombinedAITextareaProps {
   messages?: AnimatedMessage[];
 }
 
-// Enhanced form-focused animated messages
 const defaultMessages: AnimatedMessage[] = [
   {
     text: 'I want to build a comprehensive job application form for my company with sections for personal information, work experience, education background, skills assessment, and professional references with document upload capabilities',
@@ -183,7 +180,6 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
     return keywordCount >= 1 && !hasNonFormPattern;
   }, []);
 
-  // Enhanced quote removal function
   const removeAllQuotes = useCallback((text: string): string => {
     if (!text) return '';
 
@@ -370,7 +366,6 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
     }
   }, [suggestions, removeAllQuotes]);
 
-  // Enhanced suggestion display with 4-line boundary control
   const getSuggestionDisplay = useCallback(() => {
     if (!showSuggestion || !currentSuggestion || !textareaRef.current) {
       return { beforeSuggestion: '', suggestionText: '', afterSuggestion: '' };
@@ -511,7 +506,6 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
     }
   }, [value.length, hasUserTyped]);
 
-  // Enhanced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
     const newScrollTop = e.currentTarget.scrollTop;
     setScrollTop(newScrollTop);
@@ -528,7 +522,6 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
     }
   }, []);
 
-  // Enhanced suggestion triggering logic
   const shouldTriggerSuggestion = useCallback(
     (newValue: string, newCursorPosition: number): boolean => {
       // First check if content is form-related
@@ -863,7 +856,6 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         </div>
       )}
 
-      {/* Enhanced instruction text */}
       <div className='absolute -bottom-6 left-0 text-xs text-gray-500 flex items-center gap-2'>
         <span>💡 Tab to accept</span>
         <span>•</span>

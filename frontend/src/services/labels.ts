@@ -1,11 +1,9 @@
-// services/labels.ts - Labels Service
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
-// Create axios instance with base URL and default headers
 const api = axios.create({
   baseURL: apiConfig.url,
-  withCredentials: true, // Important for cookie-based auth
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

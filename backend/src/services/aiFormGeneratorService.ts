@@ -1,4 +1,3 @@
-// src/services/aiFormGeneratorService.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -394,7 +393,7 @@ export class AIFormGeneratorService {
           if (field.type === 'longText' || field.type === 'paragraph') {
             textFieldCount++;
 
-            // Enhanced feedback pattern detection
+            // feedback pattern detection
             if (
               /feedback|comment|improve|experience.*with|how.*was.*your|tell.*us.*about|share.*your.*thoughts|what.*did.*you.*think|any.*suggestions|what.*could.*we|how.*can.*we.*improve|describe.*your.*experience|thoughts.*on|opinion.*about|better.*experience/.test(
                 fieldLabel
@@ -1448,7 +1447,7 @@ Example survey rating field:
     error?: string;
   }> {
     try {
-      //  Enhanced logo selection logic for professional web app forms
+      // logo selection logic for professional web app forms
       const logoResult = this.selectAppropriateLogoForWebApp(
         title,
         description,
@@ -1476,7 +1475,7 @@ Example survey rating field:
     }
   }
 
-  // Enhanced logo selection for professional web apps with 900x265 images
+  // logo selection for professional web apps with 900x265 images
   private selectAppropriateLogoForWebApp(
     title: string,
     description: string,
@@ -1707,7 +1706,7 @@ Example survey rating field:
       };
     }
 
-    //  Fallback: Only use generic business logo for clearly business-related forms
+    // Only use generic business logo for clearly business-related forms
     const businessTerms = [
       'form',
       'submit',
@@ -1851,7 +1850,6 @@ Example survey rating field:
   }
 
   private enhanceFormConfig(config: any, originalPrompt: string): any {
-    // Detect if this is a quiz/test form from title, description, or prompt
     const formTitle = config.title?.toLowerCase() || '';
     const formDescription = config.description?.toLowerCase() || '';
     const promptLower = originalPrompt.toLowerCase();
@@ -1860,7 +1858,7 @@ Example survey rating field:
       formTitle + ' ' + formDescription + ' ' + promptLower
     );
 
-    //  Enhanced default settings with required configurations
+    // default settings with required configurations
     config.settings = {
       submitButtonText: 'Submit Form',
       showLogo: true, // Enable logo by default
@@ -1892,7 +1890,7 @@ Example survey rating field:
             field.helpText ||
             this.generateHelpText(field.type, field.label, originalPrompt);
 
-          //  ENHANCED: Generate contextual configurations for new field types
+          // Generate contextual configurations for new field types
           if (field.type === 'signature') {
             enhancedField.signatureConfig = {
               instructionText: this.generateSignatureInstructions(

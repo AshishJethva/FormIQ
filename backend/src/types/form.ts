@@ -1,4 +1,3 @@
-// src/types/form.ts - Backend TypeScript Types
 export interface Field {
   id: string;
   type: FieldType;

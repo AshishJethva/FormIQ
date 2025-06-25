@@ -1,4 +1,3 @@
-// src/components/form-builder/canvas/PageSeparator.tsx
 'use client';
 
 import { useState } from 'react';

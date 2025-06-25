@@ -1,4 +1,3 @@
-// src/services/fileUploadService.ts - Frontend
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 

@@ -1,4 +1,3 @@
-// src/components/skeletons/AIFormBuilderLoadingSkeleton.tsx
 'use client';
 
 import React from 'react';

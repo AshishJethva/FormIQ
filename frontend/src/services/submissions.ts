@@ -1,4 +1,3 @@
-// src/services/submissions.ts - Frontend
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 

@@ -1,5 +1,3 @@
-// src/redux/slices/dashboard/formsSlice.ts
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { formsService, CreateFormData } from '@/services/forms';
 import { labelsService } from '@/services/labels';

@@ -1,4 +1,3 @@
-// src/components/form-builder/publish/FormPublishPage.tsx
 'use client';
 
 import { useState } from 'react';

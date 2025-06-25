@@ -1,5 +1,3 @@
-// src/lib/razorpay.ts
-
 export const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise(resolve => {
     // Check if Razorpay is already loaded

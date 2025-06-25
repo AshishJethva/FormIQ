@@ -1,5 +1,3 @@
-// src/components/skeletons/AccountPageSkeleton.tsx
-
 'use client';
 
 import React from 'react';

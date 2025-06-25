@@ -1,5 +1,3 @@
-// src/dependencies/zod.ts
-
 import { z } from 'zod';
 
 // Schema for login form validation

@@ -1,4 +1,3 @@
-// src/components/form-builder/preview/PreviewForm.tsx
 'use client';
 
 import { Form, Field, FieldType } from '@/types/form';

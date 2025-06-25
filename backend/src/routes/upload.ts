@@ -1,4 +1,3 @@
-// src/routes/upload.ts
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
@@ -29,7 +28,7 @@ const logoStorage = new CloudinaryStorage({
   params: {
     folder: 'form-logos', // The folder in Cloudinary where logos will be stored
     allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'], // Allowed file formats
-    transformation: [{ width: 1000, crop: 'limit' }], // Optional transformations
+    transformation: [{ width: 1000, crop: 'limit' }], 
   } as Options['params'],
 });
 

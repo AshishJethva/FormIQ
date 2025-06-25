@@ -1,4 +1,3 @@
-// src/components/form-builder/elements-panel/ElementsPanel.tsx
 'use client';
 
 import { useState, useEffect } from 'react';

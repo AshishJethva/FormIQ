@@ -15,8 +15,6 @@ import PasswordResetToken from '../models/PasswordResetToken';
 import { sendPasswordResetEmail } from '../services/emailService';
 import { emailSchema, resetPasswordSchema } from '../validation/authValidation';
 
-// Helper function to sign JWT token
-
 const signToken = (id: string): string => {
   const payload = { id };
   const secret = process.env.JWT_SECRET ?? 'fallback_dev_secret_32_characters';
@@ -122,7 +120,6 @@ export const login = catchAsync(
             status: 'fail',
             message:
               'Account not verified. A verification code has been sent to your email.',
-            // Only include OTP in development
             ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
             user_id: user._id,
             requiresVerification: true,

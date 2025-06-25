@@ -1,5 +1,3 @@
-// src/hooks/useUserProfile.ts
-
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect, useCallback } from 'react';
 import {
