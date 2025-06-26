@@ -1,4 +1,7 @@
+// src/redux/slices/formBuilder/formBuilderSlice.ts
+
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { updateFormWithAI } from './aiFormUpdateSlice';
 import { v4 as uuidv4 } from 'uuid';
 import { Form, Field, FieldType, FormSettings, LogoState } from '@/types/form';
 import axios from 'axios';
@@ -26,13 +29,18 @@ const deepEqual = (obj1: any, obj2: any): boolean => {
 
 interface FormBuilderState {
   form: Form | null;
+  hasUnsavedChanges: boolean;
+  selectedFieldId: string | null;
+  selectedPageId: string | null;
+  currentPageIndex: number;
+  propertiesPanelOpen: boolean;
+  isDirty: boolean;
   isPreviewMode: boolean;
   isSaving: boolean;
   isLoading: boolean;
   showGridLines: boolean;
   error: string | null;
   lastSaveTime: string | null;
-  hasUnsavedChanges: boolean;
 }
 
 const initialState: FormBuilderState = {
@@ -44,6 +52,11 @@ const initialState: FormBuilderState = {
   error: null,
   lastSaveTime: null,
   hasUnsavedChanges: false,
+  selectedFieldId: null,
+  selectedPageId: null,
+  currentPageIndex: 0,
+  propertiesPanelOpen: false,
+  isDirty: false,
 };
 
 // Helper function to serialize dates to strings
@@ -238,6 +251,45 @@ const formBuilderSlice = createSlice({
       }
     },
 
+    setForm: (state, action: PayloadAction<Form>) => {
+      state.form = action.payload;
+      state.selectedPageId =
+        action.payload.selectedPageId || action.payload.pages[0]?.id;
+      state.currentPageIndex = action.payload.currentPageIndex || 0;
+      state.hasUnsavedChanges = false;
+      state.isDirty = false;
+      state.error = null;
+    },
+
+    updateForm: (state, action: PayloadAction<Partial<Form>>) => {
+      if (state.form) {
+        Object.assign(state.form, action.payload);
+        state.hasUnsavedChanges = true;
+        state.isDirty = true;
+      }
+    },
+
+    setSelectedField: (state, action: PayloadAction<string | null>) => {
+      state.selectedFieldId = action.payload;
+    },
+
+    setSelectedPage: (state, action: PayloadAction<string>) => {
+      const pageId = action.payload;
+      const pageIndex = state.form?.pages.findIndex(p => p.id === pageId);
+
+      if (pageIndex !== -1 && pageIndex !== undefined) {
+        state.selectedPageId = pageId;
+        state.currentPageIndex = pageIndex;
+        state.selectedFieldId = null; // Clear field selection when changing pages
+
+        // Update form object
+        if (state.form) {
+          state.form.selectedPageId = pageId;
+          state.form.currentPageIndex = pageIndex;
+        }
+      }
+    },
+
     setFormTitle: (state, action: PayloadAction<string>) => {
       if (state.form) {
         state.form.title = action.payload;
@@ -310,9 +362,29 @@ const formBuilderSlice = createSlice({
 
     addField: (
       state,
-      action: PayloadAction<{ type: FieldType; pageId?: string }>
+      action: PayloadAction<{
+        type: FieldType;
+        pageId?: string;
+        field: any;
+        index?: number;
+      }>
     ) => {
       if (!state.form || !state.form.pages) return;
+
+      const pageId = action.payload.pageId || state.form.selectedPageId;
+      const { field, index } = action.payload;
+      const page = state.form.pages.find(p => p.id === pageId);
+
+      if (page) {
+        if (!page.fields) page.fields = [];
+
+        const insertIndex = index !== undefined ? index : page.fields.length;
+        page.fields.splice(insertIndex, 0, field);
+
+        state.selectedFieldId = field.id;
+        state.hasUnsavedChanges = true;
+        state.isDirty = true;
+      }
 
       //  ENHANCED: Create field with proper structure for all types
       const baseField = {
@@ -390,8 +462,6 @@ const formBuilderSlice = createSlice({
         }
       }
 
-      // Determine which page to add the field to
-      const pageId = action.payload.pageId || state.form.selectedPageId;
       if (!pageId) {
         if (state.form.pages.length > 0) {
           state.form.pages[0].fields.push(newField);
@@ -419,13 +489,26 @@ const formBuilderSlice = createSlice({
       state,
       action: PayloadAction<{
         id: string;
-        updates: Partial<Field>;
         pageId?: string;
+        fieldId: string;
+        updates: any;
       }>
     ) => {
       if (!state.form || !state.form.pages) return;
 
-      const { id, updates, pageId } = action.payload;
+      const { fieldId, id, updates, pageId } = action.payload;
+
+      for (const page of state.form.pages) {
+        if (!page.fields) continue;
+
+        const field = page.fields.find(f => f.id === fieldId);
+        if (field) {
+          Object.assign(field, updates);
+          state.hasUnsavedChanges = true;
+          state.isDirty = true;
+          break;
+        }
+      }
 
       const targetPageId = pageId || state.form.selectedPageId;
       if (!targetPageId) {
@@ -484,6 +567,24 @@ const formBuilderSlice = createSlice({
       if (!state.form || !state.form.pages) return;
 
       const { fieldId, pageId } = action.payload;
+
+      for (const page of state.form.pages) {
+        if (!page.fields) continue;
+
+        const fieldIndex = page.fields.findIndex(f => f.id === fieldId);
+        if (fieldIndex !== -1) {
+          page.fields.splice(fieldIndex, 1);
+
+          // Clear selection if removing selected field
+          if (state.selectedFieldId === fieldId) {
+            state.selectedFieldId = null;
+          }
+
+          state.hasUnsavedChanges = true;
+          state.isDirty = true;
+          break;
+        }
+      }
 
       if (pageId) {
         const pageIndex = state.form.pages.findIndex(
@@ -599,11 +700,46 @@ const formBuilderSlice = createSlice({
         dragIndex: number;
         hoverIndex: number;
         pageId?: string;
+        fieldId: string;
+        fromPageId: string;
+        toPageId: string;
+        toIndex: number;
       }>
     ) => {
       if (!state.form || !state.form.pages) return;
 
-      const { dragIndex, hoverIndex, pageId } = action.payload;
+      const {
+        dragIndex,
+        hoverIndex,
+        pageId,
+        fieldId,
+        fromPageId,
+        toPageId,
+        toIndex,
+      } = action.payload;
+
+      // Find and remove the field
+      let fieldToMove = null;
+      const fromPage = state.form.pages.find(p => p.id === fromPageId);
+
+      if (fromPage?.fields) {
+        const fieldIndex = fromPage.fields.findIndex(f => f.id === fieldId);
+        if (fieldIndex !== -1) {
+          fieldToMove = fromPage.fields.splice(fieldIndex, 1)[0];
+        }
+      }
+
+      // Add to new position
+      if (fieldToMove) {
+        const toPage = state.form.pages.find(p => p.id === toPageId);
+        if (toPage) {
+          if (!toPage.fields) toPage.fields = [];
+          toPage.fields.splice(toIndex, 0, fieldToMove);
+        }
+      }
+
+      state.hasUnsavedChanges = true;
+      state.isDirty = true;
 
       if (pageId) {
         const pageIndex = state.form.pages.findIndex(
@@ -956,6 +1092,23 @@ const formBuilderSlice = createSlice({
       }
     },
 
+    setPropertiesPanelOpen: (state, action: PayloadAction<boolean>) => {
+      state.propertiesPanelOpen = action.payload;
+    },
+
+    markAsSaved: state => {
+      state.hasUnsavedChanges = false;
+      state.isDirty = false;
+    },
+
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+    },
+
     clearError: state => {
       state.error = null;
     },
@@ -1039,6 +1192,33 @@ const formBuilderSlice = createSlice({
       })
       .addCase(loadFormAsync.rejected, (state, action) => {
         state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(updateFormWithAI.fulfilled, (state, action) => {
+        // Update the form with the AI-updated data
+        if (action.payload && state.form) {
+          // Merge the updated form data
+          Object.assign(state.form, {
+            title: action.payload.title,
+            description: action.payload.description,
+            pages: action.payload.pages,
+            settings: action.payload.settings,
+            logo: action.payload.logo,
+            selectedPageId: action.payload.selectedPageId,
+            currentPageIndex: action.payload.currentPageIndex,
+          });
+
+          // Update local state
+          state.selectedPageId = action.payload.selectedPageId;
+          state.currentPageIndex = action.payload.currentPageIndex || 0;
+          state.selectedFieldId = null; // Clear field selection after AI update
+          state.hasUnsavedChanges = false; // AI updates are automatically saved
+          state.isDirty = false;
+
+          console.log('✅ Form updated in Redux store after AI update');
+        }
+      })
+      .addCase(updateFormWithAI.rejected, (state, action) => {
         state.error = action.payload as string;
       })
 
@@ -1219,6 +1399,14 @@ export const {
   setCurrentPage,
   setSelectedPageId,
   setFormPublished,
+  setForm,
+  updateForm,
+  setSelectedField,
+  setSelectedPage,
+  setPropertiesPanelOpen,
+  markAsSaved,
+  setLoading,
+  setError,
   clearError,
 } = formBuilderSlice.actions;
 

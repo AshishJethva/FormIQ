@@ -302,7 +302,6 @@ class AIEvaluationService {
             ) {
               hasCorrectAnswers = true;
             } else {
-              // 🔧 FIXED: Check if this single choice has rating options (SURVEY, NOT QUIZ)
               if (field.options && Array.isArray(field.options)) {
                 const hasRatingOptions = field.options.some(
                   (opt: any) =>

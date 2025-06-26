@@ -131,7 +131,6 @@ const AccountSidebar = () => {
                   `}
                   whileHover={{ scale: 1.02, x: 4 }}
                   whileTap={{ scale: 0.98 }}
-                  // Remove layout prop to reduce flashing
                 >
                   <motion.div
                     className={`

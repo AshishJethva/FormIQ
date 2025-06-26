@@ -41,7 +41,6 @@ export default function DraggableElement({
     type: ItemTypes.FORM_ELEMENT,
     item: { type: ItemTypes.FORM_ELEMENT, fieldType: type },
     end: (item, monitor) => {
-      // If the drop was not successful, add at the end
       const didDrop = monitor.didDrop();
       if (!didDrop) {
         // Only add the field when clicking, not when dropping elsewhere

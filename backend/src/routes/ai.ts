@@ -1,3 +1,5 @@
+// src/routes/ai.ts
+
 import express from 'express';
 import { protect } from '../middleware/protect';
 import { aiGenerationLimiter } from '../middleware/aiRateLimit';
@@ -10,6 +12,10 @@ import {
   getRecentAIForms,
   regenerateFormLogo,
   getLogoSuggestions,
+  updateFormWithAI,
+  validateUpdatePrompt,
+  getFormUpdateHistory,
+  getUpdateSuggestions,
 } from '../controllers/aiController';
 
 const router = express.Router();
@@ -53,5 +59,25 @@ router.post('/regenerate-logo/:formId', protect, regenerateFormLogo);
 // @desc    Get AI-powered logo suggestions based on form type/title
 // @access  Private
 router.post('/logo-suggestions', protect, getLogoSuggestions);
+
+// @route   POST /api/ai/update-form
+// @desc    Update an existing form using AI based on user prompt
+// @access  Private (requires authentication + rate limiting)
+router.post('/update-form', protect, aiGenerationLimiter, updateFormWithAI);
+
+// @route   POST /api/ai/validate-update-prompt
+// @desc    Validate if prompt is suitable for form updates
+// @access  Private
+router.post('/validate-update-prompt', protect, validateUpdatePrompt);
+
+// @route   GET /api/ai/update-history/:formId
+// @desc    Get AI form update history for a specific form
+// @access  Private
+router.get('/update-history/:formId', protect, getFormUpdateHistory);
+
+// @route   POST /api/ai/update-suggestions
+// @desc    Get contextual suggestions for form updates based on current form
+// @access  Private
+router.post('/update-suggestions', protect, getUpdateSuggestions);
 
 export default router;

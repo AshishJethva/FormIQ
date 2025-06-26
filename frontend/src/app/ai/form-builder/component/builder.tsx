@@ -10,7 +10,6 @@ import { generateFormWithAI, clearError } from '@/redux/slices/ai/aiFormSlice';
 import { RootState, StoreDispatch } from '@/redux/store';
 import { CombinedAITextarea } from '@/components/ai/CombinedAITextarea';
 
-
 export default function AIFormBuilderPage() {
   const router = useRouter();
   const dispatch: StoreDispatch = useDispatch();

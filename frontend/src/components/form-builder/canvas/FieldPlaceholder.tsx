@@ -19,7 +19,6 @@ export default function FieldPlaceholder({
 }: FieldPlaceholderProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Set up drop target
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: [ItemTypes.FORM_ELEMENT, ItemTypes.FORM_FIELD],
     canDrop: () => true,
@@ -28,15 +27,12 @@ export default function FieldPlaceholder({
       canDrop: monitor.canDrop(),
     }),
     drop: (item: any) => {
-      // If it's a new element from the sidebar
       if (item && item.type === ItemTypes.FORM_ELEMENT && item.fieldType) {
         onDrop(item.fieldType, index);
         return { dropped: true };
       }
 
-      // If it's a dragged field within the form
       if (item && item.type === ItemTypes.FORM_FIELD) {
-        // Handle in DraggableField component
         return undefined;
       }
 
@@ -44,7 +40,6 @@ export default function FieldPlaceholder({
     },
   });
 
-  // Show placeholder when hovering or when something is being dragged over
   const showPlaceholder = isHovered || (isOver && canDrop);
 
   if (!showPlaceholder) {

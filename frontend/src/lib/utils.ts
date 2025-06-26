@@ -1,17 +1,10 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-/**
- * Combines multiple class values into a single className string
- */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Generates a 15-digit unique identifier
- * This ensures we always get exactly 15 digits for compatibility
- */
 export function generateUniqueId(): string {
   // Get timestamp component (first 10 digits)
   const timestamp = Date.now().toString().substring(0, 10);
@@ -25,9 +18,6 @@ export function generateUniqueId(): string {
   return `${timestamp}${randomDigits}`;
 }
 
-/**
- * Format a date as a readable string
- */
 export function formatDate(date: Date | number): string {
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -36,9 +26,6 @@ export function formatDate(date: Date | number): string {
   });
 }
 
-/**
- * Format a datetime as a readable string with time
- */
 export function formatDateTime(date: Date | number): string {
   return new Date(date).toLocaleString('en-US', {
     year: 'numeric',

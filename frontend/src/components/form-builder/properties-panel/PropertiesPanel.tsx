@@ -102,7 +102,6 @@ export default function PropertiesPanel() {
     };
   }, []);
 
-  //  : Early return AFTER all hooks
   if (!form || !field || !form.propertiesPanelOpen) return null;
 
   const handleClosePanel = () => {
@@ -207,7 +206,7 @@ export default function PropertiesPanel() {
   };
 
   const removeOption = (index: number) => {
-    if (options.length <= 1) return; // Keep at least one option
+    if (options.length <= 1) return;
 
     const updatedOptions = options.filter((_, i) => i !== index);
     setOptions(updatedOptions);

@@ -58,8 +58,6 @@ const HistoryPage = () => {
   const [statsLoading, setStatsLoading] = useState(true);
 
   const getSkeletonVariant = () => {
-    if (!userProfile && isLoading) return 'initial-loading';
-    if (statsLoading) return 'initial-loading';
     if (isFilterLoading) return 'filtering';
     if (isPaginating) return 'paginating';
     if (showDatePicker) return 'date-picker-open';
@@ -71,8 +69,7 @@ const HistoryPage = () => {
       (!userProfile && isLoading) ||
       statsLoading ||
       isFilterLoading ||
-      isPaginating ||
-      (isLoading && activityLogs.length === 0)
+      isPaginating
     );
   };
 
@@ -540,8 +537,8 @@ const HistoryPage = () => {
     return (
       <HistoryPageSkeleton
         variant={getSkeletonVariant()}
-        showActivityLogs={activityLogs.length > 0}
-        logsCount={activityLogs.length || 8}
+        showActivityLogs={true}
+        logsCount={8}
         showDatePicker={showDatePicker}
         hasExistingData={activityLogs.length > 0}
       />
@@ -809,7 +806,7 @@ const HistoryPage = () => {
               <motion.button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage <= 1}
-                className='px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
+                className='px-3 cursor-pointer py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
                 whileHover={{ scale: currentPage > 1 ? 1.05 : 1 }}
                 whileTap={{ scale: currentPage > 1 ? 0.95 : 1 }}
               >
@@ -835,7 +832,7 @@ const HistoryPage = () => {
                       <motion.button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-2 text-sm border border-gray-300 rounded-md ${
+                        className={`px-3 py-2 text-sm cursor-pointer border border-gray-300 rounded-md ${
                           currentPage === pageNum
                             ? 'bg-blue-600 text-white border-blue-600'
                             : 'hover:bg-gray-50'
@@ -853,7 +850,7 @@ const HistoryPage = () => {
               <motion.button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= pagination.pages}
-                className='px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
+                className='px-3 py-2 text-sm cursor-pointer border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
                 whileHover={{
                   scale: currentPage < pagination.pages ? 1.05 : 1,
                 }}

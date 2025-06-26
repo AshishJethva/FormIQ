@@ -389,7 +389,9 @@ const validateFormForEvaluation = (
       // FALLBACK: General form
       else {
         reasons.push(
-          `GENERAL: ${singleChoiceCount} SCQ${hasCorrectAnswers ? ' (with answers)' : ''}, ${ratingFields} rating, ${feedbackFields} feedback, ${textFields} text fields`
+          `GENERAL: ${singleChoiceCount} SCQ${
+            hasCorrectAnswers ? ' (with answers)' : ''
+          }, ${ratingFields} rating, ${feedbackFields} feedback, ${textFields} text fields`
         );
       }
     }
@@ -742,10 +744,18 @@ export const evaluateSubmissionsBatch = asyncHandler(
         const analysis = formValidation.analysis;
         throw new ApiError(
           `Form not suitable for batch AI evaluation. Form type: ${analysis?.formType}. ` +
-            `Requirements: Quiz needs 5+ single choice questions (has ${analysis?.singleChoiceCount || 0}), ` +
-            `Application needs 2+ personal info + work experience/education + file upload (has ${analysis?.applicationFields || 0} app fields), ` +
-            `Survey needs 3+ rating fields (has ${analysis?.ratingFields || 0}), ` +
-            `Feedback needs 2+ feedback fields (has ${analysis?.feedbackFields || 0}).`,
+            `Requirements: Quiz needs 5+ single choice questions (has ${
+              analysis?.singleChoiceCount || 0
+            }), ` +
+            `Application needs 2+ personal info + work experience/education + file upload (has ${
+              analysis?.applicationFields || 0
+            } app fields), ` +
+            `Survey needs 3+ rating fields (has ${
+              analysis?.ratingFields || 0
+            }), ` +
+            `Feedback needs 2+ feedback fields (has ${
+              analysis?.feedbackFields || 0
+            }).`,
           400
         );
       }
@@ -762,7 +772,9 @@ export const evaluateSubmissionsBatch = asyncHandler(
         const foundIds = submissions.map(s => s._id.toString());
         const missingIds = submissionIds.filter(id => !foundIds.includes(id));
         throw new ApiError(
-          `Submissions not found or don't belong to this form: ${missingIds.join(', ')}`,
+          `Submissions not found or don't belong to this form: ${missingIds.join(
+            ', '
+          )}`,
           404
         );
       }
@@ -1067,17 +1079,23 @@ export const getEvaluationStats = asyncHandler(
             analysis.singleChoiceCount < 5
           ) {
             requirements.push(
-              `Need ${5 - analysis.singleChoiceCount} more single choice questions for quiz classification`
+              `Need ${
+                5 - analysis.singleChoiceCount
+              } more single choice questions for quiz classification`
             );
           }
           if (analysis.ratingFields > 0 && analysis.ratingFields < 3) {
             requirements.push(
-              `Need ${3 - analysis.ratingFields} more rating fields for survey classification`
+              `Need ${
+                3 - analysis.ratingFields
+              } more rating fields for survey classification`
             );
           }
           if (analysis.feedbackFields > 0 && analysis.feedbackFields < 2) {
             requirements.push(
-              `Need ${2 - analysis.feedbackFields} more feedback fields for feedback classification`
+              `Need ${
+                2 - analysis.feedbackFields
+              } more feedback fields for feedback classification`
             );
           }
         }

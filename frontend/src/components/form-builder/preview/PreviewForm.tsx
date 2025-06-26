@@ -344,7 +344,6 @@ export default function PreviewForm({
             </label>
             <div className='space-y-2'>
               {' '}
-              {/* Changed from space-y-3 to space-y-2 */}
               {field.options && field.options.length > 0 ? (
                 field.options.map((option, index) => (
                   <motion.label
@@ -431,7 +430,6 @@ export default function PreviewForm({
             </label>
             <div className='space-y-2'>
               {' '}
-              {/* Changed from space-y-3 to space-y-2 */}
               {field.options && field.options.length > 0 ? (
                 field.options.map((option, index) => (
                   <motion.label

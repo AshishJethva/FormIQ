@@ -128,7 +128,6 @@ export default function LogoPropertiesPanel({
     }
   }, [logo]);
 
-  // When opened, check if we should switch to My Images tab if logo is already set
   useEffect(() => {
     if (isOpen) {
       loadSavedImages();
@@ -153,7 +152,6 @@ export default function LogoPropertiesPanel({
   // Save image to localStorage
   const saveImageToStorage = (src: string, type: string, publicId?: string) => {
     try {
-      // Check if image already exists
       const exists = savedImages.some(img => img.src === src);
       if (exists) return;
 
@@ -188,8 +186,7 @@ export default function LogoPropertiesPanel({
       return { isValid: false, error: 'Please select an image file' };
     }
 
-    // Check file size (5MB limit for logos)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       return {
         isValid: false,
@@ -217,7 +214,6 @@ export default function LogoPropertiesPanel({
     return { isValid: true };
   };
 
-  // Handle file upload to Cloudinary via our backend
   const uploadToCloudinary = async (file: File) => {
     // Validate file first
     const validation = validateFile(file);
@@ -248,7 +244,7 @@ export default function LogoPropertiesPanel({
         formData,
         {
           headers,
-          timeout: 60000, // 60 second timeout
+          timeout: 60000,
         }
       );
 
@@ -273,7 +269,7 @@ export default function LogoPropertiesPanel({
       // Switch to My Images tab
       setSelectedTab(1);
     } catch (error: any) {
-      console.error('❌ Logo upload failed:', error);
+      console.error('Logo upload failed:', error);
 
       let errorMessage = 'Failed to upload logo';
 
@@ -472,16 +468,12 @@ export default function LogoPropertiesPanel({
     const sliderWidth = rect.width;
     let position = clientX - rect.left;
 
-    // Clamp position to slider width
     position = Math.max(0, Math.min(sliderWidth, position));
 
-    // Calculate percentage (0-100)
     const newSize = Math.round((position / sliderWidth) * 100);
 
-    // Update local state
     setLogoSize(newSize);
 
-    // Update both the input element value and the Redux state
     if (sliderRef.current) {
       sliderRef.current.value = newSize.toString();
     }
@@ -498,15 +490,11 @@ export default function LogoPropertiesPanel({
     }
   };
 
-  // Fix for the size slider to ensure it works across the full range
   const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Parse the value as a number (the range is now 0-100)
     const newSize = parseInt(e.target.value, 10);
     setLogoSize(newSize);
 
-    // Immediately update Redux to ensure the change is applied
     if (logo) {
-      // Use the direct value from the input to ensure accuracy
       dispatch(
         updateLogo({
           ...logo,

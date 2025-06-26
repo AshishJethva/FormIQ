@@ -259,7 +259,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
       initial={{ x: -280, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{
-        duration: 0.08, // Almost instant
+        duration: 0.08,
         ease: 'easeOut',
       }}
       className='w-70 bg-[#F3F3FE] border-r border-gray-200 overflow-y-auto h-full'
@@ -270,7 +270,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{
           duration: 0.15,
-          delay: 0.05, // Much shorter delay
+          delay: 0.05,
           ease: 'easeOut',
         }}
         className='p-4 bg-white sticky top-0 z-10'
@@ -295,7 +295,7 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{
           duration: 0.15,
-          delay: 0.08, // Much shorter delay
+          delay: 0.08,
           ease: 'easeOut',
         }}
         className='px-4 py-2'

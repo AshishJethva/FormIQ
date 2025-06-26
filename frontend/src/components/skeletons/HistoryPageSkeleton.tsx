@@ -195,7 +195,7 @@ const HistoryPageSkeleton = ({
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.2, delay: index * 0.05 }}
             >
-              <Skeleton className='h-4 w-full rounded' />
+              <Skeleton className='h-4 w-full rounded bg-gray-600' />
             </motion.div>
           ))}
         </div>
@@ -209,7 +209,6 @@ const HistoryPageSkeleton = ({
     delay = 0,
     isSpecial = false,
   }: {
-    title: string;
     icon: React.ReactNode;
     delay?: number;
     isSpecial?: boolean;
@@ -498,14 +497,12 @@ const HistoryPageSkeleton = ({
             <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
               {/* Time Details Card */}
               <AccountCardSkeleton
-                title='Time Details'
                 icon={<Clock className='h-3 w-3 sm:h-4 sm:w-4' />}
                 delay={0.1}
               />
 
               {/* IP Address Card */}
               <AccountCardSkeleton
-                title='Last IP Address'
                 icon={<Globe className='h-3 w-3 sm:h-4 sm:w-4' />}
                 delay={0.2}
                 isSpecial={true}

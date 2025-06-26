@@ -222,7 +222,7 @@ export default function FormBuilderHeader({
 
   return (
     <>
-      {/* Main Header - Single Horizontal Line */}
+      {/* Main Header */}
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -276,7 +276,7 @@ export default function FormBuilderHeader({
           </div>
         </div>
 
-        {/* Center - Form Title and Save Status (Perfectly centered above nav tabs) */}
+        {/* Center - Form Title and Save Status */}
         <div className='absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-16 sm:px-4'>
           <motion.div
             className='w-full flex flex-col items-center space-y-1 pointer-events-none'
@@ -371,14 +371,12 @@ export default function FormBuilderHeader({
             className='sm:hidden bg-white border-b border-gray-200 shadow-lg overflow-hidden z-20'
           >
             <div className='px-4 py-4 space-y-4'>
-              {/* Form Builder Label for Mobile */}
               <div className='text-center'>
                 <span className='text-gray-600 text-sm font-medium bg-gray-100 px-3 py-1 rounded-full'>
                   Form Builder
                 </span>
               </div>
 
-              {/* Mobile Profile Section */}
               <div className='pt-2 border-t border-gray-200'>
                 <ProfileDropdown />
               </div>

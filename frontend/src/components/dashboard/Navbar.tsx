@@ -91,7 +91,6 @@ export default function Navbar() {
 
         {/* Right section - Navigation items */}
         <div className='flex items-center space-x-3 sm:space-x-7'>
-          {/* Templates dropdown - Hidden on mobile */}
           <div className='hidden sm:block'>
             <Popover
               open={openMenu === 'templates'}

@@ -45,13 +45,11 @@ export default function FormSettingsPage() {
   );
   const [isFormEnabled, setIsFormEnabled] = useState(true);
 
-  // DEFAULT TO TRUE - Multiple Submissions Controls
   const [allowMultipleSubmissions, setAllowMultipleSubmissions] =
     useState(true);
   const [allowMultipleEmailSubmissions, setAllowMultipleEmailSubmissions] =
     useState(true);
 
-  // Loading states
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -59,7 +57,7 @@ export default function FormSettingsPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Auto-save hook for settings (excluding title and status which have separate handlers)
+  // Auto-save hook for settings
   const { isSaving } = useAutoSave(form, formId, !!form, {
     delay: 1000,
     enableToast: false,

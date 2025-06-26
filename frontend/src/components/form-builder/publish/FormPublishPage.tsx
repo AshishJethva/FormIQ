@@ -57,7 +57,6 @@ export default function FormPublishPage({ formId }: FormPublishPageProps) {
       setCopied(true);
       toast.success('Link copied to clipboard!');
 
-      // Reset copied state after 2 seconds
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Failed to copy link');

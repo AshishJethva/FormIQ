@@ -137,7 +137,7 @@ const UpgradePage = () => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
-  // Get current plan type - FIXED: Apply the Plan type
+  // Get current plan type
   const currentPlan: Plan =
     (userProfile?.profile?.plan?.type as Plan) || 'STARTER';
 
@@ -648,8 +648,7 @@ const UpgradePage = () => {
             <p>
               *Prices shown are in Indian Rupees (INR). The 50% yearly discount
               is applied automatically. Plans auto-renew unless cancelled.
-              30-day money-back guarantee on all paid plans. Test cards: Success
-              (4111 1111 1111 1111), Failure (4111 1111 1111 1112).
+              30-day money-back guarantee on all paid plans.
             </p>
           </div>
         </div>

@@ -1,3 +1,5 @@
+// src/models/Form.ts
+
 import mongoose, { Schema, Document } from 'mongoose';
 
 const OptionSchema = new Schema(
@@ -402,6 +404,15 @@ interface IForm extends Document {
   aiPrompt?: string;
   aiModel?: string;
   aiGenerationMetadata?: any;
+  aiUpdateHistory?: {
+    prompt: string;
+    summary: string;
+    timestamp: Date;
+    model: string;
+    fieldsAdded: number;
+    fieldsModified: number;
+    fieldsRemoved: number;
+  }[];
 }
 
 // Main Form Schema
@@ -535,7 +546,56 @@ const FormSchema = new Schema<IForm>(
       hasLogo: { type: Boolean },
       logoSource: { type: String, maxlength: 500 },
       logoType: { type: String, maxlength: 50 },
+      contentConfidence: Number,
+      attempts: Number,
+      nameChanged: Boolean,
+      originalName: String,
+      finalName: String,
+      // Add update tracking
+      totalUpdates: {
+        type: Number,
+        default: 0,
+      },
+      lastUpdateAt: Date,
+      updateMethods: [
+        {
+          type: String,
+          enum: ['ai_prompt', 'manual_edit', 'ai_regeneration'],
+        },
+      ],
     },
+    aiUpdateHistory: [
+      {
+        prompt: {
+          type: String,
+          required: true,
+        },
+        summary: {
+          type: String,
+          required: true,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        model: {
+          type: String,
+          default: 'gemini-2.0-flash-lite',
+        },
+        fieldsAdded: {
+          type: Number,
+          default: 0,
+        },
+        fieldsModified: {
+          type: Number,
+          default: 0,
+        },
+        fieldsRemoved: {
+          type: Number,
+          default: 0,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -579,10 +639,13 @@ FormSchema.index({ userId: 1, isAIGenerated: 1 });
 FormSchema.index({ title: 'text', description: 'text' });
 FormSchema.index({ trashedAt: 1 });
 FormSchema.index({ publishedAt: -1 });
+FormSchema.index({ 'aiUpdateHistory.timestamp': -1 });
 
 // Virtual for form URL
 FormSchema.virtual('formUrl').get(function () {
-  return `${process.env.FRONTEND_URL || 'http://localhost:3000'}/form/${this._id}`;
+  return `${
+    process.env.FRONTEND_URL || 'http://localhost:3000'
+  }/form/${this._id}`;
 });
 
 // Pre-save middleware to ensure required fields

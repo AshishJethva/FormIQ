@@ -54,9 +54,9 @@ export default function PreviewHeader({
     <>
       <motion.header
         className='bg-gradient-to-r from-orange-300/80 to-orange-600/80 backdrop-blur-md shadow-sm sticky top-0 z-50'
-        initial={{ y: 50, opacity: 0 }} // Start from below (down)
-        animate={{ y: 0, opacity: 1 }} // Move to normal position (up)
-        exit={{ y: -50, opacity: 0 }} // Exit upward
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -50, opacity: 0 }}
         transition={{
           duration: 0.6,
           ease: 'easeOut',
@@ -162,7 +162,6 @@ export default function PreviewHeader({
 
           {/* Tablet Layout */}
           <div className='hidden sm:flex lg:hidden items-center justify-between'>
-            {/* Left - URL (truncated) */}
             <motion.div
               className='flex items-center bg-white rounded-lg px-3 py-2 shadow-sm min-w-0 max-w-xs'
               initial={{ x: -20, opacity: 0 }}
@@ -230,7 +229,6 @@ export default function PreviewHeader({
 
           {/* Mobile Layout */}
           <div className='sm:hidden flex items-center justify-between'>
-            {/* Left - Domain only */}
             <motion.div
               className='flex items-center bg-white rounded-lg px-3 py-2 shadow-sm min-w-0 max-w-[50%]'
               initial={{ x: -15, opacity: 0 }}

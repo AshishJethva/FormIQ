@@ -288,7 +288,6 @@ export class AIEvaluationService {
               hasCorrectAnswers = true;
               analysis.fieldAnalysis.hasCorrectAnswers = true;
             } else {
-              // 🔧 FIXED: Check if this single choice has rating options (SURVEY)
               if (field.options && Array.isArray(field.options)) {
                 const hasRatingOptions = field.options.some(
                   (opt: any) =>
@@ -544,7 +543,9 @@ export class AIEvaluationService {
       analysis.fieldAnalysis.singleChoiceCount < 5
     ) {
       suggestions.push(
-        `Add ${5 - analysis.fieldAnalysis.singleChoiceCount} more single choice questions for quiz classification`
+        `Add ${
+          5 - analysis.fieldAnalysis.singleChoiceCount
+        } more single choice questions for quiz classification`
       );
     }
 
@@ -553,7 +554,9 @@ export class AIEvaluationService {
       analysis.fieldAnalysis.ratingFields < 3
     ) {
       suggestions.push(
-        `Add ${3 - analysis.fieldAnalysis.ratingFields} more rating/scale fields for survey classification`
+        `Add ${
+          3 - analysis.fieldAnalysis.ratingFields
+        } more rating/scale fields for survey classification`
       );
     }
 
@@ -1349,14 +1352,24 @@ APPLICATION CONTEXT:
 Form Title: ${formStructure?.title || 'Job Application'}
 Total Fields: ${applicationFields.totalFields}
 Completed Fields: ${applicationFields.completedFields}
-File Uploads Present: ${applicationFields.fileUploads.filter(f => f.hasValue).length}
-Resume/CV Files: ${applicationFields.fileUploads.filter(f => f.isResumeField && f.hasValue).length}
+File Uploads Present: ${
+        applicationFields.fileUploads.filter(f => f.hasValue).length
+      }
+Resume/CV Files: ${
+        applicationFields.fileUploads.filter(f => f.isResumeField && f.hasValue)
+          .length
+      }
 
 IMPORTANT FILE UPLOAD NOTES:
 - Files are uploaded separately and may not appear in field data
 - Resume/CV fields show as completed when files are uploaded
-- ${applicationFields.fileUploads.filter(f => f.hasValue).length} file upload fields have files attached
-- ${applicationFields.fileUploads.filter(f => f.isResumeField && f.hasValue).length} resume/CV fields have files attached
+- ${
+        applicationFields.fileUploads.filter(f => f.hasValue).length
+      } file upload fields have files attached
+- ${
+        applicationFields.fileUploads.filter(f => f.isResumeField && f.hasValue)
+          .length
+      } resume/CV fields have files attached
 
 APPLICATION DATA:
 ${this.formatApplicationData(applicationFields)}
@@ -1371,7 +1384,12 @@ CRITICAL EVALUATION REQUIREMENTS:
 7.  IMPORTANT: Resume/CV fields with files should be considered completed
 
 RESPOND IN THIS EXACT FORMAT:
-FIELD_COMPLETION: ${applicationFields.completedFields}/${applicationFields.totalFields} (${Math.round((applicationFields.completedFields / applicationFields.totalFields) * 100)}%)
+FIELD_COMPLETION: ${applicationFields.completedFields}/${
+        applicationFields.totalFields
+      } (${Math.round(
+        (applicationFields.completedFields / applicationFields.totalFields) *
+          100
+      )}%)
 MISSING_FIELDS: ${missingFields.join('|') || 'None'}
 CRITICAL_MISSING: ${criticalMissing.join('|') || 'None'}
 
@@ -1638,42 +1656,54 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
     if (fields.personalInfo.length > 0) {
       formatted += '\nPERSONAL INFORMATION:\n';
       fields.personalInfo.forEach((field: any) => {
-        formatted += `- ${field.label}: ${field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'}\n`;
+        formatted += `- ${field.label}: ${
+          field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'
+        }\n`;
       });
     }
 
     if (fields.workExperience.length > 0) {
       formatted += '\nWORK EXPERIENCE:\n';
       fields.workExperience.forEach((field: any) => {
-        formatted += `- ${field.label}: ${field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'}\n`;
+        formatted += `- ${field.label}: ${
+          field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'
+        }\n`;
       });
     }
 
     if (fields.education.length > 0) {
       formatted += '\nEDUCATION:\n';
       fields.education.forEach((field: any) => {
-        formatted += `- ${field.label}: ${field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'}\n`;
+        formatted += `- ${field.label}: ${
+          field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'
+        }\n`;
       });
     }
 
     if (fields.skills.length > 0) {
       formatted += '\nSKILLS & COMPETENCIES:\n';
       fields.skills.forEach((field: any) => {
-        formatted += `- ${field.label}: ${field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'}\n`;
+        formatted += `- ${field.label}: ${
+          field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'
+        }\n`;
       });
     }
 
     if (fields.fileUploads.length > 0) {
       formatted += '\nFILE UPLOADS:\n';
       fields.fileUploads.forEach((field: any) => {
-        formatted += `- ${field.label}: ${field.hasValue ? 'FILE PROVIDED' : 'NO FILE'}\n`;
+        formatted += `- ${field.label}: ${
+          field.hasValue ? 'FILE PROVIDED' : 'NO FILE'
+        }\n`;
       });
     }
 
     if (fields.additional.length > 0) {
       formatted += '\nADDITIONAL INFORMATION:\n';
       fields.additional.forEach((field: any) => {
-        formatted += `- ${field.label}: ${field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'}\n`;
+        formatted += `- ${field.label}: ${
+          field.hasValue ? this.formatFieldValue(field.value) : 'NOT PROVIDED'
+        }\n`;
       });
     }
 
@@ -1993,8 +2023,8 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
               quizResults.percentage >= 70
                 ? 'positive'
                 : quizResults.percentage >= 50
-                  ? 'neutral'
-                  : 'negative';
+                ? 'neutral'
+                : 'negative';
             evaluation.categories = [
               'academic',
               'assessment',
@@ -2013,10 +2043,10 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
                 quizResults.percentage >= 80
                   ? 'Excellent performance!'
                   : quizResults.percentage >= 60
-                    ? 'Good job!'
-                    : quizResults.percentage >= 40
-                      ? 'Fair attempt, room for improvement.'
-                      : 'Needs significant improvement.'
+                  ? 'Good job!'
+                  : quizResults.percentage >= 40
+                  ? 'Fair attempt, room for improvement.'
+                  : 'Needs significant improvement.'
               }`;
             break;
 
@@ -2030,8 +2060,8 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
               surveyResults.overallSentiment.positive > 50
                 ? 'positive'
                 : surveyResults.overallSentiment.negative > 40
-                  ? 'negative'
-                  : 'neutral';
+                ? 'negative'
+                : 'neutral';
             evaluation.categories = [
               'research',
               'analytics',
@@ -2061,8 +2091,8 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
               feedbackResults.sentimentBreakdown.positive > 50
                 ? 'positive'
                 : feedbackResults.sentimentBreakdown.negative > 40
-                  ? 'negative'
-                  : 'neutral';
+                ? 'negative'
+                : 'neutral';
             evaluation.categories = [
               'customer-experience',
               'improvement',
@@ -2092,8 +2122,8 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
               applicationResults.overallScore >= 80
                 ? 'positive'
                 : applicationResults.overallScore >= 60
-                  ? 'neutral'
-                  : 'negative';
+                ? 'neutral'
+                : 'negative';
             evaluation.categories = [
               'recruitment',
               'candidate-evaluation',
@@ -2110,11 +2140,15 @@ Provide precise, data-driven evaluation with clear scoring rationale. Remember t
               `Qualification match: ${applicationResults.qualificationMatching.overallMatch}%. ` +
               `Application strength: ${applicationResults.applicationStrength}. ` +
               `Recommendation: ${applicationResults.recommendedAction}. ` +
-              `Key strengths: ${applicationResults.qualificationMatching.strengths.slice(0, 2).join(', ')}.`;
+              `Key strengths: ${applicationResults.qualificationMatching.strengths
+                .slice(0, 2)
+                .join(', ')}.`;
             break;
 
           default:
-            evaluation.feedback = `General form submission processed successfully. Form analysis: ${formAnalysis.reasons.join(', ')}`;
+            evaluation.feedback = `General form submission processed successfully. Form analysis: ${formAnalysis.reasons.join(
+              ', '
+            )}`;
             evaluation.categories = ['general', 'data-collection'];
             evaluation.sentiment = 'neutral';
             evaluation.accuracy = 90;

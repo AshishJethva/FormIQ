@@ -193,7 +193,6 @@ const CreateFormButton: React.FC<CreateFormButtonProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Subtle pulse effect for active state */}
         {!isDisabled && (
           <motion.div
             className='absolute inset-0 rounded-xl sm:rounded-2xl bg-white/5'
@@ -209,7 +208,6 @@ const CreateFormButton: React.FC<CreateFormButtonProps> = ({
         )}
       </motion.button>
 
-      {/* Progress indicator for form usage */}
       <AnimatePresence>
         {canCreateForms && formsLimit > 0 && formsUsed > 0 && (
           <motion.div

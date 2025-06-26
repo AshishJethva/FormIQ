@@ -55,7 +55,6 @@ export default function FileUploadField({
   );
   const downloadInProgress = useRef<Set<string>>(new Set());
 
-  // Initialize uploadedFiles from value prop
   useEffect(() => {
     if (value) {
       const files = Array.isArray(value) ? value : [value];
@@ -217,7 +216,7 @@ export default function FileUploadField({
       toast.error(error.message || 'Upload failed');
     } finally {
       setUploading(false);
-      // Reset input
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -255,7 +254,6 @@ export default function FileUploadField({
       );
       setUploadedFiles(newFiles);
 
-      // Update form value
       if (multiple) {
         onChange(newFiles.length > 0 ? newFiles : null);
       } else {
@@ -339,7 +337,7 @@ export default function FileUploadField({
         )}
       </motion.label>
 
-      {/* Upload Area - Only show if not read-only */}
+      {/* Upload Area */}
       {!readOnly && (
         <motion.div
           className={`${getUploadAreaClasses()} p-4 sm:p-6 lg:p-8 text-center cursor-pointer overflow-hidden`}
@@ -502,7 +500,7 @@ export default function FileUploadField({
         )}
       </AnimatePresence>
 
-      {/* Upload Instructions - Only show when empty and not read-only */}
+      {/* Upload Instructions */}
       <AnimatePresence>
         {uploadedFiles.length === 0 && !readOnly && (
           <motion.div

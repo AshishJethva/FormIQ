@@ -145,7 +145,6 @@ const formatTimeAgo = (dateString: string): string => {
   }
 };
 
-// Function to format display value beautifully with form structure context
 const formatDisplayValue = (
   value: any,
   fieldId?: string,
@@ -312,7 +311,7 @@ interface UniqueField {
 
 // ===== FILE HANDLING FUNCTIONS =====
 
-// Check if a field has files (either in files array or data object)
+// Check if a field has files
 const fieldHasFiles = (submission: Submission, fieldId: string): boolean => {
   // PRIORITY 1: Check submission.files array first (MOST RELIABLE)
   if (submission.files && Array.isArray(submission.files)) {
@@ -579,7 +578,6 @@ const detectFormTypeClientEnhanced = (
           ) {
             hasCorrectAnswers = true;
           } else {
-            // 🔧 FIXED: Check if this single choice has rating options (SURVEY, NOT QUIZ)
             if (field.options && Array.isArray(field.options)) {
               const hasRatingOptions = field.options.some(
                 (opt: any) =>

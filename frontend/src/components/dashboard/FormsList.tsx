@@ -117,11 +117,9 @@ const FormsList: React.FC<FormsListProps> = ({
     }>
   >([]);
   const [isDeletingCustom, setIsDeletingCustom] = useState(false);
-
   const [renamingFormId, setRenamingFormId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>('');
   const renameInputRef = useRef<HTMLInputElement>(null);
-
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [clickedFormId, setClickedFormId] = useState<string | null>(null);
 
@@ -143,7 +141,7 @@ const FormsList: React.FC<FormsListProps> = ({
       setSelectedForms([]);
     },
     onError: error => {
-      console.error('❌ Forms deletion failed:', error);
+      console.error('Forms deletion failed:', error);
     },
   });
 
@@ -298,7 +296,7 @@ const FormsList: React.FC<FormsListProps> = ({
       setRenamingFormId(null);
       setRenameValue('');
     } catch {
-      toast.error('❌ Failed to Rename Form', {
+      toast.error('Failed to Rename Form', {
         description: 'Please try again or contact support',
         duration: 3000,
       });
@@ -328,7 +326,6 @@ const FormsList: React.FC<FormsListProps> = ({
 
       if (renamingFormId) return;
 
-      // On mobile, if form is already selected, navigate to it
       if (window.innerWidth <= 768 && selectedForms.includes(formId)) {
         router.push(`/build/${formId}`);
         return;
@@ -414,7 +411,7 @@ const FormsList: React.FC<FormsListProps> = ({
       }
     } catch {
       dispatch(toggleFormFavorite(formId) as any);
-      toast.error('❌ Failed to Update Favorite Status');
+      toast.error('Failed to Update Favorite Status');
     }
   };
 
@@ -1022,10 +1019,6 @@ const FormsList: React.FC<FormsListProps> = ({
                 />
               </button>
 
-              {/* <div className='h-8 w-8 sm:h-10 sm:w-10 bg-orange-500 flex items-center justify-center rounded text-white shrink-0'>
-                <FileText className='h-4 w-4 sm:h-5 sm:w-5' />
-              </div> 
-              */}
               <div className='h-10 w-9 sm:h-10 sm:w-9.5 bg-orange-500 flex items-center justify-center rounded text-white shrink-0'>
                 <Image
                   src='./form.svg'
@@ -1424,7 +1417,7 @@ const FormsList: React.FC<FormsListProps> = ({
         open={showDeleteConfirmModal}
         onOpenChange={setShowDeleteConfirmModal}
       >
-        <AlertDialogContent className='max-w-2xl sm:max-w-2xl max-w-[95vw] bg-white text-gray-900 mx-auto'>
+        <AlertDialogContent className='sm:max-w-2xl max-w-[95vw] bg-white text-gray-900 mx-auto'>
           <AlertDialogHeader>
             <AlertDialogTitle className='text-red-600 font-bold flex items-center gap-2 text-lg sm:text-xl'>
               <AlertTriangle className='w-5 h-5 sm:w-6 sm:h-6' />

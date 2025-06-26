@@ -30,15 +30,12 @@ const FormPage: React.FC<FormPageProps> = ({ page, isActive, renderField }) => {
     (state: RootState) => state.formBuilder.isPreviewMode
   );
 
-  // Set up drop target for empty pages with proper canDrop function
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ItemTypes.FORM_ELEMENT,
     drop: () => {
-      // Your drop handling logic here
       return undefined;
     },
     canDrop: () => {
-      // Add your logic to determine if dropping is allowed
       return true; // Allow all drops by default
     },
     collect: monitor => ({
@@ -71,8 +68,7 @@ const FormPage: React.FC<FormPageProps> = ({ page, isActive, renderField }) => {
                 {renderField(field, index, page.id)}
               </React.Fragment>
             ))
-          : // Empty state
-            !isPreviewMode && (
+          : !isPreviewMode && (
               <motion.div
                 className='py-16 sm:py-12 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100/50 mx-2 sm:mx-4'
                 initial={{ opacity: 0, scale: 0.95 }}

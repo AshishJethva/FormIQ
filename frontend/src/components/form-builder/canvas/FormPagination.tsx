@@ -28,7 +28,7 @@ export default function FormPagination() {
     dispatch(setCurrentPage(pageIndex));
   };
 
-  const totalPages = form.pages.length + 1; // +1 for thank you page
+  const totalPages = form.pages.length + 1;
   const canScrollLeft = currentPageIndex > 0;
   const canScrollRight = currentPageIndex < totalPages - 1;
 

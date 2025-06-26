@@ -1,3 +1,5 @@
+// src/controllers/aiController.ts
+
 import { Request, Response } from 'express';
 import Form from '../models/Form';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -6,10 +8,12 @@ import AIFormGeneratorService from '../services/aiFormGeneratorService';
 import AISuggestionService from '../services/aiSuggestionService';
 import { AIPromptValidator } from '../utils/aiPromptValidator';
 import rateLimit from 'express-rate-limit';
+import AIFormUpdateService from '../services/aiFormUpdateService';
 
 // Initialize AI services
 const aiService = new AIFormGeneratorService();
 const suggestionService = new AISuggestionService();
+const aiUpdateService = new AIFormUpdateService();
 
 // Add rate limiting for suggestions
 const suggestionLimiter = rateLimit({
@@ -180,7 +184,10 @@ export const generateForm = asyncHandler(
       if (!contentValidation.isValid) {
         return res.status(400).json({
           success: false,
-          message: `Please provide a form-related description. ${contentValidation.reason || 'The content should focus on creating forms, surveys, questionnaires, or data collection interfaces.'}`,
+          message: `Please provide a form-related description. ${
+            contentValidation.reason ||
+            'The content should focus on creating forms, surveys, questionnaires, or data collection interfaces.'
+          }`,
           confidence: contentValidation.confidence,
         });
       }
@@ -470,6 +477,494 @@ export const generateSuggestions = asyncHandler(
         });
       }
     });
+  }
+);
+
+// @desc    Update an existing form using AI based on user prompt
+// @route   POST /api/ai/update-form
+// @access  Private
+export const updateFormWithAI = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { formId, updatePrompt, currentForm } = req.body;
+      const userId = req.user.id;
+
+      console.log('🔄 Received update request:', {
+        formId,
+        updatePrompt: updatePrompt?.substring(0, 100) + '...',
+        userId,
+        currentFormTitle: currentForm?.title,
+        hasFormId: !!formId,
+        hasPrompt: !!updatePrompt,
+        hasCurrentForm: !!currentForm,
+      });
+
+      // Enhanced validation
+      if (!formId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Form ID is required',
+        });
+      }
+
+      if (!updatePrompt) {
+        return res.status(400).json({
+          success: false,
+          message: 'Update prompt is required',
+        });
+      }
+
+      if (!currentForm) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current form data is required',
+        });
+      }
+
+      if (typeof updatePrompt !== 'string' || updatePrompt.trim().length < 3) {
+        return res.status(400).json({
+          success: false,
+          message: 'Update prompt must be at least 3 characters long',
+        });
+      }
+
+      // Validate currentForm structure
+      if (!currentForm.pages || !Array.isArray(currentForm.pages)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current form must have valid pages array',
+        });
+      }
+
+      // Verify form ownership
+      const existingForm = await Form.findOne({
+        _id: formId,
+        userId: new mongoose.Types.ObjectId(userId),
+      });
+
+      if (!existingForm) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found or you do not have permission to update it',
+        });
+      }
+
+      // Validate form content for updates
+      const contentValidation = validateFormContentHelper(updatePrompt);
+      if (!contentValidation.isValid && contentValidation.confidence < 20) {
+        console.warn('⚠️ Low confidence form content, but proceeding...');
+      }
+
+      // Sanitize prompt
+      const validation = AIPromptValidator.validate(updatePrompt);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.error,
+        });
+      }
+
+      const sanitizedPrompt = AIPromptValidator.sanitize(updatePrompt);
+
+      // Ensure currentForm has all required fields
+      const normalizedCurrentForm = {
+        id: currentForm.id || formId,
+        title: currentForm.title || 'Untitled Form',
+        description: currentForm.description || '',
+        pages: currentForm.pages || [],
+        settings: currentForm.settings || {
+          submitButtonText: 'Submit',
+          defaultLabelAlignment: 'LEFT',
+          thankyouMessage: 'Thank you for your submission!',
+          defaultRequiredField: false,
+          showLogo: false,
+          isEnabled: true,
+          allowMultipleSubmissions: true,
+          allowMultipleEmailSubmissions: true,
+          collectIpAddress: true,
+          enableCaptcha: false,
+        },
+        logo: currentForm.logo || null,
+        selectedPageId:
+          currentForm.selectedPageId || currentForm.pages?.[0]?.id,
+        currentPageIndex: currentForm.currentPageIndex || 0,
+        isPublished: currentForm.isPublished || false,
+        submissions: currentForm.submissions || 0,
+        userId: currentForm.userId || userId,
+        createdAt: currentForm.createdAt,
+        updatedAt: currentForm.updatedAt,
+      };
+
+      // Generate form updates
+      console.log('🤖 Sending to AI update service...');
+      const result = await aiUpdateService.updateForm(
+        normalizedCurrentForm,
+        sanitizedPrompt,
+        userId
+      );
+
+      if (!result.success) {
+        console.error('❌ AI update service failed:', result.error);
+        return res.status(400).json({
+          success: false,
+          message: result.error || 'Failed to update form',
+        });
+      }
+
+      const updatedFormData = result.data;
+
+      // Ensure updated form has all required fields
+      const saveData = {
+        title: updatedFormData.title || existingForm.title,
+        description:
+          updatedFormData.description || existingForm.description || '',
+        pages: updatedFormData.pages || existingForm.pages || [],
+        selectedFieldId: null, // Clear field selection after update
+        selectedPageId:
+          updatedFormData.selectedPageId ||
+          updatedFormData.pages?.[0]?.id ||
+          existingForm.selectedPageId,
+        currentPageIndex: updatedFormData.currentPageIndex || 0,
+        propertiesPanelOpen: false,
+        logo:
+          updatedFormData.logo !== undefined
+            ? updatedFormData.logo
+            : existingForm.logo,
+        settings: {
+          ...existingForm.settings,
+          ...updatedFormData.settings,
+        },
+        updatedAt: new Date(),
+        lastSaved: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+
+      console.log('💾 Saving updated form to database...', {
+        title: saveData.title,
+        pagesCount: saveData.pages.length,
+        fieldsCount: saveData.pages.reduce(
+          (total, page) => total + (page.fields?.length || 0),
+          0
+        ),
+      });
+
+      const savedForm = await Form.findByIdAndUpdate(formId, saveData, {
+        new: true,
+        runValidators: true,
+      });
+
+      if (!savedForm) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to save updated form',
+        });
+      }
+
+      // Log the update activity
+      try {
+        await Form.findByIdAndUpdate(formId, {
+          $push: {
+            aiUpdateHistory: {
+              prompt: sanitizedPrompt,
+              summary: result.updateSummary || 'Form updated successfully',
+              timestamp: new Date(),
+              model: 'gemini-2.0-flash-lite',
+              fieldsAdded: 0, // Could be calculated from the diff
+              fieldsModified: 0,
+              fieldsRemoved: 0,
+            },
+          },
+        });
+      } catch (historyError) {
+        console.warn(
+          '⚠️ Failed to update history, but form update succeeded:',
+          historyError
+        );
+      }
+
+      console.log('✅ Form update completed successfully');
+
+      const responseData = {
+        id: savedForm._id,
+        title: savedForm.title,
+        description: savedForm.description,
+        pages: savedForm.pages,
+        settings: savedForm.settings,
+        logo: savedForm.logo,
+        selectedPageId: savedForm.selectedPageId,
+        currentPageIndex: savedForm.currentPageIndex,
+        selectedFieldId: null, // Clear after update
+        propertiesPanelOpen: false,
+
+        // Update metadata
+        updateSummary: result.updateSummary || 'Form updated successfully',
+        updatePrompt: sanitizedPrompt,
+        updatedAt: savedForm.updatedAt,
+        lastSaved: savedForm.lastSaved,
+
+        // Additional info
+        isPublished: savedForm.isPublished,
+        submissions: savedForm.submissions,
+        userId: savedForm.userId,
+        createdAt: savedForm.createdAt,
+
+        // Field count after update
+        fieldCount: savedForm.pages.reduce(
+          (total, page) => total + (page.fields?.length || 0),
+          0
+        ),
+
+        contentConfidence: contentValidation.confidence,
+      };
+
+      res.status(200).json({
+        success: true,
+        message: 'Form updated successfully',
+        data: responseData,
+      });
+    } catch (error: any) {
+      console.error('❌ AI form update failed:', error);
+
+      let errorMessage = 'Internal server error during form update';
+
+      if (error.name === 'ValidationError') {
+        errorMessage =
+          'Form validation failed: ' +
+          Object.values(error.errors)
+            .map((e: any) => e.message)
+            .join(', ');
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: errorMessage,
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+);
+
+// @desc    Validate update prompt for form modifications
+// @route   POST /api/ai/validate-update-prompt
+// @access  Private
+export const validateUpdatePrompt = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { prompt } = req.body;
+
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Prompt is required and must be a string',
+        });
+      }
+
+      // Validate if prompt is suitable for form updates
+      const validation = validateFormContentHelper(prompt);
+
+      // Additional validation for update-specific keywords
+      const updateKeywords = [
+        'add',
+        'insert',
+        'include',
+        'create',
+        'new',
+        'change',
+        'update',
+        'modify',
+        'edit',
+        'replace',
+        'remove',
+        'delete',
+        'eliminate',
+        'move',
+        'reorder',
+        'rearrange',
+      ];
+
+      const hasUpdateIntent = updateKeywords.some(keyword =>
+        prompt.toLowerCase().includes(keyword)
+      );
+
+      const enhancedValidation = {
+        ...validation,
+        hasUpdateIntent,
+        confidence: validation.confidence + (hasUpdateIntent ? 20 : 0),
+        isValid: validation.isValid && hasUpdateIntent,
+      };
+
+      res.json({
+        success: true,
+        data: {
+          isValid: enhancedValidation.isValid,
+          confidence: Math.min(100, enhancedValidation.confidence),
+          hasUpdateIntent,
+          reason: !enhancedValidation.isValid
+            ? !hasUpdateIntent
+              ? 'No clear update instruction detected'
+              : enhancedValidation.reason
+            : undefined,
+          recommendedAction: enhancedValidation.isValid
+            ? 'Prompt is suitable for form updates'
+            : 'Please provide specific instructions to add, modify, or remove form elements',
+        },
+      });
+    } catch (error: any) {
+      console.error('Update prompt validation error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to validate update prompt',
+      });
+    }
+  }
+);
+
+// @desc    Get AI form update history for a specific form
+// @route   GET /api/ai/update-history/:formId
+// @access  Private
+export const getFormUpdateHistory = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { formId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(formId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid form ID format',
+        });
+      }
+
+      const form = await Form.findOne({
+        _id: formId,
+        userId: new mongoose.Types.ObjectId(userId),
+      }).select('aiUpdateHistory title');
+
+      if (!form) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found',
+        });
+      }
+
+      const updateHistory = form.aiUpdateHistory || [];
+      const sortedHistory = updateHistory
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )
+        .slice(0, 20); // Last 20 updates
+
+      res.json({
+        success: true,
+        data: {
+          formTitle: form.title,
+          updates: sortedHistory.map((update: any) => ({
+            id: update._id || update.timestamp,
+            prompt: update.prompt,
+            summary: update.summary,
+            timestamp: update.timestamp,
+            model: update.model || 'gemini-2.0-flash-lite',
+          })),
+          totalUpdates: updateHistory.length,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error fetching update history:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch update history',
+      });
+    }
+  }
+);
+
+// @desc    Get suggestions for form update prompts
+// @route   POST /api/ai/update-suggestions
+// @access  Private
+export const getUpdateSuggestions = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { currentForm, category } = req.body;
+
+      if (!currentForm) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current form data is required',
+        });
+      }
+
+      // Analyze current form structure
+      const fieldCount =
+        currentForm.pages?.reduce(
+          (total: number, page: any) => total + (page.fields?.length || 0),
+          0
+        ) || 0;
+
+      const fieldTypes = new Set();
+      currentForm.pages?.forEach((page: any) => {
+        page.fields?.forEach((field: any) => {
+          fieldTypes.add(field.type);
+        });
+      });
+
+      // Generate contextual suggestions based on form analysis
+      const suggestions = {
+        addFields: [
+          fieldTypes.has('email')
+            ? null
+            : 'Add an email field for contact information',
+          fieldTypes.has('phone') ? null : 'Add a phone number field',
+          fieldTypes.has('signature')
+            ? null
+            : 'Add a signature field for agreement',
+          fieldTypes.has('fileUpload')
+            ? null
+            : 'Add a file upload field for documents',
+          'Add a new section heading to organize fields',
+        ].filter(Boolean),
+
+        modifyFields: [
+          'Change the form title to be more descriptive',
+          'Make the email field required',
+          'Update field labels for better clarity',
+          'Modify dropdown options to include more choices',
+          'Change help text for better user guidance',
+        ],
+
+        structuralChanges: [
+          fieldCount > 8 ? 'Split the form into multiple pages' : null,
+          'Reorder fields for better user flow',
+          'Group related fields together',
+          'Remove unnecessary optional fields',
+          'Add a thank you message customization',
+        ].filter(Boolean),
+      };
+
+      res.json({
+        success: true,
+        data: {
+          suggestions,
+          formAnalysis: {
+            fieldCount,
+            fieldTypes: Array.from(fieldTypes),
+            pageCount: currentForm.pages?.length || 0,
+            hasLogo: !!currentForm.logo,
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error('Error generating update suggestions:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate suggestions',
+      });
+    }
   }
 );
 

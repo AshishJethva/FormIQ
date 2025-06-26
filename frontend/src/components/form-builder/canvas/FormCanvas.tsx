@@ -69,7 +69,7 @@ export default function FormCanvas({
   // Check screen size for responsive behavior
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= 1500); // xl breakpoint
+      setIsLargeScreen(window.innerWidth >= 1500);
     };
 
     checkScreenSize();
@@ -85,7 +85,6 @@ export default function FormCanvas({
     return isPanelExpanded && !isLargeScreen;
   };
 
-  // Load form data on mount if not already loaded
   useEffect(() => {
     if (formId && !form && !isLoading) {
       dispatch(loadFormAsync(formId));
@@ -130,7 +129,7 @@ export default function FormCanvas({
     }
   }, [editingLabelId]);
 
-  // Form Builder Warnings Component - Updated for consistent full width
+  // Form Builder Warnings Component
   const FormBuilderWarnings = ({ form }: { form: any }) => {
     const hasRequiredFields = form?.pages?.some((page: any) =>
       page.fields?.some((field: any) => field.required === true)
@@ -147,7 +146,6 @@ export default function FormCanvas({
             <div className='text-orange-600 mr-3 mt-0.5 flex-shrink-0'></div>
             <div className='flex-1 min-w-0'>
               {' '}
-              {/* flex-1 and min-w-0 for full width */}
               <h3 className='font-medium text-orange-900 mb-1'>
                 No Fields Added
               </h3>
@@ -168,7 +166,6 @@ export default function FormCanvas({
             <div className='text-yellow-600 mr-3 mt-0.5 flex-shrink-0'>💡</div>
             <div className='flex-1 min-w-0'>
               {' '}
-              {/* flex-1 and min-w-0 for full width */}
               <h3 className='font-medium text-yellow-900 mb-1'>
                 No Required Fields
               </h3>
@@ -234,7 +231,6 @@ export default function FormCanvas({
         return !!currentPage;
       },
       drop: (item: { fieldType: FieldType }) => {
-        // Only handle the drop if current page exists
         if (currentPage) {
           dispatch(
             addFieldAtIndex({
@@ -262,7 +258,6 @@ export default function FormCanvas({
     [currentPage, form?.currentPageIndex]
   );
 
-  // Separate drop target specifically for empty form state
   const [{ isOver: isEmptyOver, canDrop: canEmptyDrop }, emptyDropRef] =
     useDrop(
       () => ({
@@ -450,7 +445,6 @@ export default function FormCanvas({
     }
   };
 
-  // Render field function
   const renderField = (field: Field, index: number, pageId: string) => {
     if (!form) return null;
 
@@ -864,7 +858,7 @@ export default function FormCanvas({
             <div>
               {renderEditableLabel()}
               <div className='border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer'>
-                <Image className='w-12 h-12 mx-auto text-gray-400 mb-2' />
+                <Image className=' w-12 h-12 mx-auto text-gray-400 mb-2' />
                 <p className='text-gray-500 text-sm'>
                   Click to upload an image
                 </p>
@@ -1312,7 +1306,6 @@ export default function FormCanvas({
       <div
         className='flex justify-center w-full bg-[#F3F3FE]'
         style={{
-          // Only shift on smaller screens (below xl breakpoint)
           paddingLeft: shouldShiftContent() ? '320px' : '0px',
           transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -1329,9 +1322,9 @@ export default function FormCanvas({
           style={{
             minHeight:
               form.logo?.size && form.logo.size > 70
-                ? 'clamp(80px, 15vw, 180px)' // Responsive between 80px and 180px
+                ? 'clamp(80px, 15vw, 180px)'
                 : form.logo?.size && form.logo.size > 50
-                ? 'clamp(60px, 12vw, 120px)' // Responsive between 60px and 120px
+                ? 'clamp(60px, 12vw, 120px)'
                 : 'clamp(50px, 10vw, 60px)',
             transition:
               'min-height 0.3s ease, border-color 0.3s ease, background-color 0.3s ease, margin 0.3s ease',
@@ -1401,7 +1394,6 @@ export default function FormCanvas({
         <div
           className='flex justify-center'
           style={{
-            // Only shift on smaller screens (below xl breakpoint)
             paddingLeft: shouldShiftContent() ? '320px' : '0px',
             transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
@@ -1441,12 +1433,10 @@ export default function FormCanvas({
     <div className='w-full h-full overflow-y-auto bg-[#F3F3FE]'>
       {/* Logo Area */}
       {renderLogoArea()}
-
       {/* Warnings */}
       <div
         className='flex justify-center'
         style={{
-          // Only shift on smaller screens (below xl breakpoint)
           paddingLeft: shouldShiftContent() ? '320px' : '0px',
           transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -1459,7 +1449,6 @@ export default function FormCanvas({
         <div
           className='flex justify-center'
           style={{
-            // Only shift on smaller screens (below xl breakpoint)
             paddingLeft: shouldShiftContent() ? '320px' : '0px',
             transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
@@ -1491,12 +1480,10 @@ export default function FormCanvas({
           </div>
         </div>
       )}
-
       {/* Form Container */}
       <div
         className='flex justify-center'
         style={{
-          // Only shift on smaller screens (below xl breakpoint)
           paddingLeft: shouldShiftContent() ? '320px' : '0px',
           transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -1634,13 +1621,11 @@ export default function FormCanvas({
           </div>
         </motion.div>
       </div>
-
       {/* Add New Page Button - only appear on last page */}
       {!isPreviewMode && isLastPage && (
         <div
           className='flex justify-center'
           style={{
-            // Only shift on smaller screens (below xl breakpoint)
             paddingLeft: shouldShiftContent() ? '320px' : '0px',
             transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
@@ -1650,19 +1635,16 @@ export default function FormCanvas({
           </div>
         </div>
       )}
-
       {/* Pagination */}
       <div
         className='flex justify-center'
         style={{
-          // Only shift on smaller screens (below xl breakpoint)
           paddingLeft: shouldShiftContent() ? '320px' : '0px',
           transition: 'padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <FormPagination />
       </div>
-
       {/* Logo Properties Panel */}
       <LogoPropertiesPanel
         isOpen={isLogoPropertiesOpen}

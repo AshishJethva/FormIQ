@@ -35,7 +35,6 @@ export default function SignatureField({
   const [justCleared, setJustCleared] = useState(false);
   const [signatureComplete, setSignatureComplete] = useState(false);
 
-  // Responsive canvas setup
   useEffect(() => {
     const updateCanvasSize = () => {
       const canvas = canvasRef.current;
@@ -44,7 +43,7 @@ export default function SignatureField({
 
       const containerWidth = container.offsetWidth;
       const isMobile = window.innerWidth < 640;
-      const canvasHeight = isMobile ? 160 : 128; // Taller on mobile for better UX
+      const canvasHeight = isMobile ? 160 : 128;
 
       canvas.width = containerWidth;
       canvas.height = canvasHeight;
@@ -56,7 +55,7 @@ export default function SignatureField({
 
       // Set drawing styles with responsive line width
       ctx.strokeStyle = '#1f2937';
-      ctx.lineWidth = isMobile ? 3 : 2; // Thicker on mobile
+      ctx.lineWidth = isMobile ? 3 : 2;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
@@ -82,7 +81,6 @@ export default function SignatureField({
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, [value]);
 
-  // Touch event listeners with passive: false to allow preventDefault
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || readOnly) return;
@@ -219,7 +217,6 @@ export default function SignatureField({
     setJustCleared(true);
     onChange('');
 
-    // Reset the cleared state after animation
     setTimeout(() => setJustCleared(false), 1000);
   };
 

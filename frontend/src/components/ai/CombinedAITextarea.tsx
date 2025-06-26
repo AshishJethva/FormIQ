@@ -703,31 +703,6 @@ export const CombinedAITextarea: React.FC<CombinedAITextareaProps> = ({
         aria-hidden='true'
       />
 
-      {/* Form Content Indicator */}
-      {/* {hasUserTyped && value.length > 10 && (
-        <div className='absolute -top-6 left-0 text-xs flex items-center gap-2'>
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isFormContent ? 'bg-green-500' : 'bg-orange-500'
-            }`}
-          ></div>
-          <span
-            className={`${
-              isFormContent ? 'text-green-600' : 'text-orange-600'
-            }`}
-          >
-            {isFormContent
-              ? '✓ Form content detected'
-              : '⚠ Focus on form creation'}
-            {formType && formType !== 'general_form' && (
-              <span className='ml-1 text-gray-500'>
-                ({formType.replace('_', ' ')})
-              </span>
-            )}
-          </span>
-        </div>
-      )} */}
-
       {/* Animated Placeholder Overlay */}
       {showPlaceholder && !hasUserTyped && value.length === 0 && (
         <div

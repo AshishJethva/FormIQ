@@ -8,6 +8,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { combineReducers } from 'redux';
+import aiFormUpdateReducer from './slices/formBuilder/aiFormUpdateSlice';
 import {
   FLUSH,
   REHYDRATE,
@@ -30,6 +31,7 @@ const rootReducer = combineReducers({
   app: appReducer,
   user: persistReducer(userPersistConfig, userReducer),
   formBuilder: formBuilderReducer,
+  aiFormUpdate: aiFormUpdateReducer,
   aiForm: aiFormReducer,
   userProfile: userProfileReducer,
 });

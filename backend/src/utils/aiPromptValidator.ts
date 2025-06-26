@@ -36,6 +36,36 @@ export class AIPromptValidator {
       return { isValid: false, error: 'Prompt must be a valid string' };
     }
 
+    if (prompt.trim().length < 5) {
+      return {
+        isValid: false,
+        error: 'Prompt must be at least 5 characters long',
+      };
+    }
+
+    if (prompt.length > 500) {
+      return {
+        isValid: false,
+        error: 'Prompt must be less than 500 characters',
+      };
+    }
+
+    // Check for harmful content
+    const harmfulPatterns = [
+      /script|javascript|eval|function/i,
+      /<[^>]*>/g, // HTML tags
+      /[{}].*[{}]/g, // Curly braces (potential code injection)
+    ];
+
+    for (const pattern of harmfulPatterns) {
+      if (pattern.test(prompt)) {
+        return {
+          isValid: false,
+          error: 'Invalid characters detected in prompt',
+        };
+      }
+    }
+
     const trimmedPrompt = prompt.trim();
 
     // Length validation
@@ -85,6 +115,9 @@ export class AIPromptValidator {
       .trim()
       .replace(/[<>]/g, '')
       .replace(/javascript:/gi, '')
-      .substring(0, this.MAX_PROMPT_LENGTH);
+      .substring(0, this.MAX_PROMPT_LENGTH)
+      .replace(/[{}]/g, '')
+      .replace(/script|javascript|eval/gi, '')
+      .replace(/\s+/g, ' ');
   }
 }

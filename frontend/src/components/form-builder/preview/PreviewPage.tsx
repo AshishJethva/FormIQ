@@ -72,12 +72,11 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
 
   const shareableLink = `${window.location.origin}/form/${formId}`;
 
-  //  FULLY : Complete dummy data generation with safe placeholders
+  // Complete dummy data generation with safe placeholders
   const generateDummyData = () => {
     const dummyFormData: Record<string, any> = {};
     const dummyFileData: Record<string, any> = {};
 
-    //  Realistic data pools for Indian context
     const names = {
       firstNames: [
         'Arjun',
@@ -336,7 +335,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       return `${hours}:${minutes}`;
     };
 
-    //  SAFE IMAGE PLACEHOLDERS - No external URLs
     const generateSafeImagePlaceholder = (type: string = 'general') => {
       const placeholders = {
         profile:
@@ -351,7 +349,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       );
     };
 
-    //  SAFE FILE PLACEHOLDERS
     const generateSafeFileData = (fileName: string, mimeType: string) => ({
       originalName: fileName,
       fileName: `${fileName.split('.')[0]}_${Date.now()}.${fileName
@@ -366,7 +363,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
       uploadedAt: new Date().toISOString(),
     });
 
-    // Generate data for each field
     form?.pages?.forEach(page => {
       page.fields?.forEach(field => {
         if (field.type === 'heading') return;
@@ -446,7 +442,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'productList':
-            // Realistic product selection with quantities
             if (
               field.productListConfig?.products &&
               field.productListConfig.products.length > 0
@@ -671,7 +666,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'image':
-            //  SAFE IMAGE HANDLING
             const imageType = fieldLabel.includes('profile')
               ? 'profile'
               : fieldLabel.includes('document')
@@ -706,7 +700,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
             break;
 
           case 'fileUpload':
-            //  SAFE FILE HANDLING
             const sampleFiles = [
               { name: 'resume.pdf', type: 'application/pdf' },
               { name: 'cover_letter.pdf', type: 'application/pdf' },
@@ -778,9 +771,7 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
   const validateField = (field: any, value: any, files?: any): string => {
     if (field.type === 'heading') return '';
 
-    // Required field validation
     if (field.required) {
-      // For file/image fields, check if files were uploaded
       if (field.type === 'fileUpload' || field.type === 'image') {
         const hasFiles =
           files && (Array.isArray(files) ? files.length > 0 : !!files);
@@ -788,7 +779,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
           return `${field.label} is required`;
         }
       } else {
-        // For other fields, check regular value
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           return `${field.label} is required`;
         }
@@ -906,7 +896,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
               return 'Files must be smaller than 25MB';
             }
 
-            // FIXED: Better accept validation that matches frontend
             if (
               field.accept &&
               field.accept !== '*/*' &&

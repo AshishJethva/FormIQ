@@ -68,8 +68,6 @@ export default function DashboardPage() {
   const formsLoading = useSelector(selectFormsLoading);
   const userProfile = useSelector(selectUserProfile);
 
-  // Checking the mounting of the component
-  // Local state for UI
   const [activeSection, setActiveSection] = useState('All');
   const [activeSectionData, setActiveSectionData] = useState<Label | null>(
     null
@@ -87,7 +85,6 @@ export default function DashboardPage() {
   const remainingForms = formsLimit - formsUsed;
 
   useEffect(() => {
-    // Re-fetch user profile when component mounts or when forms change
     dispatch(fetchUserProfile());
   }, [dispatch, forms.length]);
 
@@ -138,7 +135,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Get fresh user profile data before creating
     await dispatch(fetchUserProfile());
     const currentProfile = userProfile;
     const canCreate = currentProfile?.profile.plan.canCreateForms ?? true;
@@ -181,7 +177,6 @@ export default function DashboardPage() {
         }) as any
       ).unwrap();
 
-      // CRITICAL FIX: Update the form count immediately to prevent bad UX
       dispatch(incrementFormsUsed());
 
       // Success message with updated count
@@ -197,7 +192,6 @@ export default function DashboardPage() {
       setFormDescription('');
       handleSectionChange('All');
 
-      // Small delay to ensure state is updated before refreshing
       setTimeout(() => {
         dispatch(fetchUserProfile());
         fetchFormsForCurrentSection();
@@ -205,7 +199,6 @@ export default function DashboardPage() {
 
       return result;
     } catch (error: any) {
-      // Handle specific error cases with user-friendly messages
       if (error.includes?.('Form limit reached')) {
         const upgradeAction = {
           label: 'Upgrade Plan',
@@ -255,7 +248,6 @@ export default function DashboardPage() {
   const handleSectionChange = (section: string, data?: CustomLabel | Label) => {
     setActiveSection(section);
     setActiveSectionData(data || null);
-    // Close mobile sidebar when section changes
     setIsMobileSidebarOpen(false);
   };
 
@@ -338,7 +330,6 @@ export default function DashboardPage() {
                 </h1>
               </div>
 
-              {/* Plan Status Indicator */}
               <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3'>
                 <div
                   className={`px-3 py-1 rounded-full text-xs font-medium text-center ${
@@ -371,7 +362,6 @@ export default function DashboardPage() {
           </div>
 
           <main className='flex-1 overflow-y-auto p-4 sm:p-6'>
-            {/* Warning banner for low remaining forms */}
             {canCreateForms && remainingForms <= 2 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}

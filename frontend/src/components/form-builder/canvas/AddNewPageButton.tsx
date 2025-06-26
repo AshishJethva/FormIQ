@@ -28,8 +28,8 @@ export default function AddNewPageButton({
     // Add the new page
     dispatch(addPage());
 
-    // Navigate to the new page (will be at the end)
-    const newPageIndex = form.pages.length; // Index of the new page
+    // Navigate to the new page
+    const newPageIndex = form.pages.length;
     dispatch(setCurrentPageIndex(newPageIndex));
 
     toast.success(`Page ${newPageIndex + 1} added successfully`);

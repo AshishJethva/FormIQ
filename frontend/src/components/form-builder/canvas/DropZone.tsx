@@ -16,9 +16,8 @@ export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
   const [{ isOver, canDrop }, drop] = useDrop(
     () => ({
       accept: ItemTypes.FORM_ELEMENT,
-      canDrop: () => !!pageId, // Only allow drop if we have a valid pageId
+      canDrop: () => !!pageId,
       drop: (item: { fieldType: FieldType }, monitor) => {
-        // Only handle the drop if no child component handled it
         if (!monitor.didDrop()) {
           onDrop(item.fieldType, index, pageId);
         }
@@ -30,7 +29,7 @@ export default function DropZone({ index, pageId, onDrop }: DropZoneProps) {
       }),
     }),
     [index, pageId, onDrop]
-  ); // Re-create drop handler when dependencies change
+  );
 
   return (
     <div

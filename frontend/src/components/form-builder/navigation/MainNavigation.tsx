@@ -38,7 +38,6 @@ export default function MainNavigation({
     { key: 'SUBMISSIONS', label: 'Submissions', mobileLabel: 'Results' },
   ];
 
-  // Determine active tab based on current pathname and preview mode
   const getActiveTab = () => {
     if (isPreviewEnabled) return 'BUILD';
     if (pathname.includes('/settings')) return 'SETTINGS';
@@ -49,7 +48,6 @@ export default function MainNavigation({
 
   const activeTab = getActiveTab();
 
-  // Check if form can be published
   const canPublishForm = () => {
     if (!form) return false;
 
@@ -93,7 +91,7 @@ export default function MainNavigation({
       toast.success('Form published and preview enabled!');
       return true;
     } catch (error: any) {
-      console.error('❌ Failed to publish form for preview:', error);
+      console.error('Failed to publish form for preview:', error);
       toast.error(error.message || 'Failed to publish form for preview.');
       return false;
     } finally {
@@ -102,7 +100,6 @@ export default function MainNavigation({
   };
 
   const handleTabChange = async (tab: string) => {
-    // Don't allow tab changes during preview mode
     if (isPreviewEnabled && tab !== 'BUILD') {
       return;
     }
@@ -153,7 +150,7 @@ export default function MainNavigation({
 
         window.location.hash = '#preview';
       } catch (error) {
-        console.error('❌ Error enabling preview mode:', error);
+        console.error('Error enabling preview mode:', error);
         toast.error('Failed to enable preview mode');
       } finally {
         setIsPreviewLoading(false);
@@ -239,7 +236,6 @@ export default function MainNavigation({
           ))}
         </div>
 
-        {/* Preview Toggle Row - Hidden on very small screens */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

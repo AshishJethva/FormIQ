@@ -1,6 +1,7 @@
 import { Submission } from '@/services/submissions';
 
 export interface Form {
+  _id: string;
   id: string;
   title: string;
   description?: string;
@@ -21,6 +22,35 @@ export interface Form {
   isFavorite?: boolean;
   isArchived?: boolean;
   isTrashed?: boolean;
+  isAIGenerated?: boolean;
+  aiPrompt?: string;
+  aiUpdateHistory?: Array<{
+    id: string;
+    prompt: string;
+    summary: string;
+    timestamp: string;
+    model: string;
+    fieldsAdded?: number;
+    fieldsModified?: number;
+    fieldsRemoved?: number;
+  }>;
+  aiGenerationMetadata?: {
+    generationTime?: number;
+    version?: string;
+    promptTokens?: number;
+    responseTokens?: number;
+    hasLogo?: boolean;
+    logoSource?: string;
+    logoType?: string;
+    contentConfidence?: number;
+    attempts?: number;
+    nameChanged?: boolean;
+    originalName?: string;
+    finalName?: string;
+    totalUpdates?: number;
+    lastUpdateAt?: Date;
+    updateMethods?: string[];
+  };
 }
 export interface FileData {
   originalName: string;

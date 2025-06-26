@@ -9,25 +9,19 @@ export default function FormLogo() {
   const [containerHeight, setContainerHeight] = useState<string>('auto');
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Adjust container height based on logo size and screen size
   useEffect(() => {
     if (!logo || !logo.src) return;
 
-    // Set initial reasonable height
     setContainerHeight('auto');
 
-    // Once the image loads, adjust container height based on logo size and screen size
     const adjustHeight = () => {
       if (imgRef.current) {
         const size = logo.size || 50;
         const imgHeight = imgRef.current.naturalHeight;
         const imgWidth = imgRef.current.naturalWidth;
 
-        // Get current screen width to adjust heights responsively
         const screenWidth = window.innerWidth;
 
-        // Calculate appropriate height based on aspect ratio, size, and screen size
-        // Mobile-first approach with progressive enhancement
         if (size > 70) {
           const aspectRatio = imgWidth / imgHeight;
 
@@ -43,12 +37,10 @@ export default function FormLogo() {
             baseHeight = size > 90 ? 220 : 180;
           }
 
-          // If image is wider than tall, keep height reasonable
           const calculatedHeight =
             aspectRatio > 2 ? baseHeight : baseHeight * (1 + (size - 70) / 100);
           setContainerHeight(`${calculatedHeight}px`);
         } else {
-          // For smaller logos, use standard height
           setContainerHeight('auto');
         }
       }
@@ -62,9 +54,8 @@ export default function FormLogo() {
       } else {
         img.addEventListener('load', adjustHeight);
 
-        // Also listen for resize events to adjust on orientation change
         const handleResize = () => {
-          setTimeout(adjustHeight, 100); // Small delay to ensure layout is stable
+          setTimeout(adjustHeight, 100);
         };
 
         window.addEventListener('resize', handleResize);
@@ -81,17 +72,14 @@ export default function FormLogo() {
     return null;
   }
 
-  // Calculate image style to maintain aspect ratio without cropping - Mobile responsive
   const getImageStyle = () => {
     const size = logo.size || 50;
 
-    // Mobile-first responsive scaling
     let maxHeight: string;
     let maxWidth: string;
 
     if (size >= 100) {
-      // For 100% size, allow much larger dimensions but scale down on mobile
-      maxHeight = '200px'; // Mobile
+      maxHeight = '200px';
       maxWidth = '100%';
 
       // Use CSS classes for responsive scaling instead of inline styles when possible
@@ -107,28 +95,28 @@ export default function FormLogo() {
         }
       }
     } else if (size > 90) {
-      maxHeight = '180px'; // Mobile
+      maxHeight = '180px';
       maxWidth = '90%';
 
       if (typeof window !== 'undefined' && window.innerWidth >= 640) {
         maxHeight = '220px';
       }
     } else if (size > 70) {
-      maxHeight = '150px'; // Mobile
+      maxHeight = '150px';
       maxWidth = '80%';
 
       if (typeof window !== 'undefined' && window.innerWidth >= 640) {
         maxHeight = '180px';
       }
     } else if (size > 50) {
-      maxHeight = '120px'; // Mobile
+      maxHeight = '120px';
       maxWidth = '70%';
 
       if (typeof window !== 'undefined' && window.innerWidth >= 640) {
         maxHeight = '150px';
       }
     } else {
-      maxHeight = '100px'; // Mobile
+      maxHeight = '100px';
       maxWidth = '60%';
 
       if (typeof window !== 'undefined' && window.innerWidth >= 640) {
@@ -188,7 +176,7 @@ export default function FormLogo() {
             : 'justify-center'
         }`}
       style={{
-        minHeight: '60px', // Reduced for mobile
+        minHeight: '60px',
         height: containerHeight === 'auto' ? 'auto' : containerHeight,
         padding: '0 0',
         margin: 0,
@@ -202,10 +190,9 @@ export default function FormLogo() {
           /* Smooth transitions */
           transition-all duration-300 ease-in-out'
         style={{
-          // Let width be determined by size percentage with mobile considerations
           width:
             logo.size >= 100 ? '100%' : `${Math.max(10, logo.size || 50)}%`,
-          minHeight: '50px', // Reduced for mobile
+          minHeight: '50px',
           height: containerHeight,
           margin: 0,
         }}
@@ -230,11 +217,10 @@ export default function FormLogo() {
           style={getImageStyle()}
           onLoad={handleImageLoad}
           onError={e => {
-            // Fallback handling for broken images
             console.warn('Logo failed to load:', logo.src);
             e.currentTarget.style.display = 'none';
           }}
-          loading='lazy' // Improve performance on mobile
+          loading='lazy'
         />
       </div>
     </div>
