@@ -829,7 +829,7 @@ export const generateSuggestions = asyncHandler(
 
 // @desc    Update an existing form using AI based on user prompt
 // @route   POST /api/ai/update-form
-// @access  Private
+// @access  Private (requires authentication + rate limiting)
 export const updateFormWithAI = asyncHandler(
   async (req: Request, res: Response) => {
     try {
@@ -950,15 +950,37 @@ export const updateFormWithAI = asyncHandler(
         MongoFormHistoryService,
       } = require('../services/mongoFormHistoryService');
 
+      // Helper function to convert form to plain object
+      const convertFormToPlainObject = (form: any) => {
+        const plainForm = form.toObject ? form.toObject() : form;
+        return {
+          id: plainForm._id?.toString() || plainForm.id,
+          _id: plainForm._id?.toString() || plainForm.id,
+          title: plainForm.title,
+          description: plainForm.description || '',
+          pages: plainForm.pages || [],
+          settings: plainForm.settings || {},
+          logo: plainForm.logo || null,
+          selectedPageId: plainForm.selectedPageId,
+          currentPageIndex: plainForm.currentPageIndex || 0,
+          userId: plainForm.userId?.toString() || plainForm.userId,
+          createdAt: plainForm.createdAt,
+          updatedAt: plainForm.updatedAt,
+          isPublished: plainForm.isPublished,
+          submissions: plainForm.submissions,
+          lastSaved: plainForm.lastSaved,
+        };
+      };
+
       // Create snapshot of current state before AI update
       const snapshotResult = await MongoFormHistoryService.createSnapshot(
         formId,
         userId,
         normalizedCurrentForm,
         {
-          changeType: 'ai_update',
-          updatePrompt: sanitizedPrompt,
-          updateSummary: 'Before AI update - preserving current state',
+          changeType: 'manual_edit',
+          updatePrompt: '',
+          updateSummary: 'State before AI update',
           userAgent: req.get('User-Agent'),
           ipAddress: req.ip,
           sessionId:
@@ -1047,27 +1069,6 @@ export const updateFormWithAI = asyncHandler(
 
       // *** CRITICAL: Create snapshot AFTER successful update ***
       console.log('📸 Creating snapshot after AI update...');
-
-      const convertFormToPlainObject = (form: any) => {
-        const plainForm = form.toObject ? form.toObject() : form;
-        return {
-          id: plainForm._id?.toString() || plainForm.id,
-          _id: plainForm._id?.toString() || plainForm.id,
-          title: plainForm.title,
-          description: plainForm.description || '',
-          pages: plainForm.pages || [],
-          settings: plainForm.settings || {},
-          logo: plainForm.logo || null,
-          selectedPageId: plainForm.selectedPageId,
-          currentPageIndex: plainForm.currentPageIndex || 0,
-          userId: plainForm.userId?.toString() || plainForm.userId,
-          createdAt: plainForm.createdAt,
-          updatedAt: plainForm.updatedAt,
-          isPublished: plainForm.isPublished,
-          submissions: plainForm.submissions,
-          lastSaved: plainForm.lastSaved,
-        };
-      };
 
       const afterUpdateSnapshot = await MongoFormHistoryService.createSnapshot(
         formId,

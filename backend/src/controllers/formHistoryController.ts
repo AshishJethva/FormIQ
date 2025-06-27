@@ -1,4 +1,4 @@
-// src/controllers/formHistoryController.ts
+// backend/src/controllers/formHistoryController.ts
 
 import { Request, Response } from 'express';
 import { MongoFormHistoryService } from '../services/mongoFormHistoryService';
@@ -177,6 +177,7 @@ export const getFormHistory = asyncHandler(
           stats: statsResult.data || {
             totalSnapshots: 0,
             currentIndex: -1,
+            currentPosition: 0,
             canUndo: false,
             canRedo: false,
           },
@@ -245,7 +246,7 @@ export const undoFormToSnapshot = asyncHandler(
 
       const targetSnapshot = undoResult.data!.snapshot;
 
-      // Update the form with snapshot data
+      // Update the form with snapshot data (DON'T create new snapshot for undo)
       const updateData = {
         title: targetSnapshot.snapshotData.title,
         description: targetSnapshot.snapshotData.description,
@@ -275,21 +276,6 @@ export const undoFormToSnapshot = asyncHandler(
         });
       }
 
-      // Create a new snapshot for the undo operation
-      const restoredFormData = convertFormToPlainObject(updatedForm);
-      await MongoFormHistoryService.createSnapshot(
-        formId,
-        userId,
-        restoredFormData,
-        {
-          changeType: 'restore',
-          updateSummary: `Undone to snapshot from ${targetSnapshot.createdAt}`,
-          userAgent: req.get('User-Agent'),
-          ipAddress: req.ip,
-          sessionId: (req as any).sessionID || 'no-session',
-        }
-      );
-
       // Convert updated form to response format
       const responseData = convertFormToPlainObject(updatedForm);
 
@@ -301,8 +287,9 @@ export const undoFormToSnapshot = asyncHandler(
           selectedFieldId: null,
           propertiesPanelOpen: false,
           undoDetails: {
-            fromIndex: undoResult.data!.newIndex + 1,
-            toIndex: undoResult.data!.newIndex,
+            newPosition: undoResult.data!.newPosition,
+            canUndo: undoResult.data!.canUndo,
+            canRedo: undoResult.data!.canRedo,
             changeType: targetSnapshot.metadata.changeType,
             originalSummary: targetSnapshot.metadata.updateSummary,
           },
@@ -366,7 +353,7 @@ export const redoFormToSnapshot = asyncHandler(
 
       const targetSnapshot = redoResult.data!.snapshot;
 
-      // Update the form with snapshot data
+      // Update the form with snapshot data (DON'T create new snapshot for redo)
       const updateData = {
         title: targetSnapshot.snapshotData.title,
         description: targetSnapshot.snapshotData.description,
@@ -396,21 +383,6 @@ export const redoFormToSnapshot = asyncHandler(
         });
       }
 
-      // Create a new snapshot for the redo operation
-      const restoredFormData = convertFormToPlainObject(updatedForm);
-      await MongoFormHistoryService.createSnapshot(
-        formId,
-        userId,
-        restoredFormData,
-        {
-          changeType: 'restore',
-          updateSummary: `Redone to snapshot from ${targetSnapshot.createdAt}`,
-          userAgent: req.get('User-Agent'),
-          ipAddress: req.ip,
-          sessionId: (req as any).sessionID || 'no-session',
-        }
-      );
-
       // Convert updated form to response format
       const responseData = convertFormToPlainObject(updatedForm);
 
@@ -422,8 +394,9 @@ export const redoFormToSnapshot = asyncHandler(
           selectedFieldId: null,
           propertiesPanelOpen: false,
           redoDetails: {
-            fromIndex: redoResult.data!.newIndex - 1,
-            toIndex: redoResult.data!.newIndex,
+            newPosition: redoResult.data!.newPosition,
+            canUndo: redoResult.data!.canUndo,
+            canRedo: redoResult.data!.canRedo,
             changeType: targetSnapshot.metadata.changeType,
             originalSummary: targetSnapshot.metadata.updateSummary,
           },

@@ -490,25 +490,6 @@ Your form-focused continuation (6-10 words):`;
     return (hasFormKeyword || hasFormPattern) && !hasNonFormPattern;
   }
 
-  private getFormSpecificSuggestions(
-    formType: string,
-    context: string
-  ): string[] {
-    const suggestions = this.formTypes.get(formType) || [];
-
-    // Filter suggestions based on context
-    const contextWords = context.toLowerCase().split(' ');
-    const relevantSuggestions = suggestions.filter(suggestion => {
-      const suggestionWords = suggestion.toLowerCase().split(' ');
-      return (
-        suggestionWords.some(word => contextWords.includes(word)) ||
-        contextWords.some(word => suggestionWords.includes(word))
-      );
-    });
-
-    return relevantSuggestions.length > 0 ? relevantSuggestions : suggestions;
-  }
-
   async generateSuggestions(
     request: SuggestionRequest
   ): Promise<SuggestionResponse> {

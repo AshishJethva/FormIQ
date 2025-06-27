@@ -36,7 +36,6 @@ import {
   restoreFormToSnapshot,
   getFormHistoryStats,
   clearFormHistory,
-  getUserHistoryAnalytics,
 } from '../controllers/formHistoryController';
 const router = express.Router();
 

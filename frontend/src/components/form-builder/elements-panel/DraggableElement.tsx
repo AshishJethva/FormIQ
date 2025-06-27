@@ -1,3 +1,5 @@
+// src/components/form-builder/elements-panel/DraggableElement.tsx
+
 'use client';
 
 import { useDrag } from 'react-dnd';
@@ -5,11 +7,12 @@ import { getEmptyImage } from 'react-dnd-html5-backend';
 import { ItemTypes } from '@/types/dragTypes';
 import { FieldType } from '@/types/form';
 import { ChevronsRight, Sparkles } from 'lucide-react';
-import { useDispatch } from 'react-redux';
-import { addField } from '@/redux/slices/formBuilder/formBuilderSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { addFieldAtIndex } from '@/redux/slices/formBuilder/formBuilderSlice';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { RootState } from '@/redux/store';
 
 interface DraggableElementProps {
   icon: React.ReactNode;
@@ -27,9 +30,39 @@ export default function DraggableElement({
   const dispatch = useDispatch();
   const [isPressed, setIsPressed] = useState(false);
 
+  // Get current form and page info from Redux
+  const form = useSelector((state: RootState) => state.formBuilder.form);
+
   // Handle simple click on element to add at the end
   const handleClick = () => {
-    dispatch(addField({ type }));
+    if (!form || !form.pages || form.pages.length === 0) {
+      toast.error('No form or pages available');
+      return;
+    }
+
+    // Get current page
+    const currentPageIndex = form.currentPageIndex || 0;
+    const currentPage = form.pages[currentPageIndex];
+
+    if (!currentPage) {
+      toast.error('Current page not found');
+      return;
+    }
+
+    // Get the current number of fields in the page
+    const currentFieldCount = currentPage.fields
+      ? currentPage.fields.length
+      : 0;
+
+    // Dispatch addFieldAtIndex with proper parameters
+    dispatch(
+      addFieldAtIndex({
+        type,
+        index: currentFieldCount, // Add at the end
+        pageId: currentPage.id,
+      })
+    );
+
     toast.success(`${label} field added`, {
       icon: <Sparkles className='w-4 h-4' />,
       duration: 2000,

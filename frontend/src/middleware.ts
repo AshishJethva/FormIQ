@@ -37,9 +37,6 @@ export function middleware(request: NextRequest) {
     if (token && token !== 'undefined' && token !== 'null') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
-    // else {
-    //   return NextResponse.redirect(new URL('/auth/login', request.url));
-    // }
   }
 
   // PRIORITY 4: Protected paths

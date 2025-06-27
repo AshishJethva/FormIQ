@@ -27,7 +27,45 @@ export interface HistoryServiceResponse<T = any> {
   error?: string;
 }
 
+interface FormHistoryState {
+  formId: string;
+  userId: string;
+  currentPosition: number; // Current position in history (0 = latest)
+  maxPosition: number; // Maximum position available
+}
+
+// Store current positions in memory (in production, use Redis or database)
+const historyPositions = new Map<string, FormHistoryState>();
+
 export class MongoFormHistoryService {
+  // NEW: Get or initialize history state
+  private static getHistoryState(
+    formId: string,
+    userId: string
+  ): FormHistoryState {
+    const key = `${formId}_${userId}`;
+    if (!historyPositions.has(key)) {
+      historyPositions.set(key, {
+        formId,
+        userId,
+        currentPosition: 0,
+        maxPosition: 0,
+      });
+    }
+    return historyPositions.get(key)!;
+  }
+
+  // NEW: Update history state
+  private static updateHistoryState(
+    formId: string,
+    userId: string,
+    updates: Partial<FormHistoryState>
+  ) {
+    const key = `${formId}_${userId}`;
+    const current = this.getHistoryState(formId, userId);
+    historyPositions.set(key, { ...current, ...updates });
+  }
+
   // Create a new snapshot
   static async createSnapshot(
     formId: string,
@@ -96,6 +134,12 @@ export class MongoFormHistoryService {
 
       const savedSnapshot = await snapshot.save();
 
+      // UPDATE: Reset history position to 0 (latest) when new snapshot is created
+      this.updateHistoryState(formId, userId, {
+        currentPosition: 0,
+        maxPosition: newIndex,
+      });
+
       console.log(`✅ Created snapshot for form ${formId}, index: ${newIndex}`);
 
       return {
@@ -107,6 +151,271 @@ export class MongoFormHistoryService {
       return {
         success: false,
         error: error.message || 'Failed to create snapshot',
+      };
+    }
+  }
+
+  // UPDATED: Undo to previous snapshot with proper position tracking
+  static async undoToSnapshot(
+    formId: string,
+    userId: string,
+    targetIndex?: number
+  ): Promise<
+    HistoryServiceResponse<{
+      snapshot: IFormHistorySnapshot;
+      newPosition: number;
+      canUndo: boolean;
+      canRedo: boolean;
+    }>
+  > {
+    try {
+      if (
+        !mongoose.Types.ObjectId.isValid(formId) ||
+        !mongoose.Types.ObjectId.isValid(userId)
+      ) {
+        return {
+          success: false,
+          error: 'Invalid formId or userId format',
+        };
+      }
+
+      const historyState = this.getHistoryState(formId, userId);
+
+      // Calculate target position
+      let targetPosition: number;
+      if (targetIndex !== undefined) {
+        // Convert index to position (position = maxIndex - index)
+        targetPosition = historyState.maxPosition - targetIndex;
+      } else {
+        // Move one step back in history
+        targetPosition = historyState.currentPosition + 1;
+      }
+
+      // Validate target position
+      const maxPositionAvailable = Math.min(historyState.maxPosition, 9); // Max 10 undos (0-9)
+      if (targetPosition > maxPositionAvailable) {
+        return {
+          success: false,
+          error: 'No more undo history available',
+        };
+      }
+
+      // Calculate target index
+      const targetIndex_calc = historyState.maxPosition - targetPosition;
+
+      const targetSnapshot = await FormHistorySnapshot.getSnapshotAtIndex(
+        formId,
+        userId,
+        targetIndex_calc
+      );
+
+      if (!targetSnapshot) {
+        return {
+          success: false,
+          error: 'Target snapshot not found',
+        };
+      }
+
+      // Update history state
+      this.updateHistoryState(formId, userId, {
+        currentPosition: targetPosition,
+      });
+
+      const updatedState = this.getHistoryState(formId, userId);
+
+      console.log(
+        `↶ Undo operation: form ${formId}, position ${historyState.currentPosition} → ${targetPosition}, index ${targetIndex_calc}`
+      );
+
+      return {
+        success: true,
+        data: {
+          snapshot: targetSnapshot,
+          newPosition: targetPosition,
+          canUndo: targetPosition < Math.min(updatedState.maxPosition, 9),
+          canRedo: targetPosition > 0,
+        },
+      };
+    } catch (error: any) {
+      console.error('❌ Error during undo operation:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to undo',
+      };
+    }
+  }
+
+  // UPDATED: Redo to next snapshot with proper position tracking
+  static async redoToSnapshot(
+    formId: string,
+    userId: string,
+    targetIndex?: number
+  ): Promise<
+    HistoryServiceResponse<{
+      snapshot: IFormHistorySnapshot;
+      newPosition: number;
+      canUndo: boolean;
+      canRedo: boolean;
+    }>
+  > {
+    try {
+      if (
+        !mongoose.Types.ObjectId.isValid(formId) ||
+        !mongoose.Types.ObjectId.isValid(userId)
+      ) {
+        return {
+          success: false,
+          error: 'Invalid formId or userId format',
+        };
+      }
+
+      const historyState = this.getHistoryState(formId, userId);
+
+      // Calculate target position
+      let targetPosition: number;
+      if (targetIndex !== undefined) {
+        // Convert index to position
+        targetPosition = historyState.maxPosition - targetIndex;
+      } else {
+        // Move one step forward in history
+        targetPosition = historyState.currentPosition - 1;
+      }
+
+      // Validate target position
+      if (targetPosition < 0) {
+        return {
+          success: false,
+          error: 'No more redo history available',
+        };
+      }
+
+      // Calculate target index
+      const targetIndex_calc = historyState.maxPosition - targetPosition;
+
+      const targetSnapshot = await FormHistorySnapshot.getSnapshotAtIndex(
+        formId,
+        userId,
+        targetIndex_calc
+      );
+
+      if (!targetSnapshot) {
+        return {
+          success: false,
+          error: 'Target snapshot not found',
+        };
+      }
+
+      // Update history state
+      this.updateHistoryState(formId, userId, {
+        currentPosition: targetPosition,
+      });
+
+      const updatedState = this.getHistoryState(formId, userId);
+
+      console.log(
+        `↷ Redo operation: form ${formId}, position ${historyState.currentPosition} → ${targetPosition}, index ${targetIndex_calc}`
+      );
+
+      return {
+        success: true,
+        data: {
+          snapshot: targetSnapshot,
+          newPosition: targetPosition,
+          canUndo: targetPosition < Math.min(updatedState.maxPosition, 9),
+          canRedo: targetPosition > 0,
+        },
+      };
+    } catch (error: any) {
+      console.error('❌ Error during redo operation:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to redo',
+      };
+    }
+  }
+
+  // UPDATED: Get history statistics with proper position tracking
+  static async getHistoryStats(
+    formId: string,
+    userId: string
+  ): Promise<
+    HistoryServiceResponse<{
+      totalSnapshots: number;
+      aiUpdates: number;
+      manualEdits: number;
+      currentIndex: number;
+      currentPosition: number;
+      canUndo: boolean;
+      canRedo: boolean;
+      lastUpdate: Date;
+    }>
+  > {
+    try {
+      if (
+        !mongoose.Types.ObjectId.isValid(formId) ||
+        !mongoose.Types.ObjectId.isValid(userId)
+      ) {
+        return {
+          success: false,
+          error: 'Invalid formId or userId format',
+        };
+      }
+
+      const [stats, maxSnapshot] = await Promise.all([
+        FormHistorySnapshot.getHistoryStats(formId, userId),
+        FormHistorySnapshot.findOne({
+          formId: new mongoose.Types.ObjectId(formId),
+          userId: new mongoose.Types.ObjectId(userId),
+          isActive: true,
+        })
+          .sort({ snapshotIndex: -1 })
+          .lean(),
+      ]);
+
+      const statsResult = stats[0] || {
+        totalSnapshots: 0,
+        aiUpdates: 0,
+        manualEdits: 0,
+        maxIndex: -1,
+        minIndex: 0,
+        lastUpdate: new Date(),
+      };
+
+      const maxIndex = maxSnapshot ? maxSnapshot.snapshotIndex : -1;
+
+      // Initialize or get history state
+      const historyState = this.getHistoryState(formId, userId);
+
+      // Update max position if needed
+      if (maxIndex > historyState.maxPosition) {
+        this.updateHistoryState(formId, userId, { maxPosition: maxIndex });
+      }
+
+      const updatedState = this.getHistoryState(formId, userId);
+      const currentIndex = maxIndex - updatedState.currentPosition;
+
+      const result = {
+        totalSnapshots: statsResult.totalSnapshots,
+        aiUpdates: statsResult.aiUpdates,
+        manualEdits: statsResult.manualEdits,
+        currentIndex,
+        currentPosition: updatedState.currentPosition,
+        canUndo: updatedState.currentPosition < Math.min(maxIndex, 9), // Max 10 undos
+        canRedo: updatedState.currentPosition > 0,
+        lastUpdate: statsResult.lastUpdate,
+      };
+
+      console.log(`📊 History stats for form ${formId}:`, result);
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      console.error('❌ Error fetching history stats:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch stats',
       };
     }
   }
@@ -151,226 +460,6 @@ export class MongoFormHistoryService {
     }
   }
 
-  // Undo to previous snapshot
-  static async undoToSnapshot(
-    formId: string,
-    userId: string,
-    targetIndex?: number
-  ): Promise<
-    HistoryServiceResponse<{ snapshot: IFormHistorySnapshot; newIndex: number }>
-  > {
-    try {
-      if (
-        !mongoose.Types.ObjectId.isValid(formId) ||
-        !mongoose.Types.ObjectId.isValid(userId)
-      ) {
-        return {
-          success: false,
-          error: 'Invalid formId or userId format',
-        };
-      }
-
-      const currentSnapshot = await FormHistorySnapshot.getCurrentSnapshot(
-        formId,
-        userId
-      );
-
-      if (!currentSnapshot) {
-        return {
-          success: false,
-          error: 'No current snapshot found',
-        };
-      }
-
-      const undoToIndex =
-        targetIndex !== undefined
-          ? targetIndex
-          : currentSnapshot.snapshotIndex - 1;
-
-      if (undoToIndex < 0) {
-        return {
-          success: false,
-          error: 'No previous snapshot to undo to',
-        };
-      }
-
-      const targetSnapshot = await FormHistorySnapshot.getSnapshotAtIndex(
-        formId,
-        userId,
-        undoToIndex
-      );
-
-      if (!targetSnapshot) {
-        return {
-          success: false,
-          error: 'Target snapshot not found',
-        };
-      }
-
-      console.log(
-        `↶ Undo operation: form ${formId}, from index ${currentSnapshot.snapshotIndex} to ${undoToIndex}`
-      );
-
-      return {
-        success: true,
-        data: {
-          snapshot: targetSnapshot,
-          newIndex: undoToIndex,
-        },
-      };
-    } catch (error: any) {
-      console.error('❌ Error during undo operation:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to undo',
-      };
-    }
-  }
-
-  // Redo to next snapshot
-  static async redoToSnapshot(
-    formId: string,
-    userId: string,
-    targetIndex?: number
-  ): Promise<
-    HistoryServiceResponse<{ snapshot: IFormHistorySnapshot; newIndex: number }>
-  > {
-    try {
-      if (
-        !mongoose.Types.ObjectId.isValid(formId) ||
-        !mongoose.Types.ObjectId.isValid(userId)
-      ) {
-        return {
-          success: false,
-          error: 'Invalid formId or userId format',
-        };
-      }
-
-      const currentSnapshot = await FormHistorySnapshot.getCurrentSnapshot(
-        formId,
-        userId
-      );
-
-      if (!currentSnapshot) {
-        return {
-          success: false,
-          error: 'No current snapshot found',
-        };
-      }
-
-      const redoToIndex =
-        targetIndex !== undefined
-          ? targetIndex
-          : currentSnapshot.snapshotIndex + 1;
-
-      const targetSnapshot = await FormHistorySnapshot.getSnapshotAtIndex(
-        formId,
-        userId,
-        redoToIndex
-      );
-
-      if (!targetSnapshot) {
-        return {
-          success: false,
-          error: 'No future snapshot to redo to',
-        };
-      }
-
-      console.log(
-        `↷ Redo operation: form ${formId}, from index ${currentSnapshot.snapshotIndex} to ${redoToIndex}`
-      );
-
-      return {
-        success: true,
-        data: {
-          snapshot: targetSnapshot,
-          newIndex: redoToIndex,
-        },
-      };
-    } catch (error: any) {
-      console.error('❌ Error during redo operation:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to redo',
-      };
-    }
-  }
-
-  // Get history statistics
-  static async getHistoryStats(
-    formId: string,
-    userId: string
-  ): Promise<
-    HistoryServiceResponse<{
-      totalSnapshots: number;
-      aiUpdates: number;
-      manualEdits: number;
-      currentIndex: number;
-      canUndo: boolean;
-      canRedo: boolean;
-      lastUpdate: Date;
-    }>
-  > {
-    try {
-      if (
-        !mongoose.Types.ObjectId.isValid(formId) ||
-        !mongoose.Types.ObjectId.isValid(userId)
-      ) {
-        return {
-          success: false,
-          error: 'Invalid formId or userId format',
-        };
-      }
-
-      const [stats, currentSnapshot, maxSnapshot] = await Promise.all([
-        FormHistorySnapshot.getHistoryStats(formId, userId),
-        FormHistorySnapshot.getCurrentSnapshot(formId, userId),
-        FormHistorySnapshot.findOne({
-          formId: new mongoose.Types.ObjectId(formId),
-          userId: new mongoose.Types.ObjectId(userId),
-          isActive: true,
-        })
-          .sort({ snapshotIndex: -1 })
-          .lean(),
-      ]);
-
-      const statsResult = stats[0] || {
-        totalSnapshots: 0,
-        aiUpdates: 0,
-        manualEdits: 0,
-        maxIndex: -1,
-        minIndex: 0,
-        lastUpdate: new Date(),
-      };
-
-      const currentIndex = currentSnapshot ? currentSnapshot.snapshotIndex : -1;
-      const maxIndex = maxSnapshot ? maxSnapshot.snapshotIndex : -1;
-
-      const result = {
-        totalSnapshots: statsResult.totalSnapshots,
-        aiUpdates: statsResult.aiUpdates,
-        manualEdits: statsResult.manualEdits,
-        currentIndex,
-        canUndo: currentIndex > 0,
-        canRedo: currentIndex < maxIndex,
-        lastUpdate: statsResult.lastUpdate,
-      };
-
-      console.log(`📊 History stats for form ${formId}:`, result);
-
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error: any) {
-      console.error('❌ Error fetching history stats:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to fetch stats',
-      };
-    }
-  }
-
   // Clear form history
   static async clearFormHistory(
     formId: string,
@@ -394,6 +483,12 @@ export class MongoFormHistoryService {
         },
         { isActive: false }
       );
+
+      // Reset history state
+      this.updateHistoryState(formId, userId, {
+        currentPosition: 0,
+        maxPosition: 0,
+      });
 
       console.log(
         `🗑️ Cleared ${result.modifiedCount} snapshots for form ${formId}`
@@ -443,6 +538,11 @@ export class MongoFormHistoryService {
           error: 'Snapshot not found',
         };
       }
+
+      // Reset position to this snapshot
+      const historyState = this.getHistoryState(formId, userId);
+      const newPosition = historyState.maxPosition - snapshot.snapshotIndex;
+      this.updateHistoryState(formId, userId, { currentPosition: newPosition });
 
       console.log(`🔄 Restored to snapshot ${snapshotId} for form ${formId}`);
 
