@@ -3,6 +3,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
+import AIFormHistoryService from '@/services/aiFormHistoryService';
 import { Form } from '@/types/form';
 
 interface AIFormUpdateState {
@@ -15,6 +16,7 @@ interface AIFormUpdateState {
     summary: string;
     timestamp: string;
   }>;
+  isLoadingHistory: boolean;
 }
 
 const initialState: AIFormUpdateState = {
@@ -22,6 +24,7 @@ const initialState: AIFormUpdateState = {
   error: null,
   lastUpdateSummary: null,
   updateHistory: [],
+  isLoadingHistory: false,
 };
 
 // Async thunk to update form using AI
@@ -118,6 +121,130 @@ export const updateFormWithAI = createAsyncThunk(
   }
 );
 
+// Async thunk to undo last AI update
+export const undoAIUpdate = createAsyncThunk(
+  'aiFormUpdate/undo',
+  async (
+    { formId, targetIndex }: { formId: string; targetIndex?: number },
+    { rejectWithValue, dispatch }
+  ) => {
+    try {
+      console.log('🔄 Starting undo operation:', { formId, targetIndex });
+
+      const undoResult = await AIFormHistoryService.undo(formId, targetIndex);
+
+      if (!undoResult.success) {
+        throw new Error(undoResult.error || 'Failed to undo changes');
+      }
+
+      console.log('✅ Undo completed successfully');
+
+      // Update undo/redo state
+      dispatch(updateHistoryState(formId));
+
+      return {
+        formData: undoResult.data!.formData,
+        undoDetails: undoResult.data!.undoDetails,
+      };
+    } catch (error: any) {
+      console.error('❌ Undo failed:', error);
+      return rejectWithValue(error.message || 'Failed to undo changes');
+    }
+  }
+);
+
+// Async thunk to redo last undone update
+export const redoAIUpdate = createAsyncThunk(
+  'aiFormUpdate/redo',
+  async (
+    { formId, targetIndex }: { formId: string; targetIndex?: number },
+    { rejectWithValue, dispatch }
+  ) => {
+    try {
+      console.log('🔄 Starting redo operation:', { formId, targetIndex });
+
+      const redoResult = await AIFormHistoryService.redo(formId, targetIndex);
+
+      if (!redoResult.success) {
+        throw new Error(redoResult.error || 'Failed to redo changes');
+      }
+
+      console.log('✅ Redo completed successfully');
+
+      // Update undo/redo state
+      dispatch(updateHistoryState(formId));
+
+      return {
+        formData: redoResult.data!.formData,
+        redoDetails: redoResult.data!.redoDetails,
+      };
+    } catch (error: any) {
+      console.error('❌ Redo failed:', error);
+      return rejectWithValue(error.message || 'Failed to redo changes');
+    }
+  }
+);
+
+// Async thunk to restore to specific snapshot
+export const restoreToSnapshot = createAsyncThunk(
+  'aiFormUpdate/restore',
+  async (
+    { formId, snapshotId }: { formId: string; snapshotId: string },
+    { rejectWithValue, dispatch }
+  ) => {
+    try {
+      console.log('🔄 Starting restore operation:', { formId, snapshotId });
+
+      const restoreResult = await AIFormHistoryService.restoreToSnapshot(
+        formId,
+        snapshotId
+      );
+
+      if (!restoreResult.success) {
+        throw new Error(restoreResult.error || 'Failed to restore snapshot');
+      }
+
+      console.log('✅ Restore completed successfully');
+
+      // Update undo/redo state
+      dispatch(updateHistoryState(formId));
+
+      return {
+        formData: restoreResult.data!.formData,
+        restoredSnapshot: restoreResult.data!.restoredSnapshot,
+      };
+    } catch (error: any) {
+      console.error('❌ Restore failed:', error);
+      return rejectWithValue(error.message || 'Failed to restore snapshot');
+    }
+  }
+);
+
+// Async thunk to load form history
+export const loadFormHistory = createAsyncThunk(
+  'aiFormUpdate/loadHistory',
+  async (
+    { formId, limit }: { formId: string; limit?: number },
+    { rejectWithValue }
+  ) => {
+    try {
+      const historyResult = await AIFormHistoryService.getFormHistory(
+        formId,
+        limit
+      );
+
+      if (!historyResult.success) {
+        throw new Error(historyResult.error || 'Failed to load history');
+      }
+
+      return historyResult.data!;
+    } catch (error: any) {
+      console.error('❌ Load history failed:', error);
+      return rejectWithValue(error.message || 'Failed to load history');
+    }
+  }
+);
+
 // Async thunk to validate update prompt
 export const validateUpdatePrompt = createAsyncThunk(
   'aiFormUpdate/validatePrompt',
@@ -187,6 +314,35 @@ const aiFormUpdateSlice = createSlice({
     setUpdateHistory: (state, action: PayloadAction<any[]>) => {
       state.updateHistory = action.payload;
     },
+    setHistoryStats: (
+      state,
+      action: PayloadAction<{
+        totalSnapshots: number;
+        currentIndex: number;
+        canUndo: boolean;
+        canRedo: boolean;
+      }>
+    ) => {
+      state.totalSnapshots = action.payload.totalSnapshots;
+      state.currentHistoryIndex = action.payload.currentIndex;
+      state.canUndo = action.payload.canUndo;
+      state.canRedo = action.payload.canRedo;
+    },
+    initializeHistory: state => {
+      // Initialize with default stats, real stats will be loaded async
+      state.totalSnapshots = 1;
+      state.currentHistoryIndex = 0;
+      state.canUndo = false;
+      state.canRedo = false;
+    },
+    clearFormHistory: state => {
+      // Reset history state when clearing
+      state.canUndo = false;
+      state.canRedo = false;
+      state.currentHistoryIndex = 0;
+      state.totalSnapshots = 0;
+      state.updateHistory = [];
+    },
   },
   extraReducers: builder => {
     builder
@@ -225,6 +381,84 @@ const aiFormUpdateSlice = createSlice({
         state.error = action.payload as string;
       })
 
+      // Undo cases
+      .addCase(undoAIUpdate.pending, state => {
+        state.isUndoing = true;
+        state.error = null;
+      })
+      .addCase(undoAIUpdate.fulfilled, state => {
+        state.isUndoing = false;
+        state.error = null;
+        state.lastUpdateSummary = 'Changes undone successfully';
+      })
+      .addCase(undoAIUpdate.rejected, (state, action) => {
+        state.isUndoing = false;
+        state.error = action.payload as string;
+      })
+
+      // Redo cases
+      .addCase(redoAIUpdate.pending, state => {
+        state.isRedoing = true;
+        state.error = null;
+      })
+      .addCase(redoAIUpdate.fulfilled, state => {
+        state.isRedoing = false;
+        state.error = null;
+        state.lastUpdateSummary = 'Changes redone successfully';
+      })
+      .addCase(redoAIUpdate.rejected, (state, action) => {
+        state.isRedoing = false;
+        state.error = action.payload as string;
+      })
+
+      // Restore cases
+      .addCase(restoreToSnapshot.pending, state => {
+        state.isUndoing = true; // Use undo loading state for restore
+        state.error = null;
+      })
+      .addCase(restoreToSnapshot.fulfilled, state => {
+        state.isUndoing = false;
+        state.error = null;
+        state.lastUpdateSummary = 'Restored to snapshot successfully';
+      })
+      .addCase(restoreToSnapshot.rejected, (state, action) => {
+        state.isUndoing = false;
+        state.error = action.payload as string;
+      })
+
+      // Load history cases
+      .addCase(loadFormHistory.pending, state => {
+        state.isLoadingHistory = true;
+        state.error = null;
+      })
+      .addCase(loadFormHistory.fulfilled, (state, action) => {
+        state.isLoadingHistory = false;
+        state.error = null;
+
+        // Update history stats
+        const stats = action.payload.stats;
+        state.totalSnapshots = stats.totalSnapshots;
+        state.currentHistoryIndex = stats.currentIndex;
+        state.canUndo = stats.canUndo;
+        state.canRedo = stats.canRedo;
+
+        // Update local history list
+        const recentSnapshots = action.payload.snapshots
+          .slice(0, 10)
+          .map((snapshot: any) => ({
+            id: snapshot.id,
+            prompt: snapshot.updatePrompt || '',
+            summary: snapshot.updateSummary || 'Form updated',
+            timestamp: snapshot.timestamp,
+          }));
+
+        state.updateHistory = recentSnapshots;
+      })
+      .addCase(loadFormHistory.rejected, (state, action) => {
+        state.isLoadingHistory = false;
+        state.error = action.payload as string;
+      })
+
       // Validate prompt cases
       .addCase(validateUpdatePrompt.pending, state => {
         state.error = null;
@@ -238,12 +472,38 @@ const aiFormUpdateSlice = createSlice({
   },
 });
 
+// Async thunk to update history state (loads stats from API)
+export const updateHistoryState = createAsyncThunk(
+  'aiFormUpdate/updateHistoryState',
+  async (formId: string, { dispatch }) => {
+    try {
+      const statsResult = await AIFormHistoryService.getHistoryStats(formId);
+
+      if (statsResult.success && statsResult.data) {
+        dispatch(
+          setHistoryStats({
+            totalSnapshots: statsResult.data.totalSnapshots,
+            currentIndex: statsResult.data.currentIndex,
+            canUndo: statsResult.data.canUndo,
+            canRedo: statsResult.data.canRedo,
+          })
+        );
+      }
+    } catch (error) {
+      console.warn('Failed to update history state:', error);
+    }
+  }
+);
+
 export const {
   clearError,
   clearUpdateSummary,
   addToUpdateHistory,
   setUpdateHistory,
   clearUpdateHistory,
+  setHistoryStats,
+  initializeHistory,
+  clearFormHistory,
 } = aiFormUpdateSlice.actions;
 
 export default aiFormUpdateSlice.reducer;

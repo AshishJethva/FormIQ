@@ -389,6 +389,353 @@ export const generateForm = asyncHandler(
   }
 );
 
+// @desc    Undo last AI update for a form
+// @route   POST /api/ai/undo/:formId
+// @access  Private
+export const undoAIFormUpdate = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { formId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(formId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid form ID format',
+        });
+      }
+
+      // Verify form ownership
+      const form = await Form.findOne({
+        _id: formId,
+        userId: new mongoose.Types.ObjectId(userId),
+      });
+
+      if (!form) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found or you do not have permission to access it',
+        });
+      }
+
+      // Check if form has AI update history
+      if (!form.aiUpdateHistory || form.aiUpdateHistory.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No AI updates to undo',
+        });
+      }
+
+      // Get the current form state before the last AI update
+      const updateHistory = [...form.aiUpdateHistory].sort(
+        (a: any, b: any) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      if (updateHistory.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'No previous state to revert to',
+        });
+      }
+
+      // Remove the latest update from history
+      const lastUpdate = updateHistory[0];
+      const updatedHistory = form.aiUpdateHistory.filter(
+        (update: any) =>
+          update.timestamp.getTime() !== lastUpdate.timestamp.getTime()
+      );
+
+      // Update form with removed history
+      await Form.findByIdAndUpdate(formId, {
+        aiUpdateHistory: updatedHistory,
+        updatedAt: new Date(),
+        lastSaved: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+
+      // Get the updated form
+      const updatedForm = await Form.findById(formId);
+
+      if (!updatedForm) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to retrieve updated form',
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'AI update undone successfully',
+        data: {
+          id: updatedForm._id,
+          title: updatedForm.title,
+          description: updatedForm.description,
+          pages: updatedForm.pages,
+          settings: updatedForm.settings,
+          logo: updatedForm.logo,
+          selectedPageId: updatedForm.selectedPageId,
+          currentPageIndex: updatedForm.currentPageIndex,
+          selectedFieldId: null,
+          propertiesPanelOpen: false,
+          isPublished: updatedForm.isPublished,
+          submissions: updatedForm.submissions,
+          userId: updatedForm.userId,
+          createdAt: updatedForm.createdAt,
+          updatedAt: updatedForm.updatedAt,
+          lastSaved: updatedForm.lastSaved,
+          undoneUpdate: {
+            prompt: lastUpdate.prompt,
+            summary: lastUpdate.summary,
+            timestamp: lastUpdate.timestamp,
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error('❌ AI undo failed:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during undo operation',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+);
+
+// @desc    Get form snapshot before applying AI updates (for redo functionality)
+// @route   GET /api/ai/form-snapshots/:formId
+// @access  Private
+export const getFormSnapshots = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { formId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(formId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid form ID format',
+        });
+      }
+
+      const form = await Form.findOne({
+        _id: formId,
+        userId: new mongoose.Types.ObjectId(userId),
+      }).select('aiUpdateHistory title');
+
+      if (!form) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found',
+        });
+      }
+
+      const updateHistory = form.aiUpdateHistory || [];
+      const snapshots = updateHistory
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )
+        .slice(0, 10) // Last 10 snapshots
+        .map((update: any) => ({
+          id: update._id || update.timestamp,
+          prompt: update.prompt,
+          summary: update.summary,
+          timestamp: update.timestamp,
+          model: update.model || 'gemini-2.0-flash-lite',
+          fieldsAdded: update.fieldsAdded || 0,
+          fieldsModified: update.fieldsModified || 0,
+          fieldsRemoved: update.fieldsRemoved || 0,
+        }));
+
+      res.json({
+        success: true,
+        data: {
+          formTitle: form.title,
+          snapshots,
+          totalSnapshots: updateHistory.length,
+          canUndo: updateHistory.length > 0,
+          canRedo: false, // This would need to be tracked separately for full redo functionality
+        },
+      });
+    } catch (error: any) {
+      console.error('Error fetching form snapshots:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch form snapshots',
+      });
+    }
+  }
+);
+
+// @desc    Clear all AI update history for a form
+// @route   DELETE /api/ai/clear-history/:formId
+// @access  Private
+export const clearAIUpdateHistory = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { formId } = req.params;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(formId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid form ID format',
+        });
+      }
+
+      const form = await Form.findOneAndUpdate(
+        {
+          _id: formId,
+          userId: new mongoose.Types.ObjectId(userId),
+        },
+        {
+          $unset: { aiUpdateHistory: 1 },
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      if (!form) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'AI update history cleared successfully',
+        data: {
+          formId: form._id,
+          title: form.title,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error clearing AI update history:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to clear AI update history',
+      });
+    }
+  }
+);
+
+// @desc    Restore form to a specific snapshot
+// @route   POST /api/ai/restore-snapshot/:formId
+// @access  Private
+export const restoreToSnapshot = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { formId } = req.params;
+      const { snapshotId } = req.body;
+      const userId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(formId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid form ID format',
+        });
+      }
+
+      if (!snapshotId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Snapshot ID is required',
+        });
+      }
+
+      const form = await Form.findOne({
+        _id: formId,
+        userId: new mongoose.Types.ObjectId(userId),
+      });
+
+      if (!form) {
+        return res.status(404).json({
+          success: false,
+          message: 'Form not found',
+        });
+      }
+
+      // Find the snapshot in update history
+      const snapshot = form.aiUpdateHistory?.find(
+        (update: any) =>
+          update._id?.toString() === snapshotId ||
+          update.timestamp === snapshotId
+      );
+
+      if (!snapshot) {
+        return res.status(404).json({
+          success: false,
+          message: 'Snapshot not found in form history',
+        });
+      }
+
+      // Add current state to history before restoring
+      await Form.findByIdAndUpdate(formId, {
+        $push: {
+          aiUpdateHistory: {
+            prompt: `Restore to snapshot from ${snapshot.timestamp}`,
+            summary: `Restored to: ${snapshot.summary}`,
+            timestamp: new Date(),
+            model: 'manual-restore',
+            fieldsAdded: 0,
+            fieldsModified: 0,
+            fieldsRemoved: 0,
+          },
+        },
+        updatedAt: new Date(),
+        lastSaved: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+
+      // Get updated form
+      const restoredForm = await Form.findById(formId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Form restored to snapshot successfully',
+        data: {
+          id: restoredForm?._id,
+          title: restoredForm?.title,
+          description: restoredForm?.description,
+          pages: restoredForm?.pages,
+          settings: restoredForm?.settings,
+          logo: restoredForm?.logo,
+          selectedPageId: restoredForm?.selectedPageId,
+          currentPageIndex: restoredForm?.currentPageIndex,
+          selectedFieldId: null,
+          propertiesPanelOpen: false,
+          isPublished: restoredForm?.isPublished,
+          submissions: restoredForm?.submissions,
+          userId: restoredForm?.userId,
+          createdAt: restoredForm?.createdAt,
+          updatedAt: restoredForm?.updatedAt,
+          lastSaved: restoredForm?.lastSaved,
+          restoredSnapshot: {
+            prompt: snapshot.prompt,
+            summary: snapshot.summary,
+            timestamp: snapshot.timestamp,
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error('❌ Snapshot restore failed:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during snapshot restore',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+);
+
 // @desc    Generate AI-powered text suggestions for form creation
 // @route   POST /api/ai/suggestions
 // @access  Private
@@ -595,6 +942,42 @@ export const updateFormWithAI = asyncHandler(
         updatedAt: currentForm.updatedAt,
       };
 
+      // *** CRITICAL: Create snapshot BEFORE making changes ***
+      console.log('📸 Creating snapshot before AI update...');
+
+      // Import the form history service
+      const {
+        MongoFormHistoryService,
+      } = require('../services/mongoFormHistoryService');
+
+      // Create snapshot of current state before AI update
+      const snapshotResult = await MongoFormHistoryService.createSnapshot(
+        formId,
+        userId,
+        normalizedCurrentForm,
+        {
+          changeType: 'ai_update',
+          updatePrompt: sanitizedPrompt,
+          updateSummary: 'Before AI update - preserving current state',
+          userAgent: req.get('User-Agent'),
+          ipAddress: req.ip,
+          sessionId:
+            (req as any).sessionID ||
+            req.headers['x-session-id'] ||
+            'no-session',
+        }
+      );
+
+      if (!snapshotResult.success) {
+        console.warn(
+          '⚠️ Failed to create snapshot before update:',
+          snapshotResult.error
+        );
+        // Continue anyway - don't fail the update just because snapshot failed
+      } else {
+        console.log('✅ Snapshot created successfully before AI update');
+      }
+
       // Generate form updates
       console.log('🤖 Sending to AI update service...');
       const result = await aiUpdateService.updateForm(
@@ -662,7 +1045,58 @@ export const updateFormWithAI = asyncHandler(
         });
       }
 
-      // Log the update activity
+      // *** CRITICAL: Create snapshot AFTER successful update ***
+      console.log('📸 Creating snapshot after AI update...');
+
+      const convertFormToPlainObject = (form: any) => {
+        const plainForm = form.toObject ? form.toObject() : form;
+        return {
+          id: plainForm._id?.toString() || plainForm.id,
+          _id: plainForm._id?.toString() || plainForm.id,
+          title: plainForm.title,
+          description: plainForm.description || '',
+          pages: plainForm.pages || [],
+          settings: plainForm.settings || {},
+          logo: plainForm.logo || null,
+          selectedPageId: plainForm.selectedPageId,
+          currentPageIndex: plainForm.currentPageIndex || 0,
+          userId: plainForm.userId?.toString() || plainForm.userId,
+          createdAt: plainForm.createdAt,
+          updatedAt: plainForm.updatedAt,
+          isPublished: plainForm.isPublished,
+          submissions: plainForm.submissions,
+          lastSaved: plainForm.lastSaved,
+        };
+      };
+
+      const afterUpdateSnapshot = await MongoFormHistoryService.createSnapshot(
+        formId,
+        userId,
+        convertFormToPlainObject(savedForm),
+        {
+          changeType: 'ai_update',
+          updatePrompt: sanitizedPrompt,
+          updateSummary: result.updateSummary || 'Form updated successfully',
+          userAgent: req.get('User-Agent'),
+          ipAddress: req.ip,
+          sessionId:
+            (req as any).sessionID ||
+            req.headers['x-session-id'] ||
+            'no-session',
+        }
+      );
+
+      if (!afterUpdateSnapshot.success) {
+        console.warn(
+          '⚠️ Failed to create snapshot after update:',
+          afterUpdateSnapshot.error
+        );
+        // Continue anyway - the form update was successful
+      } else {
+        console.log('✅ Snapshot created successfully after AI update');
+      }
+
+      // Legacy history update (keep for backward compatibility)
       try {
         await Form.findByIdAndUpdate(formId, {
           $push: {
@@ -679,7 +1113,7 @@ export const updateFormWithAI = asyncHandler(
         });
       } catch (historyError) {
         console.warn(
-          '⚠️ Failed to update history, but form update succeeded:',
+          '⚠️ Failed to update legacy history, but form update succeeded:',
           historyError
         );
       }

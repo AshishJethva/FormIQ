@@ -1,3 +1,5 @@
+// src/routes/forms.ts
+
 import express from 'express';
 import { protect } from '../middleware/protect';
 import { validate } from '../middleware/validation';
@@ -26,7 +28,16 @@ import {
   getTrashStats,
   deleteAllFormSubmissions,
 } from '../controllers/formController';
-
+import {
+  createFormSnapshot,
+  getFormHistory,
+  undoFormToSnapshot,
+  redoFormToSnapshot,
+  restoreFormToSnapshot,
+  getFormHistoryStats,
+  clearFormHistory,
+  getUserHistoryAnalytics,
+} from '../controllers/formHistoryController';
 const router = express.Router();
 
 // Public routes
@@ -59,5 +70,18 @@ router.get('/trash-stats', protect, getTrashStats);
 
 // Protected routes - Submission management
 router.delete('/form/:formId/all', protect, deleteAllFormSubmissions);
+
+// Form history routes
+router.post('/:formId/history', protect, createFormSnapshot);
+router.get('/:formId/history', protect, getFormHistory);
+router.post('/:formId/history/undo', protect, undoFormToSnapshot);
+router.post('/:formId/history/redo', protect, redoFormToSnapshot);
+router.post(
+  '/:formId/history/restore/:snapshotId',
+  protect,
+  restoreFormToSnapshot
+);
+router.get('/:formId/history/stats', protect, getFormHistoryStats);
+router.delete('/:formId/history', protect, clearFormHistory);
 
 export default router;

@@ -1,3 +1,5 @@
+// src/components/form-builder/canvas/FormCanvas.tsx
+
 'use client';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -398,6 +400,7 @@ export default function FormCanvas({
             id: editingLabelId,
             updates: { label: editingLabelValue.trim() },
             pageId,
+            fieldId: '',
           })
         );
       }
@@ -419,7 +422,17 @@ export default function FormCanvas({
     pageId: string
   ) => {
     if (isPreviewMode) return;
-    dispatch(moveField({ dragIndex, hoverIndex, pageId }));
+    dispatch(
+      moveField({
+        dragIndex,
+        hoverIndex,
+        pageId,
+        fieldId: '',
+        fromPageId: '',
+        toPageId: '',
+        toIndex: 0,
+      })
+    );
   };
 
   const handleAddFieldAtIndex = (
@@ -979,6 +992,7 @@ export default function FormCanvas({
                     fillBlankTemplate: newTemplate,
                   },
                   pageId,
+                  fieldId: '',
                 })
               );
             }
@@ -1082,6 +1096,7 @@ export default function FormCanvas({
                     productListConfig: { products: updatedProducts },
                   },
                   pageId,
+                  fieldId: '',
                 })
               );
             }
@@ -1102,6 +1117,7 @@ export default function FormCanvas({
                     productListConfig: { products: updatedProducts },
                   },
                   pageId,
+                  fieldId: '',
                 })
               );
             }
@@ -1134,6 +1150,7 @@ export default function FormCanvas({
                     productListConfig: { products: updatedProducts },
                   },
                   pageId,
+                  fieldId: '',
                 })
               );
             }

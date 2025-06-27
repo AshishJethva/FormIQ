@@ -1,3 +1,5 @@
+// src/components/form-builder/canvas/UpdateHistoryPanel.tsx
+
 'use client';
 
 import React, { useState, useEffect } from 'react';

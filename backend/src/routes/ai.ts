@@ -16,6 +16,10 @@ import {
   validateUpdatePrompt,
   getFormUpdateHistory,
   getUpdateSuggestions,
+  undoAIFormUpdate,
+  getFormSnapshots,
+  clearAIUpdateHistory,
+  restoreToSnapshot,
 } from '../controllers/aiController';
 
 const router = express.Router();
@@ -79,5 +83,25 @@ router.get('/update-history/:formId', protect, getFormUpdateHistory);
 // @desc    Get contextual suggestions for form updates based on current form
 // @access  Private
 router.post('/update-suggestions', protect, getUpdateSuggestions);
+
+// @route   POST /api/ai/undo/:formId
+// @desc    Undo last AI update for a form
+// @access  Private
+router.post('/undo/:formId', protect, undoAIFormUpdate);
+
+// @route   GET /api/ai/form-snapshots/:formId
+// @desc    Get form snapshots and history for undo/redo functionality
+// @access  Private
+router.get('/form-snapshots/:formId', protect, getFormSnapshots);
+
+// @route   DELETE /api/ai/clear-history/:formId
+// @desc    Clear all AI update history for a form
+// @access  Private
+router.delete('/clear-history/:formId', protect, clearAIUpdateHistory);
+
+// @route   POST /api/ai/restore-snapshot/:formId
+// @desc    Restore form to a specific snapshot
+// @access  Private
+router.post('/restore-snapshot/:formId', protect, restoreToSnapshot);
 
 export default router;
