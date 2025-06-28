@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
-// Create axios instance
 const api = axios.create({
   baseURL: apiConfig.url,
   headers: {
@@ -10,7 +9,6 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Add request interceptor for auth tokens
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');

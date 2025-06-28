@@ -1,5 +1,3 @@
-// src/components/form-builder/FormBuilder.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -49,24 +47,11 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Debug logging for formId
-  useEffect(() => {
-    console.log('🔍 FormBuilder formId resolution:', {
-      propsFormId: formId,
-      urlFormId,
-      resolvedFormId,
-      type: typeof resolvedFormId,
-    });
-  }, [formId, urlFormId, resolvedFormId]);
-
   // Handle successful AI updates by refreshing the form data
   useEffect(() => {
     let refreshTimeout: NodeJS.Timeout;
 
     if (aiUpdateState?.lastUpdateSummary && !isUpdating) {
-      console.log('🔄 AI update completed, scheduling form data refresh...');
-
-      // Add a small delay to prevent race conditions
       refreshTimeout = setTimeout(() => {
         refreshFormData();
       }, 500);
@@ -81,9 +66,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
 
   const refreshFormData = async () => {
     try {
-      console.log('🔄 Refreshing form data after AI update...', {
-        formId: resolvedFormId,
-      });
       const token = localStorage.getItem('token');
 
       if (!token) {
@@ -106,14 +88,8 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
 
       if (response.ok) {
         const formData = await response.json();
-        console.log('📊 Received form data:', {
-          success: formData.success,
-          hasData: !!formData.data,
-          dataKeys: formData.data ? Object.keys(formData.data) : [],
-        });
 
         if (formData.success && formData.data) {
-          console.log('✅ Form data refreshed successfully');
           dispatch(setForm(formData.data));
 
           // Only show success notification if not already shown
@@ -284,8 +260,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
           if (loadFormAsync.rejected.match(result)) {
             console.error('❌ Form loading failed:', result.payload);
             dispatch(initializeForm());
-          } else if (loadFormAsync.fulfilled.match(result)) {
-            console.log('✅ Form loaded successfully');
           }
         } catch (error) {
           console.error('❌ Form loading error:', error);
@@ -426,17 +400,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
   const actualFormId =
     resolvedFormId || formState.form?.id || formState.form?._id;
 
-  console.log('🔍 FormBuilder render - FormId resolution:', {
-    propsFormId: formId,
-    urlFormId,
-    resolvedFormId,
-    formStateId: formState.form?.id,
-    formState_Id: formState.form?._id,
-    actualFormId,
-    currentPage,
-    isPreviewEnabled,
-  });
-
   if (currentPage === 'PREVIEW' && isPreviewEnabled) {
     return <PreviewPage formId={actualFormId} />;
   }
@@ -570,7 +533,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
           <UpdateHistoryPanel
             isOpen={showHistoryPanel}
             onClose={() => {
-              console.log('📊 Closing update history panel');
               setShowHistoryPanel(false);
             }}
             formId={actualFormId}

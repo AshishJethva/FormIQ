@@ -18,5 +18,5 @@ export default function FormSettingsPage() {
     }
   }, [dispatch, formId]);
 
-  return <FormBuilder />;
+  return <FormBuilder formId={formId} />;
 }

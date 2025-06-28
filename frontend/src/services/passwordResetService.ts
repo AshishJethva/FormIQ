@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
 
-// Create axios instance
 const api = axios.create({
   baseURL: apiConfig.url,
   headers: {
@@ -26,7 +25,6 @@ export interface VerifyTokenRequest {
 }
 
 export const passwordResetService = {
-  // Request password reset
   async requestPasswordReset(data: ForgotPasswordRequest) {
     try {
       const response = await api.post('/auth/forgot-password', data);

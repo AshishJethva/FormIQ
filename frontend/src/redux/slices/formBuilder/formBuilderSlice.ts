@@ -1,5 +1,3 @@
-// src/redux/slices/formBuilder/formBuilderSlice.ts
-
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { updateFormWithAI } from './aiFormUpdateSlice';
 import { v4 as uuidv4 } from 'uuid';
@@ -200,10 +198,12 @@ const formBuilderSlice = createSlice({
     initializeForm: state => {
       if (!state.form) {
         const pageId = uuidv4();
+        const formId = uuidv4();
         const currentTime = new Date().toISOString();
 
         state.form = {
-          id: uuidv4(),
+          id: formId,
+          _id: formId,
           title: 'Untitled Form',
           pages: [
             {
@@ -1211,11 +1211,9 @@ const formBuilderSlice = createSlice({
           // Update local state
           state.selectedPageId = action.payload.selectedPageId;
           state.currentPageIndex = action.payload.currentPageIndex || 0;
-          state.selectedFieldId = null; // Clear field selection after AI update
-          state.hasUnsavedChanges = false; // AI updates are automatically saved
+          state.selectedFieldId = null;
+          state.hasUnsavedChanges = false;
           state.isDirty = false;
-
-          console.log('✅ Form updated in Redux store after AI update');
         }
       })
       .addCase(updateFormWithAI.rejected, (state, action) => {

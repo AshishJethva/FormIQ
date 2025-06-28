@@ -1,5 +1,3 @@
-// src/redux/slices/formBuilder/aiFormUpdateSlice.ts
-
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { apiConfig } from '@/config/api';
@@ -63,14 +61,6 @@ export const updateFormWithAI = createAsyncThunk(
         throw new Error('Current form must have valid pages array');
       }
 
-      console.log('🔄 Making API request to update form:', {
-        endpoint: `${apiConfig.url}/ai/update-form`,
-        formId,
-        promptLength: updatePrompt.length,
-        formTitle: currentForm.title,
-        pagesCount: currentForm.pages.length,
-      });
-
       const response = await axios.post(
         `${apiConfig.url}/ai/update-form`,
         {
@@ -94,12 +84,6 @@ export const updateFormWithAI = createAsyncThunk(
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to update form');
       }
-
-      console.log('✅ API response received:', {
-        success: response.data.success,
-        hasData: !!response.data.data,
-        hasSummary: !!response.data.data?.updateSummary,
-      });
 
       return response.data.data;
     } catch (error: any) {
@@ -196,12 +180,10 @@ const aiFormUpdateSlice = createSlice({
     builder
       // Update form cases
       .addCase(updateFormWithAI.pending, state => {
-        console.log('🔄 Update form pending...');
         state.isUpdating = true;
         state.error = null;
       })
       .addCase(updateFormWithAI.fulfilled, (state, action) => {
-        console.log('✅ Update form fulfilled:', action.payload);
         state.isUpdating = false;
         state.error = null;
         state.lastUpdateSummary = action.payload.updateSummary;

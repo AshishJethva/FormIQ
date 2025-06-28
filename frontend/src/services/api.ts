@@ -2,7 +2,6 @@ import axios from 'axios';
 
 import { apiConfig } from '@/config/api';
 
-// Create axios instance with base URL and default headers
 const api = axios.create({
   baseURL: apiConfig.url,
   headers: {
@@ -10,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor for auth tokens
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');
@@ -22,9 +20,7 @@ api.interceptors.request.use(
   error => Promise.reject(error)
 );
 
-// Upload API endpoints
 export const uploadAPI = {
-  // Upload logo to Cloudinary
   uploadLogo: (file: File) => {
     const formData = new FormData();
     formData.append('logo', file);
@@ -50,15 +46,13 @@ export const submitForm = async (formId: string, formData: any) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        timeout: 30000, // 30 second timeout
+        timeout: 30000,
       }
     );
 
     return response.data;
   } catch (error: any) {
-    // Enhanced error handling
     if (error.response) {
-      // Server responded with error status
       const status = error.response.status;
       const message = error.response.data?.message || error.message;
 
@@ -105,12 +99,10 @@ export const submitForm = async (formId: string, formData: any) => {
           );
       }
     } else if (error.request) {
-      // Network error
       throw new Error(
         'Network error. Please check your connection and try again.'
       );
     } else {
-      // Other error
       throw new Error('An unexpected error occurred. Please try again.');
     }
   }

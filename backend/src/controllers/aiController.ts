@@ -1,5 +1,3 @@
-// src/controllers/aiController.ts
-
 import { Request, Response } from 'express';
 import Form from '../models/Form';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -836,16 +834,6 @@ export const updateFormWithAI = asyncHandler(
       const { formId, updatePrompt, currentForm } = req.body;
       const userId = req.user.id;
 
-      console.log('🔄 Received update request:', {
-        formId,
-        updatePrompt: updatePrompt?.substring(0, 100) + '...',
-        userId,
-        currentFormTitle: currentForm?.title,
-        hasFormId: !!formId,
-        hasPrompt: !!updatePrompt,
-        hasCurrentForm: !!currentForm,
-      });
-
       // Enhanced validation
       if (!formId) {
         return res.status(400).json({
@@ -942,9 +930,6 @@ export const updateFormWithAI = asyncHandler(
         updatedAt: currentForm.updatedAt,
       };
 
-      // *** CRITICAL: Create snapshot BEFORE making changes ***
-      console.log('📸 Creating snapshot before AI update...');
-
       // Import the form history service
       const {
         MongoFormHistoryService,
@@ -995,13 +980,8 @@ export const updateFormWithAI = asyncHandler(
           '⚠️ Failed to create snapshot before update:',
           snapshotResult.error
         );
-        // Continue anyway - don't fail the update just because snapshot failed
-      } else {
-        console.log('✅ Snapshot created successfully before AI update');
       }
 
-      // Generate form updates
-      console.log('🤖 Sending to AI update service...');
       const result = await aiUpdateService.updateForm(
         normalizedCurrentForm,
         sanitizedPrompt,
@@ -1046,15 +1026,6 @@ export const updateFormWithAI = asyncHandler(
         }),
       };
 
-      console.log('💾 Saving updated form to database...', {
-        title: saveData.title,
-        pagesCount: saveData.pages.length,
-        fieldsCount: saveData.pages.reduce(
-          (total, page) => total + (page.fields?.length || 0),
-          0
-        ),
-      });
-
       const savedForm = await Form.findByIdAndUpdate(formId, saveData, {
         new: true,
         runValidators: true,
@@ -1066,9 +1037,6 @@ export const updateFormWithAI = asyncHandler(
           message: 'Failed to save updated form',
         });
       }
-
-      // *** CRITICAL: Create snapshot AFTER successful update ***
-      console.log('📸 Creating snapshot after AI update...');
 
       const afterUpdateSnapshot = await MongoFormHistoryService.createSnapshot(
         formId,
@@ -1093,8 +1061,6 @@ export const updateFormWithAI = asyncHandler(
           afterUpdateSnapshot.error
         );
         // Continue anyway - the form update was successful
-      } else {
-        console.log('✅ Snapshot created successfully after AI update');
       }
 
       // Legacy history update (keep for backward compatibility)
@@ -1119,8 +1085,6 @@ export const updateFormWithAI = asyncHandler(
         );
       }
 
-      console.log('✅ Form update completed successfully');
-
       const responseData = {
         id: savedForm._id,
         title: savedForm.title,
@@ -1130,7 +1094,7 @@ export const updateFormWithAI = asyncHandler(
         logo: savedForm.logo,
         selectedPageId: savedForm.selectedPageId,
         currentPageIndex: savedForm.currentPageIndex,
-        selectedFieldId: null, // Clear after update
+        selectedFieldId: null,
         propertiesPanelOpen: false,
 
         // Update metadata

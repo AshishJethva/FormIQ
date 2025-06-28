@@ -117,7 +117,7 @@ export default function FormBuilderPage() {
   return (
     <Provider store={store}>
       <div className='relative '>
-        <FormBuilder />
+        <FormBuilder formId={formId} />
       </div>
     </Provider>
   );

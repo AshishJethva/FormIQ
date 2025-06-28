@@ -10,19 +10,15 @@ export interface Field {
   propertiesPanelOpen?: boolean;
   placeholder?: string;
 
-  //   Text field properties
   minLength?: number;
   maxLength?: number;
 
-  //   Number field properties
   min?: number;
   max?: number;
   step?: number;
 
-  //   Textarea properties
   rows?: number;
 
-  //   File upload properties
   multiple?: boolean;
   accept?: string;
 }
@@ -46,9 +42,7 @@ export interface FormPage {
   fields: Field[];
 }
 
-//  COMPLETE: All field types including new ones
 export enum FieldType {
-  // Original fields
   HEADING = 'heading',
   FULL_NAME = 'fullName',
   EMAIL = 'email',
@@ -60,7 +54,6 @@ export enum FieldType {
   FILL_BLANK = 'fillBlank',
   PRODUCT_LIST = 'productList',
 
-  //   Added 10 new field types
   SHORT_TEXT = 'shortText',
   LONG_TEXT = 'longText',
   PARAGRAPH = 'paragraph',
@@ -128,7 +121,6 @@ export interface Form {
   trashedAt?: Date;
 }
 
-//   JWT Payload interface
 export interface JwtPayload {
   id: string;
   email: string;
@@ -136,7 +128,6 @@ export interface JwtPayload {
   exp: number;
 }
 
-//   User interface
 export interface User {
   id: string;
   email: string;
@@ -146,7 +137,6 @@ export interface User {
   changedPasswordAfter: (timestamp: number) => boolean;
 }
 
-//   API Response interfaces
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -163,7 +153,6 @@ export interface PaginatedResponse<T = any> extends ApiResponse<T> {
   };
 }
 
-//   Submission interfaces
 export interface SubmissionData {
   [fieldId: string]: any;
 }
@@ -184,7 +173,6 @@ export interface Submission {
   updatedAt: Date;
 }
 
-//   Field validation rules
 export interface FieldValidationRule {
   fieldId: string;
   fieldType: FieldType;
@@ -197,14 +185,12 @@ export interface FieldValidationRule {
   options?: string[];
 }
 
-//   Form validation context
 export interface FormValidationContext {
   form: Form;
   fieldRules: FieldValidationRule[];
   submissionData: SubmissionData;
 }
 
-//   Validation result
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
@@ -217,7 +203,6 @@ export interface ValidationError {
   code: string;
 }
 
-// Request interfaces
 export interface CreateFormRequest {
   name: string;
   description?: string;
@@ -241,7 +226,6 @@ export interface SubmitFormRequest {
   data: SubmissionData;
 }
 
-// Filter and query interfaces
 export interface FormFilters {
   search?: string;
   labels?: string[];
@@ -264,7 +248,6 @@ export interface SubmissionFilters {
   isRead?: string;
 }
 
-// Statistics interfaces
 export interface FormStats {
   totalForms: number;
   publishedForms: number;

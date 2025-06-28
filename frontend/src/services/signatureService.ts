@@ -1,20 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// Service to upload base64 signatures to Cloudinary and return URL
 export const signatureCloudinaryService = {
-  // Upload base64 signature to Cloudinary
   async uploadSignatureToCloudinary(
     base64Data: string,
     submissionId: string,
     fieldId: string
   ): Promise<string> {
     try {
-      // Remove data URL prefix if present
       const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
 
-      // Create form data for Cloudinary upload
       const formData = new FormData();
 
-      // Convert base64 to blob
       const byteCharacters = atob(cleanBase64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -83,9 +77,6 @@ export const signatureCloudinaryService = {
   },
 };
 
-// Enhanced CSV generation with signature processing
-
-// Simplified CSV content generation
 const generateSimplifiedCSVContent = (
   submissions: any[],
   form: any
@@ -198,11 +189,7 @@ const generateSimplifiedCSVContent = (
             if (typeof dataValue === 'string' && dataValue.startsWith('http')) {
               fieldValue = dataValue;
             } else {
-              fieldValue = formatSubmissionValueSimplified(
-                dataValue,
-                fieldKey,
-                fieldLabelsMap
-              );
+              fieldValue = formatSubmissionValueSimplified(dataValue);
             }
           }
         }
@@ -214,11 +201,7 @@ const generateSimplifiedCSVContent = (
           if (typeof dataValue === 'string' && dataValue.startsWith('http')) {
             fieldValue = dataValue;
           } else {
-            fieldValue = formatSubmissionValueSimplified(
-              dataValue,
-              fieldKey,
-              fieldLabelsMap
-            );
+            fieldValue = formatSubmissionValueSimplified(dataValue);
           }
         }
       }
@@ -294,18 +277,11 @@ export const formatSubmissionDate = (dateString: string): string => {
   }
 };
 
-export const formatSubmissionValueSimplified = (
-  value: any,
-  fieldKey: string,
-  fieldLabelsMap: Record<string, string>
-): string => {
+export const formatSubmissionValueSimplified = (value: any): string => {
   if (value === null || value === undefined) {
     return '';
   }
 
-  const fieldLabel = fieldLabelsMap[fieldKey] || fieldKey;
-
-  //  : Handle signature fields - return meaningful text
   if (typeof value === 'string' && value.startsWith('data:image/')) {
     return '[Digital Signature Captured]';
   }

@@ -1,5 +1,3 @@
-// src/services/mongoFormHistoryService.ts
-
 import FormHistorySnapshot, {
   IFormHistorySnapshot,
 } from '../models/FormHistorySnapshot';
@@ -140,8 +138,6 @@ export class MongoFormHistoryService {
         maxPosition: newIndex,
       });
 
-      console.log(`✅ Created snapshot for form ${formId}, index: ${newIndex}`);
-
       return {
         success: true,
         data: savedSnapshot,
@@ -222,10 +218,6 @@ export class MongoFormHistoryService {
       });
 
       const updatedState = this.getHistoryState(formId, userId);
-
-      console.log(
-        `↶ Undo operation: form ${formId}, position ${historyState.currentPosition} → ${targetPosition}, index ${targetIndex_calc}`
-      );
 
       return {
         success: true,
@@ -311,10 +303,6 @@ export class MongoFormHistoryService {
       });
 
       const updatedState = this.getHistoryState(formId, userId);
-
-      console.log(
-        `↷ Redo operation: form ${formId}, position ${historyState.currentPosition} → ${targetPosition}, index ${targetIndex_calc}`
-      );
 
       return {
         success: true,
@@ -405,8 +393,6 @@ export class MongoFormHistoryService {
         lastUpdate: statsResult.lastUpdate,
       };
 
-      console.log(`📊 History stats for form ${formId}:`, result);
-
       return {
         success: true,
         data: result,
@@ -441,10 +427,6 @@ export class MongoFormHistoryService {
         formId,
         userId,
         limit
-      );
-
-      console.log(
-        `📋 Retrieved ${snapshots.length} snapshots for form ${formId}`
       );
 
       return {
@@ -489,10 +471,6 @@ export class MongoFormHistoryService {
         currentPosition: 0,
         maxPosition: 0,
       });
-
-      console.log(
-        `🗑️ Cleared ${result.modifiedCount} snapshots for form ${formId}`
-      );
 
       return {
         success: true,
@@ -543,8 +521,6 @@ export class MongoFormHistoryService {
       const historyState = this.getHistoryState(formId, userId);
       const newPosition = historyState.maxPosition - snapshot.snapshotIndex;
       this.updateHistoryState(formId, userId, { currentPosition: newPosition });
-
-      console.log(`🔄 Restored to snapshot ${snapshotId} for form ${formId}`);
 
       return {
         success: true,
@@ -629,8 +605,6 @@ export class MongoFormHistoryService {
         topPrompts: analytics.topPrompts,
         undoRedoFrequency: {}, // Can be expanded with more specific queries
       };
-
-      console.log(`📈 Analytics for user ${userId}:`, analyticsData);
 
       return {
         success: true,

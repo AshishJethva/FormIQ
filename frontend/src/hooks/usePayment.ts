@@ -21,21 +21,17 @@ export const usePayment = () => {
     setProcessingPlan(planData.plan);
 
     try {
-      // Load Razorpay script if not already loaded
       const isScriptLoaded = await loadRazorpayScript();
       if (!isScriptLoaded) {
         throw new Error('Failed to load payment system');
       }
 
-      // Create payment order
       const orderResponse = await PaymentService.createOrder(planData);
       const order = orderResponse.data;
 
-      // Get user info for prefill
       const userName = userProfile?.user.name || 'User';
       const userEmail = userProfile?.user.email || 'user@example.com';
 
-      // Razorpay checkout options
       const options: RazorpayOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: order.amount,

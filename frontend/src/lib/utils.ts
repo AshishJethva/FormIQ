@@ -6,15 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateUniqueId(): string {
-  // Get timestamp component (first 10 digits)
   const timestamp = Date.now().toString().substring(0, 10);
 
-  // Generate 5 random digits for the remainder
   const randomDigits = Math.floor(Math.random() * 100000)
     .toString()
     .padStart(5, '0');
 
-  // Combine to create a 15-digit ID
   return `${timestamp}${randomDigits}`;
 }
 
@@ -40,41 +37,31 @@ export const generateUniqueFormName = async (
   baseName: string,
   checkFunction: (name: string) => Promise<boolean>
 ): Promise<string> => {
-  // First check if the base name is available
   const baseExists = await checkFunction(baseName);
   if (!baseExists) {
     return baseName;
   }
 
-  // Generate variations with different strategies
   let uniqueName = baseName;
   let counter = 1;
   const maxAttempts = 50;
 
   while (counter <= maxAttempts) {
-    // Strategy 1: Add incremental number (Forms 1, 2, 3...)
     if (counter <= 20) {
       uniqueName = `${baseName} ${counter}`;
-    }
-    // Strategy 2: Add timestamp-based suffix
-    else if (counter <= 30) {
+    } else if (counter <= 30) {
       const timestamp = new Date()
         .toISOString()
         .slice(11, 19)
         .replace(/:/g, '');
       uniqueName = `${baseName} ${timestamp}`;
-    }
-    // Strategy 3: Add Copy suffix
-    else if (counter <= 40) {
+    } else if (counter <= 40) {
       uniqueName = `${baseName} Copy ${counter - 30}`;
-    }
-    // Strategy 4: Add random suffix
-    else {
+    } else {
       const randomSuffix = Math.random().toString(36).substring(2, 8);
       uniqueName = `${baseName} ${randomSuffix}`;
     }
 
-    // Check if this variation is available
     const exists = await checkFunction(uniqueName);
     if (!exists) {
       return uniqueName;
@@ -83,7 +70,6 @@ export const generateUniqueFormName = async (
     counter++;
   }
 
-  // Final fallback with UUID
   const uuid = crypto.randomUUID().substring(0, 8);
   return `${baseName} ${uuid}`;
 };
@@ -104,27 +90,21 @@ export const formatDateTimeToAMPM = (dateTimeString: string): string => {
 
 export const formatTimeToAMPM = (timeString: string): string => {
   try {
-    // Handle different time formats that might come from your backend
     let time = timeString;
 
-    // If the time includes seconds, remove them for cleaner display
     if (time.split(':').length === 3) {
       time = time.split(':').slice(0, 2).join(':');
     }
 
-    // Parse the time string (assuming format is "HH:MM" or "HH:MM:SS")
     const [hours, minutes] = time.split(':').map(Number);
 
-    // Convert to 12-hour format
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
 
-    // Format with leading zeros for minutes
     const formattedMinutes = minutes.toString().padStart(2, '0');
 
     return `${displayHours}:${formattedMinutes} ${period}`;
   } catch (error) {
-    // Fallback to original time if parsing fails
     console.warn('Error formatting time:', error);
     return timeString;
   }
@@ -132,7 +112,6 @@ export const formatTimeToAMPM = (timeString: string): string => {
 
 export function formatTime(timeString: string): string {
   try {
-    // Check if timeString is just a time (HH:MM)
     if (/^\d{1,2}:\d{2}$/.test(timeString)) {
       // Extract hours and minutes
       const [hours, minutes] = timeString.split(':').map(Number);

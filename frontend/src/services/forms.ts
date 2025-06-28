@@ -3,7 +3,6 @@ import { apiConfig } from '@/config/api';
 import type { SortOption } from '@/components/dashboard/FilterBar';
 import { toast } from 'sonner';
 
-// Create axios instance with base URL and default headers
 const api = axios.create({
   baseURL: apiConfig.url,
   headers: {
@@ -11,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor for auth tokens
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');

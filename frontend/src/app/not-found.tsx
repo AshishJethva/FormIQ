@@ -16,49 +16,14 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function NotFound() {
   const router = useRouter();
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: 'easeOut',
-        staggerChildren: 0.1,
-      },
-    },
+    visible: { opacity: 1, y: 0 },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: 'easeOut' },
-    },
-  };
-
-  const floatingVariants = {
-    animate: {
-      y: [-10, 10, -10],
-      transition: {
-        duration: 3,
-        repeat: Infinity,
-        ease: 'easeInOut',
-      },
-    },
-  };
-
-  const pulseVariants = {
-    animate: {
-      scale: [1, 1.05, 1],
-      transition: {
-        duration: 2,
-        repeat: Infinity,
-        ease: 'easeInOut',
-      },
-    },
+    visible: { opacity: 1, y: 0 },
   };
 
   return (
@@ -68,20 +33,33 @@ export default function NotFound() {
         variants={containerVariants}
         initial='hidden'
         animate='visible'
+        transition={{
+          duration: 0.6,
+          ease: [0.25, 0.46, 0.45, 0.94],
+          staggerChildren: 0.1,
+        }}
       >
         <Card className='border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg'>
           <CardContent className='p-8 md:p-12 text-center'>
             {/* Animated 404 Icon */}
             <motion.div
               className='relative mb-8'
-              variants={floatingVariants}
-              animate='animate'
+              animate={{ y: [-10, 10, -10] }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: [0.42, 0, 0.58, 1],
+              }}
             >
               <div className='relative'>
                 <motion.div
                   className='text-8xl md:text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400'
-                  variants={pulseVariants}
-                  animate='animate'
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: [0.42, 0, 0.58, 1],
+                  }}
                 >
                   404
                 </motion.div>
@@ -101,7 +79,11 @@ export default function NotFound() {
             </motion.div>
 
             {/* Main Content */}
-            <motion.div variants={itemVariants} className='space-y-4 mb-8'>
+            <motion.div
+              variants={itemVariants}
+              className='space-y-4 mb-8'
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
               <h1 className='text-3xl md:text-4xl font-bold text-slate-800 dark:text-slate-100'>
                 Oops! Page Not Found
               </h1>
@@ -118,6 +100,7 @@ export default function NotFound() {
             <motion.div
               variants={itemVariants}
               className='flex flex-col sm:flex-row gap-4 justify-center items-center'
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
               <Button
                 asChild
@@ -155,6 +138,7 @@ export default function NotFound() {
             <motion.div
               variants={itemVariants}
               className='mt-8 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600'
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
               <div className='flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300'>
                 <Search className='h-4 w-4' />
@@ -201,6 +185,7 @@ export default function NotFound() {
         <motion.div
           variants={itemVariants}
           className='text-center mt-6 text-sm text-slate-500 dark:text-slate-400'
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           <p>
             Need help? Contact our{' '}

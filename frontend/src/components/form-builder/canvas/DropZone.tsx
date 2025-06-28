@@ -1,5 +1,3 @@
-// src/components/form-builder/canvas/DropZone.tsx
-
 'use client';
 
 import { useDrop } from 'react-dnd';

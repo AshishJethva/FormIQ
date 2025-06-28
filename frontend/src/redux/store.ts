@@ -18,11 +18,9 @@ import {
   REGISTER,
 } from 'redux-persist';
 
-// Configure persistence only for specific slices that need it
 const userPersistConfig = {
   key: 'user',
   storage,
-  // Only persist essential user data
   whitelist: ['user', 'token', 'isAuthenticated'],
 };
 
@@ -36,7 +34,6 @@ const rootReducer = combineReducers({
   userProfile: userProfileReducer,
 });
 
-// Create the store without persisting formBuilder
 export const store = configureStore({
   reducer: rootReducer,
   middleware: getDefaultMiddleware =>

@@ -14,26 +14,22 @@ export const useUserProfile = () => {
   const isLoading = useSelector(selectIsLoading);
   const error = useSelector(selectError);
 
-  // Auto-fetch user profile if not loaded
   useEffect(() => {
     if (!userProfile && !isLoading) {
       dispatch(fetchUserProfile());
     }
   }, [dispatch, userProfile, isLoading]);
 
-  // Computed values for easier access with real-time updates
   const canCreateForms = userProfile?.profile.plan.canCreateForms ?? true;
   const formsUsed = userProfile?.profile.plan.formsUsed ?? 0;
   const formsLimit = userProfile?.profile.plan.formsLimit ?? 5;
   const planType = userProfile?.profile.plan.type ?? 'STARTER';
   const remainingForms = formsLimit - formsUsed;
 
-  // Force refresh function for real-time updates
   const forceRefresh = useCallback(async () => {
     await dispatch(fetchUserProfile());
   }, [dispatch]);
 
-  // Helper functions
   const isApproachingLimit = () => remainingForms <= 2 && remainingForms > 0;
   const hasReachedLimit = () => !canCreateForms;
   const isStarterPlan = () => planType === 'STARTER';

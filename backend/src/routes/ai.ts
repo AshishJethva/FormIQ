@@ -1,5 +1,3 @@
-// src/routes/ai.ts
-
 import express from 'express';
 import { protect } from '../middleware/protect';
 import { aiGenerationLimiter } from '../middleware/aiRateLimit';

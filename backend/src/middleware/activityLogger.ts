@@ -7,10 +7,8 @@ export const activityLogger = (
   targetType: 'form' | 'submission' | 'account' | 'settings'
 ) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Store original json method
     const originalJson = res.json;
 
-    // Override json method to log activity after successful response
     res.json = function (data: any) {
       // Only log on successful responses
       if (res.statusCode >= 200 && res.statusCode < 300 && req.user?.id) {

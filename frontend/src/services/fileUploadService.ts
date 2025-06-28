@@ -25,7 +25,6 @@ export interface BulkDeleteProgress {
   currentFile?: string;
 }
 
-// Create axios instance with base URL and default headers
 const api = axios.create({
   baseURL: apiConfig.url,
   headers: {
@@ -33,7 +32,6 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor for auth tokens (for deletion operations)
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');

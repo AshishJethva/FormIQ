@@ -71,13 +71,10 @@ export default function PreviewForm({
     const value = formData[field.id] || '';
     const fieldError = errors[field.id];
 
+    // Simplified fieldWrapperVariants without problematic transitions
     const fieldWrapperVariants = {
       hidden: { opacity: 0, y: 20 },
-      visible: {
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.3, ease: 'easeOut' },
-      },
+      visible: { opacity: 1, y: 0 },
     };
 
     switch (field.type) {
@@ -88,6 +85,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <FileUploadField
               fieldId={field.id}
@@ -113,6 +111,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <FileUploadField
               fieldId={field.id}
@@ -139,6 +138,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -182,6 +182,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -228,6 +229,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -275,6 +277,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -337,6 +340,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -423,6 +427,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -537,6 +542,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -584,6 +590,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -627,6 +634,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <h3
               className={`text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-800 border-b-2 border-gray-200 pb-4 ${
@@ -646,6 +654,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -715,6 +724,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -760,6 +770,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -818,6 +829,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -915,6 +927,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -958,6 +971,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -1032,6 +1046,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <SignatureField
               fieldId={field.id}
@@ -1061,6 +1076,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -1152,6 +1168,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-4 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -1308,6 +1325,7 @@ export default function PreviewForm({
             variants={fieldWrapperVariants}
             initial='hidden'
             animate='visible'
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <label className='block text-gray-800 mb-3 font-semibold text-sm sm:text-base'>
               {field.label}
@@ -1345,23 +1363,11 @@ export default function PreviewForm({
     }
   };
 
+  // Simplified pageVariants without problematic transitions
   const pageVariants = {
     hidden: { opacity: 0, x: 50 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: {
-        duration: 0.4,
-        ease: 'easeOut',
-        when: 'beforeChildren',
-        staggerChildren: 0.1,
-      },
-    },
-    exit: {
-      opacity: 0,
-      x: -50,
-      transition: { duration: 0.3 },
-    },
+    visible: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -50 },
   };
 
   return (
@@ -1388,6 +1394,12 @@ export default function PreviewForm({
             initial='hidden'
             animate='visible'
             exit='exit'
+            transition={{
+              duration: 0.4,
+              ease: [0.25, 0.46, 0.45, 0.94],
+              when: 'beforeChildren',
+              staggerChildren: 0.1,
+            }}
             className='bg-white rounded-sm shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8'
           >
             {/* Form Fields */}

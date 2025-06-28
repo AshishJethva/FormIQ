@@ -1,5 +1,3 @@
-// src/components/form-builder/canvas/FormCanvas.tsx
-
 'use client';
 
 import { useSelector, useDispatch } from 'react-redux';

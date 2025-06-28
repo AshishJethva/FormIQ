@@ -61,45 +61,21 @@ const ContactSupportPage = () => {
     }
   };
 
+  // Simplified variants without problematic transition properties
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
+    visible: { opacity: 1 },
   };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.6,
-        ease: 'easeOut',
-      },
-    },
+    visible: { y: 0, opacity: 1 },
   };
 
   const cardVariants = {
     hidden: { scale: 0.9, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-        ease: 'easeOut',
-      },
-    },
-    hover: {
-      scale: 1.02,
-      transition: {
-        duration: 0.2,
-      },
-    },
+    visible: { scale: 1, opacity: 1 },
+    hover: { scale: 1.02 },
   };
 
   return (
@@ -137,11 +113,16 @@ const ContactSupportPage = () => {
           variants={containerVariants}
           initial='hidden'
           animate='visible'
+          transition={{
+            staggerChildren: 0.1,
+            delayChildren: 0.2,
+          }}
           className='grid grid-cols-1 lg:grid-cols-3 gap-8'
         >
           {/* Contact Information Cards */}
           <motion.div
             variants={itemVariants}
+            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
             className='lg:col-span-1 space-y-6'
           >
             <h2 className='text-2xl font-bold text-gray-900 mb-6'>
@@ -176,6 +157,10 @@ const ContactSupportPage = () => {
                 key={index}
                 variants={cardVariants}
                 whileHover='hover'
+                transition={{
+                  duration: 0.5,
+                  ease: [0.25, 0.46, 0.45, 0.94],
+                }}
                 className='bg-white rounded-xl p-6 shadow-lg border border-gray-100'
               >
                 <div className='flex items-start space-x-4'>
@@ -204,6 +189,10 @@ const ContactSupportPage = () => {
             <motion.div
               variants={cardVariants}
               whileHover='hover'
+              transition={{
+                duration: 0.5,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
               className='bg-white rounded-xl p-6 shadow-lg border border-gray-100'
             >
               <div className='flex items-start space-x-4'>
@@ -234,6 +223,10 @@ const ContactSupportPage = () => {
             <motion.div
               variants={cardVariants}
               whileHover='hover'
+              transition={{
+                duration: 0.5,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
               className='bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white'
             >
               <div className='flex items-center space-x-3 mb-3'>
@@ -258,7 +251,11 @@ const ContactSupportPage = () => {
           </motion.div>
 
           {/* Contact Form */}
-          <motion.div variants={itemVariants} className='lg:col-span-2'>
+          <motion.div
+            variants={itemVariants}
+            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className='lg:col-span-2'
+          >
             <div className='bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden'>
               <div className='bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6'>
                 <h2 className='text-2xl font-bold text-white mb-2'>
@@ -270,7 +267,7 @@ const ContactSupportPage = () => {
                 </p>
               </div>
 
-              <div onSubmit={handleSubmit(onSubmit)} className='p-8 space-y-6'>
+              <form onSubmit={handleSubmit(onSubmit)} className='p-8 space-y-6'>
                 {/* Name and Email Row */}
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                   <motion.div
@@ -473,7 +470,7 @@ const ContactSupportPage = () => {
                   * Required fields. We&apos;ll respond within 24 hours during
                   business days.
                 </p>
-              </div>
+              </form>
             </div>
           </motion.div>
         </motion.div>

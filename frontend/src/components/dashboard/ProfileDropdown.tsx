@@ -66,7 +66,7 @@ const ProfileDropdown: React.FC = () => {
       setIsLoggingOut(true);
       await dispatch(logoutUser());
       toast.success('Logged out successfully');
-      router.push('/auth/login');
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('There was a problem logging out');

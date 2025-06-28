@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface UpgradePageSkeletonProps {
@@ -13,8 +13,7 @@ const UpgradePageSkeleton = ({
   showCurrentPlan = true,
   variant = 'loading',
 }: UpgradePageSkeletonProps) => {
-  // Animation variants for different states
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -25,7 +24,7 @@ const UpgradePageSkeleton = ({
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -34,7 +33,7 @@ const UpgradePageSkeleton = ({
     },
   };
 
-  const processingVariants = {
+  const processingVariants: Variants = {
     initial: { scale: 1 },
     animate: {
       scale: [1, 1.02, 1],
@@ -46,7 +45,7 @@ const UpgradePageSkeleton = ({
     },
   };
 
-  const shimmerVariants = {
+  const shimmerVariants: Variants = {
     initial: { x: '-100%' },
     animate: {
       x: '100%',
@@ -263,12 +262,11 @@ const UpgradePageSkeleton = ({
               <PricingCardSkeleton
                 key={index}
                 index={index}
-                isProcessing={variant === 'payment-processing' && index === 2} // Silver plan processing
+                isProcessing={variant === 'payment-processing' && index === 2} 
               />
             ))}
           </motion.div>
 
-          {/* Rest of the component remains the same */}
           {/* Features Comparison Section */}
           <motion.div
             className='mt-8 sm:mt-12 bg-gray-50 rounded-lg p-4 sm:p-6'

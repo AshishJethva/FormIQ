@@ -504,27 +504,11 @@ export default function LogoPropertiesPanel({
     }
   };
 
-  // Panel animation variants
+  // Fixed panel animation variants - removed problematic transition properties
   const panelVariants = {
     hidden: { x: '100%', opacity: 0 },
-    visible: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        type: 'spring',
-        stiffness: 300,
-        damping: 30,
-        duration: 0.3,
-      },
-    },
-    exit: {
-      x: '100%',
-      opacity: 0,
-      transition: {
-        duration: 0.2,
-        ease: 'easeInOut',
-      },
-    },
+    visible: { x: 0, opacity: 1 },
+    exit: { x: '100%', opacity: 0 },
   };
 
   // Mobile overlay variants
@@ -564,6 +548,12 @@ export default function LogoPropertiesPanel({
             animate='visible'
             exit='exit'
             variants={panelVariants}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 30,
+              duration: 0.3,
+            }}
           >
             <div
               className='flex justify-between items-center p-4 sm:p-6 lg:p-4 

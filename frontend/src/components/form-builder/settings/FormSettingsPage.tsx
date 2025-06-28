@@ -24,7 +24,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import useAutoSave from '@/hooks/useAutoSave';
 import { useParams } from 'next/navigation';
 import axios from 'axios';
@@ -54,8 +54,6 @@ export default function FormSettingsPage() {
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Auto-save hook for settings
   const { isSaving } = useAutoSave(form, formId, !!form, {
@@ -64,7 +62,7 @@ export default function FormSettingsPage() {
   });
 
   // Animation variants
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -75,7 +73,7 @@ export default function FormSettingsPage() {
     },
   };
 
-  const cardVariants = {
+  const cardVariants: Variants = {
     hidden: { opacity: 0, y: 15, scale: 0.98 },
     visible: {
       opacity: 1,
@@ -133,8 +131,6 @@ export default function FormSettingsPage() {
           dispatch(updateFormSettings(settingsUpdate));
         }
       }
-
-      setIsInitialized(true);
     }
   }, [form, form?.settings?.isEnabled, form?.settings, dispatch]);
 

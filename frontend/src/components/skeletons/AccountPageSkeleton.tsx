@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const AccountPageSkeleton = () => {
   // Animation variants for staggered loading effect
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -17,7 +17,7 @@ const AccountPageSkeleton = () => {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -26,7 +26,7 @@ const AccountPageSkeleton = () => {
     },
   };
 
-  const shimmerVariants = {
+  const shimmerVariants: Variants = {
     initial: { x: '-100%' },
     animate: {
       x: '100%',

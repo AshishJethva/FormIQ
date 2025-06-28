@@ -1,5 +1,3 @@
-// src/services/aiFormUpdateService.ts
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -94,20 +92,10 @@ export class AIFormUpdateService {
         updateIntent
       );
 
-      console.log('🔍 Sending update request to AI:', {
-        prompt: updatePrompt,
-        intent: updateIntent,
-      });
-
       // Get AI response
       const result = await this.model.generateContent(systemPrompt);
       const response = await result.response;
       const generatedText = response.text();
-
-      console.log(
-        '🤖 AI Response (first 500 chars):',
-        generatedText.substring(0, 500)
-      );
 
       // Parse the update instructions with enhanced error handling
       const parseResult = this.parseUpdateInstructions(generatedText);
@@ -127,11 +115,6 @@ export class AIFormUpdateService {
 
       // Generate update summary
       const updateSummary = this.generateUpdateSummary(parseResult.data);
-
-      console.log('✅ Form updated successfully:', {
-        summary: updateSummary,
-        operationsCount: parseResult.data.operations?.length || 0,
-      });
 
       return {
         success: true,
@@ -368,17 +351,13 @@ Now process the request and return ONLY the JSON:`;
     error?: string;
   } {
     try {
-      console.log('🔍 Raw AI response length:', rawResponse.length);
-      console.log('🔍 Raw AI response preview:', rawResponse.substring(0, 200));
-
-      // Enhanced cleaning to handle various response formats
       let cleanedResponse = rawResponse.trim();
 
       // Remove markdown code blocks
       cleanedResponse = cleanedResponse
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/g, '')
-        .replace(/^[^{]*/, '') // Remove everything before first {
+        .replace(/^[^{]*/, '')
         .trim();
 
       // Find the JSON boundaries more precisely
@@ -395,8 +374,6 @@ Now process the request and return ONLY the JSON:`;
 
       // Extract only the JSON part
       const jsonPart = cleanedResponse.substring(firstBrace, lastBrace + 1);
-
-      console.log('🔍 Extracted JSON part:', jsonPart.substring(0, 200));
 
       // Validate JSON structure before parsing
       if (!jsonPart.startsWith('{') || !jsonPart.endsWith('}')) {
@@ -427,11 +404,6 @@ Now process the request and return ONLY the JSON:`;
         }
       }
 
-      console.log('✅ Successfully parsed AI response:', {
-        operationsCount: instructions.operations.length,
-        hasSummary: !!instructions.summary,
-      });
-
       return { success: true, data: instructions };
     } catch (error: any) {
       console.error('❌ JSON Parse error:', error.message);
@@ -458,39 +430,32 @@ Now process the request and return ONLY the JSON:`;
     data?: any;
     error?: string;
   } {
-    try {
-      // Strategy 1: Try to find and extract JSON using regex
-      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const jsonStr = jsonMatch[0];
-        console.log('🔍 Trying regex extraction:', jsonStr.substring(0, 100));
+    // Strategy 1: Try to find and extract JSON using regex
+    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const jsonStr = jsonMatch[0];
 
-        const parsed = JSON.parse(jsonStr);
-        if (parsed.operations && Array.isArray(parsed.operations)) {
-          console.log('✅ Fallback parsing successful with regex');
-          return { success: true, data: parsed };
-        }
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.operations && Array.isArray(parsed.operations)) {
+        return { success: true, data: parsed };
       }
+    }
 
-      // Strategy 2: Try to clean up common AI response issues
-      let cleaned = rawResponse
-        .replace(/^\s*Here's the JSON response:\s*/i, '')
-        .replace(/^\s*Here is the JSON:\s*/i, '')
-        .replace(/^\s*Response:\s*/i, '')
-        .replace(/\s*I hope this helps!\s*$/i, '')
-        .replace(/\s*Let me know if you need any modifications!\s*$/i, '')
-        .trim();
+    // Strategy 2: Try to clean up common AI response issues
+    let cleaned = rawResponse
+      .replace(/^\s*Here's the JSON response:\s*/i, '')
+      .replace(/^\s*Here is the JSON:\s*/i, '')
+      .replace(/^\s*Response:\s*/i, '')
+      .replace(/\s*I hope this helps!\s*$/i, '')
+      .replace(/\s*Let me know if you need any modifications!\s*$/i, '')
+      .trim();
 
-      const bracesMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (bracesMatch) {
-        const parsed = JSON.parse(bracesMatch[0]);
-        if (parsed.operations && Array.isArray(parsed.operations)) {
-          console.log('✅ Fallback parsing successful with cleanup');
-          return { success: true, data: parsed };
-        }
+    const bracesMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (bracesMatch) {
+      const parsed = JSON.parse(bracesMatch[0]);
+      if (parsed.operations && Array.isArray(parsed.operations)) {
+        return { success: true, data: parsed };
       }
-    } catch (fallbackError) {
-      console.log('❌ All fallback parsing strategies failed');
     }
 
     return {
@@ -500,16 +465,9 @@ Now process the request and return ONLY the JSON:`;
   }
 
   private applyUpdatesToForm(currentForm: Form, instructions: any): Form {
-    let updatedForm = JSON.parse(JSON.stringify(currentForm)); // Deep clone
-
-    console.log(
-      '📝 Applying operations:',
-      instructions.operations?.length || 0
-    );
+    let updatedForm = JSON.parse(JSON.stringify(currentForm));
 
     instructions.operations?.forEach((operation: any, index: number) => {
-      console.log(`🔄 Applying operation ${index + 1}:`, operation.type);
-
       try {
         switch (operation.type) {
           case 'add_field':
@@ -579,10 +537,6 @@ Now process the request and return ONLY the JSON:`;
 
     const insertIndex = Math.min(position.index || 0, targetPage.fields.length);
     targetPage.fields.splice(insertIndex, 0, newField);
-
-    console.log(
-      `✅ Added field "${newField.label}" at position ${insertIndex}`
-    );
   }
 
   private updateFieldInForm(form: Form, operation: any) {
@@ -597,7 +551,7 @@ Now process the request and return ONLY the JSON:`;
           ...page.fields[fieldIndex],
           ...updates,
         };
-        console.log(`✅ Updated field "${page.fields[fieldIndex].label}"`);
+
         return;
       }
     }
@@ -614,7 +568,7 @@ Now process the request and return ONLY the JSON:`;
       if (fieldIndex !== -1) {
         const removedField = page.fields[fieldIndex];
         page.fields.splice(fieldIndex, 1);
-        console.log(`✅ Removed field "${removedField.label}"`);
+
         return;
       }
     }
@@ -647,9 +601,6 @@ Now process the request and return ONLY the JSON:`;
           targetPage.fields.length
         );
         targetPage.fields.splice(insertIndex, 0, fieldToMove);
-        console.log(
-          `✅ Moved field "${fieldToMove.label}" to position ${insertIndex}`
-        );
       }
     }
   }
@@ -657,7 +608,6 @@ Now process the request and return ONLY the JSON:`;
   private updateFormMetadata(form: Form, operation: any) {
     const { updates } = operation;
     Object.assign(form, updates);
-    console.log('✅ Updated form metadata');
   }
 
   private addPageToForm(form: Form, operation: any) {
@@ -667,7 +617,6 @@ Now process the request and return ONLY the JSON:`;
     };
 
     form.pages.push(newPage);
-    console.log('✅ Added new page');
   }
 
   private generateUpdateSummary(instructions: any): string {

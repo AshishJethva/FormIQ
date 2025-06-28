@@ -1,4 +1,3 @@
-// components/form-builder/AIFixedChatInput.tsx
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -98,21 +97,12 @@ export default function AIFixedChatInput({
           currentPosition: stats.currentPosition || 0,
           totalSnapshots: stats.totalSnapshots,
         });
-
-        console.log('📊 History stats loaded:', {
-          canUndo: stats.canUndo,
-          canRedo: stats.canRedo,
-          currentPosition: stats.currentPosition,
-          currentIndex: stats.currentIndex,
-          totalSnapshots: stats.totalSnapshots,
-        });
       }
     } catch (error) {
       console.warn('Failed to load history stats:', error);
     }
   };
 
-  // Load history stats on mount and when formId changes
   useEffect(() => {
     if (formId) {
       loadHistoryStats();
@@ -232,8 +222,6 @@ export default function AIFixedChatInput({
         throw new Error('No authentication token found');
       }
 
-      console.log('🔄 Starting undo operation...');
-
       const response = await axios.post(
         `${apiConfig.url}/forms/${formId}/history/undo`,
         {},
@@ -243,8 +231,6 @@ export default function AIFixedChatInput({
       );
 
       if (response.data.success) {
-        console.log('✅ Undo successful');
-
         // Update the form in the builder state
         dispatch(setForm(response.data.data));
 
@@ -292,8 +278,6 @@ export default function AIFixedChatInput({
         throw new Error('No authentication token found');
       }
 
-      console.log('🔄 Starting redo operation...');
-
       const response = await axios.post(
         `${apiConfig.url}/forms/${formId}/history/redo`,
         {},
@@ -303,8 +287,6 @@ export default function AIFixedChatInput({
       );
 
       if (response.data.success) {
-        console.log('✅ Redo successful');
-
         // Update the form in the builder state
         dispatch(setForm(response.data.data));
 
@@ -380,7 +362,7 @@ export default function AIFixedChatInput({
       initial={{ opacity: 0, y: 100 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 100 }}
-      className='fixed bottom-6 left-6 z-50'
+      className='fixed bottom-6 left-6 z-50 '
     >
       <AnimatePresence>
         {!isExpanded && (
@@ -395,7 +377,7 @@ export default function AIFixedChatInput({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={toggleExpanded}
-              className='w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group'
+              className='w-14 h-14 hover:cursor-pointer bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group'
             >
               {isUpdating ? (
                 <Loader2 className='w-6 h-6 text-white animate-spin' />
@@ -460,7 +442,7 @@ export default function AIFixedChatInput({
                       isUpdating ||
                       isRedoing
                     }
-                    className={`text-white p-1 ${
+                    className={`text-white cursor-pointer p-1 ${
                       historyStats.canUndo &&
                       !isUndoing &&
                       !isUpdating &&
@@ -490,7 +472,7 @@ export default function AIFixedChatInput({
                       isUpdating ||
                       isUndoing
                     }
-                    className={`text-white p-1 ${
+                    className={`text-white cursor-pointer p-1 ${
                       historyStats.canRedo &&
                       !isRedoing &&
                       !isUpdating &&
@@ -514,7 +496,7 @@ export default function AIFixedChatInput({
                     variant='ghost'
                     size='sm'
                     onClick={() => setShowSuggestions(!showSuggestions)}
-                    className='text-white hover:bg-white/20 p-1'
+                    className='text-white cursor-pointer hover:bg-white/20 p-1'
                   >
                     <Lightbulb className='w-4 h-4' />
                   </Button>
@@ -522,7 +504,7 @@ export default function AIFixedChatInput({
                     variant='ghost'
                     size='sm'
                     onClick={toggleExpanded}
-                    className='text-white hover:bg-white/20 p-1'
+                    className='text-white cursor-pointer hover:bg-white/20 p-1'
                   >
                     <Minimize2 className='w-4 h-4' />
                   </Button>
@@ -577,7 +559,7 @@ export default function AIFixedChatInput({
 
             {lastUpdate && !error && (
               <div className='mx-4 mt-3'>
-                <div className='bg-green-50 border border-green-200 rounded-md p-2'>
+                <div className='bg-green-50 border border-green-200 rounded-md p-2 mb-2'>
                   <div className='flex items-start gap-2'>
                     <CheckCircle2 className='w-3 h-3 text-green-500 mt-0.5 flex-shrink-0' />
                     <div>
@@ -603,12 +585,12 @@ export default function AIFixedChatInput({
                     <h4 className='text-xs font-medium text-gray-700 mb-2'>
                       Quick Examples:
                     </h4>
-                    <div className='space-y-1'>
+                    <div className='space-y-1 pb-1'>
                       {quickSuggestions.slice(0, 3).map((suggestion, index) => (
                         <button
                           key={index}
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className='text-left w-full text-xs text-gray-600 hover:text-purple-600 hover:bg-white rounded px-2 py-1 transition-colors'
+                          className='text-left w-full cursor-pointer text-xs text-gray-600 hover:text-purple-600 hover:bg-white rounded px-2 py-1 transition-colors'
                           disabled={isUpdating}
                         >
                           {suggestion}
@@ -642,7 +624,7 @@ export default function AIFixedChatInput({
                   onClick={handleSubmit}
                   disabled={!prompt?.trim() || isUpdating || !form}
                   size='sm'
-                  className='absolute bottom-3 right-2 h-8 px-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5'
+                  className='absolute cursor-pointer bottom-3 right-2 h-8 px-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5'
                 >
                   {isUpdating ? (
                     <Loader2 className='w-3.5 h-3.5 animate-spin' />

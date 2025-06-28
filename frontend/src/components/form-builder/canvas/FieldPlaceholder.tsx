@@ -1,5 +1,3 @@
-// src/components/form-builder/canvas/FieldPlaceholder.tsx
-
 'use client';
 
 import { useState } from 'react';

@@ -13,11 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, Trash, Copy, Settings as SettingsIcon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { toast } from 'sonner';
 import { FieldType } from '@/types/form';
 
-// Include CENTER alignment to match your backend
 type LabelAlignmentType = 'LEFT' | 'RIGHT';
 
 export default function PropertiesPanel() {
@@ -25,7 +24,6 @@ export default function PropertiesPanel() {
   const form = useSelector((state: RootState) => state.formBuilder.form);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  //  : Move ALL useState hooks to the top, before any conditional logic
   const [labelAlignment, setLabelAlignment] =
     useState<LabelAlignmentType>('LEFT');
   const [isRequired, setIsRequired] = useState(false);
@@ -37,7 +35,6 @@ export default function PropertiesPanel() {
     { label: 'Option 3', value: 'option3' },
   ]);
 
-  // Find the selected field from the correct page
   const getSelectedField = () => {
     if (!form?.selectedFieldId || !form.pages) return null;
 
@@ -66,7 +63,6 @@ export default function PropertiesPanel() {
     field?.type === FieldType.SINGLE_CHOICE ||
     field?.type === FieldType.MULTIPLE_CHOICE;
 
-  // Update local state when selected field changes
   useEffect(() => {
     if (field) {
       setLabelAlignment((field.labelAlignment as LabelAlignmentType) || 'LEFT');
@@ -114,6 +110,7 @@ export default function PropertiesPanel() {
     dispatch(
       updateField({
         id: field.id,
+        fieldId: field.id,
         updates: { label: e.target.value },
         pageId,
       })
@@ -127,6 +124,7 @@ export default function PropertiesPanel() {
     dispatch(
       updateField({
         id: field.id,
+        fieldId: field.id,
         updates: { labelAlignment: alignment },
         pageId,
       })
@@ -141,6 +139,7 @@ export default function PropertiesPanel() {
     dispatch(
       updateField({
         id: field.id,
+        fieldId: field.id,
         updates: { required: newValue },
         pageId,
       })
@@ -155,6 +154,7 @@ export default function PropertiesPanel() {
     dispatch(
       updateField({
         id: field.id,
+        fieldId: field.id,
         updates: { helpText: text },
         pageId,
       })
@@ -198,6 +198,7 @@ export default function PropertiesPanel() {
       dispatch(
         updateField({
           id: field.id,
+          fieldId: field.id,
           updates: { options: updatedOptions },
           pageId,
         })
@@ -215,6 +216,7 @@ export default function PropertiesPanel() {
       dispatch(
         updateField({
           id: field.id,
+          fieldId: field.id,
           updates: { options: updatedOptions },
           pageId,
         })
@@ -236,6 +238,7 @@ export default function PropertiesPanel() {
       dispatch(
         updateField({
           id: field.id,
+          fieldId: field.id,
           updates: { options: updatedOptions },
           pageId,
         })
@@ -277,7 +280,7 @@ export default function PropertiesPanel() {
   const fieldTitle = getFieldTitle(field.type);
 
   // Panel animation variants
-  const panelVariants = {
+  const panelVariants: Variants = {
     hidden: { x: '100%', opacity: 0 },
     visible: {
       x: 0,
@@ -300,7 +303,7 @@ export default function PropertiesPanel() {
   };
 
   // Mobile overlay variants
-  const overlayVariants = {
+  const overlayVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1 },
     exit: { opacity: 0 },
@@ -607,6 +610,7 @@ export default function PropertiesPanel() {
                             dispatch(
                               updateField({
                                 id: field.id,
+                                fieldId: field.id,
                                 updates: {
                                   min: e.target.value
                                     ? Number(e.target.value)
@@ -639,6 +643,7 @@ export default function PropertiesPanel() {
                             dispatch(
                               updateField({
                                 id: field.id,
+                                fieldId: field.id,
                                 updates: {
                                   max: e.target.value
                                     ? Number(e.target.value)

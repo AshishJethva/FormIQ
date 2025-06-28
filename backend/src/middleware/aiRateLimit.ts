@@ -12,7 +12,6 @@ export const aiGenerationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    // Use user ID if authenticated, otherwise fall back to IP
     return (req as any).user?.id || req.ip;
   },
   skip: (req: Request) => {

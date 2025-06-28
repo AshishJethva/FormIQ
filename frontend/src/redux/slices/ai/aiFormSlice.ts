@@ -14,7 +14,6 @@ const initialState: AIFormState = {
   lastGeneratedFormId: null,
 };
 
-// Async thunk to generate form using AI
 export const generateFormWithAI = createAsyncThunk(
   'aiForm/generateForm',
   async (prompt: string, { rejectWithValue }) => {

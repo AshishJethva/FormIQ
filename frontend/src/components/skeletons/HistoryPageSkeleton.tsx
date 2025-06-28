@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Clock, Globe, Activity, Calendar } from 'lucide-react';
 
@@ -20,18 +20,6 @@ const HistoryPageSkeleton = ({
   showDatePicker = false,
   hasExistingData = false,
 }: HistoryPageSkeletonProps) => {
-  // Enhanced animation variants for different states
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        duration: 0.6,
-        staggerChildren: getStaggerDelay(),
-      },
-    },
-  };
-
   function getStaggerDelay() {
     switch (variant) {
       case 'filtering':
@@ -45,7 +33,19 @@ const HistoryPageSkeleton = ({
     }
   }
 
-  const itemVariants = {
+  // Enhanced animation variants for different states - moved inside component
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: getStaggerDelay(),
+      },
+    },
+  };
+
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -54,7 +54,7 @@ const HistoryPageSkeleton = ({
     },
   };
 
-  const slideVariants = {
+  const slideVariants: Variants = {
     hidden: { opacity: 0, x: -20 },
     visible: {
       opacity: 1,
@@ -63,7 +63,7 @@ const HistoryPageSkeleton = ({
     },
   };
 
-  const shimmerVariants = {
+  const shimmerVariants: Variants = {
     initial: { x: '-100%' },
     animate: {
       x: '100%',
@@ -75,7 +75,7 @@ const HistoryPageSkeleton = ({
     },
   };
 
-  const filteringPulseVariants = {
+  const filteringPulseVariants: Variants = {
     initial: { scale: 1, opacity: 0.7 },
     animate: {
       scale: [1, 1.02, 1],
@@ -88,7 +88,7 @@ const HistoryPageSkeleton = ({
     },
   };
 
-  const paginatingVariants = {
+  const paginatingVariants: Variants = {
     initial: { backgroundColor: '#f3f4f6' },
     animate: {
       backgroundColor: ['#f3f4f6', '#e5e7eb', '#f3f4f6'],

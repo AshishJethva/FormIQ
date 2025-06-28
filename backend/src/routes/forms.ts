@@ -1,5 +1,3 @@
-// src/routes/forms.ts
-
 import express from 'express';
 import { protect } from '../middleware/protect';
 import { validate } from '../middleware/validation';

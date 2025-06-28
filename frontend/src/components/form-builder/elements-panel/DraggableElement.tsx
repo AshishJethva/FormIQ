@@ -1,5 +1,3 @@
-// src/components/form-builder/elements-panel/DraggableElement.tsx
-
 'use client';
 
 import { useDrag } from 'react-dnd';
