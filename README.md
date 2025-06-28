@@ -114,7 +114,7 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
    npm install
    ```
 
-   Create a `.env.local` file in the frontend directory:
+   Create a `.env` file in the frontend directory:
 
    ```env
    NODE_ENV=development
