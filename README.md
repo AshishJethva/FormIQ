@@ -265,7 +265,7 @@ The backend provides RESTful APIs for:
 
 ## 📄 License
 
-This project is licensed under the ISC License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -277,7 +277,7 @@ This project is licensed under the ISC License.
 
 ## 📞 Support
 
-If you have any questions or need help, please open an issue or contact us at [jethvaashish2914@gmail.com](mailto:jethvaashish2914@gmail.com).
+If you have any questions or need help, please open an issue or contact me at [jethvaashish2914@gmail.com](mailto:jethvaashish2914@gmail.com).
 
 ---
 
