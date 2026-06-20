@@ -1,13 +1,9 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USERNAME,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM = process.env.RESEND_FROM_EMAIL
+  ? `FormIQ <${process.env.RESEND_FROM_EMAIL}>`
+  : 'FormIQ <onboarding@resend.dev>';
 
 interface PasswordResetEmailData {
   to: string;
@@ -195,19 +191,14 @@ export const sendPasswordResetEmail = async (
     This is an automated email, please do not reply to this message.
   `;
 
-  const mailOptions = {
-    from: {
-      name: 'FormIQ',
-      address: process.env.EMAIL_FROM!,
-    },
-    to,
-    subject: 'Reset Your FormIQ Password',
-    text: textContent,
-    html: htmlContent,
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: 'Reset Your FormIQ Password',
+      text: textContent,
+      html: htmlContent,
+    });
   } catch (error) {
     console.error('Error sending password reset email:', error);
     throw new Error('Failed to send password reset email');

@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { IUser } from '../models/User';
 
 interface EmailOptions {
@@ -8,63 +8,40 @@ interface EmailOptions {
   html?: string;
 }
 
-// Singleton transporter with connection pooling
-let transporter: nodemailer.Transporter | null = null;
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM = process.env.RESEND_FROM_EMAIL
+  ? `FormIQ <${process.env.RESEND_FROM_EMAIL}>`
+  : 'FormIQ <onboarding@resend.dev>';
 
-const getTransporter = () => {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      service: 'Gmail',
-      pool: true,
-      maxConnections: 5,
-      auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
-  }
-  return transporter;
-};
-
-// Send email function
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   try {
-    const transporter = getTransporter();
-
-    // Define mail options
-    const mailOptions = {
-      from: `"FormIQ" <${process.env.EMAIL_FROM || 'noreply@formiq.com'}>`,
+    await resend.emails.send({
+      from: FROM,
       to: options.email,
       subject: options.subject,
       text: options.message,
       html: options.html,
-    };
-
-    // Send email
-    await transporter.sendMail(mailOptions);
+    });
   } catch (error) {
     console.error('Email sending error: ', error);
     throw new Error('Error sending email');
   }
 };
 
-// Send OTP email
 export const sendOTPEmail = async (user: IUser, otp: string): Promise<void> => {
   const subject = 'FormIQ Verification Code';
 
-  // Plain text version
   const message = `
     Hello ${user.name},
-    
+
     Your verification code is: ${otp}
-    
+
     This code will expire in 10 minutes. If you didn't request this code, please ignore this email.
-    
+
     Best regards,
     FormIQ Team
   `;
 
-  // HTML version with better formatting
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 5px;">
       <div style="text-align: center; margin-bottom: 20px;">
@@ -85,10 +62,5 @@ export const sendOTPEmail = async (user: IUser, otp: string): Promise<void> => {
     </div>
   `;
 
-  await sendEmail({
-    email: user.email,
-    subject,
-    message,
-    html,
-  });
+  await sendEmail({ email: user.email, subject, message, html });
 };
