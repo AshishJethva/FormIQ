@@ -655,7 +655,7 @@ export class AIEvaluationService {
       await rateLimiter.waitForSlot();
 
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.0-flash-lite',
         generationConfig: {
           temperature: 0.1,
           topK: 32,
