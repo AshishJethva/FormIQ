@@ -578,7 +578,7 @@ const FormSchema = new Schema<IForm>(
         },
         model: {
           type: String,
-          default: 'gemini-2.0-flash-lite',
+          default: 'gemini-2.5-flash',
         },
         fieldsAdded: {
           type: Number,

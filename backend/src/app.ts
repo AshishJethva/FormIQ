@@ -21,6 +21,9 @@ import paymentRoutes from './routes/payment';
 
 const app = express();
 
+// Trust proxy - required for correct IP detection behind load balancers/reverse proxies
+app.set('trust proxy', 1);
+
 // Set security HTTP headers
 app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -29,9 +32,7 @@ app.use((req, res, next) => {
   next();
 });
 
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 app.use(helmet());
 app.use(express.json());
@@ -39,7 +40,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );

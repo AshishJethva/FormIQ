@@ -12,7 +12,7 @@ export class AIFormGeneratorService {
 
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.2,
         topK: 40,

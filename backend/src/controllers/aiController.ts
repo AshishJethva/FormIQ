@@ -252,7 +252,7 @@ export const generateForm = asyncHandler(
 
             isAIGenerated: true,
             aiPrompt: sanitizedPrompt,
-            aiModel: 'gemini-2.0-flash-lite',
+            aiModel: 'gemini-2.5-flash',
             aiGenerationMetadata: {
               generationTime: result.generationTime,
               version: '2.0',
@@ -301,7 +301,7 @@ export const generateForm = asyncHandler(
 
                 isAIGenerated: true,
                 aiPrompt: sanitizedPrompt,
-                aiModel: 'gemini-2.0-flash-lite',
+                aiModel: 'gemini-2.5-flash',
                 aiGenerationMetadata: {
                   generationTime: result.generationTime,
                   version: '2.0',
@@ -543,7 +543,7 @@ export const getFormSnapshots = asyncHandler(
           prompt: update.prompt,
           summary: update.summary,
           timestamp: update.timestamp,
-          model: update.model || 'gemini-2.0-flash-lite',
+          model: update.model || 'gemini-2.5-flash',
           fieldsAdded: update.fieldsAdded || 0,
           fieldsModified: update.fieldsModified || 0,
           fieldsRemoved: update.fieldsRemoved || 0,
@@ -1071,7 +1071,7 @@ export const updateFormWithAI = asyncHandler(
               prompt: sanitizedPrompt,
               summary: result.updateSummary || 'Form updated successfully',
               timestamp: new Date(),
-              model: 'gemini-2.0-flash-lite',
+              model: 'gemini-2.5-flash',
               fieldsAdded: 0, // Could be calculated from the diff
               fieldsModified: 0,
               fieldsRemoved: 0,
@@ -1268,7 +1268,7 @@ export const getFormUpdateHistory = asyncHandler(
             prompt: update.prompt,
             summary: update.summary,
             timestamp: update.timestamp,
-            model: update.model || 'gemini-2.0-flash-lite',
+            model: update.model || 'gemini-2.5-flash',
           })),
           totalUpdates: updateHistory.length,
         },

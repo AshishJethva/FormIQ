@@ -79,7 +79,7 @@ export default function FormBuilderHeader({
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       dispatch(setFormTitle(newTitle.trim()));
@@ -247,7 +247,7 @@ export default function FormBuilderHeader({
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className='relative'
+              className='relative bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg p-1 shadow-sm'
             >
               <Image
                 src={LOGO}
@@ -255,7 +255,7 @@ export default function FormBuilderHeader({
                 width={33}
                 height={33}
                 priority
-                className='rounded-lg shadow-sm'
+                className='rounded-md'
               />
               <div className='absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity' />
             </motion.div>
@@ -310,12 +310,12 @@ export default function FormBuilderHeader({
                     isSavingTitle
                       ? 'saving-title'
                       : titleError
-                      ? 'title-error'
-                      : isSaving
-                      ? 'saving'
-                      : saveError
-                      ? 'error'
-                      : 'saved'
+                        ? 'title-error'
+                        : isSaving
+                          ? 'saving'
+                          : saveError
+                            ? 'error'
+                            : 'saved'
                   }
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}

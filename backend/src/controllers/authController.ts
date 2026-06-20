@@ -17,7 +17,8 @@ import { emailSchema, resetPasswordSchema } from '../validation/authValidation';
 
 const signToken = (id: string): string => {
   const payload = { id };
-  const secret = process.env.JWT_SECRET ?? 'fallback_dev_secret_32_characters';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is not set');
 
   const expiresIn = (process.env.JWT_EXPIRES_IN || '90d') as unknown as
     | number
@@ -46,7 +47,7 @@ const createSendToken = (
             60 *
             1000
       ),
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite:
         process.env.NODE_ENV === 'production'
