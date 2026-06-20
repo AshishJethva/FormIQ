@@ -57,7 +57,7 @@ export default function OGImage() {
           }}
         >
           <span style={{ color: '#a78bfa', fontSize: '16px', fontWeight: 600, letterSpacing: '0.05em' }}>
-            ✦ AI-POWERED FORM BUILDER
+            * AI-POWERED FORM BUILDER
           </span>
         </div>
 
