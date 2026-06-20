@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 interface SuggestionRequest {
   text: string;
@@ -16,27 +16,16 @@ interface SuggestionResponse {
 }
 
 export class AISuggestionService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private groq: Groq;
   private formKeywords: Set<string>;
   private formTypes: Map<string, string[]>;
 
   constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY environment variable is required');
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY environment variable is required');
     }
 
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
-      generationConfig: {
-        temperature: 0.4,
-        topK: 10,
-        topP: 0.7,
-        maxOutputTokens: 80,
-      },
-    });
-
+    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     this.initializeFormTrainingData();
   }
 
@@ -538,10 +527,14 @@ Your form-focused continuation (6-10 words):`;
         setTimeout(() => reject(new Error('AI timeout')), 2500)
       );
 
-      const aiPromise = this.model.generateContent(prompt);
+      const aiPromise = this.groq.chat.completions.create({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.4,
+        max_tokens: 80,
+      });
       const result = await Promise.race([aiPromise, timeoutPromise]);
-      const response = await (result as any).response;
-      const responseText = response.text();
+      const responseText = (result as any).choices[0].message.content || '';
 
       let suggestions = this.parseFormFocusedResponse(
         responseText,

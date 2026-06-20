@@ -1,25 +1,15 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 export class AIFormGeneratorService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private groq: Groq;
 
   constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY environment variable is required');
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY environment variable is required');
     }
 
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
-      generationConfig: {
-        temperature: 0.2,
-        topK: 40,
-        topP: 0.8,
-        maxOutputTokens: 8192,
-      },
-    });
+    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   }
 
   async generateForm(
@@ -51,9 +41,13 @@ export class AIFormGeneratorService {
         prompt.trim(),
         intendedFormType
       );
-      const result = await this.model.generateContent(systemPrompt);
-      const response = await result.response;
-      const generatedText = response.text();
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: systemPrompt }],
+        temperature: 0.2,
+        max_tokens: 8192,
+      });
+      const generatedText = completion.choices[0].message.content || '';
 
       // Parse response
       const parseResult = this.parseFormConfig(generatedText);
@@ -2503,8 +2497,8 @@ Example survey rating field:
   validateEnvironment(): { isValid: boolean; missing: string[] } {
     const missing = [];
 
-    if (!process.env.GEMINI_API_KEY) {
-      missing.push('GEMINI_API_KEY');
+    if (!process.env.GROQ_API_KEY) {
+      missing.push('GROQ_API_KEY');
     }
 
     return {

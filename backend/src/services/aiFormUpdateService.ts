@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface FormField {
@@ -41,24 +41,14 @@ export interface Form {
 }
 
 export class AIFormUpdateService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private groq: Groq;
 
   constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY environment variable is required');
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY environment variable is required');
     }
 
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
-      generationConfig: {
-        temperature: 0.3,
-        topK: 40,
-        topP: 0.8,
-        maxOutputTokens: 4096,
-      },
-    });
+    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   }
 
   async updateForm(
@@ -93,9 +83,13 @@ export class AIFormUpdateService {
       );
 
       // Get AI response
-      const result = await this.model.generateContent(systemPrompt);
-      const response = await result.response;
-      const generatedText = response.text();
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: systemPrompt }],
+        temperature: 0.3,
+        max_tokens: 4096,
+      });
+      const generatedText = completion.choices[0].message.content || '';
 
       // Parse the update instructions with enhanced error handling
       const parseResult = this.parseUpdateInstructions(generatedText);

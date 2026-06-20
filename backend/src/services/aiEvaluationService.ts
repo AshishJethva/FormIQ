@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 export interface QuizEvaluation {
   correctAnswers: number;
@@ -156,15 +156,15 @@ class RateLimiter {
 const rateLimiter = new RateLimiter(40, 60000);
 
 export class AIEvaluationService {
-  private genAI: GoogleGenerativeAI;
+  private groq: Groq;
   private retryDelay = 2000;
   private maxRetries = 3;
 
   constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is required for AI evaluation');
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY is required for AI evaluation');
     }
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   }
 
   private analyzeFormStructure(
@@ -654,18 +654,13 @@ export class AIEvaluationService {
 
       await rateLimiter.waitForSlot();
 
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite',
-        generationConfig: {
-          temperature: 0.1,
-          topK: 32,
-          topP: 0.7,
-          maxOutputTokens: 4096,
-        },
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 4096,
       });
-
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
+      const response = completion.choices[0].message.content || '';
 
       if (!response || response.trim().length === 0) {
         throw new Error('Empty response from AI service');

@@ -88,7 +88,7 @@ const FormHistorySnapshotSchema = new Schema<IFormHistorySnapshot>(
       },
       updatePrompt: { type: String },
       updateSummary: { type: String },
-      aiModel: { type: String, default: 'gemini-2.5-flash' },
+      aiModel: { type: String, default: 'llama-3.3-70b-versatile' },
       userAgent: { type: String },
       ipAddress: { type: String },
       sessionId: { type: String },

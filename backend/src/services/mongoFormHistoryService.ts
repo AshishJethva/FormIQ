@@ -121,7 +121,7 @@ export class MongoFormHistoryService {
           changeType: metadata.changeType,
           updatePrompt: metadata.updatePrompt,
           updateSummary: metadata.updateSummary,
-          aiModel: 'gemini-2.5-flash',
+          aiModel: 'llama-3.3-70b-versatile',
           userAgent: metadata.userAgent,
           ipAddress: metadata.ipAddress,
           sessionId: metadata.sessionId,
