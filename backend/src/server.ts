@@ -13,9 +13,8 @@ const REQUIRED_ENV_VARS = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
-  'EMAIL_HOST',
-  'EMAIL_USERNAME',
-  'EMAIL_PASSWORD',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
