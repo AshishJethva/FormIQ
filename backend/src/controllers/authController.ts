@@ -184,25 +184,17 @@ export const signup = catchAsync(async (req: Request, res: Response) => {
     newUser.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // expires in 10 minutes
     await newUser.save({ validateBeforeSave: false });
 
-    // 5. Send OTP via email
-    try {
-      await sendOTPEmail(newUser, otpCode);
-
-      return res.status(201).json({
-        status: 'success',
-        message: 'Account created! Please check your email for the OTP.',
-        ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
-        user_id: newUser._id,
-      });
-    } catch (emailError) {
+    // 5. Send OTP via email in background — don't block the response
+    sendOTPEmail(newUser, otpCode).catch((emailError) => {
       console.error('Email send error:', emailError);
-      return res.status(201).json({
-        status: 'partial_success',
-        message:
-          'Account created, but we failed to send the verification email. Please request a new OTP.',
-        user_id: newUser._id,
-      });
-    }
+    });
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Account created! Please check your email for the OTP.',
+      ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
+      user_id: newUser._id,
+    });
   } catch (error) {
     console.error('Signup error:', error);
 

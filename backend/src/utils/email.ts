@@ -8,21 +8,28 @@ interface EmailOptions {
   html?: string;
 }
 
-// Create reusable transporter
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'Gmail',
-    auth: {
-      user: process.env.EMAIL_USERNAME,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-  });
+// Singleton transporter with connection pooling
+let transporter: nodemailer.Transporter | null = null;
+
+const getTransporter = () => {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      pool: true,
+      maxConnections: 5,
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+  }
+  return transporter;
 };
 
 // Send email function
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   try {
-    const transporter = createTransporter();
+    const transporter = getTransporter();
 
     // Define mail options
     const mailOptions = {
