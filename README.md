@@ -43,14 +43,14 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
 
 ### AI Integration
 
-- **AI Provider**: Google Gemini 2.0 Flash-Lite
+- **AI Provider**: Groq (Llama 3.3 70B / Llama 3.1 8B)
 - **Use Cases**: Form generation, content suggestions, response evaluation
 
 ### Additional Services
 
 - **Payment Gateway**: Razorpay
 - **File Storage**: Cloudinary
-- **Email**: Gmail SMTP
+- **Email**: Resend
 
 ## 🚀 Quick Start
 
@@ -59,7 +59,8 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
 - Node.js (v20 or later)
 - MongoDB Atlas account
 - Cloudinary account
-- Google Gemini API key
+- Groq API key (free at [console.groq.com](https://console.groq.com))
+- Resend API key (free at [resend.com](https://resend.com))
 - Razorpay account
 
 ### Installation
@@ -90,14 +91,10 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
    JWT_EXPIRES_IN=90d
    JWT_COOKIE_EXPIRES_IN=90
 
-   GEMINI_API_KEY=your_gemini_api_key
+   GROQ_API_KEY=your_groq_api_key
+   RESEND_API_KEY=your_resend_api_key
+   RESEND_FROM_EMAIL=your_verified_email@yourdomain.com
    FRONTEND_URL=http://localhost:3000
-
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USERNAME=your_email@gmail.com
-   EMAIL_PASSWORD=your_app_password
-   EMAIL_FROM=your_email@gmail.com
 
    CLOUDINARY_CLOUD_NAME=your_cloudinary_name
    CLOUDINARY_API_KEY=your_cloudinary_key
@@ -288,7 +285,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Next.js](https://nextjs.org/) for the amazing React framework
 - [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components
-- [Google Gemini](https://ai.google.dev/) for AI capabilities
+- [Groq](https://groq.com/) for fast AI inference
+- [Resend](https://resend.com/) for reliable email delivery
 - [MongoDB Atlas](https://www.mongodb.com/atlas) for database hosting
 - [Cloudinary](https://cloudinary.com/) for media management
 
