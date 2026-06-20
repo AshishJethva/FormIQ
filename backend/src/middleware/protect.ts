@@ -28,10 +28,10 @@ export const protect = catchAsync(
     }
 
     // Verify token
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as JwtPayload;
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) return next(new AppError('Server configuration error', 500));
+
+    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
     // Check if user still exists
     const currentUser = await User.findById(decoded.id);

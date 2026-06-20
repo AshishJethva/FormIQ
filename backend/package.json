@@ -9,8 +9,12 @@
     "lint": "eslint . --ext .ts"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ashish Jethva",
   "license": "ISC",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "description": "FormIQ Backend API with Express.js and MongoDB",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
