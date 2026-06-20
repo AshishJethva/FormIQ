@@ -18,7 +18,7 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
 
 ### Frontend
 
-- **Framework**: Next.js 15 with App Router
+- **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui
@@ -56,7 +56,7 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
 
 ### Prerequisites
 
-- Node.js (v18 or later)
+- Node.js (v20 or later)
 - MongoDB Atlas account
 - Cloudinary account
 - Google Gemini API key
@@ -119,6 +119,7 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
    ```env
    NODE_ENV=development
    NEXT_PUBLIC_BACKEND_APP_API_URL=http://localhost:5000/api
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
    NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
    ```
 
@@ -188,7 +189,7 @@ formiq/
 │   │   ├── services/
 │   │   ├── styles/
 │   │   ├── types/
-│   │   └── middleware.ts
+│   │   └── proxy.ts
 │   ├── .env
 │   ├── .gitignore
 │   ├── components.json
@@ -243,17 +244,33 @@ The backend provides RESTful APIs for:
 
 ## 🚀 Deployment
 
-### Backend Deployment
+### Backend — Railway
 
-1. Build the application: `npm run build`
-2. Set production environment variables
-3. Deploy to your preferred platform (Vercel, Railway, etc.)
+1. Push your code to GitHub
+2. Create a new project on [Railway](https://railway.app) and connect your GitHub repo
+3. Set the **Root Directory** to `backend` and **Start Command** to `npm run build && npm start`
+4. Add all backend environment variables in Railway → Variables
+5. Railway auto-deploys on every push to `main`
 
-### Frontend Deployment
+### Frontend — Vercel
 
-1. Build the application: `npm run build`
-2. Deploy to Vercel or your preferred platform
-3. Configure environment variables
+1. Create a new project on [Vercel](https://vercel.com) and connect your GitHub repo
+2. Set the **Root Directory** to `frontend` and **Framework** to Next.js
+3. Add all frontend environment variables in Vercel → Settings → Environment Variables:
+   ```
+   NEXT_PUBLIC_BACKEND_APP_API_URL=https://your-railway-backend.up.railway.app/api
+   NEXT_PUBLIC_APP_URL=https://your-custom-domain.com
+   NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
+   ```
+4. Vercel auto-deploys on every push to `main`
+
+### Custom Domain
+
+Add your custom domain in Vercel → Settings → Domains, then add a CNAME record at your registrar:
+```
+Type: CNAME  |  Name: formiq  |  Value: cname.vercel-dns.com
+```
+After the domain is active, update `FRONTEND_URL` in Railway to match.
 
 ## 🤝 Contributing
 
