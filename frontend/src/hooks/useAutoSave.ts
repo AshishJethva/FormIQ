@@ -222,14 +222,6 @@ const useAutoSave = (
         setLastSaved(new Date());
         setRetryCount(0);
 
-        if (formData.isPublished || forceUpdatePublished) {
-          if (enableToast) {
-            toast.success('Changes saved - published form updated!');
-          }
-        } else if (enableToast) {
-          toast.success('Changes saved automatically');
-        }
-
         if (onSaveSuccess) {
           onSaveSuccess(response.data);
         }

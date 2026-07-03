@@ -175,7 +175,6 @@ export default function SettingsPage() {
 
     try {
       await dispatch(updateUserSettings({ darkMode: newDarkMode })).unwrap();
-      toast.success(`Dark mode ${newDarkMode ? 'enabled' : 'disabled'}`);
     } catch (error: any) {
       // Revert on error
       setSettings(settings);
@@ -198,11 +197,6 @@ export default function SettingsPage() {
       await dispatch(
         updateUserSettings({ notifications: newNotifications })
       ).unwrap();
-      toast.success(
-        `${type} notifications ${
-          !settings.notifications[type] ? 'enabled' : 'disabled'
-        }`
-      );
     } catch (error: any) {
       // Revert on error
       setSettings(settings);
@@ -225,11 +219,6 @@ export default function SettingsPage() {
       await dispatch(
         updateUserSettings({ emailPreferences: newEmailPreferences })
       ).unwrap();
-      toast.success(
-        `${type} emails ${
-          !settings.emailPreferences[type] ? 'enabled' : 'disabled'
-        }`
-      );
     } catch (error: any) {
       // Revert on error
       setSettings(settings);
@@ -255,7 +244,6 @@ export default function SettingsPage() {
 
     try {
       await dispatch(updateUserSettings({ timezone })).unwrap();
-      toast.success('Timezone updated successfully');
     } catch (error: any) {
       // Revert on error
       setSettings(settings);
@@ -271,7 +259,6 @@ export default function SettingsPage() {
 
     try {
       await dispatch(updateUserSettings({ language })).unwrap();
-      toast.success('Language updated successfully');
     } catch (error: any) {
       // Revert on error
       setSettings(settings);

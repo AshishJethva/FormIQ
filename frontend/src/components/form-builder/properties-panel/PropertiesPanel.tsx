@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label';
 import { X, Trash, Copy, Settings as SettingsIcon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { toast } from 'sonner';
 import { FieldType } from '@/types/form';
 
 type LabelAlignmentType = 'LEFT' | 'RIGHT';
@@ -175,7 +174,6 @@ export default function PropertiesPanel() {
 
   const handleDuplicateField = () => {
     dispatch(duplicateField(field.id));
-    toast.success(`${field.label} field duplicated`);
   };
 
   const handleDeleteField = () => {

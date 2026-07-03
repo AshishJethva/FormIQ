@@ -259,8 +259,6 @@ export default function FileUploadField({
       } else {
         onChange(null);
       }
-
-      toast.success('File removed');
     } catch {
       toast.error('Failed to remove file');
     }

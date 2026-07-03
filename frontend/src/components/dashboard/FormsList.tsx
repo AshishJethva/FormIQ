@@ -403,9 +403,6 @@ const FormsList: React.FC<FormsListProps> = ({
 
     try {
       await dispatch(toggleFormFavorite(formId) as any).unwrap();
-      toast.success('Favorite Status Updated', {
-        duration: 2000,
-      });
       if (activeSection === 'Favorites') {
         triggerRefetch();
       }
@@ -484,7 +481,6 @@ const FormsList: React.FC<FormsListProps> = ({
           return;
 
         default:
-          toast.success(`${action} action triggered for form`);
           return;
       }
 
@@ -543,7 +539,6 @@ const FormsList: React.FC<FormsListProps> = ({
           return;
 
         default:
-          toast.success(`${action} action triggered for selected forms`);
           return;
       }
 

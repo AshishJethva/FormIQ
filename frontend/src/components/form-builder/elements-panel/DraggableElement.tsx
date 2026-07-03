@@ -4,7 +4,7 @@ import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import { ItemTypes } from '@/types/dragTypes';
 import { FieldType } from '@/types/form';
-import { ChevronsRight, Sparkles } from 'lucide-react';
+import { ChevronsRight } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addFieldAtIndex } from '@/redux/slices/formBuilder/formBuilderSlice';
 import { useEffect, useState } from 'react';
@@ -60,11 +60,6 @@ export default function DraggableElement({
         pageId: currentPage.id,
       })
     );
-
-    toast.success(`${label} field added`, {
-      icon: <Sparkles className='w-4 h-4' />,
-      duration: 2000,
-    });
   };
 
   // Setup drag functionality

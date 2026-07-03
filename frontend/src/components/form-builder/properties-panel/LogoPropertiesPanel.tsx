@@ -330,7 +330,6 @@ export default function LogoPropertiesPanel({
         );
 
         setLogoUrl('');
-        toast.success('Logo URL set successfully');
 
         // Switch to My Images tab
         setSelectedTab(1);
@@ -384,7 +383,6 @@ export default function LogoPropertiesPanel({
   // Handle logo removal
   const handleRemoveLogo = () => {
     dispatch(removeLogo());
-    toast.success('Logo removed');
   };
 
   // Handle selecting a saved image
@@ -402,13 +400,11 @@ export default function LogoPropertiesPanel({
         publicId,
       })
     );
-    toast.success('Logo selected');
   };
 
   // Handle deleting a saved image
   const handleDeleteSavedImage = (src: string) => {
     removeImageFromStorage(src);
-    toast.success('Image removed from saved images');
   };
 
   // Handle alignment changes

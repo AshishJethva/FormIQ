@@ -752,20 +752,6 @@ export default function PreviewPage({ formId }: PreviewPageProps) {
     setFormData(dummyFormData);
     setFileData(dummyFileData);
     setErrors({});
-
-    const totalFiles = Object.values(dummyFileData).reduce(
-      (total: number, files: any) => {
-        if (Array.isArray(files)) return total + files.length;
-        return total + (files ? 1 : 0);
-      },
-      0
-    );
-
-    toast.success('Form filled with sample data', {
-      description: `Filled ${
-        Object.keys(dummyFormData).length
-      } fields and ${totalFiles} files with realistic data`,
-    });
   };
 
   const validateField = (field: any, value: any, files?: any): string => {

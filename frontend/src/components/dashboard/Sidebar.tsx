@@ -120,10 +120,10 @@ const Sidebar = ({ onSectionChange }: SidebarProps = {}) => {
     }
   }, [debouncedSearchTerm, dispatch]);
 
-  // Show error toast if labels fail to load
+  // Clear label fetch errors silently (background fetch, no toast needed)
   useEffect(() => {
     if (labelsError) {
-      toast.error('Failed to fetch labels');
+      console.error('Failed to fetch labels:', labelsError);
       dispatch(clearLabelsError());
     }
   }, [labelsError, dispatch]);

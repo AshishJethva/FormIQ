@@ -13,7 +13,6 @@ import {
   clearError,
   setForm,
 } from '@/redux/slices/formBuilder/formBuilderSlice';
-import { toast } from 'sonner';
 import AIFixedChatInput from '@/components/form-builder/AIFixedChatInput';
 import UpdateHistoryPanel from '@/components/form-builder/canvas/UpdateHistoryPanel';
 import FormBuilderHeader from './navigation/FormBuilderHeader';
@@ -91,21 +90,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
 
         if (formData.success && formData.data) {
           dispatch(setForm(formData.data));
-
-          // Only show success notification if not already shown
-          const notificationKey = `update_notified_${resolvedFormId}`;
-          if (!sessionStorage.getItem(notificationKey)) {
-            toast.success('Form updated successfully!', {
-              description: 'Your changes have been applied and saved.',
-              duration: 3000,
-            });
-            sessionStorage.setItem(notificationKey, 'true');
-
-            // Clear the notification flag after a short delay
-            setTimeout(() => {
-              sessionStorage.removeItem(notificationKey);
-            }, 5000);
-          }
         } else {
           console.error('Invalid form data response:', formData);
           // Don't show error toast for this case - the AI update was successful
@@ -119,11 +103,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
           console.warn(
             'Form not found during refresh - this may be expected for new forms'
           );
-          // Still show success since the AI update worked
-          toast.success('Form updated successfully!', {
-            description: 'Your changes have been applied.',
-            duration: 3000,
-          });
         } else {
           const errorText = await response.text();
           console.error('Failed to fetch form data:', {
@@ -136,12 +115,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
           console.warn(
             'Form update succeeded but refresh failed - continuing...'
           );
-
-          // Still show success toast
-          toast.success('Form updated successfully!', {
-            description: 'Your changes have been applied.',
-            duration: 3000,
-          });
         }
       }
     } catch (error) {
@@ -151,12 +124,6 @@ export default function FormBuilder({ formId }: FormBuilderWithAIProps) {
       console.warn(
         'Form update succeeded but refresh failed due to network error - continuing...'
       );
-
-      // Still show success toast since the AI update worked
-      toast.success('Form updated successfully!', {
-        description: 'Your changes have been applied.',
-        duration: 3000,
-      });
     }
   };
 

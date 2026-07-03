@@ -73,7 +73,6 @@ export default function UpdateHistoryPanel({
         setFormTitle(response.data.data.formTitle);
       }
     } catch (error: any) {
-      toast.error('Failed to fetch update history');
       console.error('Error fetching update history:', error);
     } finally {
       setIsLoading(false);

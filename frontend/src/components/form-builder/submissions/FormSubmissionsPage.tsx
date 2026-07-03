@@ -2331,7 +2331,6 @@ const FormSubmissionsPage: React.FC = () => {
         }
       } catch (error: any) {
         console.error('❌ Error fetching submissions:', error);
-        toast.error(error.message || 'Failed to fetch submissions');
         setSubmissions([]);
       } finally {
         setLoading(false);

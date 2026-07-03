@@ -7,7 +7,6 @@ import {
   addPage,
   setCurrentPageIndex,
 } from '@/redux/slices/formBuilder/formBuilderSlice';
-import { toast } from 'sonner';
 import { RootState } from '@/redux/store';
 
 interface AddNewPageButtonProps {
@@ -31,8 +30,6 @@ export default function AddNewPageButton({
     // Navigate to the new page
     const newPageIndex = form.pages.length;
     dispatch(setCurrentPageIndex(newPageIndex));
-
-    toast.success(`Page ${newPageIndex + 1} added successfully`);
   };
 
   if (isInline) {

@@ -22,7 +22,6 @@ import { Image, Upload } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDrop } from 'react-dnd';
-import { toast } from 'sonner';
 import { ItemTypes } from '@/types/dragTypes';
 import FormLogo from '../logo/FormLogo';
 import DropZone from './DropZone';
@@ -209,7 +208,6 @@ export default function FormCanvas({
       type: 'formBuilder/removePage',
       payload: pageId,
     });
-    toast.success('Page removed successfully');
   };
 
   // Get current page safely
@@ -239,14 +237,6 @@ export default function FormCanvas({
               pageId: currentPage.id,
             })
           );
-
-          toast.success(
-            `${item.fieldType
-              .replace(/_/g, ' ')
-              .toLowerCase()} field added to page ${
-              (form?.currentPageIndex || 0) + 1
-            }`
-          );
         }
         return undefined;
       },
@@ -271,10 +261,6 @@ export default function FormCanvas({
                 index: 0,
                 pageId: currentPage.id,
               })
-            );
-
-            toast.success(
-              `${item.fieldType.replace(/_/g, ' ').toLowerCase()} field added!`
             );
           }
           return undefined;
@@ -359,7 +345,6 @@ export default function FormCanvas({
 
     if (field && pageId) {
       dispatch(duplicateField(fieldId));
-      toast.success(`${field.label} field duplicated`);
     }
   };
 
@@ -445,7 +430,6 @@ export default function FormCanvas({
         pageId,
       })
     );
-    toast.success(`Added new ${type.replace(/_/g, ' ').toLowerCase()} field`);
   };
   const handleEmptyStateClick = (e: React.MouseEvent) => {
     e.preventDefault();

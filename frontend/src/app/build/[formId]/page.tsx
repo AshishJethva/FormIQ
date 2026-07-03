@@ -5,7 +5,6 @@ import { AppDispatch, store } from '@/redux/store';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { toast } from 'sonner';
 import FormBuilder from '@/components/form-builder/FormBuilder';
 import {
   initializeForm,
@@ -68,7 +67,6 @@ export default function FormBuilderPage() {
       } catch {
         // console.error('Failed to load form:', error);
         setHasError(true);
-        toast.error('Failed to load form');
       } finally {
         setIsLoading(false);
       }
