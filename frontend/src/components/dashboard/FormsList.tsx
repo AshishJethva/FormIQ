@@ -1097,7 +1097,10 @@ const FormsList: React.FC<FormsListProps> = ({
 
               {/* Desktop dropdown menu */}
               <div className='hidden sm:block'>
-                <DropdownMenu>
+                {/* modal={false} prevents Radix from locking body pointer-events,
+                    which otherwise stays stuck when a Dialog (Manage Labels) is
+                    opened from a menu item, freezing the page until refresh. */}
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant='ghost'

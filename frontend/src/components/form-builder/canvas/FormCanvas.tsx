@@ -228,7 +228,12 @@ export default function FormCanvas({
       canDrop: () => {
         return !!currentPage;
       },
-      drop: (item: { fieldType: FieldType }) => {
+      drop: (item: { fieldType: FieldType }, monitor) => {
+        // Bail if a nested target (DropZone / empty-state) already handled this
+        // drop — otherwise the field is added twice (once here, once inside).
+        if (monitor.didDrop()) {
+          return undefined;
+        }
         if (currentPage) {
           dispatch(
             addFieldAtIndex({
