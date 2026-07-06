@@ -59,9 +59,9 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'FormIQ — AI-Powered Form Builder',
     description:
-      'Create intelligent forms, surveys, and quizzes in seconds with AI. Built by @ashish__2901.',
-    creator: '@ashish__2901',
-    site: '@ashish__2901',
+      'Create intelligent forms, surveys, and quizzes in seconds with AI. Built by @ashish__jethva.',
+    creator: '@ashish__jethva',
+    site: '@ashish__jethva',
     images: ['/opengraph-image'],
   },
 

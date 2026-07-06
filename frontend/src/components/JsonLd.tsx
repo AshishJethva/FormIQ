@@ -20,7 +20,7 @@ const webApplicationSchema = {
       'https://ashishjethva.com',
       'https://github.com/AshishJethva',
       'https://www.linkedin.com/in/ashishjethva/',
-      'https://x.com/ashish__2901',
+      'https://x.com/ashish__jethva',
     ],
   },
   offers: {
@@ -51,7 +51,7 @@ const personSchema = {
     'https://ashishjethva.com',
     'https://github.com/AshishJethva',
     'https://www.linkedin.com/in/ashishjethva/',
-    'https://x.com/ashish__2901',
+    'https://x.com/ashish__jethva',
   ],
   knowsAbout: [
     'Web Development',
