@@ -1,3 +1,4 @@
+import { GROQ_MODEL } from '../config/ai';
 import FormHistorySnapshot, {
   IFormHistorySnapshot,
 } from '../models/FormHistorySnapshot';
@@ -121,7 +122,7 @@ export class MongoFormHistoryService {
           changeType: metadata.changeType,
           updatePrompt: metadata.updatePrompt,
           updateSummary: metadata.updateSummary,
-          aiModel: 'llama-3.3-70b-versatile',
+          aiModel: GROQ_MODEL,
           userAgent: metadata.userAgent,
           ipAddress: metadata.ipAddress,
           sessionId: metadata.sessionId,

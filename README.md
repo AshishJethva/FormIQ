@@ -43,7 +43,7 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
 
 ### AI Integration
 
-- **AI Provider**: Groq (Llama 3.3 70B / Llama 3.1 8B)
+- **AI Provider**: Groq (GPT-OSS 120B / GPT-OSS 20B, configurable via `GROQ_MODEL` / `GROQ_FAST_MODEL`)
 - **Use Cases**: Form generation, content suggestions, response evaluation
 
 ### Additional Services
@@ -92,6 +92,9 @@ FormIQ is a cutting-edge full-stack application that revolutionizes form creatio
    JWT_COOKIE_EXPIRES_IN=90
 
    GROQ_API_KEY=your_groq_api_key
+   # Optional – override the Groq models (defaults: openai/gpt-oss-120b, openai/gpt-oss-20b)
+   # GROQ_MODEL=openai/gpt-oss-120b
+   # GROQ_FAST_MODEL=openai/gpt-oss-20b
    RESEND_API_KEY=your_resend_api_key
    RESEND_FROM_EMAIL=your_verified_email@yourdomain.com
    FRONTEND_URL=http://localhost:3000

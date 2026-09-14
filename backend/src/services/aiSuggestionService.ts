@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { GROQ_FAST_MODEL, GROQ_REASONING_EFFORT } from '../config/ai';
 
 interface SuggestionRequest {
   text: string;
@@ -528,7 +529,8 @@ Your form-focused continuation (6-10 words):`;
       );
 
       const aiPromise = this.groq.chat.completions.create({
-        model: 'llama-3.1-8b-instant',
+        model: GROQ_FAST_MODEL,
+        reasoning_effort: GROQ_REASONING_EFFORT,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.4,
         max_tokens: 80,

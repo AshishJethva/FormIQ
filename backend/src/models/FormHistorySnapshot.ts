@@ -1,3 +1,4 @@
+import { GROQ_MODEL } from '../config/ai';
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IFormHistorySnapshot extends Document {
@@ -88,7 +89,7 @@ const FormHistorySnapshotSchema = new Schema<IFormHistorySnapshot>(
       },
       updatePrompt: { type: String },
       updateSummary: { type: String },
-      aiModel: { type: String, default: 'llama-3.3-70b-versatile' },
+      aiModel: { type: String, default: GROQ_MODEL },
       userAgent: { type: String },
       ipAddress: { type: String },
       sessionId: { type: String },

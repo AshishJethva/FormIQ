@@ -1,3 +1,4 @@
+import { GROQ_MODEL } from '../config/ai';
 import { Request, Response } from 'express';
 import Form from '../models/Form';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -252,7 +253,7 @@ export const generateForm = asyncHandler(
 
             isAIGenerated: true,
             aiPrompt: sanitizedPrompt,
-            aiModel: 'llama-3.3-70b-versatile',
+            aiModel: GROQ_MODEL,
             aiGenerationMetadata: {
               generationTime: result.generationTime,
               version: '2.0',
@@ -301,7 +302,7 @@ export const generateForm = asyncHandler(
 
                 isAIGenerated: true,
                 aiPrompt: sanitizedPrompt,
-                aiModel: 'llama-3.3-70b-versatile',
+                aiModel: GROQ_MODEL,
                 aiGenerationMetadata: {
                   generationTime: result.generationTime,
                   version: '2.0',
@@ -543,7 +544,7 @@ export const getFormSnapshots = asyncHandler(
           prompt: update.prompt,
           summary: update.summary,
           timestamp: update.timestamp,
-          model: update.model || 'llama-3.3-70b-versatile',
+          model: update.model || GROQ_MODEL,
           fieldsAdded: update.fieldsAdded || 0,
           fieldsModified: update.fieldsModified || 0,
           fieldsRemoved: update.fieldsRemoved || 0,
@@ -1071,7 +1072,7 @@ export const updateFormWithAI = asyncHandler(
               prompt: sanitizedPrompt,
               summary: result.updateSummary || 'Form updated successfully',
               timestamp: new Date(),
-              model: 'llama-3.3-70b-versatile',
+              model: GROQ_MODEL,
               fieldsAdded: 0, // Could be calculated from the diff
               fieldsModified: 0,
               fieldsRemoved: 0,
@@ -1268,7 +1269,7 @@ export const getFormUpdateHistory = asyncHandler(
             prompt: update.prompt,
             summary: update.summary,
             timestamp: update.timestamp,
-            model: update.model || 'llama-3.3-70b-versatile',
+            model: update.model || GROQ_MODEL,
           })),
           totalUpdates: updateHistory.length,
         },

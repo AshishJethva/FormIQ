@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { GROQ_MODEL, GROQ_REASONING_EFFORT } from '../config/ai';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface FormField {
@@ -84,7 +85,8 @@ export class AIFormUpdateService {
 
       // Get AI response
       const completion = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
+        reasoning_effort: GROQ_REASONING_EFFORT,
         messages: [{ role: 'user', content: systemPrompt }],
         temperature: 0.3,
         max_tokens: 4096,

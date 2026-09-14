@@ -1,3 +1,4 @@
+import { GROQ_MODEL } from '../config/ai';
 import mongoose, { Schema, Document } from 'mongoose';
 
 const OptionSchema = new Schema(
@@ -578,7 +579,7 @@ const FormSchema = new Schema<IForm>(
         },
         model: {
           type: String,
-          default: 'llama-3.3-70b-versatile',
+          default: GROQ_MODEL,
         },
         fieldsAdded: {
           type: Number,
